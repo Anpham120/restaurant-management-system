@@ -6,6 +6,7 @@ export type OrderStatus = 'OPEN' | 'PAID' | 'CANCELLED'
 export type ItemStatus = 'PENDING' | 'WAITING' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED'
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
 export type MovementType = 'IN' | 'OUT' | 'ADJUST'
+export type PayType = 'HOURLY' | 'MONTHLY'
 
 export interface Employee {
   id: number
@@ -13,6 +14,15 @@ export interface Employee {
   username: string
   role: Role
   active: boolean
+}
+
+/** Admin view of an employee: profile and pay (BR-22). */
+export interface EmployeeDetail extends Employee {
+  phone: string | null
+  hiredOn: string | null
+  leftOn: string | null
+  payType: PayType
+  payRate: number
 }
 
 export interface LoginResponse {

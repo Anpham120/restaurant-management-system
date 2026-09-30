@@ -47,6 +47,9 @@ public abstract class IntegrationTest {
     protected record TableRef(long id, String name, String qrToken) {
     }
 
+    protected record EmployeeRef(long id, String username) {
+    }
+
     // ---- HTTP helpers ------------------------------------------------------------------------------------
 
     /** Token of a demo account (admin, quanly, phucvu, bep, thungan), cached for the whole run. */
@@ -113,6 +116,16 @@ public abstract class IntegrationTest {
     }
 
     // ---- Fixtures ----------------------------------------------------------------------------------------
+
+    /** A new employee who signs in with {@link #PASSWORD}. */
+    protected EmployeeRef newEmployee(String role, String payType, long payRate) throws Exception {
+        String username = unique("nv");
+        ResultActions created = post("/api/employees", as("admin"), Map.of("fullName", "Nhân viên " + username,
+                        "username", username, "role", role, "password", PASSWORD, "payType", payType,
+                        "payRate", payRate))
+                .andExpect(status().isCreated());
+        return new EmployeeRef(readLong(created, "$.id"), username);
+    }
 
     protected TableRef newTable() throws Exception {
         ResultActions created = post("/api/tables", as("quanly"),

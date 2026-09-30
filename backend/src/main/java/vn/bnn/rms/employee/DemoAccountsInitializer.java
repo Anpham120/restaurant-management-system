@@ -27,12 +27,19 @@ public class DemoAccountsInitializer implements ApplicationRunner {
             return;
         }
         String hash = passwordEncoder.encode(props.demoAccounts().password());
+        // Made-up pay for the demo: the repository is public, so no real figures (BR-22).
         employees.saveAll(List.of(
                 new Employee("Quản trị hệ thống", "admin", hash, Role.ADMIN),
-                new Employee("Nguyễn Văn Quản", "quanly", hash, Role.MANAGER),
-                new Employee("Trần Thị Phục", "phucvu", hash, Role.WAITER),
-                new Employee("Lê Văn Bếp", "bep", hash, Role.CHEF),
-                new Employee("Phạm Thị Ngân", "thungan", hash, Role.CASHIER)));
+                paid(new Employee("Nguyễn Văn Quản", "quanly", hash, Role.MANAGER), PayType.MONTHLY, 12_000_000),
+                paid(new Employee("Trần Thị Phục", "phucvu", hash, Role.WAITER), PayType.HOURLY, 25_000),
+                paid(new Employee("Lê Văn Bếp", "bep", hash, Role.CHEF), PayType.MONTHLY, 10_000_000),
+                paid(new Employee("Phạm Thị Ngân", "thungan", hash, Role.CASHIER), PayType.HOURLY, 25_000)));
         log.warn("Created demo accounts admin, quanly, phucvu, bep, thungan. Turn off app.demo-accounts.enabled in production.");
+    }
+
+    private static Employee paid(Employee employee, PayType payType, long payRate) {
+        employee.setPayType(payType);
+        employee.setPayRate(payRate);
+        return employee;
     }
 }
