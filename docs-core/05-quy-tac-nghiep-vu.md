@@ -47,3 +47,16 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 | BR-19 | Tồn kho chỉ đổi qua **phiếu biến động** (nhập, xuất, kiểm kê), không sửa số tồn trực tiếp. **Xuất không vượt tồn**. Phiếu ghi người tạo | `InventoryService` |
 | BR-20 | Nguyên liệu **sắp hết** khi tồn ≤ mức tối thiểu | `InventoryItem.isLowStock()` |
 | BR-21 | Doanh thu tính theo **khoản thanh toán đã xác nhận**, theo **ngày xác nhận giờ Việt Nam**. Món bán chạy chỉ tính đơn đã thanh toán và bỏ món huỷ | `ReportService` |
+
+## 5.6 Nhân sự (chưa làm)
+
+Cột "Kiểm tra ở" ghi nơi dự kiến; tên lớp chốt khi làm.
+
+| Mã | Quy tắc | Kiểm tra ở |
+|---|---|---|
+| BR-22 | Hồ sơ chỉ lưu thông tin cần cho vận hành: số điện thoại, ngày vào làm, ngày nghỉ việc, hình thức và mức lương. **Không lưu** số CCCD, địa chỉ nhà. Mức lương là số nguyên VND không âm, **chỉ ADMIN** xem và sửa | `EmployeeService`, `CHECK` trên `employee` |
+| BR-23 | Ca mẫu kết thúc sau giờ bắt đầu, **không qua nửa đêm**. Một người không bị xếp **hai ca trùng giờ** trong cùng ngày. Không xếp ca cho người đã nghỉ việc hoặc bị khoá | `ScheduleService`, unique (`employee_id`, `work_date`, `work_shift_id`) |
+| BR-24 | Đơn nghỉ có lý do, từ ngày ≤ đến ngày. Chỉ đơn **chờ duyệt** mới được duyệt, từ chối, hoặc người gửi huỷ. Duyệt thì gỡ các ca đã xếp trong những ngày đó. Ngày đã có chấm công thì không duyệt nghỉ được | `LeaveService` |
+| BR-25 | Mỗi người **tối đa một lượt chấm công đang mở**; mỗi ca đã xếp chỉ chấm một lần. Chỉ vào ca khi hôm nay có ca, từ 15 phút trước giờ bắt đầu đến giờ kết thúc. Đi muộn = giờ vào − giờ bắt đầu ca; về sớm = giờ kết thúc ca − giờ ra; không âm. Số phút làm = giờ ra − giờ vào. Giờ tính theo giờ Việt Nam | Unique index `ux_attendance_open`, `ux_attendance_assignment`; `AttendanceService` |
+| BR-26 | Lương theo giờ = số giờ làm × đơn giá giờ. Lương theo tháng = mức lương ÷ số ngày công chuẩn (mặc định 26) × (số ngày có chấm công + số ngày nghỉ có lương). Làm tròn xuống tới đồng. Thực nhận = lương theo công + thưởng − phạt, không âm. Phiếu lương **chốt hình thức và mức lương lúc tính**: sửa mức lương sau đó không đổi phiếu cũ | `PayrollService`, `CHECK` trên `payslip` |
+| BR-27 | Bảng lương **đã chốt** thì không tính lại, không sửa thưởng phạt, và **chấm công của tháng đó bị khoá**. Sửa chấm công phải có lý do; hệ thống ghi người sửa và thời điểm. Nhân viên chỉ xem **phiếu đã chốt của chính mình** | `PayrollService`, `AttendanceService` |

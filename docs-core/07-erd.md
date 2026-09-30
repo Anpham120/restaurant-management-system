@@ -169,3 +169,128 @@ erDiagram
 - Thông tin nhà hàng.
 
 Tài khoản demo cho 5 vai trò được tạo lúc khởi động khi bật `app.demo-accounts.enabled=true`. Mặc định cờ này **tắt** ở môi trường production.
+
+## 7.5 Nhân sự (thiết kế cho migration mới)
+
+Phần nhân sự (FR-12 → FR-15) được thiết kế ở đây **trước khi viết code**, đúng cách database-first. Các bảng này chưa có trong `V1__init.sql`:
+- Người làm service Nhân sự viết mỗi việc P2-05 → P2-09 thành một migration mới, theo đúng thiết kế dưới đây.
+- Bảng nào đã có migration thì chuyển lên ERD ở mục 7.1.
+- Muốn đổi thiết kế thì sửa mục này trước.
+
+Ghi chú:
+- `employee` thêm 5 cột. Cột mới có giá trị mặc định hoặc cho phép null, nên dữ liệu cũ vẫn hợp lệ.
+- **Ca làm việc** (`work_shift`) là giờ đi làm của nhân viên. Nó khác **ca két** của thu ngân ở P2-01 (`cash_shift`), là phiên giữ tiền.
+- Ngày và giờ ca tính theo giờ Việt Nam (NFR-08).
+
+```mermaid
+erDiagram
+    EMPLOYEE ||--o{ SHIFT_ASSIGNMENT : "được xếp"
+    WORK_SHIFT ||--o{ SHIFT_ASSIGNMENT : "theo mẫu"
+    EMPLOYEE ||--o{ ATTENDANCE : "chấm công"
+    SHIFT_ASSIGNMENT |o--o| ATTENDANCE : "ứng với"
+    EMPLOYEE ||--o{ LEAVE_REQUEST : "xin nghỉ"
+    PAYROLL ||--o{ PAYSLIP : "gồm"
+    EMPLOYEE ||--o{ PAYSLIP : "nhận"
+    PAYSLIP ||--o{ PAY_ADJUSTMENT : "thưởng, phạt"
+    EMPLOYEE {
+        bigint id PK
+        varchar phone "mới"
+        date hired_on "mới"
+        date left_on "mới, null nếu đang làm"
+        varchar pay_type "mới, HOURLY hoặc MONTHLY, mặc định HOURLY"
+        bigint pay_rate "mới, VND mỗi giờ hoặc mỗi tháng, mặc định 0"
+    }
+    WORK_SHIFT {
+        bigint id PK
+        varchar name UK "Sáng, Chiều, Tối"
+        time start_time
+        time end_time "sau start_time"
+        boolean active
+    }
+    SHIFT_ASSIGNMENT {
+        bigint id PK
+        bigint employee_id FK
+        bigint work_shift_id FK
+        date work_date
+        bigint created_by FK
+        timestamptz created_at
+    }
+    ATTENDANCE {
+        bigint id PK
+        bigint employee_id FK
+        bigint shift_assignment_id FK "null nếu quản lý thêm ngoài lịch"
+        timestamptz check_in_at
+        timestamptz check_out_at "null khi đang trong ca"
+        int late_minutes
+        int early_minutes
+        int worked_minutes "null khi đang trong ca"
+        varchar edit_reason "bắt buộc khi quản lý sửa"
+        bigint edited_by FK
+        timestamptz edited_at
+    }
+    LEAVE_REQUEST {
+        bigint id PK
+        bigint employee_id FK
+        date from_date
+        date to_date
+        varchar type "PAID, UNPAID"
+        varchar reason
+        varchar status "PENDING, APPROVED, REJECTED, CANCELLED"
+        bigint decided_by FK
+        varchar decision_note
+        timestamptz created_at
+        timestamptz decided_at
+    }
+    PAYROLL {
+        bigint id PK
+        varchar period UK "YYYY-MM"
+        int standard_days "mặc định 26"
+        varchar status "DRAFT, FINALIZED"
+        bigint created_by FK
+        timestamptz created_at
+        bigint finalized_by FK
+        timestamptz finalized_at
+    }
+    PAYSLIP {
+        bigint id PK
+        bigint payroll_id FK
+        bigint employee_id FK
+        varchar pay_type "chốt lúc tính"
+        bigint pay_rate "chốt lúc tính"
+        int worked_minutes
+        int work_days
+        int paid_leave_days
+        bigint base_amount "lương theo công"
+        bigint adjustment_amount "thưởng trừ phạt"
+        bigint net_amount "thực nhận"
+    }
+    PAY_ADJUSTMENT {
+        bigint id PK
+        bigint payslip_id FK
+        bigint amount "dương là thưởng, âm là phạt"
+        varchar reason
+        bigint created_by FK
+        timestamptz created_at
+    }
+```
+
+| Ràng buộc | Định nghĩa | Quy tắc |
+|---|---|---|
+| Mức lương không âm | `CHECK (pay_rate >= 0)` trên `employee` | BR-22 |
+| Ca không qua nửa đêm | `CHECK (end_time > start_time)` trên `work_shift` | BR-23 |
+| Không xếp trùng ca | `UNIQUE (employee_id, work_date, work_shift_id)` trên `shift_assignment` | BR-23 |
+| Đơn nghỉ hợp lệ | `CHECK (to_date >= from_date)` trên `leave_request` | BR-24 |
+| Một lượt chấm công đang mở mỗi người | `CREATE UNIQUE INDEX ux_attendance_open ON attendance(employee_id) WHERE check_out_at IS NULL` | BR-25 |
+| Mỗi ca đã xếp chấm một lần | `CREATE UNIQUE INDEX ux_attendance_assignment ON attendance(shift_assignment_id) WHERE shift_assignment_id IS NOT NULL` | BR-25 |
+| Giờ ra sau giờ vào | `CHECK (check_out_at IS NULL OR check_out_at > check_in_at)` trên `attendance` | BR-25 |
+| Một bảng lương mỗi tháng | `UNIQUE (period)` trên `payroll` | BR-26 |
+| Một phiếu mỗi người mỗi tháng | `UNIQUE (payroll_id, employee_id)` trên `payslip` | BR-26 |
+| Thực nhận đúng và không âm | `CHECK (net_amount = base_amount + adjustment_amount AND net_amount >= 0)` trên `payslip` | BR-26 |
+| Khoản thưởng phạt khác 0 | `CHECK (amount <> 0)` trên `pay_adjustment` | BR-26 |
+| Không xoá nhân viên | Khoá ngoại tới `employee` **không** `ON DELETE CASCADE` | BR-03 |
+
+| Index | Phục vụ |
+|---|---|
+| `shift_assignment(work_date)` | Lịch tuần |
+| `attendance(employee_id, check_in_at)` | Bảng công tháng, tính lương |
+| `leave_request(status) WHERE status = 'PENDING'` | Đơn chờ duyệt |
