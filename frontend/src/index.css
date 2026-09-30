@@ -40,6 +40,12 @@ body {
   min-height: 200px;
 }
 
+/* BR-28: a dish waiting past the threshold in the settings. */
+.kitchen-column .late {
+  border-color: #cf1322;
+  background: #fff1f0;
+}
+
 .note {
   color: #cf1322;
   font-weight: 500;

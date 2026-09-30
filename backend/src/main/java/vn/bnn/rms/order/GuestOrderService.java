@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import vn.bnn.rms.common.ApiException;
+import vn.bnn.rms.common.RealtimeEvent.Alert;
 import vn.bnn.rms.common.RealtimeEvents;
 import vn.bnn.rms.order.OrderDtos.AddItemsRequest;
 import vn.bnn.rms.order.OrderDtos.GuestItemDto;
@@ -44,7 +45,7 @@ public class GuestOrderService {
         orderService.buildItems(request.items(), ItemSource.GUEST).forEach(order::addItem);
         payments.cancelPendingTransfers(order.getId());
         orders.flush();
-        realtime.orderChanged(order.getId(), table.getId(), table.getQrToken());
+        realtime.orderChanged(order.getId(), table.getId(), table.getQrToken(), Alert.GUEST_DISHES);
         return toDto(table, order);
     }
 

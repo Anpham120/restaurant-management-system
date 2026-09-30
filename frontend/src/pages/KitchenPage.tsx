@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, Card, Col, Empty, Flex, Row, Switch, Tag, Typography } from 'antd'
 import { api, errorMessage } from '../api/client'
-import type { ItemStatus, KitchenItem, MenuItem } from '../api/types'
+import type { ItemStatus, KitchenItem, MenuItem, Settings } from '../api/types'
 import { minutesSince } from '../utils/format'
 
 const COLUMNS: { status: ItemStatus; title: string; next?: ItemStatus; action?: string }[] = [
@@ -11,7 +11,7 @@ const COLUMNS: { status: ItemStatus; title: string; next?: ItemStatus; action?: 
   { status: 'READY', title: 'Xong, chờ phục vụ ra' },
 ]
 
-/** FR-07: kitchen display; the oldest dish is on top (US-12). */
+/** FR-07: kitchen display; the oldest dish is on top (US-12), a late dish is red (BR-28). */
 export default function KitchenPage() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
@@ -24,6 +24,8 @@ export default function KitchenPage() {
 
   const items = useQuery({ queryKey: ['kitchen'], queryFn: () => api.get<KitchenItem[]>('/kitchen/items').then((r) => r.data) })
   const menu = useQuery({ queryKey: ['menu-items'], queryFn: () => api.get<MenuItem[]>('/menu-items').then((r) => r.data) })
+  const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<Settings>('/settings').then((r) => r.data) })
+  const lateAfter = settings.data?.waitAlertMinutes
 
   const advance = useMutation({
     mutationFn: ({ id, status }: { id: number; status: ItemStatus }) => api.patch(`/order-items/${id}/status`, { status }),
@@ -54,11 +56,12 @@ export default function KitchenPage() {
                 <Flex vertical gap={8}>
                   {list.map((item) => {
                     const waited = minutesSince(item.sentAt, now)
+                    const late = lateAfter !== undefined && waited >= lateAfter
                     return (
-                      <Card key={item.id} size="small">
+                      <Card key={item.id} size="small" className={late ? 'late' : undefined}>
                         <Flex justify="space-between" align="center">
                           <Typography.Text strong>{item.tableName ?? `Mang về #${item.orderId}`}</Typography.Text>
-                          <Tag color={waited >= 15 ? 'red' : 'default'}>{waited} phút</Tag>
+                          <Tag color={late ? 'red' : 'default'}>{waited} phút</Tag>
                         </Flex>
                         <Typography.Title level={5} style={{ margin: '4px 0' }}>
                           {item.itemName} × {item.quantity}

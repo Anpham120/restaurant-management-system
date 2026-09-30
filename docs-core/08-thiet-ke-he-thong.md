@@ -59,8 +59,8 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | Kho | `GET /inventory-items`, `POST /inventory-items`, `PUT /inventory-items/{id}` | MANAGER | FR-09.1, FR-09.4 |
 | | `POST /inventory-items/{id}/movements`, `GET /inventory-items/{id}/movements` | MANAGER | FR-09.2, FR-09.3 |
 | Báo cáo | `GET /reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD` | MANAGER | FR-10 |
-| Cài đặt | `GET /settings` | NV | FR-11 |
-| | `PUT /settings` | ADMIN | FR-11.1, FR-11.2 |
+| Cài đặt | `GET /settings` (bếp đọc ngưỡng món chờ lâu ở đây) | NV | FR-11, FR-07.4 |
+| | `PUT /settings` | ADMIN | FR-11.1 → FR-11.3 |
 
 Tài liệu API chạy được (Swagger UI) nằm ở `/swagger-ui.html` khi chạy backend.
 
@@ -73,16 +73,26 @@ Tài liệu API chạy được (Swagger UI) nằm ở `/swagger-ui.html` khi ch
 | `/topic/guest/{qrToken}` | Điện thoại khách ở bàn đó | Không cần | `ORDER_CHANGED`, `PAYMENT_PAID` |
 | `/topic/menu` | Điện thoại khách | Không cần | `MENU_CHANGED` (có món vừa hết hoặc bán lại) |
 
-Mỗi sự kiện rất nhỏ, ví dụ `{ "type": "ORDER_CHANGED", "orderId": 12, "tableId": 5 }`. Khi nhận, giao diện **tải lại dữ liệu** qua REST, nên dữ liệu trên màn hình luôn khớp CSDL. Backend chỉ gửi sự kiện **sau khi giao dịch CSDL đã commit** (`@TransactionalEventListener(phase = AFTER_COMMIT)`).
+Mỗi sự kiện rất nhỏ, ví dụ `{ "type": "ORDER_CHANGED", "orderId": 12, "tableId": 5, "alert": null }`. Khi nhận, giao diện **tải lại dữ liệu** qua REST, nên dữ liệu trên màn hình luôn khớp CSDL. Backend chỉ gửi sự kiện **sau khi giao dịch CSDL đã commit** (`@TransactionalEventListener(phase = AFTER_COMMIT)`).
+
+Trường `alert` báo khi nào máy nhân viên cần **kêu** (FR-07.5). Các thay đổi khác để `null`.
+
+| `alert` | Khi nào | Màn hình kêu | Tiếng |
+|---|---|---|---|
+| `NEW_DISHES` | Phục vụ gửi món, hoặc xác nhận món QR (món vào bếp) | `/kitchen` | 2 tiếng, cao rồi thấp |
+| `GUEST_DISHES` | Khách gửi món qua QR, chờ xác nhận | `/tables`, `/orders/:id` | 2 tiếng, thấp rồi cao |
+| `DISH_READY` | Bếp bấm Xong | `/tables`, `/orders/:id` | 3 tiếng ngắn |
+
+Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file âm thanh. Màn hình nào kêu thì đầu trang có nút bật, tắt âm báo; lựa chọn lưu trên từng máy. Trình duyệt không cho phát tiếng khi chưa ai chạm vào trang, nên lúc đó nút hiện "Chạm để bật âm báo".
 
 ## 8.3 Màn hình
 
 | Đường dẫn | Vai trò | Nội dung | Yêu cầu |
 |---|---|---|---|
 | `/login` | Mọi nhân viên | Đăng nhập | FR-01.1 |
-| `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nút mở đơn và mang về | FR-04.4, FR-05.1 |
-| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ | FR-05, FR-06.3 |
-| `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; báo hết món | FR-07, FR-03.3 |
+| `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nút mở đơn và mang về; kêu khi có món xong, món QR mới | FR-04.4, FR-05.1, FR-07.5 |
+| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; kêu như sơ đồ bàn | FR-05, FR-06.3, FR-07.5 |
+| `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
 | `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp | FR-08 |
 | `/admin/menu` | MANAGER | Danh mục và món | FR-03 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
@@ -94,7 +104,7 @@ Mỗi sự kiện rất nhỏ, ví dụ `{ "type": "ORDER_CHANGED", "orderId": 1
 | `/admin/leave` | MANAGER | Đơn nghỉ chờ duyệt, duyệt, từ chối | FR-13.5, FR-13.6 |
 | `/admin/payroll` | ADMIN | Bảng lương theo tháng, thưởng phạt, chốt, xuất Excel | FR-15.1 → FR-15.3, FR-15.5 |
 | `/me` | Mọi nhân viên | Vào ca, ra ca; lịch làm; công tháng này; xin nghỉ; phiếu lương | FR-13.4, FR-13.5, FR-14.1, FR-14.4, FR-15.4 |
-| `/admin/settings` | ADMIN | Nhà hàng và tài khoản nhận tiền | FR-11 |
+| `/admin/settings` | ADMIN | Nhà hàng, tài khoản nhận tiền, ngưỡng món chờ lâu | FR-11 |
 | `/q/:qrToken` | Khách | Thực đơn, giỏ, món đã gọi và trạng thái, thanh toán VietQR | FR-06, FR-08.5 |
 
 Phác thảo trang khách trên điện thoại:

@@ -20,15 +20,20 @@ public class RealtimeEvents {
     private final SimpMessagingTemplate messaging;
 
     public void orderChanged(Long orderId, Long tableId, String guestToken) {
-        publisher.publishEvent(new RealtimeEvent(RealtimeEvent.ORDER_CHANGED, orderId, tableId, guestToken));
+        orderChanged(orderId, tableId, guestToken, null);
+    }
+
+    /** The same notice, and staff screens ring for the alert (FR-07.5). */
+    public void orderChanged(Long orderId, Long tableId, String guestToken, RealtimeEvent.Alert alert) {
+        publisher.publishEvent(new RealtimeEvent(RealtimeEvent.ORDER_CHANGED, orderId, tableId, guestToken, alert));
     }
 
     public void paymentPaid(Long orderId, Long tableId, String guestToken) {
-        publisher.publishEvent(new RealtimeEvent(RealtimeEvent.PAYMENT_PAID, orderId, tableId, guestToken));
+        publisher.publishEvent(new RealtimeEvent(RealtimeEvent.PAYMENT_PAID, orderId, tableId, guestToken, null));
     }
 
     public void staffNotice(String type) {
-        publisher.publishEvent(new RealtimeEvent(type, null, null, null));
+        publisher.publishEvent(new RealtimeEvent(type, null, null, null, null));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)

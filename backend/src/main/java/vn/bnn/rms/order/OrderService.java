@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import vn.bnn.rms.common.ApiException;
+import vn.bnn.rms.common.RealtimeEvent.Alert;
 import vn.bnn.rms.common.RealtimeEvents;
 import vn.bnn.rms.menu.MenuItem;
 import vn.bnn.rms.menu.MenuItemRepository;
@@ -75,7 +76,7 @@ public class OrderService {
         buildItems(request.items(), ItemSource.STAFF).forEach(order::addItem);
         payments.cancelPendingTransfers(orderId);
         orders.flush();
-        publish(order);
+        publish(order, Alert.NEW_DISHES);
         return OrderDto.from(order);
     }
 
@@ -89,7 +90,7 @@ public class OrderService {
         }
         pending.forEach(item -> item.moveTo(ItemStatus.WAITING));
         payments.cancelPendingTransfers(orderId);
-        publish(order);
+        publish(order, Alert.NEW_DISHES);
         return OrderDto.from(order);
     }
 
@@ -135,6 +136,10 @@ public class OrderService {
     }
 
     private void publish(Order order) {
-        realtime.orderChanged(order.getId(), order.tableId(), order.guestToken());
+        publish(order, null);
+    }
+
+    private void publish(Order order, Alert alert) {
+        realtime.orderChanged(order.getId(), order.tableId(), order.guestToken(), alert);
     }
 }
