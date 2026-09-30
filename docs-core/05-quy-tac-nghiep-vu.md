@@ -1,0 +1,49 @@
+# 5. Quy tắc nghiệp vụ
+
+Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn hoặc khoá nút để dễ dùng. Cột "Kiểm tra ở" ghi nơi mã nguồn thực thi quy tắc.
+
+## 5.1 Tài khoản và phân quyền
+
+| Mã | Quy tắc | Kiểm tra ở |
+|---|---|---|
+| BR-01 | Tên đăng nhập **duy nhất**. Mật khẩu ≥ 6 ký tự, lưu băm **BCrypt**. Token hết hạn sau **12 giờ** | `EmployeeService`, `AuthService` |
+| BR-02 | Quyền theo vai trò như ma trận ở [mô hình miền §6.4](06-mo-hinh-mien.md#64-ma-trận-quyền). `ADMIN` có mọi quyền | `@PreAuthorize` trên controller |
+| BR-03 | Nhân viên **không bị xoá**, chỉ bị khoá. Tài khoản bị khoá không đăng nhập được, token cũ bị từ chối ngay | `AuthService`, `ActiveEmployeeJwtConverter` |
+
+## 5.2 Bàn, đơn và món
+
+| Mã | Quy tắc | Kiểm tra ở |
+|---|---|---|
+| BR-04 | Mỗi bàn có **tối đa một đơn đang mở**. Bàn trống là bàn không có đơn mở. Đơn mang về không gắn bàn | Unique index `ux_orders_open_table` |
+| BR-05 | Tên và **đơn giá được chốt** khi gọi món. Sửa giá thực đơn không đổi đơn đã gọi | `OrderService.buildItems` |
+| BR-06 | Chỉ gọi được món **đang bán**. Mỗi dòng có số lượng từ 1 đến 50 | `OrderService`, validation |
+| BR-07 | Trạng thái món chỉ đi tiến: **Chờ xác nhận → Chờ làm → Đang làm → Xong → Đã ra**. Bếp đổi "Chờ làm → Đang làm → Xong"; phục vụ đổi "Xong → Đã ra" | `ItemStatus.canMoveTo`, `OrderItemService` |
+| BR-08 | Huỷ món: "Chờ xác nhận" và "Chờ làm" thì **phục vụ** huỷ được; "Đang làm" và "Xong" thì chỉ **quản lý** huỷ và **bắt buộc lý do**; "Đã ra" thì không huỷ. Đơn chỉ huỷ được khi mọi món đã huỷ | `OrderItemService.cancel` |
+
+## 5.3 Khách gọi món qua QR
+
+| Mã | Quy tắc | Kiểm tra ở |
+|---|---|---|
+| BR-09 | Mã QR bàn là **chuỗi ngẫu nhiên 128 bit**, không đoán được. Tạo lại mã thì mã cũ **hết hiệu lực ngay** | `QrTokenGenerator`, `TableService` |
+| BR-10 | Món khách gửi ở trạng thái **Chờ xác nhận** và **không hiện ở bếp**. Món chỉ vào bếp khi nhân viên xác nhận. Từ chối phải có lý do, và khách thấy lý do. Nếu bàn chưa có đơn, lần gửi đầu tiên tự mở đơn | `GuestOrderService`, `OrderItemService` |
+| BR-11 | Khách chỉ thấy **đơn đang mở của bàn có mã QR đó**. Trang khách không hiện tên nhân viên | `PublicController` |
+
+## 5.4 Thanh toán
+
+| Mã | Quy tắc | Kiểm tra ở |
+|---|---|---|
+| BR-12 | Tổng tiền = Σ (đơn giá × số lượng) của các món **đã xác nhận và không huỷ**. Giá đã gồm VAT. Bản 1 không có giảm giá | `Order.total()` |
+| BR-13 | Chỉ thanh toán khi đơn **đang mở**, có ít nhất một món tính tiền, và **không còn món chờ xác nhận**. Trả **một lần đủ tổng** (không chia bill). Tiền mặt: tiền khách đưa ≥ tổng | `PaymentService` |
+| BR-14 | Mỗi yêu cầu chuyển khoản có **mã thanh toán duy nhất** dạng `BNN` + 8 ký tự, và số tiền bằng tổng lúc tạo. Mỗi đơn có **tối đa một** yêu cầu đang chờ. Tạo lại thì dùng lại mã cũ nếu tổng không đổi, còn nếu đổi thì huỷ mã cũ. Đơn có thêm món thì mã đang chờ bị huỷ | `PaymentService`, unique index `ux_payment_pending_order` |
+| BR-15 | Tự xác nhận khi: webhook có **đúng API key**, là **tiền vào**, trường `code` hoặc nội dung chứa **mã đang chờ**, và **số tiền đúng bằng** số yêu cầu | `SepayWebhookService` |
+| BR-16 | Mỗi giao dịch SePay (`id`) chỉ xử lý **một lần**. Giao dịch sai tiền, không có mã hoặc mã đã huỷ được lưu **KHÔNG KHỚP** để thu ngân xử lý, và **không tự đóng đơn** | Unique `bank_transaction.provider_txn_id` |
+| BR-17 | Chỉ thu ngân và quản lý được **xác nhận tay**. Hệ thống ghi người xác nhận và thời điểm | `PaymentService.confirmManually` |
+
+## 5.5 Thực đơn, kho, báo cáo
+
+| Mã | Quy tắc | Kiểm tra ở |
+|---|---|---|
+| BR-18 | Món và bàn **đã có trong đơn** thì không xoá được; món chỉ có thể báo hết. Danh mục còn món thì không xoá được | `MenuService`, `TableService`; khoá ngoại chặn lần cuối |
+| BR-19 | Tồn kho chỉ đổi qua **phiếu biến động** (nhập, xuất, kiểm kê), không sửa số tồn trực tiếp. **Xuất không vượt tồn**. Phiếu ghi người tạo | `InventoryService` |
+| BR-20 | Nguyên liệu **sắp hết** khi tồn ≤ mức tối thiểu | `InventoryItem.isLowStock()` |
+| BR-21 | Doanh thu tính theo **khoản thanh toán đã xác nhận**, theo **ngày xác nhận giờ Việt Nam**. Món bán chạy chỉ tính đơn đã thanh toán và bỏ món huỷ | `ReportService` |

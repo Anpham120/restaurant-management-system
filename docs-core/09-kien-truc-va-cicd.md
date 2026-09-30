@@ -1,0 +1,117 @@
+# 9. Kiến trúc và CI/CD
+
+## 9.1 Kiến trúc tổng thể
+
+Một ứng dụng **Spring Boot** duy nhất (monolith chia module) và một ứng dụng **React** dùng chung cho nhân viên và khách. Không tách microservice, vì một nhà hàng không cần.
+
+```mermaid
+flowchart LR
+    subgraph Client[Thiết bị]
+        S[Trình duyệt nhân viên<br/>React SPA]
+        G[Điện thoại khách<br/>trang /q/qrToken]
+    end
+    subgraph Server[Máy chủ Docker Compose]
+        N[Nginx<br/>phục vụ SPA, chuyển tiếp /api và /ws]
+        B[Spring Boot<br/>REST, STOMP, JWT, JPA]
+        D[(PostgreSQL)]
+    end
+    SP[SePay] -- webhook HTTPS --> N
+    S -- HTTPS, WebSocket --> N
+    G -- HTTPS, WebSocket --> N
+    G -. ảnh VietQR .-> V[img.vietqr.io]
+    N --> B --> D
+```
+
+## 9.2 Công nghệ
+
+| Lớp | Công nghệ | Dùng cho |
+|---|---|---|
+| Backend | **Java 21, Spring Boot 4.1**: Web MVC, Security, OAuth2 Resource Server (JWT), Data JPA, Validation, WebSocket, Actuator | API, phân quyền, realtime |
+| Lược đồ CSDL | **Flyway** | Tạo và nâng cấp bảng theo phiên bản |
+| Tài liệu API | springdoc-openapi (Swagger UI) | Xem và thử API |
+| CSDL | **PostgreSQL 17** | Lưu dữ liệu, ràng buộc toàn vẹn |
+| Frontend | **React 19, TypeScript, Vite**, Ant Design, React Router, TanStack Query, @stomp/stompjs | Giao diện nhân viên và khách |
+| Test | JUnit 5, MockMvc, **Testcontainers (PostgreSQL)**; Vitest | Test tự động |
+| Đóng gói | Docker (multi-stage), Docker Compose, Nginx | Chạy giống nhau ở máy dev và máy chủ |
+| CI/CD | **GitHub Actions**, GitHub Container Registry (GHCR) | Build, test, đóng image, triển khai |
+
+## 9.3 Cấu trúc mã nguồn
+
+```text
+.
+├── backend/                         Spring Boot (Maven Wrapper)
+│   └── src/main/java/vn/bnn/rms/
+│       ├── common/                  lỗi chung, sự kiện realtime
+│       ├── config/                  Security, JWT, WebSocket
+│       ├── auth/  employee/         đăng nhập, nhân viên
+│       ├── menu/  table/            thực đơn, bàn và QR
+│       ├── order/                   đơn, món, bếp, khách QR
+│       ├── payment/                 thanh toán, VietQR, webhook SePay
+│       ├── inventory/  report/  settings/
+│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu)
+├── frontend/                        React + Vite
+│   └── src/ api/ auth/ realtime/ layouts/ pages/ utils/
+├── docker-compose.yml               chạy toàn bộ ở máy dev
+├── deploy/docker-compose.prod.yml   chạy trên máy chủ bằng image từ GHCR
+└── .github/workflows/ci-cd.yml      pipeline CI/CD
+```
+
+Mỗi module backend chia 4 lớp giống repo tham khảo: **Controller → Service → Repository → Entity**.
+- Controller nhận request, kiểm tra quyền bằng `@PreAuthorize`.
+- Service giữ quy tắc nghiệp vụ, mở giao dịch (`@Transactional`).
+- Repository là Spring Data JPA.
+
+## 9.4 Bảo mật
+
+- Mật khẩu băm **BCrypt**. Đăng nhập trả **JWT HS256** có hạn 12 giờ. Khoá bí mật lấy từ biến môi trường `APP_JWT_SECRET`.
+- Mỗi request kiểm tra nhân viên **còn hoạt động** (BR-03).
+- API công khai chỉ gồm `/api/public/**`, `/api/auth/login`, `/api/webhooks/sepay`, `/ws`, `/actuator/health`.
+- Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
+- Khi triển khai thật phải có **HTTPS** vì SePay chỉ gọi được địa chỉ công khai. Có thể đặt Caddy hoặc Cloudflare Tunnel trước Nginx.
+
+## 9.5 Triển khai
+
+| Môi trường | Nhánh | Cách chạy | Ghi chú |
+|---|---|---|---|
+| Máy dev | bất kỳ | `docker compose up --build` rồi mở `http://localhost:8080` | Có tài khoản demo |
+| Staging | `develop` | `deploy/docker-compose.prod.yml` trong `~/bnn-rms-staging`, image tag theo commit | Tự deploy, có thể bật tài khoản demo để cả nhóm thử |
+| Production | `main` | `deploy/docker-compose.prod.yml` trong `~/bnn-rms` | Deploy sau khi có người duyệt |
+
+Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. Biến chính: `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `SEPAY_API_KEY`, `APP_PUBLIC_BASE_URL` (địa chỉ in trong QR bàn), `HTTP_PORT`, `APP_DEMO_ACCOUNTS_ENABLED`.
+
+## 9.6 Nhánh và pipeline CI/CD
+
+Mô hình nhánh: `feature/<tên>` → PR vào `develop` → PR vào `main`. Cả `develop` và `main` được bảo vệ: không push thẳng, chỉ merge khi test xanh.
+
+```mermaid
+flowchart LR
+    A[Pull request vào develop hoặc main] --> B[Backend<br/>mvnw verify: JUnit + Testcontainers]
+    A --> C[Frontend<br/>npm ci, lint, test, build]
+    B --> D{Test xanh?}
+    C --> D
+    D -- Không --> X[Không cho merge]
+    D -- Có --> M[Merge]
+    M --> F[Build 2 image, push GHCR<br/>tag: sha + develop hoặc latest]
+    F --> G{Nhánh nào?}
+    G -- develop --> S[Deploy staging tự động]
+    G -- main --> P[Chờ duyệt rồi deploy production]
+    S --> H[Kiểm tra /actuator/health]
+    P --> H
+```
+
+| Bước | Làm gì | Chặn merge nếu lỗi |
+|---|---|---|
+| Backend | Biên dịch, chạy test đơn vị và test tích hợp với PostgreSQL thật | Có |
+| Frontend | Kiểm tra kiểu (TypeScript), ESLint, Vitest, build | Có |
+| Image | Build image multi-stage, đẩy lên GHCR, gắn tag theo commit | — |
+| Deploy | Chạy khi bật biến `DEPLOY_ENABLED`. Environment `staging` không cần duyệt; `production` cần người duyệt | — |
+| Quay lại bản cũ | Chạy lại job deploy của lần chạy tốt gần nhất (dùng image của commit đó) | — |
+
+## 9.7 Chiến lược kiểm thử
+
+| Mức | Công cụ | Nội dung chính |
+|---|---|---|
+| Đơn vị | JUnit 5 | Chuyển trạng thái món (BR-07), dò mã thanh toán trong nội dung chuyển khoản (BR-15) |
+| Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, phân quyền, kho |
+| Frontend | Vitest | Định dạng tiền, nhãn trạng thái |
+| Nghiệm thu | 2 trình duyệt + 1 điện thoại | Kịch bản ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu) |

@@ -1,0 +1,45 @@
+# Local demo: docker compose up --build, then open http://localhost:8080
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: rms
+      POSTGRES_USER: rms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rms}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      # Lets the backend run from an IDE against this database. Not 5432, which a local
+      # PostgreSQL often already uses.
+      - "127.0.0.1:${DB_PORT:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rms -d rms"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/rms
+      DB_USERNAME: rms
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-rms}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-only-jwt-secret-change-me-0123456789}
+      SEPAY_API_KEY: ${SEPAY_API_KEY:-dev-sepay-key}
+      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-http://localhost:8080}
+      APP_DEMO_ACCOUNTS_ENABLED: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8081:8080" # Swagger UI: http://localhost:8081/swagger-ui.html
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  db-data:

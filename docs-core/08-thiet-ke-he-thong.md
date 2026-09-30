@@ -1,0 +1,159 @@
+# 8. Thiết kế hệ thống
+
+## 8.1 REST API
+
+Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details** (RFC 9457), ví dụ:
+
+```json
+{ "status": 409, "title": "Conflict", "detail": "Bàn đã có đơn đang mở" }
+```
+
+"NV" nghĩa là mọi nhân viên đã đăng nhập. `ADMIN` gọi được mọi API nên không ghi lại trong bảng.
+
+| Nhóm | Method và đường dẫn | Quyền | Yêu cầu |
+|---|---|---|---|
+| Đăng nhập | `POST /auth/login` | Công khai | FR-01.1 |
+| | `GET /auth/me` | NV | FR-01.1 |
+| | `POST /auth/change-password` | NV | FR-01.4 |
+| Nhân viên | `GET /employees`, `POST /employees`, `PUT /employees/{id}` | ADMIN | FR-02.1 |
+| | `PATCH /employees/{id}/active` | ADMIN | FR-02.2 |
+| | `POST /employees/{id}/reset-password` | ADMIN | FR-02.3 |
+| Thực đơn | `GET /categories`, `GET /menu-items` | NV | FR-03 |
+| | `POST`, `PUT /{id}`, `DELETE /{id}` trên `/categories` và `/menu-items` | MANAGER | FR-03.1, FR-03.2 |
+| | `PATCH /menu-items/{id}/availability` | MANAGER, CHEF | FR-03.3 |
+| Bàn | `GET /tables` (kèm trạng thái) | WAITER, MANAGER, CASHIER | FR-04.4 |
+| | `POST /tables`, `PUT /tables/{id}`, `DELETE /tables/{id}` | MANAGER | FR-04.1 |
+| | `POST /tables/{id}/qr-token` (tạo lại mã) | MANAGER | FR-04.3 |
+| Đơn | `GET /orders?status=OPEN`, `GET /orders/{id}` | WAITER, MANAGER, CASHIER | FR-05, FR-08.1 |
+| | `POST /orders` | WAITER, MANAGER | FR-05.1 |
+| | `POST /orders/{id}/items` | WAITER, MANAGER | FR-05.2, FR-05.3 |
+| | `POST /orders/{id}/confirm-pending` | WAITER, MANAGER | FR-06.3 |
+| | `POST /orders/{id}/cancel` | WAITER, MANAGER | FR-05.6 |
+| | `PATCH /order-items/{id}/status` | CHEF (COOKING, READY), WAITER (SERVED), MANAGER | FR-07.2, FR-05.5 |
+| | `POST /order-items/{id}/cancel` | WAITER, MANAGER (theo BR-08) | FR-05.4, FR-06.3 |
+| Bếp | `GET /kitchen/items` | CHEF, MANAGER | FR-07.1 |
+| Thanh toán | `POST /orders/{id}/payments/cash` | CASHIER, MANAGER | FR-08.2 |
+| | `POST /orders/{id}/payments/transfer` | CASHIER, MANAGER | FR-08.3 |
+| | `POST /payments/{id}/confirm` | CASHIER, MANAGER | FR-08.6 |
+| | `GET /bank-transactions?status=UNMATCHED` | CASHIER, MANAGER | FR-08.7 |
+| | `POST /webhooks/sepay` | SePay (header API key) | FR-08.4 |
+| Khách | `GET /public/tables/{qrToken}` | Công khai | FR-06.1, FR-06.4 |
+| | `GET /public/menu` | Công khai | FR-06.1 |
+| | `POST /public/tables/{qrToken}/items` | Công khai | FR-06.2, FR-06.5 |
+| | `POST /public/tables/{qrToken}/payment` | Công khai | FR-08.5 |
+| Kho | `GET /inventory-items`, `POST /inventory-items`, `PUT /inventory-items/{id}` | MANAGER | FR-09.1, FR-09.4 |
+| | `POST /inventory-items/{id}/movements`, `GET /inventory-items/{id}/movements` | MANAGER | FR-09.2, FR-09.3 |
+| Báo cáo | `GET /reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD` | MANAGER | FR-10 |
+| Cài đặt | `GET /settings` | NV | FR-11 |
+| | `PUT /settings` | ADMIN | FR-11.1, FR-11.2 |
+
+Tài liệu API chạy được (Swagger UI) nằm ở `/swagger-ui.html` khi chạy backend.
+
+## 8.2 Realtime (WebSocket STOMP)
+
+| Kênh | Ai nghe | Xác thực | Sự kiện |
+|---|---|---|---|
+| Điểm kết nối `/ws` | — | JWT trong header `Authorization` của khung `CONNECT`. Khách kết nối không cần token | — |
+| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp) |
+| `/topic/guest/{qrToken}` | Điện thoại khách ở bàn đó | Không cần | `ORDER_CHANGED`, `PAYMENT_PAID` |
+| `/topic/menu` | Điện thoại khách | Không cần | `MENU_CHANGED` (có món vừa hết hoặc bán lại) |
+
+Mỗi sự kiện rất nhỏ, ví dụ `{ "type": "ORDER_CHANGED", "orderId": 12, "tableId": 5 }`. Khi nhận, giao diện **tải lại dữ liệu** qua REST, nên dữ liệu trên màn hình luôn khớp CSDL. Backend chỉ gửi sự kiện **sau khi giao dịch CSDL đã commit** (`@TransactionalEventListener(phase = AFTER_COMMIT)`).
+
+## 8.3 Màn hình
+
+| Đường dẫn | Vai trò | Nội dung | Yêu cầu |
+|---|---|---|---|
+| `/login` | Mọi nhân viên | Đăng nhập | FR-01.1 |
+| `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nút mở đơn và mang về | FR-04.4, FR-05.1 |
+| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ | FR-05, FR-06.3 |
+| `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; báo hết món | FR-07, FR-03.3 |
+| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp | FR-08 |
+| `/admin/menu` | MANAGER | Danh mục và món | FR-03 |
+| `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
+| `/admin/inventory` | MANAGER | Nguyên liệu, nhập, xuất, kiểm kê, lịch sử | FR-09 |
+| `/admin/reports` | MANAGER | Doanh thu, theo phương thức, top món | FR-10 |
+| `/admin/employees` | ADMIN | Nhân viên, khoá, đặt lại mật khẩu | FR-02 |
+| `/admin/settings` | ADMIN | Nhà hàng và tài khoản nhận tiền | FR-11 |
+| `/q/:qrToken` | Khách | Thực đơn, giỏ, món đã gọi và trạng thái, thanh toán VietQR | FR-06, FR-08.5 |
+
+Phác thảo trang khách trên điện thoại:
+
+```text
+┌──────────────────────────────┐
+│ Bếp Nhà & Nướng · Bàn B05    │
+├──────────────────────────────┤
+│ [Thực đơn]  [Món đã gọi (4)] │
+│                              │
+│ Món đã gọi                   │
+│  Lẩu riêu cua x1   Đang làm  │
+│  Nem rán x2        Xong      │
+│  Trà đá x2         Chờ xác nhận│
+│ ───────────────────────────  │
+│ Tạm tính:          245.000 đ │
+│ [ Thanh toán chuyển khoản ]  │
+└──────────────────────────────┘
+```
+
+Phác thảo màn hình bếp:
+
+```text
+┌ Chờ làm (3) ───┬ Đang làm (2) ──┬ Xong (1) ───────┐
+│ B05 Nem rán x2 │ B02 Lẩu riêu x1│ B07 Trà đá x2   │
+│ 2 phút [Bắt đầu]│ 8 phút  [Xong] │ chờ phục vụ ra  │
+│ B01 Phở bò x1  │ ...            │                 │
+└────────────────┴────────────────┴─────────────────┘
+```
+
+## 8.4 Tuần tự: khách gọi món qua QR
+
+```mermaid
+sequenceDiagram
+    actor K as Khách
+    participant FE as Trang khách
+    participant API as Spring Boot
+    participant DB as PostgreSQL
+    participant WS as STOMP broker
+    actor PV as Phục vụ
+    K->>FE: Mở /q/{qrToken}
+    FE->>API: GET /api/public/tables/{qrToken}
+    API-->>FE: Tên bàn, món đã gọi
+    FE->>WS: SUBSCRIBE /topic/guest/{qrToken}
+    K->>FE: Chọn món, bấm Gửi
+    FE->>API: POST /api/public/tables/{qrToken}/items
+    API->>DB: Mở đơn nếu chưa có, thêm món PENDING
+    API-->>FE: 201
+    API->>WS: Sau commit: ORDER_CHANGED tới /topic/staff và /topic/guest/{qrToken}
+    WS-->>PV: Sơ đồ bàn hiện "chờ xác nhận"
+    PV->>API: POST /api/orders/{id}/confirm-pending
+    API->>DB: PENDING → WAITING
+    API->>WS: ORDER_CHANGED
+    WS-->>FE: Trang khách tải lại, món thành "Chờ làm"
+```
+
+## 8.5 Tuần tự: chuyển khoản tự xác nhận
+
+```mermaid
+sequenceDiagram
+    actor K as Khách
+    participant FE as Trang khách hoặc thu ngân
+    participant API as Spring Boot
+    participant DB as PostgreSQL
+    participant SP as SePay
+    FE->>API: POST .../payment (hoặc /payments/transfer)
+    API->>DB: Tạo payment PENDING, reference = BNN + 8 ký tự
+    API-->>FE: Số tiền, mã, link ảnh VietQR
+    K->>SP: Quét VietQR bằng app ngân hàng, chuyển tiền
+    SP->>API: POST /api/webhooks/sepay (Authorization: Apikey ...)
+    API->>API: Kiểm tra API key
+    API->>DB: Lưu bank_transaction (unique provider_txn_id)
+    alt Có mã, đúng tiền, payment đang PENDING
+        API->>DB: payment PAID (AUTO), đơn PAID, bàn trống
+        API-->>FE: PAYMENT_PAID qua WebSocket
+    else Không khớp
+        API->>DB: match_status = UNMATCHED
+    end
+    API-->>SP: 200 {"success": true}
+```
+
+Ảnh VietQR lấy từ dịch vụ công khai `img.vietqr.io` theo mẫu `https://img.vietqr.io/image/{bankCode}-{accountNo}-compact2.png?amount={amount}&addInfo={reference}&accountName={name}`.

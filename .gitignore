@@ -1,0 +1,17 @@
+# Build output
+backend/target/
+frontend/node_modules/
+frontend/dist/
+
+# Secrets
+.env
+deploy/.env
+
+# Editors
+.idea/
+*.iml
+.vscode/
+
+# Local AI tooling and the simulated-client notes used during analysis (not part of the product)
+.claude/
+.client-sim/
