@@ -41,5 +41,7 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 
 Kết quả lần chạy gần nhất:
 - Backend: 89 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers).
-- Frontend: 19 test, lint và kiểm tra kiểu sạch.
+- Frontend: 30 test (gồm test component), lint và kiểm tra kiểu sạch.
+- Độ phủ backend (JaCoCo): 84,7% số dòng (1262/1490), tối thiểu 70%.
 - `scripts/check-erd.mjs`, chạy trong CI: 9 migration, 19 bảng, 157 cột, 0 lệch.
+- E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 19,5 ms với 30 người dùng và 6 tháng dữ liệu.

@@ -151,9 +151,11 @@ git push -u origin feature/ten-tinh-nang
 Sau đó mở pull request vào `develop` trên GitHub.
 
 Cài đặt trên GitHub (chỉ làm một lần):
-1. **Settings → Rules → Rulesets**, áp cho `main` và `develop`:
-   - Bắt buộc đi qua pull request, không push thẳng.
-   - Bắt buộc 2 check xanh: *Backend - build and test* và *Frontend - lint, test, build*.
+1. **Settings → Rules → Rulesets**, áp cho `main` và `develop` (đã bật):
+   - Bắt buộc đi qua pull request, không push thẳng, không force push.
+   - Bắt buộc các check xanh: *Backend - build and test*, *Frontend - lint, test, build*, *E2E - acceptance scenario*, *CodeQL - Java*, *CodeQL - TypeScript*.
+   - Không bật *Require branches to be up to date*, để các PR xếp chồng lên nhau không phải cập nhật lại liên tục.
+   - **Settings → General → Pull Requests:** đã bật *Allow auto-merge* (PR tự merge khi CI xanh nếu bấm *Enable auto-merge*) và *Automatically delete head branches*.
 2. **Settings → Environments:**
    - Tạo `staging`, không cần duyệt.
    - Tạo `production`, bật *Required reviewers*.

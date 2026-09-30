@@ -2,7 +2,7 @@
 
 ## 10.1 Hiện trạng
 
-Bản core đã chạy trọn luồng: gọi món (phục vụ và khách quét QR), bếp realtime, thanh toán tiền mặt và VietQR tự xác nhận, kho, báo cáo, tài khoản nhân viên. Có 64 test backend, CI/CD trên GitHub (`feature/*` → `develop` → `main`). Chi tiết ở tài liệu 01 → 09.
+Bản core đã chạy trọn luồng: gọi món (phục vụ và khách quét QR), bếp realtime, thanh toán tiền mặt và VietQR tự xác nhận, kho, báo cáo, tài khoản nhân viên. Lúc lập kế hoạch có 64 test backend; nay có 89 test backend, 30 test frontend, test E2E và kiểm thử tải, cùng CI/CD trên GitHub (`feature/*` → `develop` → `main`). Chi tiết ở tài liệu 01 → 09.
 
 **Lịch.** Hạn nộp cuối tháng 11/2026 (lấy mốc **30/11**), nhóm **5 người**, chia **8 sprint**. Sprint 1 dài 11 ngày (01/10 → 11/10) để kịp thuê máy chủ, tên miền và nối SePay. Các sprint sau dài 1 tuần, từ thứ Hai đến Chủ nhật. Mỗi sprint ước khoảng 12–17 ngày người, tức mỗi người 2,5–3,5 ngày mỗi tuần, đã tính phần nhân sự.
 
