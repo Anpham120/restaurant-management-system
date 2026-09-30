@@ -23,12 +23,12 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 
 | Yêu cầu | User story | Quy tắc | API và màn hình | Test tự động |
 |---|---|---|---|---|
-| FR-01 Đăng nhập, phân quyền | US-01, US-03 | BR-01, 02, 03 | `/api/auth/*`; `/login` | `AuthIntegrationTest` |
+| FR-01 Đăng nhập, phân quyền | US-01, US-03 | BR-01, 02, 03, 31 | `/api/auth/*`; `/login` | `AuthIntegrationTest`, `RateLimitIntegrationTest` |
 | FR-02 Nhân viên | US-02, US-03 | BR-01, 03 | `/api/employees`; `/admin/employees` | `AuthIntegrationTest` |
 | FR-03 Thực đơn | US-04, US-13 | BR-05, 06, 18 | `/api/categories`, `/api/menu-items`; `/admin/menu`, `/kitchen` | `OrderFlowIntegrationTest`, `GuestQrIntegrationTest` |
 | FR-04 Bàn và QR | US-05 | BR-04, 09 | `/api/tables`; `/admin/tables`, `/tables` | `GuestQrIntegrationTest`, `OrderFlowIntegrationTest` |
 | FR-05 Gọi món | US-08, US-10, US-11 | BR-04 → BR-08 | `/api/orders`, `/api/order-items`; `/orders/:id` | `OrderFlowIntegrationTest`, `ItemStatusTest` |
-| FR-06 Khách gọi qua QR, gọi nhân viên | US-09, US-14, US-15, US-27 | BR-09, 10, 11, 29 | `/api/public/*`, `/api/service-requests`, `/topic/guest/*`; `/q/:token`, nút chuông đầu trang | `GuestQrIntegrationTest`, `StompAuthInterceptorTest`, `ServiceRequestIntegrationTest` |
+| FR-06 Khách gọi qua QR, gọi nhân viên | US-09, US-14, US-15, US-27 | BR-09, 10, 11, 29, 30 | `/api/public/*`, `/api/service-requests`, `/topic/guest/*`; `/q/:token`, nút chuông đầu trang | `GuestQrIntegrationTest`, `StompAuthInterceptorTest`, `ServiceRequestIntegrationTest`, `RateLimitIntegrationTest` |
 | FR-07 Màn hình bếp, âm báo | US-09, US-10, US-12 | BR-07, 10, 28 | `/api/kitchen/items`, `/topic/staff`; `/kitchen`, `/tables`, `/orders/:id` | `OrderFlowIntegrationTest`, `KitchenAlertIntegrationTest` |
 | FR-08 Thanh toán | US-16 → US-19 | BR-12 → BR-17 | `/api/orders/{id}/payments/*`, `/api/webhooks/sepay`; `/cashier` | `PaymentIntegrationTest`, `PaymentReferenceTest` |
 | FR-09 Kho | US-06 | BR-19, 20 | `/api/inventory-items`; `/admin/inventory` | `InventoryIntegrationTest` |
@@ -40,8 +40,8 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-15 Tính lương | US-25, US-26 | BR-26, 27 | `/api/payrolls`, `/api/payslips`, `/api/me/payslips`; `/admin/payroll`, `/me` | `PayCalculatorTest`, `PayrollIntegrationTest` |
 
 Kết quả lần chạy gần nhất:
-- Backend: 89 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers).
+- Backend: 92 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers).
 - Frontend: 30 test (gồm test component), lint và kiểm tra kiểu sạch.
-- Độ phủ backend (JaCoCo): 84,7% số dòng (1262/1490), tối thiểu 70%.
+- Độ phủ backend (JaCoCo): 85,0% số dòng (1288/1516), tối thiểu 70%.
 - `scripts/check-erd.mjs`, chạy trong CI: 9 migration, 19 bảng, 157 cột, 0 lệch.
 - E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 19,5 ms với 30 người dùng và 6 tháng dữ liệu.

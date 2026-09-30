@@ -71,6 +71,7 @@ Mỗi module backend chia 4 lớp giống repo tham khảo: **Controller → Ser
 - Mỗi request kiểm tra nhân viên **còn hoạt động** (BR-03).
 - API công khai chỉ gồm `/api/public/**`, `/api/auth/login`, `/api/webhooks/sepay`, `/ws`, `/actuator/health`.
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
+- Giới hạn tần suất (Bucket4j, lưu trong bộ nhớ của server): mỗi tên đăng nhập thử tối đa 10 lần mỗi phút (BR-31); trang QR của mỗi bàn gửi tối đa 10 lần mỗi phút và giữ tối đa 30 món chờ xác nhận (BR-30). Quá giới hạn thì trả 429 kèm `Retry-After`. Không giới hạn theo IP: sau Nginx, IP đầu tiên trong `X-Forwarded-For` do client tự gửi được, còn khách trong quán lại dùng chung một IP Wi-Fi.
 - Khi triển khai thật phải có **HTTPS** vì SePay chỉ gọi được địa chỉ công khai. Có thể đặt Caddy hoặc Cloudflare Tunnel trước Nginx.
 - Quét lỗ hổng tự động, kết quả ở tab **Security** của GitHub:
   - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`.
