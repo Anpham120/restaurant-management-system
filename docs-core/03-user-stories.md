@@ -116,3 +116,48 @@ Là **thu ngân**, tôi muốn hệ thống tự báo khi tiền về để khô
 Là **thu ngân**, tôi muốn xử lý khi tiền về nhưng hệ thống không tự khớp.
 - AC1: Khi khách chuyển sai số tiền thì giao dịch vào danh sách "Không khớp", đơn chưa đóng.
 - AC2: Khi thu ngân xác nhận tay thì hệ thống ghi tên người xác nhận.
+
+## Nhân sự (chưa làm)
+
+Phần thêm theo yêu cầu của môn. Lịch làm ở [kế hoạch](10-ke-hoach-phat-trien.md), P2-05 → P2-09.
+
+### US-20 Hồ sơ và mức lương — FR-12.1 → FR-12.3
+Là **quản trị**, tôi muốn lưu ngày vào làm và mức lương của từng người để tính lương đúng.
+- AC1: Khi nhập mức lương âm thì báo lỗi.
+- AC2: Khi cho nghỉ việc thì tài khoản bị khoá; hồ sơ, chấm công và phiếu lương cũ vẫn xem được.
+- AC3: Khi quản lý gọi API xem hoặc sửa mức lương thì nhận 403.
+
+### US-21 Xếp ca — FR-13.1 → FR-13.4
+Là **quản lý**, tôi muốn xếp lịch làm tuần tới để ca nào cũng đủ người.
+- AC1: Khi xếp một người vào hai ca trùng giờ trong cùng ngày thì báo lỗi.
+- AC2: Khi sao chép lịch tuần trước thì tuần mới có đủ các ca, trừ người đã nghỉ việc.
+- AC3: Nhân viên chỉ thấy lịch của chính mình.
+
+### US-22 Xin nghỉ — FR-13.5, FR-13.6
+Là **nhân viên**, tôi muốn xin nghỉ trên app để quản lý duyệt và xếp người thay.
+- AC1: Khi đơn được duyệt thì các ca của tôi trong những ngày đó biến khỏi lịch.
+- AC2: Tôi huỷ được đơn khi còn chờ duyệt, không huỷ được khi đã duyệt.
+- AC3: Ngày tôi đã chấm công thì không duyệt nghỉ được.
+
+### US-23 Chấm công — FR-14.1, FR-14.2, FR-14.4
+Là **nhân viên**, tôi muốn bấm vào ca, ra ca trên điện thoại để công của mình được ghi đúng.
+- AC1: Khi hôm nay không có ca, hoặc còn sớm hơn 15 phút trước giờ bắt đầu, thì không vào ca được.
+- AC2: Khi đang trong ca mà bấm vào ca lần nữa thì báo "Bạn đang trong ca".
+- AC3: Khi vào ca muộn 10 phút thì bản ghi có đi muộn 10 phút.
+
+### US-24 Sửa bảng công — FR-14.3
+Là **quản lý**, tôi muốn sửa giờ khi nhân viên quên bấm ra ca để công không bị thiếu.
+- AC1: Khi sửa mà không nhập lý do thì báo lỗi.
+- AC2: Bản ghi đã sửa hiện người sửa và lý do.
+- AC3: Khi bảng lương tháng đó đã chốt thì không sửa được.
+
+### US-25 Bảng lương tháng — FR-15.1 → FR-15.3, FR-15.5
+Là **quản trị**, tôi muốn tính lương tháng từ bảng công để không phải cộng tay trên Excel.
+- AC1: Người làm theo giờ, làm 100 giờ, đơn giá 25.000 đ thì lương theo công là 2.500.000 đ.
+- AC2: Người lương tháng 8.000.000 đ, công chuẩn 26 ngày, đi làm 24 ngày và nghỉ có lương 1 ngày thì lương theo công là 7.692.307 đ (8.000.000 × 25 ÷ 26, làm tròn xuống).
+- AC3: Khi đã chốt thì không tính lại và không sửa thưởng phạt được.
+
+### US-26 Xem phiếu lương — FR-15.4
+Là **nhân viên**, tôi muốn xem phiếu lương của mình để biết lương được tính thế nào.
+- AC1: Chỉ thấy phiếu đã chốt của chính mình. Gọi API xem phiếu người khác thì nhận 403.
+- AC2: Phiếu ghi số giờ hoặc số ngày công, mức lương, từng khoản thưởng phạt kèm lý do.

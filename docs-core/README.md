@@ -5,15 +5,15 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | # | Tài liệu | Tương ứng repo tham khảo | Nội dung |
 |---|---|---|---|
 | 1 | [Tầm nhìn dự án](01-tam-nhin-du-an.md) | 01-project-vision | Vấn đề, mục tiêu, người dùng, phạm vi, tiêu chí nghiệm thu |
-| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 44 yêu cầu chức năng (11 nhóm), 10 yêu cầu phi chức năng |
-| 3 | [User stories](03-user-stories.md) | 03-user-stories | 19 story theo vai trò, kèm tiêu chí chấp nhận |
+| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 62 yêu cầu chức năng (15 nhóm, trong đó 4 nhóm nhân sự chưa làm), 10 yêu cầu phi chức năng |
+| 3 | [User stories](03-user-stories.md) | 03-user-stories | 26 story theo vai trò (7 story nhân sự chưa làm), kèm tiêu chí chấp nhận |
 | 4 | [Quy trình nghiệp vụ](04-quy-trinh-nghiep-vu.md) | 04-business-workflow | Trước và sau; 5 quy trình P1 đến P5 |
-| 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 21 quy tắc, ghi rõ nơi kiểm tra trong mã |
+| 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 27 quy tắc (6 quy tắc nhân sự chưa làm), ghi rõ nơi kiểm tra trong mã |
 | 6 | [Mô hình miền](06-mo-hinh-mien.md) | 06-domain-model | Sơ đồ lớp, sơ đồ trạng thái, ma trận quyền |
-| 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 11 bảng, ràng buộc, index (database-first) |
+| 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 11 bảng, ràng buộc, index (database-first); thiết kế sẵn 7 bảng nhân sự |
 | 8 | [Thiết kế hệ thống](08-thiet-ke-he-thong.md) | 08-system-design | REST API, kênh realtime, màn hình, sơ đồ tuần tự |
 | 9 | [Kiến trúc và CI/CD](09-kien-truc-va-cicd.md) | 09-system-architecture | Kiến trúc, công nghệ, bảo mật, triển khai, pipeline, kiểm thử |
-| 10 | [Kế hoạch phát triển tiếp](10-ke-hoach-phat-trien.md) | — | Backlog theo giai đoạn, lịch 8 sprint, quy trình làm tính năng, rủi ro |
+| 10 | [Kế hoạch phát triển tiếp](10-ke-hoach-phat-trien.md) | — | Backlog theo giai đoạn, lịch 8 sprint, quy trình làm tính năng, rủi ro, phân công theo service |
 
 Bản phân tích mở rộng (chuỗi quán, máy chủ tại quán, chạy offline) ở [`../docs/`](../docs/README.md), chỉ để tham khảo.
 
@@ -34,6 +34,7 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-09 Kho | US-06 | BR-19, 20 | `/api/inventory-items`; `/admin/inventory` | `InventoryIntegrationTest` |
 | FR-10 Báo cáo | US-07 | BR-21 | `/api/reports/summary`; `/admin/reports` | `ReportIntegrationTest` |
 | FR-11 Cài đặt | — | BR-14 | `/api/settings`; `/admin/settings` | Kiểm tra thủ công |
+| FR-12 → FR-15 Nhân sự | US-20 → US-26 | BR-22 → 27 | Chưa làm (P2-05 → P2-09) | — |
 
 Kết quả lần chạy gần nhất:
 - Backend: 64 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers).
