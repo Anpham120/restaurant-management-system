@@ -130,6 +130,7 @@ Cài đặt trên GitHub (chỉ làm một lần):
    - Tạo `production`, bật *Required reviewers*.
    - Mỗi environment có secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` và variable `PUBLIC_URL`.
 3. **Settings → Variables:** đặt `DEPLOY_ENABLED=true` khi đã có máy chủ. Chưa đặt thì pipeline chỉ test và build image, không deploy.
+4. **Settings → Code security:** bật *Dependabot alerts* và *Dependabot security updates*, để GitHub báo và tự mở PR vá khi thư viện có lỗ hổng.
 
 ## CI/CD
 
@@ -144,3 +145,7 @@ File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
 4. Sau khi deploy, pipeline gọi `/actuator/health` để kiểm tra.
 5. Quay lại bản cũ: chạy lại job deploy của lần chạy tốt gần nhất.
 6. Chạy lại test bằng tay: tab **Actions → CI/CD → Run workflow**.
+7. Quét lỗ hổng, kết quả ở tab **Security**:
+   - [`codeql.yml`](.github/workflows/codeql.yml) phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
+   - Sau khi build image, Trivy quét 2 image.
+   - [`dependabot.yml`](.github/dependabot.yml) mở PR cập nhật thư viện mỗi tuần vào `develop`.
