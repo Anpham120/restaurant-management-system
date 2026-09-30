@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { App, Badge, Button, Form, Input, Layout, Menu, Modal, Spin, Typography } from 'antd'
 import {
+  AccountBookOutlined,
   BarChartOutlined,
   BookOutlined,
   CalendarOutlined,
@@ -38,6 +39,7 @@ const NAV: { key: string; label: string; icon: ReactNode; role: Role | null }[] 
   { key: '/admin/attendance', label: 'Chấm công', icon: <FieldTimeOutlined />, role: 'MANAGER' },
   { key: '/admin/leave', label: 'Nghỉ phép', icon: <CoffeeOutlined />, role: 'MANAGER' },
   { key: '/admin/employees', label: 'Nhân viên', icon: <TeamOutlined />, role: 'ADMIN' },
+  { key: '/admin/payroll', label: 'Bảng lương', icon: <AccountBookOutlined />, role: 'ADMIN' },
   { key: '/admin/settings', label: 'Cài đặt', icon: <SettingOutlined />, role: 'ADMIN' },
   { key: '/me', label: 'Của tôi', icon: <UserOutlined />, role: null },
 ]

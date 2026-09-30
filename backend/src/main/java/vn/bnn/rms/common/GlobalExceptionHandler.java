@@ -59,6 +59,10 @@ public class GlobalExceptionHandler {
             detail = "Ca này đã chấm công";
         } else if (message.contains("attendance_shift_assignment_id_fkey")) {
             detail = "Ca đã có chấm công nên không gỡ được";
+        } else if (message.contains("payroll_period_key")) {
+            detail = "Tháng này đã có bảng lương";
+        } else if (message.contains("ck_payslip_net")) {
+            detail = "Thực nhận không được âm";
         } else if (message.contains("foreign key")) {
             detail = "Dữ liệu đang được sử dụng nên không xoá được";
         } else if (message.contains("duplicate key")) {

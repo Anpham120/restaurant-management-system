@@ -19,6 +19,7 @@ import vn.bnn.rms.employee.Employee;
 import vn.bnn.rms.employee.EmployeeRepository;
 import vn.bnn.rms.leave.LeaveDtos.CreateLeaveRequest;
 import vn.bnn.rms.leave.LeaveDtos.LeaveDto;
+import vn.bnn.rms.payroll.PayrollLock;
 import vn.bnn.rms.schedule.ShiftAssignmentRepository;
 
 /** FR-13.5, FR-13.6, BR-24: leave requests and their approval. */
@@ -33,6 +34,7 @@ public class LeaveService {
     private final EmployeeRepository employees;
     private final AttendanceRepository attendance;
     private final ShiftAssignmentRepository assignments;
+    private final PayrollLock payrollLock;
     private final Clock clock;
 
     @Transactional
@@ -69,6 +71,7 @@ public class LeaveService {
         LeaveRequest leave = get(id);
         requireSomeoneElse(leave, managerId);
         requirePending(leave, "duyệt");
+        payrollLock.requireOpen(leave.getFromDate(), leave.getToDate());
         Long employeeId = leave.getEmployee().getId();
         ZoneId zone = clock.getZone();
         if (attendance.existsFor(employeeId, leave.getFromDate().atStartOfDay(zone).toInstant(),

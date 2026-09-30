@@ -22,6 +22,7 @@ const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'))
 const SchedulePage = lazy(() => import('./pages/admin/SchedulePage'))
 const AttendancePage = lazy(() => import('./pages/admin/AttendancePage'))
 const LeavePage = lazy(() => import('./pages/admin/LeavePage'))
+const PayrollPage = lazy(() => import('./pages/admin/PayrollPage'))
 const MePage = lazy(() => import('./pages/MePage'))
 
 function Home() {
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="/admin/attendance" element={<RequireRole roles={['MANAGER']}><AttendancePage /></RequireRole>} />
           <Route path="/admin/leave" element={<RequireRole roles={['MANAGER']}><LeavePage /></RequireRole>} />
           <Route path="/admin/employees" element={<RequireRole roles={['ADMIN']}><EmployeesPage /></RequireRole>} />
+          <Route path="/admin/payroll" element={<RequireRole roles={['ADMIN']}><PayrollPage /></RequireRole>} />
           <Route path="/admin/settings" element={<RequireRole roles={['ADMIN']}><SettingsPage /></RequireRole>} />
           <Route path="/me" element={<MePage />} />
         </Route>

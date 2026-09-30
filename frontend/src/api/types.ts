@@ -9,6 +9,7 @@ export type MovementType = 'IN' | 'OUT' | 'ADJUST'
 export type PayType = 'HOURLY' | 'MONTHLY'
 export type LeaveType = 'PAID' | 'UNPAID'
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type PayrollStatus = 'DRAFT' | 'FINALIZED'
 
 export interface Employee {
   id: number
@@ -279,6 +280,52 @@ export interface LeaveRequest {
   decisionNote: string | null
   createdAt: string
   decidedAt: string | null
+}
+
+export interface PayAdjustment {
+  id: number
+  amount: number
+  reason: string
+  createdAt: string
+}
+
+export interface Payslip {
+  id: number
+  period: string
+  status: PayrollStatus
+  employeeId: number
+  employeeName: string
+  role: Role
+  payType: PayType
+  payRate: number
+  workedMinutes: number
+  workDays: number
+  paidLeaveDays: number
+  baseAmount: number
+  adjustmentAmount: number
+  netAmount: number
+  adjustments: PayAdjustment[]
+}
+
+export interface PayrollSummary {
+  id: number
+  period: string
+  status: PayrollStatus
+  standardDays: number
+  payslipCount: number
+  totalNet: number
+  finalizedAt: string | null
+}
+
+export interface PayrollDetail extends PayrollSummary {
+  finalizedByName: string | null
+  payslips: Payslip[]
+}
+
+export interface MyPayslip {
+  id: number
+  period: string
+  netAmount: number
 }
 
 export interface RealtimeMessage {

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
+import { App, Button, Card, Col, DatePicker, Descriptions, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { api, errorMessage } from '../api/client'
-import type { AttendanceRecord, ClockStatus, LeaveRequest, LeaveType, ShiftAssignment } from '../api/types'
-import { duration, hhmm, leaveDays, leaveStatusColor, leaveStatusLabel, leaveTypeLabel } from '../utils/hr'
+import type { AttendanceRecord, ClockStatus, LeaveRequest, LeaveType, MyPayslip, Payslip, ShiftAssignment } from '../api/types'
+import { money, payText } from '../utils/format'
+import { duration, hhmm, leaveDays, leaveStatusColor, leaveStatusLabel, leaveTypeLabel, periodLabel } from '../utils/hr'
 
 const LEAVE_TYPES = (Object.keys(leaveTypeLabel) as LeaveType[]).map((t) => ({ label: leaveTypeLabel[t], value: t }))
 
@@ -143,7 +144,69 @@ function LeaveCard() {
   )
 }
 
-/** Self-service for every employee: clocking, own schedule, attendance and leave (FR-13.4, FR-13.5, FR-14.4). */
+/** Own finalized payslips, nobody else's (FR-15.4, BR-27). */
+function PayslipCard() {
+  const [viewing, setViewing] = useState<number | null>(null)
+  const list = useQuery({ queryKey: ['me', 'payslips'], queryFn: () => api.get<MyPayslip[]>('/me/payslips').then((r) => r.data) })
+  const slip = useQuery({
+    queryKey: ['me', 'payslip', viewing],
+    queryFn: () => api.get<Payslip>(`/me/payslips/${viewing}`).then((r) => r.data),
+    enabled: viewing !== null,
+  })
+  const s = slip.data
+
+  return (
+    <Card title="Phiếu lương" size="small">
+      <Table<MyPayslip>
+        size="small"
+        rowKey="id"
+        pagination={{ pageSize: 6 }}
+        loading={list.isLoading}
+        dataSource={list.data ?? []}
+        locale={{ emptyText: 'Chưa có phiếu lương đã chốt' }}
+        columns={[
+          { title: 'Tháng', render: (_, p) => periodLabel(p.period) },
+          { title: 'Thực nhận', render: (_, p) => money(p.netAmount) },
+          { title: '', render: (_, p) => <Button size="small" onClick={() => setViewing(p.id)}>Xem</Button> },
+        ]}
+      />
+      <Modal
+        title={s ? `Phiếu lương tháng ${periodLabel(s.period)}` : 'Phiếu lương'}
+        open={viewing !== null}
+        onCancel={() => setViewing(null)}
+        footer={null}
+      >
+        {s && (
+          <Descriptions
+            column={1}
+            size="small"
+            bordered
+            items={[
+              { key: 'rate', label: 'Mức lương', children: payText(s.payType, s.payRate) },
+              {
+                key: 'work',
+                label: 'Công',
+                children:
+                  s.payType === 'HOURLY'
+                    ? duration(s.workedMinutes)
+                    : `${s.workDays} ngày công, ${s.paidLeaveDays} ngày nghỉ có lương`,
+              },
+              { key: 'base', label: 'Lương theo công', children: money(s.baseAmount) },
+              ...s.adjustments.map((a) => ({
+                key: `adjustment-${a.id}`,
+                label: a.amount > 0 ? 'Thưởng' : 'Phạt',
+                children: `${money(a.amount)} (${a.reason})`,
+              })),
+              { key: 'net', label: 'Thực nhận', children: <strong>{money(s.netAmount)}</strong> },
+            ]}
+          />
+        )}
+      </Modal>
+    </Card>
+  )
+}
+
+/** Self-service for every employee: clocking, schedule, attendance, leave and payslips (FR-13.4, FR-13.5, FR-14.4, FR-15.4). */
 export default function MePage() {
   const from = dayjs().format('YYYY-MM-DD')
   const to = dayjs().add(13, 'day').format('YYYY-MM-DD')
@@ -186,6 +249,9 @@ export default function MePage() {
         </Col>
         <Col xs={24} lg={12}>
           <LeaveCard />
+        </Col>
+        <Col xs={24} lg={12}>
+          <PayslipCard />
         </Col>
         <Col xs={24}>
           <Card title="Chấm công tháng này" size="small">

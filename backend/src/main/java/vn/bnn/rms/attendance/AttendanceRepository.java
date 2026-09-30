@@ -33,4 +33,15 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             select count(t) > 0 from Attendance t
             where t.employee.id = :employeeId and t.checkInAt >= :from and t.checkInAt < :to""")
     boolean existsFor(@Param("employeeId") Long employeeId, @Param("from") Instant from, @Param("to") Instant to);
+
+    /** Clock-ins with a clock-out, for payroll (BR-26). */
+    @Query("""
+            select t from Attendance t join fetch t.employee
+            where t.checkOutAt is not null and t.checkInAt >= :from and t.checkInAt < :to""")
+    List<Attendance> findClosedBetween(@Param("from") Instant from, @Param("to") Instant to);
+
+    @Query("""
+            select count(t) > 0 from Attendance t
+            where t.checkOutAt is null and t.checkInAt >= :from and t.checkInAt < :to""")
+    boolean existsOpenBetween(@Param("from") Instant from, @Param("to") Instant to);
 }

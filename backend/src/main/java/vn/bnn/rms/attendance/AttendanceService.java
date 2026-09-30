@@ -24,6 +24,7 @@ import vn.bnn.rms.common.ApiException;
 import vn.bnn.rms.common.DateRange;
 import vn.bnn.rms.employee.Employee;
 import vn.bnn.rms.employee.EmployeeRepository;
+import vn.bnn.rms.payroll.PayrollLock;
 import vn.bnn.rms.schedule.ScheduleService;
 import vn.bnn.rms.schedule.ShiftAssignment;
 import vn.bnn.rms.schedule.ShiftAssignmentRepository;
@@ -41,6 +42,7 @@ public class AttendanceService {
     private final AttendanceRepository attendance;
     private final ShiftAssignmentRepository assignments;
     private final EmployeeRepository employees;
+    private final PayrollLock payrollLock;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -108,7 +110,10 @@ public class AttendanceService {
         return toDtos(attendance.findInRangeFor(employeeId, startOf(from), startOf(to.plusDays(1))));
     }
 
-    /** FR-14.3: a correction needs a reason and is signed with who made it and when. */
+    /**
+     * FR-14.3: a correction needs a reason and is signed with who made it and when. A month whose payroll is
+     * finalized is locked (BR-27).
+     */
     @Transactional
     public AttendanceDto edit(Long id, EditAttendanceRequest request, Long managerId) {
         Attendance record = attendance.findById(id)
@@ -117,6 +122,8 @@ public class AttendanceService {
             throw ApiException.badRequest("Cần nhập giờ ra");
         }
         checkTimes(request.checkInAt(), request.checkOutAt());
+        payrollLock.requireOpen(dayOf(record.getCheckInAt()));
+        payrollLock.requireOpen(dayOf(request.checkInAt()));
         record.setCheckInAt(request.checkInAt());
         record.setCheckOutAt(request.checkOutAt());
         sign(record, request.reason(), managerId);
@@ -129,6 +136,7 @@ public class AttendanceService {
         Employee employee = employees.findById(request.employeeId())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy nhân viên"));
         checkTimes(request.checkInAt(), request.checkOutAt());
+        payrollLock.requireOpen(dayOf(request.checkInAt()));
         ShiftAssignment shift = null;
         if (request.shiftAssignmentId() != null) {
             shift = assignments.findById(request.shiftAssignmentId())
@@ -167,6 +175,10 @@ public class AttendanceService {
 
     private Instant startOf(LocalDate day) {
         return day.atStartOfDay(clock.getZone()).toInstant();
+    }
+
+    private LocalDate dayOf(Instant instant) {
+        return LocalDate.ofInstant(instant, clock.getZone());
     }
 
     private AttendanceDto toDto(Attendance record) {
