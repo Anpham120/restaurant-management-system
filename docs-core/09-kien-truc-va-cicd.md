@@ -53,7 +53,7 @@ flowchart LR
 │       ├── leave/  payroll/         nghỉ phép, bảng lương
 │       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên)
 ├── frontend/                        React + Vite
-│   └── src/ api/ auth/ realtime/ layouts/ pages/ utils/
+│   └── src/ app/ (định tuyến, khung trang), shared/ (API, realtime, định dạng), features/<module>/
 ├── scripts/check-erd.mjs            so ERD với migration (database-first)
 ├── perf/                            kiểm thử tải k6, dữ liệu bán hàng 6 tháng để thử
 ├── docker-compose.yml               chạy toàn bộ ở máy dev
@@ -80,6 +80,25 @@ order/
 - Module nào có thành phần chạy lúc khởi động thì thêm **config/**, ví dụ `employee/config/DemoAccountsInitializer`.
 
 Module không có bảng riêng thì bỏ các thư mục không dùng: `auth` và `report` chỉ có `controller/`, `service/`, `dto/`. Test tích hợp đặt ở gốc module (`order/OrderFlowIntegrationTest`); test đơn vị đặt cạnh class nó kiểm tra (`order/enums/ItemStatusTest`).
+
+Frontend chia theo cùng các module đó, để phần việc của mỗi người (CSDL, backend, frontend) mang cùng một tên:
+
+```text
+frontend/src/
+├── main.tsx, index.css
+├── app/          App.tsx (định tuyến), StaffLayout.tsx (khung trang nhân viên)
+├── shared/       api/ (client, types), realtime/useRealtime, utils/format
+├── test/         setup.ts
+└── features/
+    ├── order/    pages/ (OrderPage, KitchenPage, GuestPage), components/, hooks/useCart, utils/sound
+    ├── payment/  pages/CashierPage, components/TransferQr
+    ├── payroll/  pages/PayrollPage, utils/payroll
+    └── ...       auth, table, settings, menu, inventory, report, employee, schedule, attendance, leave
+```
+
+- Mỗi feature chỉ có các thư mục nó cần: `pages/`, `components/`, `hooks/`, `utils/`, `context/`.
+- Import trong cùng feature dùng đường dẫn tương đối (`../utils/payroll`); import sang chỗ khác dùng alias `@/` trỏ vào `src/` (`@/shared/api/client`, `@/features/attendance/utils/attendance`).
+- Test đặt cạnh file nó kiểm tra (`features/payroll/utils/payroll.test.ts`).
 
 ## 9.4 Bảo mật
 
