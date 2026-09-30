@@ -7,6 +7,8 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  # "Run workflow" button in the Actions tab: runs the tests only (no images, no deploy).
+  workflow_dispatch:
 
 permissions:
   contents: read

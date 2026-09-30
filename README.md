@@ -140,3 +140,4 @@ File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
    - Mỗi thư mục có một file `.env` làm từ [deploy/.env.example](deploy/.env.example). Staging dùng `HTTP_PORT=8080` nếu chạy chung máy với production.
 4. Sau khi deploy, pipeline gọi `/actuator/health` để kiểm tra.
 5. Quay lại bản cũ: chạy lại job deploy của lần chạy tốt gần nhất.
+6. Chạy lại test bằng tay: tab **Actions → CI/CD → Run workflow**.
