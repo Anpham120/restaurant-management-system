@@ -15,12 +15,14 @@ import vn.bnn.rms.employee.EmployeeDtos.CreateEmployeeRequest;
 import vn.bnn.rms.employee.EmployeeDtos.EmployeeDetailDto;
 import vn.bnn.rms.employee.EmployeeDtos.ProfileRequest;
 import vn.bnn.rms.employee.EmployeeDtos.UpdateEmployeeRequest;
+import vn.bnn.rms.schedule.ShiftAssignmentRepository;
 
 @Service
 @RequiredArgsConstructor
 public class EmployeeService {
 
     private final EmployeeRepository employees;
+    private final ShiftAssignmentRepository assignments;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
@@ -74,7 +76,10 @@ public class EmployeeService {
         return EmployeeDetailDto.from(employee);
     }
 
-    /** FR-12.3: the account is locked at once; profile, attendance and payslips stay (BR-03). */
+    /**
+     * FR-12.3: the account is locked at once; profile, attendance and payslips stay (BR-03). Shifts scheduled after
+     * the last day are dropped.
+     */
     @Transactional
     public EmployeeDetailDto resign(Long id, LocalDate leftOn, Long currentUserId) {
         if (id.equals(currentUserId)) {
@@ -86,6 +91,7 @@ public class EmployeeService {
         }
         employee.setLeftOn(leftOn);
         employee.setActive(false);
+        assignments.deleteUnworkedAfter(id, leftOn);
         return EmployeeDetailDto.from(employee);
     }
 

@@ -239,6 +239,30 @@ export interface ShiftAssignment {
   endTime: string
 }
 
+export interface AttendanceRecord {
+  id: number
+  employeeId: number
+  employeeName: string
+  shiftAssignmentId: number | null
+  shiftName: string | null
+  workDate: string
+  shiftStart: string | null
+  shiftEnd: string | null
+  checkInAt: string
+  checkOutAt: string | null
+  lateMinutes: number
+  earlyMinutes: number
+  workedMinutes: number | null
+  editReason: string | null
+  editedByName: string | null
+  editedAt: string | null
+}
+
+export interface ClockStatus {
+  current: AttendanceRecord | null
+  todayShifts: { assignmentId: number; shiftName: string; startTime: string; endTime: string; done: boolean }[]
+}
+
 export interface RealtimeMessage {
   type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION'
   orderId: number | null

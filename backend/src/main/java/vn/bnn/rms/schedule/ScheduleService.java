@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import vn.bnn.rms.common.ApiException;
+import vn.bnn.rms.common.DateRange;
 import vn.bnn.rms.employee.Employee;
 import vn.bnn.rms.employee.EmployeeRepository;
 import vn.bnn.rms.schedule.ScheduleDtos.AssignRequest;
@@ -25,8 +26,8 @@ import vn.bnn.rms.schedule.ScheduleDtos.WorkShiftRequest;
 @RequiredArgsConstructor
 public class ScheduleService {
 
-    /** Longest range one request may read, so a typo cannot load years of data. */
-    static final int MAX_DAYS = 62;
+    /** Longest range one request may read. */
+    public static final int MAX_DAYS = 62;
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final WorkShiftRepository shifts;
@@ -76,7 +77,7 @@ public class ScheduleService {
     /** FR-13.4: an employee sees only their own schedule. */
     @Transactional(readOnly = true)
     public List<AssignmentDto> mine(Long employeeId, LocalDate from, LocalDate to) {
-        checkRange(from, to);
+        DateRange.check(from, to, MAX_DAYS);
         return assignments.findForEmployee(employeeId, from, to).stream().map(AssignmentDto::from).toList();
     }
 
@@ -164,14 +165,5 @@ public class ScheduleService {
 
     static boolean working(Employee employee) {
         return employee.isActive() && employee.getLeftOn() == null;
-    }
-
-    static void checkRange(LocalDate from, LocalDate to) {
-        if (from.isAfter(to)) {
-            throw ApiException.badRequest("Ngày bắt đầu phải trước ngày kết thúc");
-        }
-        if (ChronoUnit.DAYS.between(from, to) >= MAX_DAYS) {
-            throw ApiException.badRequest("Chỉ xem được tối đa " + MAX_DAYS + " ngày mỗi lần");
-        }
     }
 }

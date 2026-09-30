@@ -4,6 +4,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -32,7 +35,7 @@ import tools.jackson.databind.json.JsonMapper;
         "app.demo-accounts.password=" + IntegrationTest.PASSWORD,
         "app.sepay.api-key=" + IntegrationTest.SEPAY_KEY})
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, TestClockConfiguration.class})
 public abstract class IntegrationTest {
 
     protected static final String PASSWORD = "secret123";
@@ -44,6 +47,15 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected MockMvc mvc;
+
+    /** Real time unless a test pins it; released after every test. */
+    @Autowired
+    protected MutableClock clock;
+
+    @AfterEach
+    void releaseClock() {
+        clock.reset();
+    }
 
     protected record TableRef(long id, String name, String qrToken) {
     }
@@ -114,6 +126,11 @@ public abstract class IntegrationTest {
 
     protected static String unique(String prefix) {
         return prefix + "-" + SEQUENCE.incrementAndGet();
+    }
+
+    /** A Vietnam-time moment as the ISO instant the API takes. */
+    protected static String vn(LocalDateTime local) {
+        return local.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toString();
     }
 
     // ---- Fixtures ----------------------------------------------------------------------------------------

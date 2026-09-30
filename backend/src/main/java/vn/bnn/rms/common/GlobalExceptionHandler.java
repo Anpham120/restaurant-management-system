@@ -53,6 +53,12 @@ public class GlobalExceptionHandler {
             detail = "Đơn đang có yêu cầu chuyển khoản khác";
         } else if (message.contains("ux_shift_assignment")) {
             detail = "Nhân viên đã được xếp ca này trong ngày";
+        } else if (message.contains("ux_attendance_open")) {
+            detail = "Bạn đang trong ca";
+        } else if (message.contains("ux_attendance_assignment")) {
+            detail = "Ca này đã chấm công";
+        } else if (message.contains("attendance_shift_assignment_id_fkey")) {
+            detail = "Ca đã có chấm công nên không gỡ được";
         } else if (message.contains("foreign key")) {
             detail = "Dữ liệu đang được sử dụng nên không xoá được";
         } else if (message.contains("duplicate key")) {
