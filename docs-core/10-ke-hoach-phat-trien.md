@@ -83,16 +83,21 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 
 ## 10.4 Lịch theo sprint
 
-| Sprint | Thời gian | Việc chính | Demo cuối sprint |
+| Sprint | Thời gian | Việc xong trong sprint | Demo cuối sprint |
 |---|---|---|---|
 | 1 | 01/10 → 11/10 | Giai đoạn 0 | Staging HTTPS; chuyển khoản thật tự xác nhận; E2E chạy trong CI |
-| 2 | 12/10 → 18/10 | P1-01 chuyển và ghép bàn, P1-02 in bill, P1-06 âm báo | Ghép 2 bàn cho một nhóm, in bill 80 mm |
-| 3 | 19/10 → 25/10 | P1-03 nhật ký, P1-04 giảm giá có duyệt, P1-05 gọi nhân viên | Quản lý duyệt giảm giá, khách gọi nhân viên từ điện thoại |
-| 4 | 26/10 → 01/11 | P2-01 ca và két, P2-03 nhà cung cấp và phiếu nhập | Chốt ca có chênh lệch, nhập hàng có giá |
-| 5 | 02/11 → 08/11 | P2-02 định lượng và trừ kho, P2-04 báo cáo | Bán món thì kho tự trừ; báo cáo lãi gộp |
-| 6 | 09/11 → 15/11 | Giai đoạn 3, và P1-07 nếu còn sức | Báo cáo k6; chặn spam đơn QR |
-| 7 | 16/11 → 22/11 | Chọn 1–2 việc giai đoạn 4 (đề xuất: P4-01 đặt bàn và cọc) | Đặt bàn, cọc qua VietQR, cấn trừ vào bill |
+| 2 | 12/10 → 18/10 | P1-02 in bill, P1-06 âm báo | In bill 80 mm; bếp kêu khi có món mới |
+| 3 | 19/10 → 25/10 | P1-01 chuyển và ghép bàn, P1-03 nhật ký, P1-04 giảm giá có duyệt, P1-05 gọi nhân viên, P2-03 nhà cung cấp và phiếu nhập | Ghép 2 bàn cho một nhóm; quản lý duyệt giảm giá; khách gọi nhân viên từ điện thoại; nhập hàng có giá |
+| 4 | 26/10 → 01/11 | P3-04 khung test frontend và đo độ phủ | Báo cáo độ phủ test |
+| 5 | 02/11 → 08/11 | P2-01 ca và két, P2-02 định lượng và trừ kho, P2-04 báo cáo, P3-03 kiểm thử tải | Chốt ca có chênh lệch; bán món thì kho tự trừ; báo cáo lãi gộp; báo cáo k6 |
+| 6 | 09/11 → 15/11 | P3-01 chống spam đơn QR, P3-02 thu hồi token, P3-05 log và cảnh báo | Chặn spam đơn QR; đăng xuất mọi thiết bị |
+| 7 | 16/11 → 22/11 | P4-01 đặt bàn và cọc; P1-07 tách bill nếu còn sức; việc tuỳ chọn giai đoạn 4 nếu kịp | Đặt bàn, cọc qua VietQR, cấn trừ vào bill |
 | 8 | 23/11 → 29/11 | Giai đoạn 5; **ngừng thêm tính năng** | Demo toàn bộ trên production |
+
+Mỗi người làm song song trên service của mình (mục 10.7), nên các giai đoạn gối lên nhau. Việc cỡ M, L bắt đầu sớm hơn một sprint:
+- Từ sprint 2: P1-01, P1-03, P2-03.
+- Từ sprint 4: P2-01, P2-02, P2-04.
+- Từ sprint 6: P4-01, P1-07.
 
 Mỗi cuối sprint: PR `develop` → `main` (merge commit), gắn tag phiên bản `v1.1`, `v1.2`...
 
@@ -103,7 +108,7 @@ Bảng việc nằm trên GitHub: mỗi sprint là một [milestone](https://git
 1. **Tài liệu trước**: thêm hoặc sửa FR (02), user story và AC (03), quy tắc (05). Đổi CSDL thì **sửa ERD (07) trước**.
 2. **Migration mới** `V{n}__<tên>.sql`, **không sửa** migration đã chạy. Script đối chiếu ERD với SQL phải báo 0 lệch.
 3. Backend có test tích hợp cho từng AC; frontend có test cho phần tính toán.
-4. Tạo nhánh `feature/<mã>-<tên>` từ `develop`, mở PR vào `develop`. CI xanh và 1 người review thì merge.
+4. Tạo nhánh `feature/<mã>-<tên>` từ `develop`, mở PR vào `develop`. CI xanh và 1 người review thì merge. Đụng service của người khác thì người đó review (mục 10.7).
 5. Thử trên staging, rồi đánh dấu xong trên bảng việc.
 
 ## 10.6 Rủi ro
@@ -115,3 +120,29 @@ Bảng việc nằm trên GitHub: mỗi sprint là một [milestone](https://git
 | Quy định HĐĐT thay đổi, cần tài khoản thử của nhà cung cấp | Tích hợp tốn thời gian | Chỉ làm hàng chờ và xuất file; API để sau |
 | Chi phí VPS và tên miền | Nhỏ nhưng phát sinh | VPS 1–2 GB đủ cho staging và production chạy chung, cách nhau bằng `HTTP_PORT` |
 | Thành viên bận thi hoặc bận môn khác | Trễ lịch | Cắt từ dưới lên: giai đoạn 4 trước, rồi P1-07, P3-04, P3-05 |
+
+## 10.7 Phân công theo service
+
+Theo yêu cầu của môn, mỗi người giữ **một service** và làm cả backend lẫn frontend của service đó, gồm cả test và tài liệu. Hạ tầng dùng chung không phải service, nên Anpham120 (mạnh hạ tầng) giữ thêm.
+
+| Service | Người | Backend (`vn.bnn.rms.*`) | Frontend | Việc |
+|---|---|---|---|---|
+| Gọi món, bếp, QR | Anpham120 | `order` | `/orders/:id`, `/kitchen`, `/q/:token` | P1-05, P1-06, P3-01; tuỳ chọn P4-04 |
+| Bàn và đặt bàn | totototototoads | `table` | `/tables`, `/admin/tables` | P1-01, P4-01; tuỳ chọn P4-02 |
+| Thanh toán | buidaoducanh1210 | `payment` | `/cashier` | P0-03, P1-02, P1-04, P2-01; P1-07 nếu còn sức; tuỳ chọn P4-03 |
+| Thực đơn và kho | Tanh2k8-123 | `menu`, `inventory` | `/admin/menu`, `/admin/inventory` | P2-02, P2-03 |
+| Quản trị | quanghieu1605 | `auth`, `employee`, `settings`, `report` | `/login`, `/admin/employees`, `/admin/settings`, `/admin/reports` | P1-03, P2-04, P3-02 |
+| Hạ tầng (dùng chung) | Anpham120 | `config`, `common`, Docker, CI/CD | — | P0-01, P0-02, P0-05, P3-03, P3-04, P3-05 |
+
+Việc chung chia thêm cho đều tải:
+- Giai đoạn 0: P0-04 (quanghieu1605), kịch bản E2E của P0-05 (totototototoads), P0-06 (Tanh2k8-123).
+- Hồ sơ: P5-01 (Tanh2k8-123), P5-02 (totototototoads), P5-03 (Anpham120), P5-04 (quanghieu1605), P5-05 (buidaoducanh1210). Người được giao gom bài; phần của service nào do chủ service viết.
+- P4-05 chỉ thiết kế, chưa giao.
+
+Tải ước tính: Anpham120 khoảng 22 ngày người vì giữ thêm hạ tầng; 4 bạn còn lại 15–19 ngày người. Sprint nào service của mình không có việc mới thì viết thêm test, hướng dẫn, hoặc nhận việc tuỳ chọn.
+
+Sửa code, bảng hoặc API thuộc service nào thì chủ service đó review PR. Các chỗ đã biết:
+- P1-01 và P2-02 đụng `order`.
+- P4-01 đụng `payment`.
+- P1-06 thêm cột vào `restaurant_settings`.
+- P1-03 và P2-04 đọc, ghi dữ liệu của nhiều service.

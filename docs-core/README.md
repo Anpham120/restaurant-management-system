@@ -13,7 +13,7 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 11 bảng, ràng buộc, index (database-first) |
 | 8 | [Thiết kế hệ thống](08-thiet-ke-he-thong.md) | 08-system-design | REST API, kênh realtime, màn hình, sơ đồ tuần tự |
 | 9 | [Kiến trúc và CI/CD](09-kien-truc-va-cicd.md) | 09-system-architecture | Kiến trúc, công nghệ, bảo mật, triển khai, pipeline, kiểm thử |
-| 10 | [Kế hoạch phát triển tiếp](10-ke-hoach-phat-trien.md) | — | Backlog theo giai đoạn, lịch 8 sprint, quy trình làm tính năng, rủi ro |
+| 10 | [Kế hoạch phát triển tiếp](10-ke-hoach-phat-trien.md) | — | Backlog theo giai đoạn, lịch 8 sprint, quy trình làm tính năng, rủi ro, phân công theo service |
 
 Bản phân tích mở rộng (chuỗi quán, máy chủ tại quán, chạy offline) ở [`../docs/`](../docs/README.md), chỉ để tham khảo.
 
