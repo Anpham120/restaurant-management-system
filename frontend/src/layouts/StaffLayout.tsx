@@ -3,9 +3,13 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { App, Badge, Button, Form, Input, Layout, Menu, Modal, Spin, Typography } from 'antd'
 import {
+  AccountBookOutlined,
   BarChartOutlined,
   BookOutlined,
+  CalendarOutlined,
+  CoffeeOutlined,
   DollarOutlined,
+  FieldTimeOutlined,
   FireOutlined,
   InboxOutlined,
   KeyOutlined,
@@ -14,6 +18,7 @@ import {
   SettingOutlined,
   TableOutlined,
   TeamOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import { api, errorMessage } from '../api/client'
 import type { RealtimeMessage, Role } from '../api/types'
@@ -21,7 +26,8 @@ import { useAuth } from '../auth/AuthContext'
 import { useRealtime } from '../realtime/useRealtime'
 import { hasRole, roleLabel } from '../utils/format'
 
-const NAV: { key: string; label: string; icon: ReactNode; role: Role }[] = [
+/** role null: every signed-in employee. */
+const NAV: { key: string; label: string; icon: ReactNode; role: Role | null }[] = [
   { key: '/tables', label: 'Sơ đồ bàn', icon: <TableOutlined />, role: 'WAITER' },
   { key: '/kitchen', label: 'Bếp', icon: <FireOutlined />, role: 'CHEF' },
   { key: '/cashier', label: 'Thu ngân', icon: <DollarOutlined />, role: 'CASHIER' },
@@ -29,8 +35,13 @@ const NAV: { key: string; label: string; icon: ReactNode; role: Role }[] = [
   { key: '/admin/tables', label: 'Bàn và QR', icon: <QrcodeOutlined />, role: 'MANAGER' },
   { key: '/admin/inventory', label: 'Kho', icon: <InboxOutlined />, role: 'MANAGER' },
   { key: '/admin/reports', label: 'Báo cáo', icon: <BarChartOutlined />, role: 'MANAGER' },
+  { key: '/admin/schedule', label: 'Xếp ca', icon: <CalendarOutlined />, role: 'MANAGER' },
+  { key: '/admin/attendance', label: 'Chấm công', icon: <FieldTimeOutlined />, role: 'MANAGER' },
+  { key: '/admin/leave', label: 'Nghỉ phép', icon: <CoffeeOutlined />, role: 'MANAGER' },
   { key: '/admin/employees', label: 'Nhân viên', icon: <TeamOutlined />, role: 'ADMIN' },
+  { key: '/admin/payroll', label: 'Bảng lương', icon: <AccountBookOutlined />, role: 'ADMIN' },
   { key: '/admin/settings', label: 'Cài đặt', icon: <SettingOutlined />, role: 'ADMIN' },
+  { key: '/me', label: 'Của tôi', icon: <UserOutlined />, role: null },
 ]
 
 export default function StaffLayout() {
@@ -68,7 +79,7 @@ export default function StaffLayout() {
   if (loading) return <Spin fullscreen />
   if (!user) return <Navigate to="/login" replace />
 
-  const items = NAV.filter((n) => hasRole(user.role, n.role)).map(({ key, label, icon }) => ({ key, label, icon }))
+  const items = NAV.filter((n) => n.role === null || hasRole(user.role, n.role)).map(({ key, label, icon }) => ({ key, label, icon }))
   const selected = NAV.find((n) => location.pathname.startsWith(n.key))?.key ?? (location.pathname.startsWith('/orders') ? '/tables' : '')
 
   const changePassword = async (values: { currentPassword: string; newPassword: string }) => {

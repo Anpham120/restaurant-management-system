@@ -10,10 +10,8 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
-    properties:
-      hibernate:
-        jdbc:
-          time_zone: UTC
+    # No hibernate.jdbc.time_zone: every point in time is TIMESTAMPTZ, which is stored as UTC anyway, and that
+    # setting would shift TIME columns (work_shift) by the JVM zone's 1970 offset on machines not set to UTC.
 
 server:
   forward-headers-strategy: framework

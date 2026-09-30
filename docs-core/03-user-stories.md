@@ -117,9 +117,9 @@ Là **thu ngân**, tôi muốn xử lý khi tiền về nhưng hệ thống khô
 - AC1: Khi khách chuyển sai số tiền thì giao dịch vào danh sách "Không khớp", đơn chưa đóng.
 - AC2: Khi thu ngân xác nhận tay thì hệ thống ghi tên người xác nhận.
 
-## Nhân sự (chưa làm)
+## Nhân sự
 
-Phần thêm theo yêu cầu của môn. Lịch làm ở [kế hoạch](10-ke-hoach-phat-trien.md), P2-05 → P2-09.
+Phần thêm theo yêu cầu của môn sau bản core (P2-05 → P2-09 trong [kế hoạch](10-ke-hoach-phat-trien.md)).
 
 ### US-20 Hồ sơ và mức lương — FR-12.1 → FR-12.3
 Là **quản trị**, tôi muốn lưu ngày vào làm và mức lương của từng người để tính lương đúng.

@@ -26,6 +26,10 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v7
+      # Database-first: the ERD in docs-core/07-erd.md must match what the Flyway migrations create.
+      - name: Check the ERD matches the migrations
+        working-directory: .
+        run: node scripts/check-erd.mjs
       - uses: actions/setup-java@v6
         with:
           distribution: temurin

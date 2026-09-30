@@ -1,6 +1,7 @@
 package vn.bnn.rms.employee;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -43,6 +44,23 @@ public class Employee {
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
+
+    // Profile and pay (FR-12). Pay is shown to ADMIN only (BR-22).
+
+    private String phone;
+
+    private LocalDate hiredOn;
+
+    /** Set when the person leaves; the account is locked at the same time. */
+    private LocalDate leftOn;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PayType payType = PayType.HOURLY;
+
+    /** VND per hour or per month, depending on {@link #payType}. */
+    @Column(nullable = false)
+    private long payRate;
 
     public Employee(String fullName, String username, String passwordHash, Role role) {
         this.fullName = fullName;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cashSuggestions, hasRole, homePath, minutesSince, money } from './format'
+import { cashSuggestions, hasRole, homePath, minutesSince, money, moneyInputProps, payText } from './format'
 
 describe('money', () => {
   it('formats VND with thousands separators', () => {
@@ -33,6 +33,22 @@ describe('minutesSince', () => {
     expect(minutesSince('2026-09-30T12:00:00Z', now)).toBe(10)
     expect(minutesSince('2026-09-30T12:20:00Z', now)).toBe(0)
     expect(minutesSince(null, now)).toBe(0)
+  })
+})
+
+describe('payText', () => {
+  it('shows the rate with its unit', () => {
+    expect(payText('HOURLY', 25000)).toBe('25.000 đ/giờ')
+    expect(payText('MONTHLY', 8000000)).toBe('8.000.000 đ/tháng')
+  })
+})
+
+describe('moneyInputProps', () => {
+  it('adds and removes thousands separators, keeping the sign', () => {
+    expect(moneyInputProps.formatter(8000000)).toBe('8.000.000')
+    expect(moneyInputProps.formatter(-50000)).toBe('-50.000')
+    expect(moneyInputProps.parser('8.000.000')).toBe(8000000)
+    expect(moneyInputProps.parser('-50.000')).toBe(-50000)
   })
 })
 

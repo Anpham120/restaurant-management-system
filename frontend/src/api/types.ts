@@ -6,6 +6,10 @@ export type OrderStatus = 'OPEN' | 'PAID' | 'CANCELLED'
 export type ItemStatus = 'PENDING' | 'WAITING' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED'
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
 export type MovementType = 'IN' | 'OUT' | 'ADJUST'
+export type PayType = 'HOURLY' | 'MONTHLY'
+export type LeaveType = 'PAID' | 'UNPAID'
+export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type PayrollStatus = 'DRAFT' | 'FINALIZED'
 
 export interface Employee {
   id: number
@@ -13,6 +17,15 @@ export interface Employee {
   username: string
   role: Role
   active: boolean
+}
+
+/** Admin view of an employee: profile and pay (BR-22). */
+export interface EmployeeDetail extends Employee {
+  phone: string | null
+  hiredOn: string | null
+  leftOn: string | null
+  payType: PayType
+  payRate: number
 }
 
 export interface LoginResponse {
@@ -202,6 +215,117 @@ export interface Settings {
   bankCode: string | null
   bankAccountNo: string | null
   bankAccountName: string | null
+}
+
+export interface WorkShift {
+  id: number
+  name: string
+  startTime: string
+  endTime: string
+  active: boolean
+}
+
+export interface StaffMember {
+  id: number
+  fullName: string
+  role: Role
+}
+
+export interface ShiftAssignment {
+  id: number
+  employeeId: number
+  employeeName: string
+  workShiftId: number
+  shiftName: string
+  workDate: string
+  startTime: string
+  endTime: string
+}
+
+export interface AttendanceRecord {
+  id: number
+  employeeId: number
+  employeeName: string
+  shiftAssignmentId: number | null
+  shiftName: string | null
+  workDate: string
+  shiftStart: string | null
+  shiftEnd: string | null
+  checkInAt: string
+  checkOutAt: string | null
+  lateMinutes: number
+  earlyMinutes: number
+  workedMinutes: number | null
+  editReason: string | null
+  editedByName: string | null
+  editedAt: string | null
+}
+
+export interface ClockStatus {
+  current: AttendanceRecord | null
+  todayShifts: { assignmentId: number; shiftName: string; startTime: string; endTime: string; done: boolean }[]
+}
+
+export interface LeaveRequest {
+  id: number
+  employeeId: number
+  employeeName: string
+  fromDate: string
+  toDate: string
+  days: number
+  type: LeaveType
+  reason: string
+  status: LeaveStatus
+  decidedByName: string | null
+  decisionNote: string | null
+  createdAt: string
+  decidedAt: string | null
+}
+
+export interface PayAdjustment {
+  id: number
+  amount: number
+  reason: string
+  createdAt: string
+}
+
+export interface Payslip {
+  id: number
+  period: string
+  status: PayrollStatus
+  employeeId: number
+  employeeName: string
+  role: Role
+  payType: PayType
+  payRate: number
+  workedMinutes: number
+  workDays: number
+  paidLeaveDays: number
+  baseAmount: number
+  adjustmentAmount: number
+  netAmount: number
+  adjustments: PayAdjustment[]
+}
+
+export interface PayrollSummary {
+  id: number
+  period: string
+  status: PayrollStatus
+  standardDays: number
+  payslipCount: number
+  totalNet: number
+  finalizedAt: string | null
+}
+
+export interface PayrollDetail extends PayrollSummary {
+  finalizedByName: string | null
+  payslips: Payslip[]
+}
+
+export interface MyPayslip {
+  id: number
+  period: string
+  netAmount: number
 }
 
 export interface RealtimeMessage {

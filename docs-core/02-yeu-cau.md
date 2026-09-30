@@ -103,9 +103,9 @@
 | FR-11.1 | Thông tin nhà hàng: tên, địa chỉ, điện thoại | M | — |
 | FR-11.2 | Tài khoản nhận chuyển khoản: mã ngân hàng, số tài khoản, tên chủ tài khoản | M | BR-14 |
 
-### FR-12 Hồ sơ nhân viên (ADMIN) — chưa làm
+### FR-12 Hồ sơ nhân viên (ADMIN)
 
-FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn, chưa có trong bản core. Lịch làm ở [kế hoạch](10-ke-hoach-phat-trien.md) (P2-05 → P2-09). CSDL đã thiết kế ở [7.5](07-erd.md#75-nhân-sự-thiết-kế-cho-migration-mới).
+FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau bản core (P2-05 → P2-09 trong [kế hoạch](10-ke-hoach-phat-trien.md)). CSDL ở [7.5](07-erd.md#75-nhân-sự).
 
 | Mã | Yêu cầu | Ưu tiên | Quy tắc |
 |---|---|---|---|
@@ -113,7 +113,7 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn, ch�
 | FR-12.2 | Đặt hình thức lương (theo giờ hoặc theo tháng) và mức lương | M | BR-22, 26 |
 | FR-12.3 | Cho nghỉ việc: ghi ngày nghỉ và khoá tài khoản. Hồ sơ, chấm công, phiếu lương vẫn giữ | M | BR-03 |
 
-### FR-13 Xếp ca và nghỉ phép (MANAGER) — chưa làm
+### FR-13 Xếp ca và nghỉ phép (MANAGER)
 
 | Mã | Yêu cầu | Ưu tiên | Quy tắc |
 |---|---|---|---|
@@ -124,7 +124,7 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn, ch�
 | FR-13.5 | Nhân viên gửi đơn nghỉ: từ ngày, đến ngày, có lương hoặc không lương, lý do. Quản lý duyệt hoặc từ chối | M | BR-24 |
 | FR-13.6 | Duyệt đơn nghỉ thì gỡ các ca đã xếp trong những ngày đó | S | BR-24 |
 
-### FR-14 Chấm công — chưa làm
+### FR-14 Chấm công
 
 | Mã | Yêu cầu | Ưu tiên | Quy tắc |
 |---|---|---|---|
@@ -133,7 +133,7 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn, ch�
 | FR-14.3 | Quản lý xem bảng công theo ngày và theo tháng; thêm hoặc sửa bản ghi, **bắt buộc lý do** | M | BR-25, 27 |
 | FR-14.4 | Nhân viên xem lịch sử chấm công của mình | S | — |
 
-### FR-15 Tính lương (ADMIN) — chưa làm
+### FR-15 Tính lương (ADMIN)
 
 | Mã | Yêu cầu | Ưu tiên | Quy tắc |
 |---|---|---|---|
