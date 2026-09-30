@@ -86,6 +86,12 @@ Mỗi module backend chia 4 lớp giống repo tham khảo: **Controller → Ser
 
 Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. Biến chính: `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `SEPAY_API_KEY`, `APP_PUBLIC_BASE_URL` (địa chỉ in trong QR bàn), `HTTP_PORT`, `APP_DEMO_ACCOUNTS_ENABLED`.
 
+**Sao lưu (P0-04).** Dịch vụ `backup` trong `deploy/docker-compose.prod.yml` chạy `pg_dump` mỗi đêm lúc `BACKUP_HOUR` giờ Việt Nam (mặc định 3 giờ):
+- Bản sao lưu nằm trong thư mục `backups/` cạnh file compose, giữ `BACKUP_KEEP` bản mới nhất (mặc định 7).
+- `restore.sh --check` khôi phục thử vào một CSDL tạm, in số dòng từng bảng rồi xoá CSDL tạm, không đụng dữ liệu thật.
+- `restore.sh` không có `--check` thì khôi phục thật, có hỏi xác nhận trước.
+- Thỉnh thoảng nên chép thư mục `backups/` ra ngoài máy chủ: mất máy chủ là mất luôn bản sao lưu nằm trên đó.
+
 ## 9.6 Nhánh và pipeline CI/CD
 
 Mô hình nhánh: `feature/<tên>` → PR vào `develop` → PR vào `main`. Cả `develop` và `main` được bảo vệ: không push thẳng, chỉ merge khi test xanh.

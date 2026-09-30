@@ -10,6 +10,9 @@ e2e/playwright-report/
 .env
 deploy/.env
 
+# Database dumps, if the server compose file is ever run from this folder
+deploy/backups/
+
 # Editors
 .idea/
 *.iml

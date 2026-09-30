@@ -164,3 +164,21 @@ File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
    - [`codeql.yml`](.github/workflows/codeql.yml) phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
    - Sau khi build image, Trivy quét 2 image.
    - [`dependabot.yml`](.github/dependabot.yml) mở PR cập nhật thư viện mỗi tuần vào `develop`.
+
+## Sao lưu và khôi phục
+
+Trên máy chủ, dịch vụ `backup` sao lưu CSDL mỗi đêm vào thư mục `backups/` cạnh file compose (mặc định 3 giờ sáng, giữ 7 bản). Pipeline chép sẵn [deploy/backup.sh](deploy/backup.sh) và [deploy/restore.sh](deploy/restore.sh) lên máy chủ. Chạy các lệnh sau trong `~/bnn-rms` (hoặc `~/bnn-rms-staging`):
+
+```bash
+# Sao lưu ngay, ví dụ trước khi deploy bản lớn
+docker compose -f docker-compose.prod.yml exec backup sh /backup.sh now
+ls -lh backups/
+
+# Thử khôi phục vào CSDL tạm: in số dòng từng bảng, không đụng dữ liệu thật
+sh restore.sh --check backups/rms-2026-10-05-0300.dump
+
+# Khôi phục thật: thay CSDL đang chạy bằng bản sao lưu, có hỏi xác nhận
+sh restore.sh backups/rms-2026-10-05-0300.dump
+```
+
+Nên chép thư mục `backups/` ra ngoài máy chủ định kỳ (ổ khác, Google Drive...): mất máy chủ là mất luôn bản sao lưu nằm trên đó.
