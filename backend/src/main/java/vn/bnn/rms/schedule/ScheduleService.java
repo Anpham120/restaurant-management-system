@@ -14,6 +14,8 @@ import vn.bnn.rms.common.ApiException;
 import vn.bnn.rms.common.DateRange;
 import vn.bnn.rms.employee.Employee;
 import vn.bnn.rms.employee.EmployeeRepository;
+import vn.bnn.rms.leave.LeaveRequestRepository;
+import vn.bnn.rms.leave.LeaveStatus;
 import vn.bnn.rms.schedule.ScheduleDtos.AssignRequest;
 import vn.bnn.rms.schedule.ScheduleDtos.AssignmentDto;
 import vn.bnn.rms.schedule.ScheduleDtos.CopyWeekResult;
@@ -33,6 +35,7 @@ public class ScheduleService {
     private final WorkShiftRepository shifts;
     private final ShiftAssignmentRepository assignments;
     private final EmployeeRepository employees;
+    private final LeaveRequestRepository leaves;
 
     @Transactional(readOnly = true)
     public List<WorkShiftDto> shifts() {
@@ -133,8 +136,11 @@ public class ScheduleService {
         return new CopyWeekResult(copied, skipped);
     }
 
-    /** Why this person cannot take this shift on that day, or null if they can (BR-23). */
+    /** Why this person cannot take this shift on that day, or null if they can (BR-23, BR-24). */
     private String conflictOf(Employee employee, WorkShift shift, LocalDate day) {
+        if (leaves.existsOverlapping(employee.getId(), day, day, List.of(LeaveStatus.APPROVED))) {
+            return "Nhân viên đã được duyệt nghỉ ngày " + DAY.format(day);
+        }
         for (ShiftAssignment other : assignments.findForEmployeeOn(employee.getId(), day)) {
             if (other.getWorkShift().getId().equals(shift.getId())) {
                 return "Nhân viên đã được xếp ca này ngày " + DAY.format(day);

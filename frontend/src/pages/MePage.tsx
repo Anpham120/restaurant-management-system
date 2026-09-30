@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Col, Row, Space, Table, Tag, Typography } from 'antd'
-import dayjs from 'dayjs'
+import { App, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
+import dayjs, { type Dayjs } from 'dayjs'
 import { api, errorMessage } from '../api/client'
-import type { AttendanceRecord, ClockStatus, ShiftAssignment } from '../api/types'
-import { duration, hhmm } from '../utils/hr'
+import type { AttendanceRecord, ClockStatus, LeaveRequest, LeaveType, ShiftAssignment } from '../api/types'
+import { duration, hhmm, leaveDays, leaveStatusColor, leaveStatusLabel, leaveTypeLabel } from '../utils/hr'
+
+const LEAVE_TYPES = (Object.keys(leaveTypeLabel) as LeaveType[]).map((t) => ({ label: leaveTypeLabel[t], value: t }))
 
 const clockTime = (value: string | null) => (value ? dayjs(value).format('HH:mm') : '')
 
@@ -66,7 +69,81 @@ function ClockCard() {
   )
 }
 
-/** Self-service for every employee: clocking, own schedule and attendance (FR-13.4, FR-14.4). */
+/** Ask for leave and follow the requests (FR-13.5, BR-24). */
+function LeaveCard() {
+  const queryClient = useQueryClient()
+  const { message } = App.useApp()
+  const [open, setOpen] = useState(false)
+  const leaves = useQuery({ queryKey: ['me', 'leave'], queryFn: () => api.get<LeaveRequest[]>('/me/leave-requests').then((r) => r.data) })
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['me'] })
+  const onError = (e: unknown) => message.error(errorMessage(e))
+  const create = useMutation({
+    mutationFn: (v: { range: [Dayjs, Dayjs]; type: LeaveType; reason: string }) =>
+      api.post('/me/leave-requests', {
+        fromDate: v.range[0].format('YYYY-MM-DD'),
+        toDate: v.range[1].format('YYYY-MM-DD'),
+        type: v.type,
+        reason: v.reason,
+      }),
+    onSuccess: () => {
+      message.success('Đã gửi đơn nghỉ')
+      setOpen(false)
+      refresh()
+    },
+    onError,
+  })
+  const cancel = useMutation({ mutationFn: (id: number) => api.post(`/me/leave-requests/${id}/cancel`), onSuccess: refresh, onError })
+
+  return (
+    <Card title="Nghỉ phép" size="small" extra={<Button onClick={() => setOpen(true)}>Xin nghỉ</Button>}>
+      <Table<LeaveRequest>
+        size="small"
+        rowKey="id"
+        pagination={{ pageSize: 5 }}
+        loading={leaves.isLoading}
+        dataSource={leaves.data ?? []}
+        locale={{ emptyText: 'Chưa có đơn nghỉ' }}
+        columns={[
+          { title: 'Ngày', render: (_, l) => leaveDays(l) },
+          { title: 'Loại', render: (_, l) => leaveTypeLabel[l.type] },
+          {
+            title: 'Trạng thái',
+            render: (_, l) => (
+              <>
+                <Tag color={leaveStatusColor[l.status]}>{leaveStatusLabel[l.status]}</Tag>
+                {l.decisionNote && <Typography.Text type="secondary">{l.decisionNote}</Typography.Text>}
+              </>
+            ),
+          },
+          {
+            title: '',
+            render: (_, l) =>
+              l.status === 'PENDING' && (
+                <Button size="small" loading={cancel.isPending} onClick={() => cancel.mutate(l.id)}>Huỷ đơn</Button>
+              ),
+          },
+        ]}
+      />
+      <Modal title="Xin nghỉ" open={open} onCancel={() => setOpen(false)} footer={null} destroyOnHidden>
+        <Form layout="vertical" initialValues={{ type: 'PAID' }} onFinish={(v) => create.mutate(v)}>
+          <Form.Item name="range" label="Từ ngày, đến ngày" rules={[{ required: true }]}>
+            <DatePicker.RangePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="type" label="Loại nghỉ" rules={[{ required: true }]}>
+            <Select options={LEAVE_TYPES} />
+          </Form.Item>
+          <Form.Item name="reason" label="Lý do" rules={[{ required: true, max: 300 }]}>
+            <Input.TextArea rows={2} />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" block loading={create.isPending}>Gửi đơn</Button>
+        </Form>
+      </Modal>
+    </Card>
+  )
+}
+
+/** Self-service for every employee: clocking, own schedule, attendance and leave (FR-13.4, FR-13.5, FR-14.4). */
 export default function MePage() {
   const from = dayjs().format('YYYY-MM-DD')
   const to = dayjs().add(13, 'day').format('YYYY-MM-DD')
@@ -106,6 +183,9 @@ export default function MePage() {
               ]}
             />
           </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <LeaveCard />
         </Col>
         <Col xs={24}>
           <Card title="Chấm công tháng này" size="small">

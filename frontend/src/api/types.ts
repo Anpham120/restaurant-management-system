@@ -7,6 +7,8 @@ export type ItemStatus = 'PENDING' | 'WAITING' | 'COOKING' | 'READY' | 'SERVED' 
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
 export type MovementType = 'IN' | 'OUT' | 'ADJUST'
 export type PayType = 'HOURLY' | 'MONTHLY'
+export type LeaveType = 'PAID' | 'UNPAID'
+export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 
 export interface Employee {
   id: number
@@ -261,6 +263,22 @@ export interface AttendanceRecord {
 export interface ClockStatus {
   current: AttendanceRecord | null
   todayShifts: { assignmentId: number; shiftName: string; startTime: string; endTime: string; done: boolean }[]
+}
+
+export interface LeaveRequest {
+  id: number
+  employeeId: number
+  employeeName: string
+  fromDate: string
+  toDate: string
+  days: number
+  type: LeaveType
+  reason: string
+  status: LeaveStatus
+  decidedByName: string | null
+  decisionNote: string | null
+  createdAt: string
+  decidedAt: string | null
 }
 
 export interface RealtimeMessage {
