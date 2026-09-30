@@ -103,6 +103,46 @@
 | FR-11.1 | Thông tin nhà hàng: tên, địa chỉ, điện thoại | M | — |
 | FR-11.2 | Tài khoản nhận chuyển khoản: mã ngân hàng, số tài khoản, tên chủ tài khoản | M | BR-14 |
 
+### FR-12 Hồ sơ nhân viên (ADMIN)
+
+FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau bản core (P2-05 → P2-09 trong [kế hoạch](10-ke-hoach-phat-trien.md)). CSDL ở [7.5](07-erd.md#75-nhân-sự).
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-12.1 | Lưu thêm số điện thoại, ngày vào làm, ngày nghỉ việc | M | BR-22 |
+| FR-12.2 | Đặt hình thức lương (theo giờ hoặc theo tháng) và mức lương | M | BR-22, 26 |
+| FR-12.3 | Cho nghỉ việc: ghi ngày nghỉ và khoá tài khoản. Hồ sơ, chấm công, phiếu lương vẫn giữ | M | BR-03 |
+
+### FR-13 Xếp ca và nghỉ phép (MANAGER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-13.1 | Thêm, sửa ca mẫu: tên, giờ bắt đầu, giờ kết thúc (ví dụ Sáng 07:00–14:00) | M | BR-23 |
+| FR-13.2 | Xếp nhân viên vào ca theo ngày trên lịch tuần | M | BR-23 |
+| FR-13.3 | Sao chép lịch tuần trước sang tuần mới | S | BR-23 |
+| FR-13.4 | Nhân viên xem lịch làm của mình | M | — |
+| FR-13.5 | Nhân viên gửi đơn nghỉ: từ ngày, đến ngày, có lương hoặc không lương, lý do. Quản lý duyệt hoặc từ chối | M | BR-24 |
+| FR-13.6 | Duyệt đơn nghỉ thì gỡ các ca đã xếp trong những ngày đó | S | BR-24 |
+
+### FR-14 Chấm công
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-14.1 | Nhân viên bấm **Vào ca**, **Ra ca** trên app | M | BR-25 |
+| FR-14.2 | Hệ thống tính số phút đi muộn, về sớm, số phút làm | M | BR-25 |
+| FR-14.3 | Quản lý xem bảng công theo ngày và theo tháng; thêm hoặc sửa bản ghi, **bắt buộc lý do** | M | BR-25, 27 |
+| FR-14.4 | Nhân viên xem lịch sử chấm công của mình | S | — |
+
+### FR-15 Tính lương (ADMIN)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-15.1 | Tạo bảng lương tháng, tính cho từng người từ chấm công và nghỉ phép | M | BR-26 |
+| FR-15.2 | Thêm thưởng hoặc phạt cho từng người, có lý do | M | BR-26 |
+| FR-15.3 | Chốt bảng lương. Đã chốt thì không sửa được bảng lương và chấm công của tháng đó | M | BR-27 |
+| FR-15.4 | Nhân viên xem phiếu lương đã chốt của mình | M | BR-27 |
+| FR-15.5 | Xuất bảng lương ra Excel | S | — |
+
 ## 2.2 Yêu cầu phi chức năng
 
 | Mã | Yêu cầu | Cách kiểm tra |

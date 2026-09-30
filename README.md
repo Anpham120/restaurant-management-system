@@ -5,6 +5,7 @@
 - **Bếp:** màn hình bếp cập nhật **theo thời gian thực**, khách thấy trạng thái từng món trên điện thoại.
 - **Thanh toán:** tiền mặt, hoặc **chuyển khoản VietQR tự xác nhận** qua webhook SePay.
 - **Quản lý:** kho nguyên liệu, báo cáo doanh thu, quản lý tài khoản nhân viên.
+- **Nhân sự:** hồ sơ và mức lương, xếp ca, chấm công vào/ra ca, nghỉ phép, bảng lương tháng. Mỗi nhân viên có trang "Của tôi" để chấm công, xem lịch, xin nghỉ và xem phiếu lương.
 
 | Thành phần | Công nghệ |
 |---|---|
@@ -88,11 +89,13 @@ Nối SePay thật:
 ## Kiểm thử
 
 ```bash
+node scripts/check-erd.mjs
 cd backend && ./mvnw verify
 cd frontend && npm run lint && npm test && npm run build
 ```
 
-Test backend chạy với PostgreSQL thật qua Testcontainers, nên cần Docker đang chạy.
+- `scripts/check-erd.mjs` so ERD trong [docs-core/07-erd.md](docs-core/07-erd.md) với các migration Flyway (database-first). CI chạy lệnh này trước khi build backend.
+- Test backend chạy với PostgreSQL thật qua Testcontainers, nên cần Docker đang chạy.
 
 ## Nhánh và quy trình làm việc
 
@@ -127,6 +130,7 @@ Cài đặt trên GitHub (chỉ làm một lần):
    - Tạo `production`, bật *Required reviewers*.
    - Mỗi environment có secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` và variable `PUBLIC_URL`.
 3. **Settings → Variables:** đặt `DEPLOY_ENABLED=true` khi đã có máy chủ. Chưa đặt thì pipeline chỉ test và build image, không deploy.
+4. **Settings → Code security:** bật *Dependabot alerts* và *Dependabot security updates*, để GitHub báo và tự mở PR vá khi thư viện có lỗ hổng.
 
 ## CI/CD
 
@@ -141,3 +145,7 @@ File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
 4. Sau khi deploy, pipeline gọi `/actuator/health` để kiểm tra.
 5. Quay lại bản cũ: chạy lại job deploy của lần chạy tốt gần nhất.
 6. Chạy lại test bằng tay: tab **Actions → CI/CD → Run workflow**.
+7. Quét lỗ hổng, kết quả ở tab **Security**:
+   - [`codeql.yml`](.github/workflows/codeql.yml) phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
+   - Sau khi build image, Trivy quét 2 image.
+   - [`dependabot.yml`](.github/dependabot.yml) mở PR cập nhật thư viện mỗi tuần vào `develop`.

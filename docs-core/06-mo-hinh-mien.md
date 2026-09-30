@@ -115,6 +115,10 @@ Các kiểu liệt kê:
 | `Confirmation` | `AUTO` (webhook), `MANUAL` (xác nhận tay) |
 | `MatchStatus` | `MATCHED`, `UNMATCHED`, `IGNORED` (tiền ra) |
 | `MovementType` | `IN` (nhập), `OUT` (xuất), `ADJUST` (kiểm kê) |
+| `PayType` (nhân sự) | `HOURLY` (theo giờ), `MONTHLY` (theo tháng) |
+| `LeaveType` (nhân sự) | `PAID` (có lương), `UNPAID` (không lương) |
+| `LeaveStatus` (nhân sự) | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
+| `PayrollStatus` (nhân sự) | `DRAFT` (nháp), `FINALIZED` (đã chốt) |
 
 Ghi chú thiết kế:
 - **Trạng thái đặt ở từng món**, không đặt ở cả đơn, vì một bàn gọi nhiều lượt và mỗi món xong vào lúc khác nhau. Repo tham khảo đặt trạng thái ở cả đơn.
@@ -183,3 +187,6 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Thu tiền, tạo VietQR, xác nhận tay | ✅ | ✅ | | | ✅ |
 | Kho | ✅ | ✅ | | | |
 | Báo cáo | ✅ | ✅ | | | |
+| Hồ sơ, mức lương, bảng lương | ✅ | | | | |
+| Ca mẫu, xếp ca, duyệt nghỉ, sửa chấm công | ✅ | ✅ | | | |
+| Xem lịch, chấm công, xin nghỉ, xem phiếu lương của mình | ✅ | ✅ | ✅ | ✅ | ✅ |

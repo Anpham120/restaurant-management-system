@@ -26,6 +26,10 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v7
+      # Database-first: the ERD in docs-core/07-erd.md must match what the Flyway migrations create.
+      - name: Check the ERD matches the migrations
+        working-directory: .
+        run: node scripts/check-erd.mjs
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -69,6 +73,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     env:
       CHANNEL: ${{ github.ref_name == 'main' && 'latest' || 'develop' }}
     steps:
@@ -101,6 +106,34 @@ jobs:
             ghcr.io/${{ env.OWNER }}/rms-frontend:${{ env.CHANNEL }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+      # P0-06: report known vulnerabilities in both images under Security → Code scanning. Reports only,
+      # never fails the build. The third-party action is pinned to a commit, not a movable tag.
+      - name: Scan the backend image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ env.OWNER }}/rms-backend:${{ github.sha }}
+          format: sarif
+          output: trivy-backend.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+      - name: Scan the frontend image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ env.OWNER }}/rms-frontend:${{ github.sha }}
+          format: sarif
+          output: trivy-frontend.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+      - name: Upload the backend image scan
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-backend.sarif
+          category: trivy-backend
+      - name: Upload the frontend image scan
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: trivy-frontend
 
   # develop → environment "staging" (no approval), main → environment "production" (add required
   # reviewers in GitHub settings). Each environment holds its own DEPLOY_* secrets and PUBLIC_URL.

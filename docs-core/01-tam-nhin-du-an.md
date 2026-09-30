@@ -60,7 +60,7 @@
 - Hoá đơn điện tử.
 - Khuyến mãi, giảm giá, tích điểm.
 - Trừ kho tự động theo công thức món.
-- Chấm công, tính lương.
+- Chấm công, tính lương. Sau bản core, môn yêu cầu quản lý nhân viên đầy đủ, nên phần này đã làm thêm (P2-05 → P2-09 trong tài liệu 10).
 - Chạy khi mất mạng.
 - In phiếu bếp bằng máy in nhiệt (v1 dùng màn hình bếp).
 

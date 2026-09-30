@@ -18,8 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import vn.bnn.rms.common.CurrentUser;
 import vn.bnn.rms.employee.EmployeeDtos.CreateEmployeeRequest;
-import vn.bnn.rms.employee.EmployeeDtos.EmployeeDto;
+import vn.bnn.rms.employee.EmployeeDtos.EmployeeDetailDto;
+import vn.bnn.rms.employee.EmployeeDtos.ProfileRequest;
 import vn.bnn.rms.employee.EmployeeDtos.ResetPasswordRequest;
+import vn.bnn.rms.employee.EmployeeDtos.ResignRequest;
 import vn.bnn.rms.employee.EmployeeDtos.SetActiveRequest;
 import vn.bnn.rms.employee.EmployeeDtos.UpdateEmployeeRequest;
 
@@ -33,23 +35,33 @@ public class EmployeeController {
     private final CurrentUser currentUser;
 
     @GetMapping
-    public List<EmployeeDto> list() {
+    public List<EmployeeDetailDto> list() {
         return employeeService.list();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EmployeeDto create(@Valid @RequestBody CreateEmployeeRequest request) {
+    public EmployeeDetailDto create(@Valid @RequestBody CreateEmployeeRequest request) {
         return employeeService.create(request);
     }
 
     @PutMapping("/{id}")
-    public EmployeeDto update(@PathVariable Long id, @Valid @RequestBody UpdateEmployeeRequest request) {
+    public EmployeeDetailDto update(@PathVariable Long id, @Valid @RequestBody UpdateEmployeeRequest request) {
         return employeeService.update(id, request, currentUser.id());
     }
 
+    @PutMapping("/{id}/profile")
+    public EmployeeDetailDto updateProfile(@PathVariable Long id, @Valid @RequestBody ProfileRequest request) {
+        return employeeService.updateProfile(id, request);
+    }
+
+    @PostMapping("/{id}/resign")
+    public EmployeeDetailDto resign(@PathVariable Long id, @Valid @RequestBody ResignRequest request) {
+        return employeeService.resign(id, request.leftOn(), currentUser.id());
+    }
+
     @PatchMapping("/{id}/active")
-    public EmployeeDto setActive(@PathVariable Long id, @Valid @RequestBody SetActiveRequest request) {
+    public EmployeeDetailDto setActive(@PathVariable Long id, @Valid @RequestBody SetActiveRequest request) {
         return employeeService.setActive(id, request.active(), currentUser.id());
     }
 

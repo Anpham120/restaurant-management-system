@@ -3,6 +3,9 @@ package vn.bnn.rms;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -31,7 +35,7 @@ import tools.jackson.databind.json.JsonMapper;
         "app.demo-accounts.password=" + IntegrationTest.PASSWORD,
         "app.sepay.api-key=" + IntegrationTest.SEPAY_KEY})
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, TestClockConfiguration.class})
 public abstract class IntegrationTest {
 
     protected static final String PASSWORD = "secret123";
@@ -44,7 +48,19 @@ public abstract class IntegrationTest {
     @Autowired
     protected MockMvc mvc;
 
+    /** Real time unless a test pins it; released after every test. */
+    @Autowired
+    protected MutableClock clock;
+
+    @AfterEach
+    void releaseClock() {
+        clock.reset();
+    }
+
     protected record TableRef(long id, String name, String qrToken) {
+    }
+
+    protected record EmployeeRef(long id, String username) {
     }
 
     // ---- HTTP helpers ------------------------------------------------------------------------------------
@@ -112,7 +128,37 @@ public abstract class IntegrationTest {
         return prefix + "-" + SEQUENCE.incrementAndGet();
     }
 
+    /** A Vietnam-time moment as the ISO instant the API takes. */
+    protected static String vn(LocalDateTime local) {
+        return local.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toString();
+    }
+
     // ---- Fixtures ----------------------------------------------------------------------------------------
+
+    /** A new employee who signs in with {@link #PASSWORD}. */
+    protected EmployeeRef newEmployee(String role, String payType, long payRate) throws Exception {
+        String username = unique("nv");
+        ResultActions created = post("/api/employees", as("admin"), Map.of("fullName", "Nhân viên " + username,
+                        "username", username, "role", role, "password", PASSWORD, "payType", payType,
+                        "payRate", payRate))
+                .andExpect(status().isCreated());
+        return new EmployeeRef(readLong(created, "$.id"), username);
+    }
+
+    /** A new shift template; times as "HH:mm". */
+    protected long newWorkShift(String start, String end) throws Exception {
+        return readLong(post("/api/work-shifts", as("quanly"),
+                        Map.of("name", unique("Ca"), "startTime", start, "endTime", end))
+                        .andExpect(status().isCreated()),
+                "$.id");
+    }
+
+    protected long assign(long employeeId, long workShiftId, LocalDate day) throws Exception {
+        return readLong(post("/api/schedule", as("quanly"),
+                        Map.of("employeeId", employeeId, "workShiftId", workShiftId, "workDate", day.toString()))
+                        .andExpect(status().isCreated()),
+                "$.id");
+    }
 
     protected TableRef newTable() throws Exception {
         ResultActions created = post("/api/tables", as("quanly"),

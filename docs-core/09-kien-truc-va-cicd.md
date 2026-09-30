@@ -43,17 +43,20 @@ flowchart LR
 │   └── src/main/java/vn/bnn/rms/
 │       ├── common/                  lỗi chung, sự kiện realtime
 │       ├── config/                  Security, JWT, WebSocket
-│       ├── auth/  employee/         đăng nhập, nhân viên
+│       ├── auth/  employee/         đăng nhập, nhân viên, hồ sơ và lương
 │       ├── menu/  table/            thực đơn, bàn và QR
 │       ├── order/                   đơn, món, bếp, khách QR
 │       ├── payment/                 thanh toán, VietQR, webhook SePay
 │       ├── inventory/  report/  settings/
-│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu)
+│       ├── schedule/  attendance/   xếp ca, chấm công
+│       ├── leave/  payroll/         nghỉ phép, bảng lương
+│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự)
 ├── frontend/                        React + Vite
 │   └── src/ api/ auth/ realtime/ layouts/ pages/ utils/
+├── scripts/check-erd.mjs            so ERD với migration (database-first)
 ├── docker-compose.yml               chạy toàn bộ ở máy dev
 ├── deploy/docker-compose.prod.yml   chạy trên máy chủ bằng image từ GHCR
-└── .github/workflows/ci-cd.yml      pipeline CI/CD
+└── .github/                         ci-cd.yml (pipeline), codeql.yml, dependabot.yml
 ```
 
 Mỗi module backend chia 4 lớp giống repo tham khảo: **Controller → Service → Repository → Entity**.
@@ -68,6 +71,10 @@ Mỗi module backend chia 4 lớp giống repo tham khảo: **Controller → Ser
 - API công khai chỉ gồm `/api/public/**`, `/api/auth/login`, `/api/webhooks/sepay`, `/ws`, `/actuator/health`.
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
 - Khi triển khai thật phải có **HTTPS** vì SePay chỉ gọi được địa chỉ công khai. Có thể đặt Caddy hoặc Cloudflare Tunnel trước Nginx.
+- Quét lỗ hổng tự động, kết quả ở tab **Security** của GitHub:
+  - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`.
+  - CodeQL phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
+  - Trivy quét 2 image sau mỗi lần build.
 
 ## 9.5 Triển khai
 
@@ -101,9 +108,10 @@ flowchart LR
 
 | Bước | Làm gì | Chặn merge nếu lỗi |
 |---|---|---|
-| Backend | Biên dịch, chạy test đơn vị và test tích hợp với PostgreSQL thật | Có |
+| Backend | So ERD với migration (`scripts/check-erd.mjs`), biên dịch, chạy test đơn vị và test tích hợp với PostgreSQL thật | Có |
 | Frontend | Kiểm tra kiểu (TypeScript), ESLint, Vitest, build | Có |
-| Image | Build image multi-stage, đẩy lên GHCR, gắn tag theo commit | — |
+| CodeQL | Phân tích tĩnh mã Java và TypeScript (workflow `codeql.yml`) | Không, chỉ báo ở tab Security |
+| Image | Build image multi-stage, đẩy lên GHCR, gắn tag theo commit; Trivy quét lỗ hổng CRITICAL, HIGH đã có bản vá | Không, chỉ báo ở tab Security |
 | Deploy | Chạy khi bật biến `DEPLOY_ENABLED`. Environment `staging` không cần duyệt; `production` cần người duyệt | — |
 | Quay lại bản cũ | Chạy lại job deploy của lần chạy tốt gần nhất (dùng image của commit đó) | — |
 
@@ -111,7 +119,7 @@ flowchart LR
 
 | Mức | Công cụ | Nội dung chính |
 |---|---|---|
-| Đơn vị | JUnit 5 | Chuyển trạng thái món (BR-07), dò mã thanh toán trong nội dung chuyển khoản (BR-15) |
-| Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, phân quyền, kho |
-| Frontend | Vitest | Định dạng tiền, nhãn trạng thái |
+| Đơn vị | JUnit 5 | Chuyển trạng thái món (BR-07), dò mã thanh toán trong nội dung chuyển khoản (BR-15), công thức lương (BR-26) |
+| Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, phân quyền, kho, xếp ca, chấm công, nghỉ phép, bảng lương. Test chấm công đặt giờ bằng một `Clock` giả |
+| Frontend | Vitest | Định dạng tiền, nhãn trạng thái, giờ công, bảng lương xuất Excel |
 | Nghiệm thu | 2 trình duyệt + 1 điện thoại | Kịch bản ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu) |
