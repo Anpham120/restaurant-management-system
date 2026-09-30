@@ -81,6 +81,13 @@ classDiagram
         BigDecimal quantityChange
         String note
     }
+    class ServiceRequest {
+        Long id
+        ServiceRequestType type
+        Instant createdAt
+        Instant handledAt
+        isOpen() boolean
+    }
     class RestaurantSettings {
         String name
         String address
@@ -100,6 +107,8 @@ classDiagram
     Employee "1" --> "0..*" Order : mở đơn
     Employee "0..1" --> "0..*" Payment : xác nhận
     Employee "1" --> "0..*" StockMovement : lập phiếu
+    DiningTable "1" --> "0..*" ServiceRequest : khách gọi
+    Employee "0..1" --> "0..*" ServiceRequest : nhận
 ```
 
 Các kiểu liệt kê:
@@ -116,6 +125,7 @@ Các kiểu liệt kê:
 | `Confirmation` | `AUTO` (webhook), `MANUAL` (xác nhận tay) |
 | `MatchStatus` | `MATCHED`, `UNMATCHED`, `IGNORED` (tiền ra) |
 | `MovementType` | `IN` (nhập), `OUT` (xuất), `ADJUST` (kiểm kê) |
+| `ServiceRequestType` | `CALL_STAFF` (gọi nhân viên), `BILL` (xin tính tiền) |
 | `PayType` (nhân sự) | `HOURLY` (theo giờ), `MONTHLY` (theo tháng) |
 | `LeaveType` (nhân sự) | `PAID` (có lương), `UNPAID` (không lương) |
 | `LeaveStatus` (nhân sự) | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
@@ -180,6 +190,7 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Báo hết món | ✅ | ✅ | | ✅ | |
 | Xem sơ đồ bàn, mở đơn, gọi món | ✅ | ✅ | ✅ | | |
 | Xác nhận hoặc từ chối món QR | ✅ | ✅ | ✅ | | |
+| Nhận yêu cầu khách gọi | ✅ | ✅ | ✅ | | |
 | Màn hình bếp: Đang làm, Xong | ✅ | ✅ | | ✅ | |
 | Ra món | ✅ | ✅ | ✅ | | |
 | Huỷ món Chờ làm | ✅ | ✅ | ✅ | | |

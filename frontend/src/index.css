@@ -24,6 +24,13 @@ body {
   margin: 0;
 }
 
+/* Phones: the staff header keeps its buttons and the name; the connection shows as a coloured dot only. */
+@media (max-width: 575px) {
+  .wide-only {
+    display: none;
+  }
+}
+
 .table-card {
   cursor: pointer;
   height: 100%;

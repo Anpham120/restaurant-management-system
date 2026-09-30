@@ -176,6 +176,18 @@ export interface GuestTable {
     pendingCount: number
     canPay: boolean
   } | null
+  /** Calls of this table that no waiter has taken yet (FR-06.6). */
+  openRequests: ServiceRequestType[]
+}
+
+export type ServiceRequestType = 'CALL_STAFF' | 'BILL'
+
+export interface ServiceRequest {
+  id: number
+  tableId: number
+  tableName: string
+  type: ServiceRequestType
+  createdAt: string
 }
 
 export interface InventoryItem {
@@ -330,11 +342,14 @@ export interface MyPayslip {
   netAmount: number
 }
 
-/** Why staff screens ring (FR-07.5): dishes reached the kitchen, a guest sent dishes, a dish is ready. */
-export type StaffAlert = 'NEW_DISHES' | 'GUEST_DISHES' | 'DISH_READY'
+/**
+ * Why staff screens ring (FR-07.5, FR-06.6): dishes reached the kitchen, a guest sent dishes, a dish is ready,
+ * a guest called a waiter or asked for the bill.
+ */
+export type StaffAlert = 'NEW_DISHES' | 'GUEST_DISHES' | 'DISH_READY' | 'SERVICE_REQUEST'
 
 export interface RealtimeMessage {
-  type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION'
+  type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION' | 'REQUESTS_CHANGED'
   orderId: number | null
   tableId: number | null
   alert: StaffAlert | null

@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V9__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V10__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration. CI chạy nó ở mỗi lần build, lệch thì build đỏ.
 
 Quy ước:
@@ -26,6 +26,8 @@ erDiagram
     ORDERS ||--o{ PAYMENT : "thanh toán"
     PAYMENT |o--o{ BANK_TRANSACTION : "khớp"
     INVENTORY_ITEM ||--o{ STOCK_MOVEMENT : "biến động"
+    DINING_TABLE ||--o{ SERVICE_REQUEST : "khách gọi"
+    EMPLOYEE |o--o{ SERVICE_REQUEST : "nhận"
     EMPLOYEE {
         bigint id PK
         varchar full_name
@@ -136,6 +138,14 @@ erDiagram
         int wait_alert_minutes "món chờ lâu sau số phút này, 1 đến 120"
         timestamptz updated_at
     }
+    SERVICE_REQUEST {
+        bigint id PK
+        bigint table_id FK "xoá bàn thì xoá theo"
+        varchar type "CALL_STAFF, BILL"
+        timestamptz created_at
+        bigint handled_by FK "null khi chưa ai nhận"
+        timestamptz handled_at "null khi chưa ai nhận"
+    }
 ```
 
 ## 7.2 Ràng buộc quan trọng
@@ -151,6 +161,8 @@ erDiagram
 | Giao dịch ngân hàng xử lý một lần | `UNIQUE (provider_txn_id)` | BR-16 |
 | Tồn không âm | `CHECK (quantity >= 0)` trên `inventory_item` | BR-19 |
 | Ngưỡng món chờ lâu hợp lệ | `CHECK (wait_alert_minutes BETWEEN 1 AND 120)` trên `restaurant_settings` | BR-28 |
+| Mỗi bàn một yêu cầu đang chờ cho mỗi loại | `CREATE UNIQUE INDEX ux_service_request_open ON service_request(table_id, type) WHERE handled_at IS NULL` | BR-29 |
+| Có người nhận thì có lúc nhận | `CHECK ((handled_by IS NULL) = (handled_at IS NULL))` trên `service_request` | BR-29 |
 | Không xoá dữ liệu đã dùng | Khoá ngoại **không** `ON DELETE CASCADE` từ `order_item` tới `menu_item`, từ `orders` tới `dining_table` | BR-18 |
 
 ## 7.3 Index cho màn hình

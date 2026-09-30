@@ -32,6 +32,11 @@ public class RealtimeEvents {
         publisher.publishEvent(new RealtimeEvent(RealtimeEvent.PAYMENT_PAID, orderId, tableId, guestToken, null));
     }
 
+    /** The calls of a table changed (FR-06.6, FR-06.7); the guest page of that table is told too. */
+    public void requestsChanged(Long tableId, String guestToken, RealtimeEvent.Alert alert) {
+        publisher.publishEvent(new RealtimeEvent(RealtimeEvent.REQUESTS_CHANGED, null, tableId, guestToken, alert));
+    }
+
     public void staffNotice(String type) {
         publisher.publishEvent(new RealtimeEvent(type, null, null, null, null));
     }

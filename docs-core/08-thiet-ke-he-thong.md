@@ -56,6 +56,9 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `GET /public/menu` | Công khai | FR-06.1 |
 | | `POST /public/tables/{qrToken}/items` | Công khai | FR-06.2, FR-06.5 |
 | | `POST /public/tables/{qrToken}/payment` | Công khai | FR-08.5 |
+| | `POST /public/tables/{qrToken}/requests` (`CALL_STAFF` hoặc `BILL`) | Công khai | FR-06.6 |
+| Khách gọi | `GET /service-requests` (đang chờ, cũ nhất trước) | WAITER, MANAGER | FR-06.6 |
+| | `POST /service-requests/{id}/take` (đã nhận) | WAITER, MANAGER | FR-06.7 |
 | Kho | `GET /inventory-items`, `POST /inventory-items`, `PUT /inventory-items/{id}` | MANAGER | FR-09.1, FR-09.4 |
 | | `POST /inventory-items/{id}/movements`, `GET /inventory-items/{id}/movements` | MANAGER | FR-09.2, FR-09.3 |
 | Báo cáo | `GET /reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD` | MANAGER | FR-10 |
@@ -69,19 +72,20 @@ Tài liệu API chạy được (Swagger UI) nằm ở `/swagger-ui.html` khi ch
 | Kênh | Ai nghe | Xác thực | Sự kiện |
 |---|---|---|---|
 | Điểm kết nối `/ws` | — | JWT trong header `Authorization` của khung `CONNECT`. Khách kết nối không cần token | — |
-| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp) |
-| `/topic/guest/{qrToken}` | Điện thoại khách ở bàn đó | Không cần | `ORDER_CHANGED`, `PAYMENT_PAID` |
+| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp), `REQUESTS_CHANGED` (khách gọi, hoặc có người nhận) |
+| `/topic/guest/{qrToken}` | Điện thoại khách ở bàn đó | Không cần | `ORDER_CHANGED`, `PAYMENT_PAID`, `REQUESTS_CHANGED` |
 | `/topic/menu` | Điện thoại khách | Không cần | `MENU_CHANGED` (có món vừa hết hoặc bán lại) |
 
 Mỗi sự kiện rất nhỏ, ví dụ `{ "type": "ORDER_CHANGED", "orderId": 12, "tableId": 5, "alert": null }`. Khi nhận, giao diện **tải lại dữ liệu** qua REST, nên dữ liệu trên màn hình luôn khớp CSDL. Backend chỉ gửi sự kiện **sau khi giao dịch CSDL đã commit** (`@TransactionalEventListener(phase = AFTER_COMMIT)`).
 
-Trường `alert` báo khi nào máy nhân viên cần **kêu** (FR-07.5). Các thay đổi khác để `null`.
+Trường `alert` báo khi nào máy nhân viên cần **kêu** (FR-07.5, FR-06.6). Các thay đổi khác để `null`.
 
 | `alert` | Khi nào | Màn hình kêu | Tiếng |
 |---|---|---|---|
 | `NEW_DISHES` | Phục vụ gửi món, hoặc xác nhận món QR (món vào bếp) | `/kitchen` | 2 tiếng, cao rồi thấp |
 | `GUEST_DISHES` | Khách gửi món qua QR, chờ xác nhận | `/tables`, `/orders/:id` | 2 tiếng, thấp rồi cao |
 | `DISH_READY` | Bếp bấm Xong | `/tables`, `/orders/:id` | 3 tiếng ngắn |
+| `SERVICE_REQUEST` | Khách bấm Gọi nhân viên hoặc Yêu cầu tính tiền; bấm lại khi chưa ai nhận thì không kêu (BR-29) | `/tables`, `/orders/:id` | 3 tiếng đi lên |
 
 Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file âm thanh. Màn hình nào kêu thì đầu trang có nút bật, tắt âm báo; lựa chọn lưu trên từng máy. Trình duyệt không cho phát tiếng khi chưa ai chạm vào trang, nên lúc đó nút hiện "Chạm để bật âm báo".
 
@@ -105,7 +109,8 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 | `/admin/payroll` | ADMIN | Bảng lương theo tháng, thưởng phạt, chốt, xuất Excel | FR-15.1 → FR-15.3, FR-15.5 |
 | `/me` | Mọi nhân viên | Vào ca, ra ca; lịch làm; công tháng này; xin nghỉ; phiếu lương | FR-13.4, FR-13.5, FR-14.1, FR-14.4, FR-15.4 |
 | `/admin/settings` | ADMIN | Nhà hàng, tài khoản nhận tiền, ngưỡng món chờ lâu | FR-11 |
-| `/q/:qrToken` | Khách | Thực đơn, giỏ, món đã gọi và trạng thái, thanh toán VietQR | FR-06, FR-08.5 |
+| `/q/:qrToken` | Khách | Thực đơn, giỏ, món đã gọi và trạng thái, thanh toán VietQR, nút Gọi nhân viên và Yêu cầu tính tiền | FR-06, FR-08.5 |
+| Đầu mọi trang nhân viên | WAITER, MANAGER | Nút chuông "Khách gọi": số bàn đang gọi; bấm vào thì hiện danh sách, số phút đã chờ, nút Đã nhận | FR-06.6, FR-06.7 |
 
 Phác thảo trang khách trên điện thoại:
 

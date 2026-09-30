@@ -97,6 +97,13 @@ Là **khách**, tôi muốn biết món của mình đang ở đâu để khỏi
 - AC1: Khi bếp đổi trạng thái thì điện thoại khách cập nhật trong ≤ 2 giây, không cần tải lại.
 - AC2: Trang chỉ hiện đơn của bàn này.
 
+### US-27 Gọi nhân viên từ bàn — FR-06.6, FR-06.7
+Là **khách**, tôi muốn gọi nhân viên hoặc xin tính tiền ngay trên điện thoại, không phải vẫy tay chờ.
+- AC1: Khi khách bấm Gọi nhân viên thì máy phục vụ đang mở sơ đồ bàn hoặc một đơn **kêu**, và yêu cầu hiện ở nút chuông đầu trang trong ≤ 2 giây.
+- AC2: Khách bấm lại khi chưa ai nhận thì không có yêu cầu mới; nút hiện "Đang chờ nhân viên".
+- AC3: Bàn chưa gọi món thì chưa xin tính tiền được.
+- AC4: Phục vụ bấm Đã nhận thì yêu cầu biến khỏi danh sách, và trang khách hiện "Nhân viên đang tới".
+
 ### US-16 Tự thanh toán chuyển khoản — FR-08.5, FR-08.4
 Là **khách**, tôi muốn tự quét VietQR để trả tiền mà không phải ra quầy.
 - AC1: Nút "Thanh toán" chỉ bật khi không còn món chờ xác nhận.

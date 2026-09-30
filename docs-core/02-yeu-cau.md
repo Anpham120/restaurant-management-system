@@ -58,6 +58,8 @@
 | FR-06.3 | Nhân viên nhận thông báo ngay; **xác nhận** (món vào bếp) hoặc **từ chối** (kèm lý do) | M | BR-10 |
 | FR-06.4 | Khách xem các món của bàn, **trạng thái từng món theo thời gian thực**, tổng tạm tính | M | BR-11 |
 | FR-06.5 | Khách gọi thêm nhiều lần khi bàn đang mở | M | BR-10 |
+| FR-06.6 | Khách bấm **Gọi nhân viên** hoặc **Yêu cầu tính tiền** trên trang QR. Máy phục vụ **kêu** và hiện yêu cầu, kèm số phút đã chờ | S | BR-29 |
+| FR-06.7 | Phục vụ bấm **Đã nhận** thì yêu cầu đóng, trang khách báo "Nhân viên đang tới". Hệ thống ghi người nhận và lúc nhận để đo thời gian phản hồi | S | BR-29 |
 
 ### FR-07 Màn hình bếp
 

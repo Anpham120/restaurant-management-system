@@ -23,6 +23,7 @@ import {
 import { api, errorMessage } from '../api/client'
 import type { RealtimeMessage, Role } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import ServiceRequestsButton from '../components/ServiceRequestsButton'
 import SoundButton from '../components/SoundButton'
 import { useRealtime } from '../realtime/useRealtime'
 import { hasRole, roleLabel } from '../utils/format'
@@ -56,7 +57,7 @@ export default function StaffLayout() {
   const [soundOn, setSoundOn] = useState(soundWanted)
 
   // One subscription for every staff screen: refetch whatever the notice touches (FR-07.3, NFR-01), and ring when
-  // this page cares about the alert (FR-07.5).
+  // this page cares about the alert (FR-07.5, FR-06.6).
   const onMessage = useCallback(
     (m: RealtimeMessage) => {
       const refresh = (...keys: unknown[][]) => keys.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
@@ -69,10 +70,14 @@ export default function StaffLayout() {
           refresh(['menu-items'], ['categories'])
           break
         case 'TABLES_CHANGED':
-          refresh(['tables'])
+          // A deleted table takes its calls with it.
+          refresh(['tables'], ['service-requests'])
           break
         case 'BANK_TRANSACTION':
           refresh(['bank-transactions'])
+          break
+        case 'REQUESTS_CHANGED':
+          refresh(['service-requests'])
           break
       }
       if (m.alert && soundOn && pageAlerts(location.pathname).includes(m.alert)) ring(m.alert)
@@ -107,6 +112,7 @@ export default function StaffLayout() {
         <Layout.Header
           style={{ background: '#fff', padding: '0 16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}
         >
+          {hasRole(user.role, 'WAITER') && <ServiceRequestsButton />}
           {pageAlerts(location.pathname).length > 0 && (
             <SoundButton
               on={soundOn}
@@ -116,11 +122,17 @@ export default function StaffLayout() {
               }}
             />
           )}
-          <Badge status={connected ? 'success' : 'warning'} text={connected ? 'Trực tuyến' : 'Đang kết nối lại'} />
+          <Badge
+            status={connected ? 'success' : 'warning'}
+            text={<span className="wide-only">{connected ? 'Trực tuyến' : 'Đang kết nối lại'}</span>}
+            title={connected ? 'Trực tuyến' : 'Đang kết nối lại'}
+          />
           <Typography.Text strong style={{ marginLeft: 8 }}>
             {user.fullName}
           </Typography.Text>
-          <Typography.Text type="secondary">({roleLabel[user.role]})</Typography.Text>
+          <Typography.Text type="secondary" className="wide-only">
+            ({roleLabel[user.role]})
+          </Typography.Text>
           <Button icon={<KeyOutlined />} onClick={() => setPasswordOpen(true)} title="Đổi mật khẩu" />
           <Button icon={<LogoutOutlined />} onClick={logout} title="Đăng xuất" />
         </Layout.Header>
