@@ -6,9 +6,9 @@ describe('pageAlerts', () => {
     expect(pageAlerts('/kitchen')).toEqual(['NEW_DISHES'])
   })
 
-  it('rings waiters for finished dishes and QR orders, on the floor plan and in an order', () => {
-    expect(pageAlerts('/tables')).toEqual(['DISH_READY', 'GUEST_DISHES'])
-    expect(pageAlerts('/orders/12')).toEqual(['DISH_READY', 'GUEST_DISHES'])
+  it('rings waiters for finished dishes, QR orders and guest calls, on the floor plan and in an order', () => {
+    expect(pageAlerts('/tables')).toEqual(['DISH_READY', 'GUEST_DISHES', 'SERVICE_REQUEST'])
+    expect(pageAlerts('/orders/12')).toEqual(['DISH_READY', 'GUEST_DISHES', 'SERVICE_REQUEST'])
   })
 
   it('keeps every other page quiet', () => {

@@ -28,7 +28,7 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-03 Thực đơn | US-04, US-13 | BR-05, 06, 18 | `/api/categories`, `/api/menu-items`; `/admin/menu`, `/kitchen` | `OrderFlowIntegrationTest`, `GuestQrIntegrationTest` |
 | FR-04 Bàn và QR | US-05 | BR-04, 09 | `/api/tables`; `/admin/tables`, `/tables` | `GuestQrIntegrationTest`, `OrderFlowIntegrationTest` |
 | FR-05 Gọi món | US-08, US-10, US-11 | BR-04 → BR-08 | `/api/orders`, `/api/order-items`; `/orders/:id` | `OrderFlowIntegrationTest`, `ItemStatusTest` |
-| FR-06 Khách gọi qua QR | US-09, US-14, US-15 | BR-09, 10, 11 | `/api/public/*`, `/topic/guest/*`; `/q/:token` | `GuestQrIntegrationTest`, `StompAuthInterceptorTest` |
+| FR-06 Khách gọi qua QR, gọi nhân viên | US-09, US-14, US-15, US-27 | BR-09, 10, 11, 29 | `/api/public/*`, `/api/service-requests`, `/topic/guest/*`; `/q/:token`, nút chuông đầu trang | `GuestQrIntegrationTest`, `StompAuthInterceptorTest`, `ServiceRequestIntegrationTest` |
 | FR-07 Màn hình bếp, âm báo | US-09, US-10, US-12 | BR-07, 10, 28 | `/api/kitchen/items`, `/topic/staff`; `/kitchen`, `/tables`, `/orders/:id` | `OrderFlowIntegrationTest`, `KitchenAlertIntegrationTest` |
 | FR-08 Thanh toán | US-16 → US-19 | BR-12 → BR-17 | `/api/orders/{id}/payments/*`, `/api/webhooks/sepay`; `/cashier` | `PaymentIntegrationTest`, `PaymentReferenceTest` |
 | FR-09 Kho | US-06 | BR-19, 20 | `/api/inventory-items`; `/admin/inventory` | `InventoryIntegrationTest` |
@@ -40,6 +40,6 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-15 Tính lương | US-25, US-26 | BR-26, 27 | `/api/payrolls`, `/api/payslips`, `/api/me/payslips`; `/admin/payroll`, `/me` | `PayCalculatorTest`, `PayrollIntegrationTest` |
 
 Kết quả lần chạy gần nhất:
-- Backend: 86 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers).
+- Backend: 89 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers).
 - Frontend: 19 test, lint và kiểm tra kiểu sạch.
-- `scripts/check-erd.mjs`, chạy trong CI: 8 migration, 18 bảng, 151 cột, 0 lệch.
+- `scripts/check-erd.mjs`, chạy trong CI: 9 migration, 19 bảng, 157 cột, 0 lệch.

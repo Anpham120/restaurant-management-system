@@ -86,7 +86,22 @@ public final class OrderDtos {
                                 boolean canPay) {
     }
 
-    /** @param order the table's open order, or null when the table is free */
-    public record GuestTableDto(String tableName, String restaurantName, GuestOrderDto order) {
+    /**
+     * @param order        the table's open order, or null when the table is free
+     * @param openRequests the table's calls that no waiter has taken yet (FR-06.6)
+     */
+    public record GuestTableDto(String tableName, String restaurantName, GuestOrderDto order,
+                                List<ServiceRequestType> openRequests) {
+    }
+
+    public record CallRequest(@NotNull ServiceRequestType type) {
+    }
+
+    public record ServiceRequestDto(Long id, Long tableId, String tableName, ServiceRequestType type,
+                                    Instant createdAt) {
+        public static ServiceRequestDto from(ServiceRequest r) {
+            return new ServiceRequestDto(r.getId(), r.getTable().getId(), r.getTable().getName(), r.getType(),
+                    r.getCreatedAt());
+        }
     }
 }

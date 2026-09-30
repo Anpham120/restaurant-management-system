@@ -1,5 +1,8 @@
 package vn.bnn.rms.order;
 
+import java.time.Instant;
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +30,7 @@ public class GuestOrderService {
     private final OrderService orderService;
     private final PaymentService payments;
     private final SettingsService settings;
+    private final ServiceRequestRepository requests;
     private final RealtimeEvents realtime;
 
     @Transactional(readOnly = true)
@@ -57,16 +61,31 @@ public class GuestOrderService {
         return payments.requestTransfer(order.getId());
     }
 
+    /** FR-06.6, BR-29: waiters' screens ring only for a new call, and the bill needs an order. */
+    @Transactional
+    public GuestTableDto call(String token, ServiceRequestType type) {
+        DiningTable table = table(token);
+        Order open = orders.findByTableIdAndStatus(table.getId(), OrderStatus.OPEN).orElse(null);
+        if (type == ServiceRequestType.BILL && open == null) {
+            throw ApiException.conflict("Bàn chưa gọi món nên chưa tính tiền được");
+        }
+        if (requests.insertOpenIfAbsent(table.getId(), type.name(), Instant.now()) > 0) {
+            realtime.requestsChanged(table.getId(), table.getQrToken(), Alert.SERVICE_REQUEST);
+        }
+        return toDto(table, open);
+    }
+
     private GuestTableDto toDto(DiningTable table, Order order) {
         String restaurantName = settings.current().getName();
+        List<ServiceRequestType> openRequests = requests.findOpenTypes(table.getId());
         if (order == null) {
-            return new GuestTableDto(table.getName(), restaurantName, null);
+            return new GuestTableDto(table.getName(), restaurantName, null, openRequests);
         }
         int pending = order.countItems(ItemStatus.PENDING);
         long total = order.total();
         boolean canPay = pending == 0 && total > 0;
         return new GuestTableDto(table.getName(), restaurantName, new GuestOrderDto(order.getId(),
-                order.getItems().stream().map(GuestItemDto::from).toList(), total, pending, canPay));
+                order.getItems().stream().map(GuestItemDto::from).toList(), total, pending, canPay), openRequests);
     }
 
     private DiningTable table(String token) {

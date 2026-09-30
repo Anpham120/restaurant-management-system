@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Empty, Flex, Modal, Result, Spin, Tabs, Typography } from 'antd'
+import { BellOutlined, FileTextOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '../api/client'
-import type { GuestTable, MenuSection, PaymentInstruction, RealtimeMessage } from '../api/types'
+import type { GuestTable, MenuSection, PaymentInstruction, RealtimeMessage, ServiceRequestType } from '../api/types'
 import CartPanel from '../components/CartPanel'
 import MenuPicker from '../components/MenuPicker'
 import StatusTag from '../components/StatusTag'
@@ -11,6 +12,12 @@ import TransferQr from '../components/TransferQr'
 import { useCart } from '../components/useCart'
 import { useRealtime } from '../realtime/useRealtime'
 import { money } from '../utils/format'
+
+/** FR-06.6: the call buttons, and what they say while the call waits for a waiter. */
+const CALL_BUTTONS: { type: ServiceRequestType; label: string; waitingLabel: string; icon: ReactNode }[] = [
+  { type: 'CALL_STAFF', label: 'Gọi nhân viên', waitingLabel: 'Đang chờ nhân viên', icon: <BellOutlined /> },
+  { type: 'BILL', label: 'Yêu cầu tính tiền', waitingLabel: 'Đang chờ tính tiền', icon: <FileTextOutlined /> },
+]
 
 /** Guest page behind the table QR code (FR-06, FR-08.5). No login, phone-first. */
 export default function GuestPage() {
@@ -62,6 +69,25 @@ export default function GuestPage() {
     onSuccess: setInstruction,
     onError: (e) => message.error(errorMessage(e)),
   })
+  const call = useMutation({
+    mutationFn: (type: ServiceRequestType) =>
+      api.post<GuestTable>(`/public/tables/${token}/requests`, { type }).then((r) => r.data),
+    onSuccess: (data, type) => {
+      queryClient.setQueryData(['guest-table', token], data)
+      message.success(type === 'BILL' ? 'Đã báo nhân viên mang hoá đơn tới' : 'Đã gọi nhân viên')
+    },
+    onError: (e) => message.error(errorMessage(e)),
+  })
+
+  // FR-06.7: a call that is no longer waiting has been taken by a waiter.
+  const openRequests = table.data?.openRequests
+  const previousRequests = useRef<ServiceRequestType[]>(undefined)
+  useEffect(() => {
+    if (openRequests && previousRequests.current?.some((t) => !openRequests.includes(t))) {
+      message.success('Nhân viên đang tới')
+    }
+    previousRequests.current = openRequests
+  }, [openRequests, message])
 
   if (table.isLoading) return <Spin fullscreen />
   if (table.isError || !table.data) {
@@ -125,6 +151,23 @@ export default function GuestPage() {
         <div style={{ fontSize: 20, fontWeight: 700 }}>Bàn {tableName}</div>
       </div>
       <div className="guest-body">
+        <Flex gap={8}>
+          {CALL_BUTTONS.map(({ type, label, waitingLabel, icon }) => {
+            const waiting = table.data.openRequests.includes(type)
+            return (
+              <Button
+                key={type}
+                icon={icon}
+                style={{ flex: 1 }}
+                disabled={waiting || (type === 'BILL' && !order)}
+                loading={call.isPending && call.variables === type}
+                onClick={() => call.mutate(type)}
+              >
+                {waiting ? waitingLabel : label}
+              </Button>
+            )
+          })}
+        </Flex>
         <Tabs
           activeKey={tab}
           onChange={setTab}

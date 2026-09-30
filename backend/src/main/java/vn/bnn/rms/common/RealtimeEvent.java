@@ -13,6 +13,7 @@ public record RealtimeEvent(String type, Long orderId, Long tableId, String gues
     public static final String MENU_CHANGED = "MENU_CHANGED";
     public static final String TABLES_CHANGED = "TABLES_CHANGED";
     public static final String BANK_TRANSACTION = "BANK_TRANSACTION";
+    public static final String REQUESTS_CHANGED = "REQUESTS_CHANGED";
 
     /** Why staff screens ring. Each screen decides which alerts it rings for. */
     public enum Alert {
@@ -21,7 +22,9 @@ public record RealtimeEvent(String type, Long orderId, Long tableId, String gues
         /** A guest sent dishes from the table QR code; they wait for a waiter. */
         GUEST_DISHES,
         /** The kitchen finished a dish. */
-        DISH_READY
+        DISH_READY,
+        /** A guest called a waiter or asked for the bill (FR-06.6). */
+        SERVICE_REQUEST
     }
 
     /** What clients actually receive. */

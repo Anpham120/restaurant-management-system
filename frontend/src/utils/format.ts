@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import type { ItemStatus, MovementType, OrderStatus, PayType, Role } from '../api/types'
+import type { ItemStatus, MovementType, OrderStatus, PayType, Role, ServiceRequestType } from '../api/types'
 
 const vnd = new Intl.NumberFormat('vi-VN')
 
@@ -53,6 +53,11 @@ export const movementLabel: Record<MovementType, string> = {
   IN: 'Nhập kho',
   OUT: 'Xuất kho',
   ADJUST: 'Kiểm kê',
+}
+
+export const requestTypeLabel: Record<ServiceRequestType, string> = {
+  CALL_STAFF: 'Gọi nhân viên',
+  BILL: 'Xin tính tiền',
 }
 
 export const payTypeLabel: Record<PayType, string> = {

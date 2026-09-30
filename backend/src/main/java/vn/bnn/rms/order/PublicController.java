@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.bnn.rms.menu.MenuDtos.MenuSectionDto;
 import vn.bnn.rms.menu.MenuService;
 import vn.bnn.rms.order.OrderDtos.AddItemsRequest;
+import vn.bnn.rms.order.OrderDtos.CallRequest;
 import vn.bnn.rms.order.OrderDtos.GuestTableDto;
 import vn.bnn.rms.payment.PaymentDtos.PaymentInstruction;
 
@@ -47,5 +48,11 @@ public class PublicController {
     @PostMapping("/tables/{token}/payment")
     public PaymentInstruction requestPayment(@PathVariable String token) {
         return guestOrderService.requestPayment(token);
+    }
+
+    /** FR-06.6: "Gọi nhân viên" or "Yêu cầu tính tiền". Tapping again while the call waits changes nothing. */
+    @PostMapping("/tables/{token}/requests")
+    public GuestTableDto call(@PathVariable String token, @Valid @RequestBody CallRequest request) {
+        return guestOrderService.call(token, request.type());
     }
 }

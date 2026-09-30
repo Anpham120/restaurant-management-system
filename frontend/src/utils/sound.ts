@@ -1,12 +1,15 @@
 import type { StaffAlert } from '../api/types'
 
 /**
- * Which alerts ring on a page (FR-07.5). The kitchen screen rings for dishes that reach it; the floor plan and the
- * order page ring for finished dishes and for dishes a guest sent from the table QR code. Other pages stay quiet.
+ * Which alerts ring on a page (FR-07.5, FR-06.6). The kitchen screen rings for dishes that reach it; the floor plan
+ * and the order page ring for finished dishes, for dishes a guest sent from the table QR code, and for guests
+ * calling a waiter. Other pages stay quiet.
  */
 export function pageAlerts(pathname: string): StaffAlert[] {
   if (pathname.startsWith('/kitchen')) return ['NEW_DISHES']
-  if (pathname.startsWith('/tables') || pathname.startsWith('/orders')) return ['DISH_READY', 'GUEST_DISHES']
+  if (pathname.startsWith('/tables') || pathname.startsWith('/orders')) {
+    return ['DISH_READY', 'GUEST_DISHES', 'SERVICE_REQUEST']
+  }
   return []
 }
 
@@ -35,6 +38,7 @@ const TONES: Record<StaffAlert, number[]> = {
   NEW_DISHES: [880, 660],
   GUEST_DISHES: [660, 880],
   DISH_READY: [988, 988, 988],
+  SERVICE_REQUEST: [523, 784, 1047],
 }
 
 let context: AudioContext | undefined
