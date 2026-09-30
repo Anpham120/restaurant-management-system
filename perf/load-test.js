@@ -68,12 +68,14 @@ export function setup() {
 }
 
 export function guest(data) {
-  const qr = pick(data.qrTokens)
+  // Each guest stays at one table. Ordering on one visit in ten keeps a table well under its 10 requests a minute
+  // (BR-30), as real guests do; a table that goes over gets 429 and counts as a failure.
+  const qr = data.qrTokens[(__VU - 1) % data.qrTokens.length]
   const table = http.get(`${BASE}/api/public/tables/${qr}`, { tags: { name: 'GET /public/tables/{qr}' } })
   check(table, { 'guest page loads': (r) => r.status === 200 })
   http.get(`${BASE}/api/public/menu`, { tags: { name: 'GET /public/menu' } })
   sleep(2 + Math.random() * 2)
-  if (Math.random() < 0.25) {
+  if (Math.random() < 0.1) {
     const line = { menuItemId: pick(data.dishIds), quantity: 1 + Math.floor(Math.random() * 2) }
     const sent = http.post(`${BASE}/api/public/tables/${qr}/items`, JSON.stringify({ items: [line] }), {
       headers: { 'Content-Type': 'application/json' },
