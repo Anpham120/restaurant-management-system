@@ -19,6 +19,7 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 | BR-06 | Chỉ gọi được món **đang bán**. Mỗi dòng có số lượng từ 1 đến 50 | `OrderService`, validation |
 | BR-07 | Trạng thái món chỉ đi tiến: **Chờ xác nhận → Chờ làm → Đang làm → Xong → Đã ra**. Bếp đổi "Chờ làm → Đang làm → Xong"; phục vụ đổi "Xong → Đã ra" | `ItemStatus.canMoveTo`, `OrderItemService` |
 | BR-08 | Huỷ món: "Chờ xác nhận" và "Chờ làm" thì **phục vụ** huỷ được; "Đang làm" và "Xong" thì chỉ **quản lý** huỷ và **bắt buộc lý do**; "Đã ra" thì không huỷ. Đơn chỉ huỷ được khi mọi món đã huỷ | `OrderItemService.cancel` |
+| BR-28 | Món **chờ lâu** khi đã vào bếp được từ số phút ngưỡng trở lên mà chưa ra bàn. Ngưỡng là số phút nguyên từ 1 đến 120, mặc định 15 | `SettingsRequest`, `CHECK` trên `restaurant_settings`; màn hình bếp tô màu |
 
 ## 5.3 Khách gọi món qua QR
 

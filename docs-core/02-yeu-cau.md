@@ -66,6 +66,8 @@
 | FR-07.1 | Bếp xem món theo 3 cột: Chờ làm, Đang làm, Xong. Mỗi món ghi bàn, số lượng, ghi chú, thời gian chờ | M | BR-07 |
 | FR-07.2 | Bếp chuyển trạng thái: Chờ làm → Đang làm → Xong | M | BR-07 |
 | FR-07.3 | Món mới hiện trên màn hình bếp trong ≤ 2 giây, không cần tải lại trang | M | — |
+| FR-07.4 | Món **chờ lâu** thì tô đỏ. Ngưỡng mặc định 15 phút, quản trị đổi ở Cài đặt | S | BR-28 |
+| FR-07.5 | **Âm báo**: màn hình bếp kêu khi có món mới vào bếp. Sơ đồ bàn và trang đơn của phục vụ kêu khi có món xong hoặc khách gửi món qua QR. Mỗi máy tự bật, tắt âm báo | S | BR-10 |
 
 ### FR-08 Thanh toán
 
@@ -102,6 +104,7 @@
 |---|---|---|---|
 | FR-11.1 | Thông tin nhà hàng: tên, địa chỉ, điện thoại | M | — |
 | FR-11.2 | Tài khoản nhận chuyển khoản: mã ngân hàng, số tài khoản, tên chủ tài khoản | M | BR-14 |
+| FR-11.3 | Ngưỡng **món chờ lâu** (số phút) cho màn hình bếp | S | BR-28 |
 
 ### FR-12 Hồ sơ nhân viên (ADMIN)
 

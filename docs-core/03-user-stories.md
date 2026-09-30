@@ -52,16 +52,18 @@ Là **phục vụ**, tôi muốn gọi món trên điện thoại để bếp nh
 - AC2: Khi gửi món thì món vào cột Chờ làm ở bếp trong ≤ 2 giây.
 - AC3: Món đang hết không chọn được.
 
-### US-09 Xác nhận đơn QR của khách — FR-06.3
+### US-09 Xác nhận đơn QR của khách — FR-06.3, FR-07.5
 Là **phục vụ**, tôi muốn kiểm tra đơn khách tự gọi trước khi vào bếp để tránh đơn nhầm hoặc đơn phá.
 - AC1: Khi khách gửi món thì sơ đồ bàn hiện dấu "chờ xác nhận" trong ≤ 2 giây.
 - AC2: Món chờ xác nhận **không hiện ở bếp**.
 - AC3: Khi xác nhận thì món vào bếp. Khi từ chối thì khách thấy lý do.
+- AC4: Máy phục vụ đang mở sơ đồ bàn hoặc một đơn thì **kêu** khi khách gửi món.
 
-### US-10 Ra món — FR-05.5
+### US-10 Ra món — FR-05.5, FR-07.5
 Là **phục vụ**, tôi muốn biết món nào đã xong để mang ra ngay.
 - AC1: Khi bếp bấm Xong thì sơ đồ bàn hiện dấu "có món xong".
 - AC2: Khi bấm Đã ra thì món biến khỏi cột Xong của bếp.
+- AC3: Khi bếp bấm Xong thì máy phục vụ đang mở sơ đồ bàn hoặc một đơn **kêu**.
 
 ### US-11 Huỷ món — FR-05.4, FR-05.6
 Là **phục vụ**, tôi muốn huỷ món khách đổi ý khi bếp chưa làm.
@@ -71,10 +73,12 @@ Là **phục vụ**, tôi muốn huỷ món khách đổi ý khi bếp chưa là
 
 ## Bếp (CHEF)
 
-### US-12 Màn hình bếp — FR-07.1 → FR-07.3
+### US-12 Màn hình bếp — FR-07.1 → FR-07.5
 Là **bếp**, tôi muốn thấy món cần làm theo thứ tự để làm đúng và đủ.
 - AC1: Món sắp theo thời gian gửi, món chờ lâu nhất ở trên.
 - AC2: Chỉ đổi trạng thái theo chiều tiến: Chờ làm → Đang làm → Xong.
+- AC3: Món chờ tới ngưỡng ở Cài đặt (mặc định 15 phút) mà chưa ra thì phiếu **tô đỏ**.
+- AC4: Có món mới vào bếp thì màn hình bếp **kêu**. Món khách gọi qua QR chỉ kêu khi phục vụ đã xác nhận.
 
 ### US-13 Báo hết món — FR-03.3
 Là **bếp**, tôi muốn báo hết món để phục vụ và khách không gọi món đó nữa.

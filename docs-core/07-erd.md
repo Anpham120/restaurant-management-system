@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V8__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V9__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration. CI chạy nó ở mỗi lần build, lệch thì build đỏ.
 
 Quy ước:
@@ -133,6 +133,7 @@ erDiagram
         varchar bank_code
         varchar bank_account_no
         varchar bank_account_name
+        int wait_alert_minutes "món chờ lâu sau số phút này, 1 đến 120"
         timestamptz updated_at
     }
 ```
@@ -149,6 +150,7 @@ erDiagram
 | Mã thanh toán duy nhất | `UNIQUE (reference)` | BR-14 |
 | Giao dịch ngân hàng xử lý một lần | `UNIQUE (provider_txn_id)` | BR-16 |
 | Tồn không âm | `CHECK (quantity >= 0)` trên `inventory_item` | BR-19 |
+| Ngưỡng món chờ lâu hợp lệ | `CHECK (wait_alert_minutes BETWEEN 1 AND 120)` trên `restaurant_settings` | BR-28 |
 | Không xoá dữ liệu đã dùng | Khoá ngoại **không** `ON DELETE CASCADE` từ `order_item` tới `menu_item`, từ `orders` tới `dining_table` | BR-18 |
 
 ## 7.3 Index cho màn hình
