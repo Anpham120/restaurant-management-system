@@ -19,8 +19,8 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.ResultActions;
 
 import vn.bnn.rms.IntegrationTest;
-import vn.bnn.rms.common.RealtimeEvent;
-import vn.bnn.rms.common.RealtimeEvent.Alert;
+import vn.bnn.rms.common.realtime.RealtimeEvent.Alert;
+import vn.bnn.rms.common.realtime.RealtimeEvent;
 
 /** US-27 and BR-29: a guest calls a waiter or asks for the bill, and one waiter takes the call. */
 @RecordApplicationEvents

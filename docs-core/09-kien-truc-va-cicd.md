@@ -41,7 +41,8 @@ flowchart LR
 .
 ├── backend/                         Spring Boot (Maven Wrapper)
 │   └── src/main/java/vn/bnn/rms/
-│       ├── common/                  lỗi chung, sự kiện realtime
+│       ├── common/                  exception/ (lỗi chung), realtime/ (sự kiện), security/ (người đăng nhập,
+│       │                            giới hạn tần suất), util/
 │       ├── config/                  Security, JWT, WebSocket
 │       ├── auth/  employee/         đăng nhập, nhân viên, hồ sơ và lương
 │       ├── menu/  table/            thực đơn, bàn và QR
@@ -60,10 +61,25 @@ flowchart LR
 └── .github/                         ci-cd.yml (pipeline), codeql.yml, load-test.yml (chạy tay), dependabot.yml
 ```
 
-Mỗi module backend chia 4 lớp giống repo tham khảo: **Controller → Service → Repository → Entity**.
-- Controller nhận request, kiểm tra quyền bằng `@PreAuthorize`.
-- Service giữ quy tắc nghiệp vụ, mở giao dịch (`@Transactional`).
-- Repository là Spring Data JPA.
+Mỗi module nghiệp vụ là một package, bên trong chia theo lớp. Ví dụ module `order`:
+
+```text
+order/
+├── controller/   OrderController, GuestOrderController (API trang QR), ServiceRequestController
+├── service/      OrderService, OrderItemService, GuestOrderService, ServiceRequestService
+├── repository/   OrderRepository, OrderItemRepository, ServiceRequestRepository
+├── entity/       Order, OrderItem, ServiceRequest
+├── dto/          OrderDtos (các record vào, ra của API)
+└── enums/        OrderStatus, OrderType, ItemStatus, ItemSource, ServiceRequestType
+```
+
+- **controller/** nhận request, kiểm tra quyền bằng `@PreAuthorize`.
+- **service/** giữ quy tắc nghiệp vụ, mở giao dịch (`@Transactional`). Các lớp tính toán riêng cũng nằm ở đây, ví dụ `PayCalculator`, `PaymentReference`, `QrTokenGenerator`.
+- **repository/** là Spring Data JPA.
+- **entity/** là các bảng của module, **dto/** là dữ liệu vào ra của API, **enums/** là các trạng thái và loại.
+- Module nào có thành phần chạy lúc khởi động thì thêm **config/**, ví dụ `employee/config/DemoAccountsInitializer`.
+
+Module không có bảng riêng thì bỏ các thư mục không dùng: `auth` và `report` chỉ có `controller/`, `service/`, `dto/`. Test tích hợp đặt ở gốc module (`order/OrderFlowIntegrationTest`); test đơn vị đặt cạnh class nó kiểm tra (`order/enums/ItemStatusTest`).
 
 ## 9.4 Bảo mật
 

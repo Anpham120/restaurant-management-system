@@ -15,8 +15,8 @@ import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 
 import vn.bnn.rms.IntegrationTest;
-import vn.bnn.rms.common.RealtimeEvent;
-import vn.bnn.rms.common.RealtimeEvent.Alert;
+import vn.bnn.rms.common.realtime.RealtimeEvent.Alert;
+import vn.bnn.rms.common.realtime.RealtimeEvent;
 
 /** P1-06: which order changes make staff screens ring (FR-07.5), and the late-dish threshold (FR-07.4, BR-28). */
 @RecordApplicationEvents

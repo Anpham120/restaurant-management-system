@@ -2,7 +2,6 @@ package vn.bnn.rms.config;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
