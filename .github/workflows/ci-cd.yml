@@ -106,7 +106,8 @@ jobs:
   # reviewers in GitHub settings). Each environment holds its own DEPLOY_* secrets and PUBLIC_URL.
   # Nothing is deployed until the repository variable DEPLOY_ENABLED is "true".
   deploy:
-    name: Deploy ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    # Static name: GitHub does not evaluate expressions in the name of a skipped job.
+    name: Deploy
     needs: images
     if: github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
