@@ -9,7 +9,12 @@ HOUR="${BACKUP_HOUR:-3}"
 
 dump() {
   file="/backups/rms-$(date +%Y-%m-%d-%H%M).dump"
-  pg_dump --format=custom --file="$file.part"
+  # Checked by hand: set -e does not stop a function called as "dump || ...", as the loop below does.
+  # Without this, a failed dump would be kept as the newest one and push a good dump out.
+  if ! pg_dump --format=custom --file="$file.part"; then
+    rm -f "$file.part"
+    return 1
+  fi
   mv "$file.part" "$file"
   ls -1t /backups/rms-*.dump | tail -n +"$((KEEP + 1))" | xargs -r rm -f
   echo "$(date '+%F %T') saved $file ($(du -h "$file" | cut -f1)), keeping the newest $KEEP"
