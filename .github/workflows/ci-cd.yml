@@ -194,13 +194,13 @@ jobs:
       - uses: actions/checkout@v7
       - name: GHCR needs a lowercase owner
         run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
-      - name: Copy compose file to the server
+      - name: Copy the compose file and the backup scripts to the server
         uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: deploy/docker-compose.prod.yml
+          source: deploy/docker-compose.prod.yml,deploy/backup.sh,deploy/restore.sh
           target: ${{ env.APP_DIR }}
           strip_components: 1
       - name: Pull the new images and restart
