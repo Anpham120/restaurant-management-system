@@ -54,9 +54,10 @@ flowchart LR
 ├── frontend/                        React + Vite
 │   └── src/ api/ auth/ realtime/ layouts/ pages/ utils/
 ├── scripts/check-erd.mjs            so ERD với migration (database-first)
+├── perf/                            kiểm thử tải k6, dữ liệu bán hàng 6 tháng để thử
 ├── docker-compose.yml               chạy toàn bộ ở máy dev
 ├── deploy/docker-compose.prod.yml   chạy trên máy chủ bằng image từ GHCR
-└── .github/                         ci-cd.yml (pipeline), codeql.yml, dependabot.yml
+└── .github/                         ci-cd.yml (pipeline), codeql.yml, load-test.yml (chạy tay), dependabot.yml
 ```
 
 Mỗi module backend chia 4 lớp giống repo tham khảo: **Controller → Service → Repository → Entity**.
@@ -132,4 +133,5 @@ flowchart LR
 | Component | Vitest + Testing Library, trình duyệt giả lập jsdom | Chọn món vào giỏ (tổng tiền, bớt món, ghi chú, món hết, đổi nhóm), giỏ tối đa 50 phần mỗi món (BR-06), mã VietQR, nhãn trạng thái món |
 | Độ phủ | JaCoCo | Backend phải chạy tới ≥ 70% số dòng, thấp hơn thì CI đỏ. Con số in ở trang kết quả của lần chạy CI, báo cáo HTML ở artifact `backend-coverage` |
 | E2E | Playwright, chạy trong CI | Kịch bản nghiệm thu ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu): khách QR, phục vụ, bếp, chuyển khoản, bàn trống; phân quyền; trang "Của tôi" |
+| Tải | k6 (`perf/load-test.js`), workflow `load-test.yml` chạy tay ở tab Actions | NFR-02: 30 người trong 2 phút (14 khách gọi món QR, 10 phục vụ, 3 bếp, 2 thu ngân, 1 quản lý xem báo cáo 30 ngày), sau khi nạp 6 tháng bán hàng. Đạt khi p95 < 500 ms và dưới 1% request lỗi |
 | Nghiệm thu | 2 trình duyệt + 1 điện thoại | Kịch bản ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu), làm tay khi demo |

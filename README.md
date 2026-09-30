@@ -114,6 +114,18 @@ docker compose -p rms-e2e down -v
 
 Tên project `rms-e2e` tách dữ liệu test khỏi dữ liệu của `docker compose up` thường. `down -v` xoá luôn dữ liệu test.
 
+Kiểm thử tải ([perf/load-test.js](perf/load-test.js), NFR-02): 30 người dùng cùng lúc trong 2 phút. Đạt khi 95% request trả lời dưới 500 ms và dưới 1% request lỗi. Trên GitHub, chạy tay ở **Actions → Load test → Run workflow**. Chạy ở máy (k6 chạy trong Docker, không cần cài):
+
+```bash
+docker compose -p rms-perf up -d --build
+# Nạp khoảng 6 tháng bán hàng, để đo trên lượng dữ liệu giống thật
+docker compose -p rms-perf exec -T db psql -U rms -d rms -v ON_ERROR_STOP=1 < perf/seed-history.sql
+docker run --rm -i -v "$PWD/perf:/perf" grafana/k6:2.3.0 run -e BASE_URL=http://host.docker.internal:8080 /perf/load-test.js
+docker compose -p rms-perf down -v
+```
+
+Trên Windows, vài request có thể hiện `max` khoảng 55 giây. Đó là do đồng hồ máy ảo của Docker Desktop nhảy, không phải server chậm; p95 và số lỗi không bị ảnh hưởng.
+
 ## Nhánh và quy trình làm việc
 
 ```text
