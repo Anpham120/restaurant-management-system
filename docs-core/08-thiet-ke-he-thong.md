@@ -18,6 +18,21 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | Nhân viên | `GET /employees`, `POST /employees`, `PUT /employees/{id}` | ADMIN | FR-02.1 |
 | | `PATCH /employees/{id}/active` | ADMIN | FR-02.2 |
 | | `POST /employees/{id}/reset-password` | ADMIN | FR-02.3 |
+| | `PUT /employees/{id}/profile` (hồ sơ, mức lương) | ADMIN | FR-12.1, FR-12.2 |
+| | `POST /employees/{id}/resign` (cho nghỉ việc) | ADMIN | FR-12.3 |
+| Xếp ca | `GET /work-shifts`, `POST /work-shifts`, `PUT /work-shifts/{id}` | MANAGER | FR-13.1 |
+| | `GET /schedule?from=`, `GET /schedule/staff`, `POST /schedule`, `DELETE /schedule/{id}` | MANAGER | FR-13.2 |
+| | `POST /schedule/copy-week` | MANAGER | FR-13.3 |
+| | `GET /me/schedule?from=&to=` | NV, lịch của mình | FR-13.4 |
+| Nghỉ phép | `GET /me/leave-requests`, `POST /me/leave-requests`, `POST /me/leave-requests/{id}/cancel` | NV, đơn của mình | FR-13.5 |
+| | `GET /leave-requests?status=`, `POST /leave-requests/{id}/approve`, `POST /leave-requests/{id}/reject` | MANAGER | FR-13.5, FR-13.6 |
+| Chấm công | `GET /me/attendance/status`, `POST /me/attendance/check-in`, `POST /me/attendance/check-out` | NV | FR-14.1, FR-14.2 |
+| | `GET /me/attendance?from=&to=` | NV, công của mình | FR-14.4 |
+| | `GET /attendance?from=&to=&employeeId=`, `POST /attendance`, `PUT /attendance/{id}` | MANAGER | FR-14.3 |
+| Lương | `GET /payrolls`, `POST /payrolls`, `GET /payrolls/{id}`, `POST /payrolls/{id}/recalculate` | ADMIN | FR-15.1 |
+| | `POST /payslips/{id}/adjustments`, `DELETE /pay-adjustments/{id}` | ADMIN | FR-15.2 |
+| | `POST /payrolls/{id}/finalize` | ADMIN | FR-15.3 |
+| | `GET /me/payslips`, `GET /me/payslips/{id}` | NV, phiếu đã chốt của mình | FR-15.4 |
 | Thực đơn | `GET /categories`, `GET /menu-items` | NV | FR-03 |
 | | `POST`, `PUT /{id}`, `DELETE /{id}` trên `/categories` và `/menu-items` | MANAGER | FR-03.1, FR-03.2 |
 | | `PATCH /menu-items/{id}/availability` | MANAGER, CHEF | FR-03.3 |
@@ -73,7 +88,12 @@ Mỗi sự kiện rất nhỏ, ví dụ `{ "type": "ORDER_CHANGED", "orderId": 1
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
 | `/admin/inventory` | MANAGER | Nguyên liệu, nhập, xuất, kiểm kê, lịch sử | FR-09 |
 | `/admin/reports` | MANAGER | Doanh thu, theo phương thức, top món | FR-10 |
-| `/admin/employees` | ADMIN | Nhân viên, khoá, đặt lại mật khẩu | FR-02 |
+| `/admin/employees` | ADMIN | Nhân viên, hồ sơ và mức lương, cho nghỉ việc, khoá, đặt lại mật khẩu | FR-02, FR-12 |
+| `/admin/schedule` | MANAGER | Lịch tuần theo người, xếp và gỡ ca, chép lịch tuần trước, ca mẫu | FR-13.1 → FR-13.3 |
+| `/admin/attendance` | MANAGER | Bảng công theo ngày và người, sửa hoặc thêm bản ghi kèm lý do | FR-14.3 |
+| `/admin/leave` | MANAGER | Đơn nghỉ chờ duyệt, duyệt, từ chối | FR-13.5, FR-13.6 |
+| `/admin/payroll` | ADMIN | Bảng lương theo tháng, thưởng phạt, chốt, xuất Excel | FR-15.1 → FR-15.3, FR-15.5 |
+| `/me` | Mọi nhân viên | Vào ca, ra ca; lịch làm; công tháng này; xin nghỉ; phiếu lương | FR-13.4, FR-13.5, FR-14.1, FR-14.4, FR-15.4 |
 | `/admin/settings` | ADMIN | Nhà hàng và tài khoản nhận tiền | FR-11 |
 | `/q/:qrToken` | Khách | Thực đơn, giỏ, món đã gọi và trạng thái, thanh toán VietQR | FR-06, FR-08.5 |
 

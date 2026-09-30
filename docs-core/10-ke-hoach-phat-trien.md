@@ -56,7 +56,7 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 | P2-08 | **Nghỉ phép**: gửi đơn, quản lý duyệt, gỡ ca đã xếp | FR-13.5, 13.6 | M | S | Bảng `leave_request` |
 | P2-09 | **Bảng lương tháng**: tính từ chấm công, thưởng phạt, chốt, phiếu lương, xuất Excel | FR-15 | L | M | Bảng `payroll`, `payslip`, `pay_adjustment` |
 
-P2-05 → P2-09 là phần **nhân sự**, thêm theo yêu cầu của môn. Yêu cầu nằm ở tài liệu 02 (FR-12 → FR-15, không phải bản mở rộng). CSDL đã thiết kế ở [tài liệu 07, mục 7.5](07-erd.md#75-nhân-sự-thiết-kế-cho-migration-mới).
+P2-05 → P2-09 là phần **nhân sự**, thêm theo yêu cầu của môn. Yêu cầu nằm ở tài liệu 02 (FR-12 → FR-15, không phải bản mở rộng), CSDL ở [tài liệu 07, mục 7.5](07-erd.md#75-nhân-sự). **Đã làm xong** cả 5 việc (issue #35 → #39), trước lịch.
 
 ### Giai đoạn 3 — Chất lượng, bảo mật, hiệu năng (sprint 6)
 
@@ -114,7 +114,7 @@ Bảng việc nằm trên GitHub: mỗi sprint là một [milestone](https://git
 ## 10.5 Quy trình làm một tính năng (Definition of Done)
 
 1. **Tài liệu trước**: thêm hoặc sửa FR (02), user story và AC (03), quy tắc (05). Đổi CSDL thì **sửa ERD (07) trước**.
-2. **Migration mới** `V{n}__<tên>.sql`, **không sửa** migration đã chạy. Script đối chiếu ERD với SQL phải báo 0 lệch. Nhiều người cùng thêm migration thì số `n` chốt lúc merge: nếu `develop` đã có số đó thì đổi tên file lên số kế tiếp.
+2. **Migration mới** `V{n}__<tên>.sql`, **không sửa** migration đã chạy. `node scripts/check-erd.mjs` phải báo 0 lệch; CI cũng chạy script này. Nhiều người cùng thêm migration thì số `n` chốt lúc merge: nếu `develop` đã có số đó thì đổi tên file lên số kế tiếp.
 3. Backend có test tích hợp cho từng AC; frontend có test cho phần tính toán.
 4. Tạo nhánh `feature/<mã>-<tên>` từ `develop`, mở PR vào `develop`. CI xanh và 1 người review thì merge. Đụng service của người khác thì người đó review (mục 10.7).
 5. Thử trên staging, rồi đánh dấu xong trên bảng việc.
@@ -141,7 +141,7 @@ Theo yêu cầu của môn, mỗi người giữ **một service** và làm cả
 | Bàn và đặt bàn | totototototoads | `table` | `/tables`, `/admin/tables` | P1-01, P4-01; tuỳ chọn P4-02 |
 | Thanh toán | buidaoducanh1210 | `payment`, `settings` | `/cashier`, `/admin/settings` | P0-03, P1-02, P1-03, P1-04, P2-01; P1-07 nếu còn sức; tuỳ chọn P4-03 |
 | Thực đơn, kho, báo cáo | Tanh2k8-123 | `menu`, `inventory`, `report` | `/admin/menu`, `/admin/inventory`, `/admin/reports` | P2-02, P2-03, P2-04 |
-| Nhân sự | quanghieu1605 | `auth`, `employee` và các bảng nhân sự mới | `/login`, `/admin/employees` và các màn nhân sự mới | P2-05 → P2-09; P3-02 nếu còn sức |
+| Nhân sự | quanghieu1605 | `auth`, `employee`, `schedule`, `attendance`, `leave`, `payroll` | `/login`, `/me`, `/admin/employees`, `/admin/schedule`, `/admin/attendance`, `/admin/leave`, `/admin/payroll` | P2-05 → P2-09 (đã xong); P3-02 nếu còn sức |
 | Hạ tầng (dùng chung) | Anpham120 | `config`, `common`, Docker, CI/CD | — | P0-01, P0-02, P0-05, P3-03, P3-04, P3-05 |
 
 Phần nhân sự nhiều việc, nên service Nhân sự chỉ giữ tài khoản và nhân sự. Ba phần khác chuyển đi:

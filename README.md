@@ -5,6 +5,7 @@
 - **Bếp:** màn hình bếp cập nhật **theo thời gian thực**, khách thấy trạng thái từng món trên điện thoại.
 - **Thanh toán:** tiền mặt, hoặc **chuyển khoản VietQR tự xác nhận** qua webhook SePay.
 - **Quản lý:** kho nguyên liệu, báo cáo doanh thu, quản lý tài khoản nhân viên.
+- **Nhân sự:** hồ sơ và mức lương, xếp ca, chấm công vào/ra ca, nghỉ phép, bảng lương tháng. Mỗi nhân viên có trang "Của tôi" để chấm công, xem lịch, xin nghỉ và xem phiếu lương.
 
 | Thành phần | Công nghệ |
 |---|---|
@@ -88,11 +89,13 @@ Nối SePay thật:
 ## Kiểm thử
 
 ```bash
+node scripts/check-erd.mjs
 cd backend && ./mvnw verify
 cd frontend && npm run lint && npm test && npm run build
 ```
 
-Test backend chạy với PostgreSQL thật qua Testcontainers, nên cần Docker đang chạy.
+- `scripts/check-erd.mjs` so ERD trong [docs-core/07-erd.md](docs-core/07-erd.md) với các migration Flyway (database-first). CI chạy lệnh này trước khi build backend.
+- Test backend chạy với PostgreSQL thật qua Testcontainers, nên cần Docker đang chạy.
 
 ## Nhánh và quy trình làm việc
 
