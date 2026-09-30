@@ -88,6 +88,7 @@ classDiagram
         String bankCode
         String bankAccountNo
         String bankAccountName
+        int waitAlertMinutes
     }
     Category "1" --> "0..*" MenuItem
     DiningTable "1" --> "0..*" Order : tối đa 1 đơn mở

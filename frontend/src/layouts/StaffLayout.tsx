@@ -23,8 +23,10 @@ import {
 import { api, errorMessage } from '../api/client'
 import type { RealtimeMessage, Role } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import SoundButton from '../components/SoundButton'
 import { useRealtime } from '../realtime/useRealtime'
 import { hasRole, roleLabel } from '../utils/format'
+import { pageAlerts, ring, setSoundWanted, soundWanted } from '../utils/sound'
 
 /** role null: every signed-in employee. */
 const NAV: { key: string; label: string; icon: ReactNode; role: Role | null }[] = [
@@ -51,8 +53,10 @@ export default function StaffLayout() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
   const [passwordOpen, setPasswordOpen] = useState(false)
+  const [soundOn, setSoundOn] = useState(soundWanted)
 
-  // One subscription for every staff screen: refetch whatever the notice touches (FR-07.3, NFR-01).
+  // One subscription for every staff screen: refetch whatever the notice touches (FR-07.3, NFR-01), and ring when
+  // this page cares about the alert (FR-07.5).
   const onMessage = useCallback(
     (m: RealtimeMessage) => {
       const refresh = (...keys: unknown[][]) => keys.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
@@ -71,8 +75,9 @@ export default function StaffLayout() {
           refresh(['bank-transactions'])
           break
       }
+      if (m.alert && soundOn && pageAlerts(location.pathname).includes(m.alert)) ring(m.alert)
     },
-    [queryClient],
+    [queryClient, soundOn, location.pathname],
   )
   const connected = useRealtime(user ? ['/topic/staff'] : [], onMessage, token)
 
@@ -102,6 +107,15 @@ export default function StaffLayout() {
         <Layout.Header
           style={{ background: '#fff', padding: '0 16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}
         >
+          {pageAlerts(location.pathname).length > 0 && (
+            <SoundButton
+              on={soundOn}
+              onChange={(on) => {
+                setSoundWanted(on)
+                setSoundOn(on)
+              }}
+            />
+          )}
           <Badge status={connected ? 'success' : 'warning'} text={connected ? 'Trực tuyến' : 'Đang kết nối lại'} />
           <Typography.Text strong style={{ marginLeft: 8 }}>
             {user.fullName}

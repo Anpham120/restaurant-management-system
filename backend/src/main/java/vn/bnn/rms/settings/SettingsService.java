@@ -35,6 +35,7 @@ public class SettingsService {
         s.setBankCode(request.bankCode());
         s.setBankAccountNo(request.bankAccountNo());
         s.setBankAccountName(request.bankAccountName());
+        s.setWaitAlertMinutes(request.waitAlertMinutes());
         s.setUpdatedAt(Instant.now());
         return SettingsDto.from(s);
     }

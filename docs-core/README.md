@@ -29,17 +29,17 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-04 Bàn và QR | US-05 | BR-04, 09 | `/api/tables`; `/admin/tables`, `/tables` | `GuestQrIntegrationTest`, `OrderFlowIntegrationTest` |
 | FR-05 Gọi món | US-08, US-10, US-11 | BR-04 → BR-08 | `/api/orders`, `/api/order-items`; `/orders/:id` | `OrderFlowIntegrationTest`, `ItemStatusTest` |
 | FR-06 Khách gọi qua QR | US-09, US-14, US-15 | BR-09, 10, 11 | `/api/public/*`, `/topic/guest/*`; `/q/:token` | `GuestQrIntegrationTest`, `StompAuthInterceptorTest` |
-| FR-07 Màn hình bếp | US-12 | BR-07 | `/api/kitchen/items`, `/topic/staff`; `/kitchen` | `OrderFlowIntegrationTest` |
+| FR-07 Màn hình bếp, âm báo | US-09, US-10, US-12 | BR-07, 10, 28 | `/api/kitchen/items`, `/topic/staff`; `/kitchen`, `/tables`, `/orders/:id` | `OrderFlowIntegrationTest`, `KitchenAlertIntegrationTest` |
 | FR-08 Thanh toán | US-16 → US-19 | BR-12 → BR-17 | `/api/orders/{id}/payments/*`, `/api/webhooks/sepay`; `/cashier` | `PaymentIntegrationTest`, `PaymentReferenceTest` |
 | FR-09 Kho | US-06 | BR-19, 20 | `/api/inventory-items`; `/admin/inventory` | `InventoryIntegrationTest` |
 | FR-10 Báo cáo | US-07 | BR-21 | `/api/reports/summary`; `/admin/reports` | `ReportIntegrationTest` |
-| FR-11 Cài đặt | — | BR-14 | `/api/settings`; `/admin/settings` | Kiểm tra thủ công |
+| FR-11 Cài đặt | US-12 | BR-14, 28 | `/api/settings`; `/admin/settings` | `KitchenAlertIntegrationTest` (ngưỡng món chờ lâu), phần còn lại kiểm tra thủ công |
 | FR-12 Hồ sơ nhân viên | US-20 | BR-22 | `/api/employees/{id}/profile`, `/resign`; `/admin/employees` | `EmployeeProfileIntegrationTest` |
 | FR-13 Xếp ca, nghỉ phép | US-21, US-22 | BR-23, 24 | `/api/work-shifts`, `/api/schedule`, `/api/leave-requests`, `/api/me/*`; `/admin/schedule`, `/admin/leave`, `/me` | `ScheduleIntegrationTest`, `LeaveIntegrationTest` |
 | FR-14 Chấm công | US-23, US-24 | BR-25, 27 | `/api/me/attendance/*`, `/api/attendance`; `/me`, `/admin/attendance` | `AttendanceIntegrationTest` |
 | FR-15 Tính lương | US-25, US-26 | BR-26, 27 | `/api/payrolls`, `/api/payslips`, `/api/me/payslips`; `/admin/payroll`, `/me` | `PayCalculatorTest`, `PayrollIntegrationTest` |
 
 Kết quả lần chạy gần nhất:
-- Backend: 83 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers).
-- Frontend: 16 test, lint và kiểm tra kiểu sạch.
-- `scripts/check-erd.mjs`, chạy trong CI: 7 migration, 18 bảng, 150 cột, 0 lệch.
+- Backend: 86 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers).
+- Frontend: 19 test, lint và kiểm tra kiểu sạch.
+- `scripts/check-erd.mjs`, chạy trong CI: 8 migration, 18 bảng, 151 cột, 0 lệch.

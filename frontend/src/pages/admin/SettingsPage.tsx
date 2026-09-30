@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Form, Input, Spin, Typography } from 'antd'
+import { App, Button, Card, Form, Input, InputNumber, Spin, Typography } from 'antd'
 import { api, errorMessage } from '../../api/client'
 import type { Settings } from '../../api/types'
 
-/** FR-11: restaurant details and the bank account used for VietQR. */
+/** FR-11: restaurant details, the bank account used for VietQR, and when a kitchen dish is late. */
 export default function SettingsPage() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
@@ -51,6 +51,15 @@ export default function SettingsPage() {
           </Form.Item>
           <Form.Item name="bankAccountName" label="Tên chủ tài khoản" rules={[{ max: 100 }]}>
             <Input placeholder="VIẾT HOA KHÔNG DẤU" />
+          </Form.Item>
+          <Typography.Title level={5}>Bếp</Typography.Title>
+          <Form.Item
+            name="waitAlertMinutes"
+            label="Tô đỏ món chờ từ (phút)"
+            extra="Tính từ lúc món vào bếp, từ 1 đến 120 phút"
+            rules={[{ required: true }]}
+          >
+            <InputNumber min={1} max={120} precision={0} />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={save.isPending}>
             Lưu

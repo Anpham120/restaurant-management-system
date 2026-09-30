@@ -37,6 +37,10 @@ public class RestaurantSettings {
 
     private String bankAccountName;
 
+    /** A dish this many minutes in the kitchen is late and shown in red (BR-28). */
+    @Column(nullable = false)
+    private int waitAlertMinutes = 15;
+
     @Column(nullable = false)
     private Instant updatedAt = Instant.now();
 

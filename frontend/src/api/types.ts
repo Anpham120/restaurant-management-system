@@ -215,6 +215,8 @@ export interface Settings {
   bankCode: string | null
   bankAccountNo: string | null
   bankAccountName: string | null
+  /** A dish this many minutes in the kitchen is shown in red (BR-28). */
+  waitAlertMinutes: number
 }
 
 export interface WorkShift {
@@ -328,8 +330,12 @@ export interface MyPayslip {
   netAmount: number
 }
 
+/** Why staff screens ring (FR-07.5): dishes reached the kitchen, a guest sent dishes, a dish is ready. */
+export type StaffAlert = 'NEW_DISHES' | 'GUEST_DISHES' | 'DISH_READY'
+
 export interface RealtimeMessage {
   type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION'
   orderId: number | null
   tableId: number | null
+  alert: StaffAlert | null
 }

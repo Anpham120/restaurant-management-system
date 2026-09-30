@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import vn.bnn.rms.common.ApiException;
 import vn.bnn.rms.common.CurrentUser;
+import vn.bnn.rms.common.RealtimeEvent.Alert;
 import vn.bnn.rms.common.RealtimeEvents;
 import vn.bnn.rms.employee.Role;
 import vn.bnn.rms.order.OrderDtos.KitchenItemDto;
@@ -42,7 +43,7 @@ public class OrderItemService {
         }
         OrderItem item = items.findById(itemId).orElseThrow(() -> ApiException.notFound("Không tìm thấy món"));
         item.moveTo(next);
-        publish(item.getOrder());
+        publish(item.getOrder(), next == ItemStatus.READY ? Alert.DISH_READY : null);
         return OrderItemDto.from(item);
     }
 
@@ -77,11 +78,11 @@ public class OrderItemService {
         if (wasBillable) {
             payments.cancelPendingTransfers(orderId);
         }
-        publish(order);
+        publish(order, null);
         return OrderItemDto.from(item);
     }
 
-    private void publish(Order order) {
-        realtime.orderChanged(order.getId(), order.tableId(), order.guestToken());
+    private void publish(Order order, Alert alert) {
+        realtime.orderChanged(order.getId(), order.tableId(), order.guestToken(), alert);
     }
 }
