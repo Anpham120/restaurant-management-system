@@ -148,7 +148,7 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | Mã | Yêu cầu | Cách kiểm tra |
 |---|---|---|
 | NFR-01 | Cập nhật realtime (bếp, phục vụ, khách, thu ngân) ≤ 2 giây | Demo hai trình duyệt; đo thời gian |
-| NFR-02 | API trả lời ≤ 500 ms (p95) với 30 người dùng cùng lúc | Đo bằng k6 hoặc JMeter trước khi nộp |
+| NFR-02 | API trả lời ≤ 500 ms (p95) với 30 người dùng cùng lúc | k6 (`perf/load-test.js`) sau khi nạp 6 tháng bán hàng; workflow Load test chạy tay trên GitHub |
 | NFR-03 | Mật khẩu băm **BCrypt**. API dùng **JWT**. Triển khai thật phải có **HTTPS** | Xem mã, kiểm tra cấu hình |
 | NFR-04 | Webhook chỉ nhận khi header `Authorization: Apikey …` đúng | Test tích hợp |
 | NFR-05 | API công khai chỉ trả dữ liệu **của bàn có mã QR đó**, không lộ thông tin nhân viên | Test tích hợp |
