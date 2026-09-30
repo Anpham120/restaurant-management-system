@@ -3,6 +3,7 @@ package vn.bnn.rms;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -125,6 +126,21 @@ public abstract class IntegrationTest {
                         "payRate", payRate))
                 .andExpect(status().isCreated());
         return new EmployeeRef(readLong(created, "$.id"), username);
+    }
+
+    /** A new shift template; times as "HH:mm". */
+    protected long newWorkShift(String start, String end) throws Exception {
+        return readLong(post("/api/work-shifts", as("quanly"),
+                        Map.of("name", unique("Ca"), "startTime", start, "endTime", end))
+                        .andExpect(status().isCreated()),
+                "$.id");
+    }
+
+    protected long assign(long employeeId, long workShiftId, LocalDate day) throws Exception {
+        return readLong(post("/api/schedule", as("quanly"),
+                        Map.of("employeeId", employeeId, "workShiftId", workShiftId, "workDate", day.toString()))
+                        .andExpect(status().isCreated()),
+                "$.id");
     }
 
     protected TableRef newTable() throws Exception {

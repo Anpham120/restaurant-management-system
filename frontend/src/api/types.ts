@@ -214,6 +214,31 @@ export interface Settings {
   bankAccountName: string | null
 }
 
+export interface WorkShift {
+  id: number
+  name: string
+  startTime: string
+  endTime: string
+  active: boolean
+}
+
+export interface StaffMember {
+  id: number
+  fullName: string
+  role: Role
+}
+
+export interface ShiftAssignment {
+  id: number
+  employeeId: number
+  employeeName: string
+  workShiftId: number
+  shiftName: string
+  workDate: string
+  startTime: string
+  endTime: string
+}
+
 export interface RealtimeMessage {
   type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION'
   orderId: number | null
