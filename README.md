@@ -96,6 +96,8 @@ cd frontend && npm run lint && npm test && npm run build
 
 - `scripts/check-erd.mjs` so ERD trong [docs-core/07-erd.md](docs-core/07-erd.md) với các migration Flyway (database-first). CI chạy lệnh này trước khi build backend.
 - Test backend chạy với PostgreSQL thật qua Testcontainers, nên cần Docker đang chạy.
+- `./mvnw verify` đo độ phủ bằng JaCoCo và báo lỗi khi test chạy tới dưới 70% số dòng. Báo cáo nằm ở `backend/target/site/jacoco/index.html`.
+- Test frontend gồm cả test component (Testing Library), chạy trong trình duyệt giả lập jsdom.
 
 Test E2E ([e2e/](e2e/tests/acceptance.spec.ts)) chạy kịch bản nghiệm thu trên trình duyệt thật, với cả ứng dụng dựng bằng Docker Compose:
 - Khách gọi món qua QR, phục vụ xác nhận, bếp làm.

@@ -68,6 +68,8 @@ P2-05 → P2-09 là phần **nhân sự**, thêm theo yêu cầu của môn. Yê
 | P3-04 | Test component cho frontend (Testing Library); đo độ phủ backend bằng JaCoCo, mục tiêu ≥ 70% | M | S |
 | P3-05 | Log JSON, số liệu Actuator; cảnh báo khi webhook SePay lỗi liên tục | S | C |
 
+P3-04 **đã làm xong** (issue #22), trước lịch. Lúc bật JaCoCo, test backend chạy tới 83,2% số dòng; từ nay CI đỏ nếu dưới 70%. Test component phủ phần chọn món vào giỏ, mã VietQR và nhãn trạng thái món.
+
 ### Giai đoạn 4 — Mở rộng, chọn theo thời gian còn lại (sprint 7)
 
 | Mã | Việc | Nguồn | Công sức | Ưu tiên |
