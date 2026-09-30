@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   analyze:
-    name: CodeQL - ${{ matrix.language }}
+    name: CodeQL - ${{ matrix.name }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -23,7 +23,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [java-kotlin, javascript-typescript]
+        # language is CodeQL's own id: java-kotlin is its one analyzer for Java and Kotlin (this project has only
+        # Java), javascript-typescript reads the TypeScript frontend. name is what the check is called on GitHub.
+        include:
+          - language: java-kotlin
+            name: Java
+          - language: javascript-typescript
+            name: TypeScript
     steps:
       - uses: actions/checkout@v7
       # No build needed: CodeQL reads the Java and TypeScript sources directly.
