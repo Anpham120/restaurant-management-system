@@ -97,6 +97,21 @@ cd frontend && npm run lint && npm test && npm run build
 - `scripts/check-erd.mjs` so ERD trong [docs-core/07-erd.md](docs-core/07-erd.md) với các migration Flyway (database-first). CI chạy lệnh này trước khi build backend.
 - Test backend chạy với PostgreSQL thật qua Testcontainers, nên cần Docker đang chạy.
 
+Test E2E ([e2e/](e2e/tests/acceptance.spec.ts)) chạy kịch bản nghiệm thu trên trình duyệt thật, với cả ứng dụng dựng bằng Docker Compose:
+- Khách gọi món qua QR, phục vụ xác nhận, bếp làm.
+- Khách chuyển khoản, hệ thống tự xác nhận, bàn trống.
+- Mỗi vai trò chỉ làm được việc của mình.
+
+CI chạy test này ở mỗi PR. Chạy ở máy:
+
+```bash
+docker compose -p rms-e2e up -d --build
+cd e2e && npm ci && npx playwright install chromium && npx playwright test
+docker compose -p rms-e2e down -v
+```
+
+Tên project `rms-e2e` tách dữ liệu test khỏi dữ liệu của `docker compose up` thường. `down -v` xoá luôn dữ liệu test.
+
 ## Nhánh và quy trình làm việc
 
 ```text
