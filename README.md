@@ -96,6 +96,23 @@ cd frontend && npm run lint && npm test && npm run build
 
 - `scripts/check-erd.mjs` so ERD trong [docs-core/07-erd.md](docs-core/07-erd.md) với các migration Flyway (database-first). CI chạy lệnh này trước khi build backend.
 - Test backend chạy với PostgreSQL thật qua Testcontainers, nên cần Docker đang chạy.
+- `./mvnw verify` đo độ phủ bằng JaCoCo và báo lỗi khi test chạy tới dưới 70% số dòng. Báo cáo nằm ở `backend/target/site/jacoco/index.html`.
+- Test frontend gồm cả test component (Testing Library), chạy trong trình duyệt giả lập jsdom.
+
+Test E2E ([e2e/](e2e/tests/acceptance.spec.ts)) chạy kịch bản nghiệm thu trên trình duyệt thật, với cả ứng dụng dựng bằng Docker Compose:
+- Khách gọi món qua QR, phục vụ xác nhận, bếp làm.
+- Khách chuyển khoản, hệ thống tự xác nhận, bàn trống.
+- Mỗi vai trò chỉ làm được việc của mình.
+
+CI chạy test này ở mỗi PR. Chạy ở máy:
+
+```bash
+docker compose -p rms-e2e up -d --build
+cd e2e && npm ci && npx playwright install chromium && npx playwright test
+docker compose -p rms-e2e down -v
+```
+
+Tên project `rms-e2e` tách dữ liệu test khỏi dữ liệu của `docker compose up` thường. `down -v` xoá luôn dữ liệu test.
 
 ## Nhánh và quy trình làm việc
 
@@ -149,3 +166,21 @@ File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
    - [`codeql.yml`](.github/workflows/codeql.yml) phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
    - Sau khi build image, Trivy quét 2 image.
    - [`dependabot.yml`](.github/dependabot.yml) mở PR cập nhật thư viện mỗi tuần vào `develop`.
+
+## Sao lưu và khôi phục
+
+Trên máy chủ, dịch vụ `backup` sao lưu CSDL mỗi đêm vào thư mục `backups/` cạnh file compose (mặc định 3 giờ sáng, giữ 7 bản). Pipeline chép sẵn [deploy/backup.sh](deploy/backup.sh) và [deploy/restore.sh](deploy/restore.sh) lên máy chủ. Chạy các lệnh sau trong `~/bnn-rms` (hoặc `~/bnn-rms-staging`):
+
+```bash
+# Sao lưu ngay, ví dụ trước khi deploy bản lớn
+docker compose -f docker-compose.prod.yml exec backup sh /backup.sh now
+ls -lh backups/
+
+# Thử khôi phục vào CSDL tạm: in số dòng từng bảng, không đụng dữ liệu thật
+sh restore.sh --check backups/rms-2026-10-05-0300.dump
+
+# Khôi phục thật: thay CSDL đang chạy bằng bản sao lưu, có hỏi xác nhận
+sh restore.sh backups/rms-2026-10-05-0300.dump
+```
+
+Nên chép thư mục `backups/` ra ngoài máy chủ định kỳ (ổ khác, Google Drive...): mất máy chủ là mất luôn bản sao lưu nằm trên đó.

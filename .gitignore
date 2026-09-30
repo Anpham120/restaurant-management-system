@@ -2,10 +2,16 @@
 backend/target/
 frontend/node_modules/
 frontend/dist/
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
 
 # Secrets
 .env
 deploy/.env
+
+# Database dumps, if the server compose file is ever run from this folder
+deploy/backups/
 
 # Editors
 .idea/

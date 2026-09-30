@@ -46,5 +46,27 @@ services:
       # Staging on the same server uses another port, e.g. HTTP_PORT=8080.
       - "${HTTP_PORT:-80}:80"
 
+  # P0-04: a dump of the database every night at BACKUP_HOUR (Vietnam time), the newest BACKUP_KEEP kept in
+  # ./backups next to this file. Restore with restore.sh. Copy ./backups off the server now and then as well:
+  # a lost server takes its backups with it.
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    entrypoint: ["sh", "/backup.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: rms
+      PGDATABASE: rms
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      BACKUP_KEEP: ${BACKUP_KEEP:-7}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   db-data:
