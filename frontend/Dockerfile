@@ -1,5 +1,5 @@
 # Build stage on glibc (Debian): npm does not install lightningcss' musl binary on Alpine.
-FROM node:24-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
