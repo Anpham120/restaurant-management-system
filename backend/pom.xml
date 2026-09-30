@@ -148,6 +148,13 @@
 			<artifactId>testcontainers-postgresql</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- ArchitectureTest: every class in the sub-package of its layer (doc 09, section 9.3). -->
+		<dependency>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit-junit5</artifactId>
+			<version>1.5.1</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

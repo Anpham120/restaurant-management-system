@@ -18,7 +18,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import vn.bnn.rms.payment.dto.PaymentDtos.SepayWebhookRequest;
 import vn.bnn.rms.payment.enums.MatchStatus;
 
 /** A bank movement reported by SePay. Kept even when it matches nothing, so a cashier can check it. */
@@ -64,16 +63,17 @@ public class BankTransaction {
     @Column(nullable = false, updatable = false)
     private Instant receivedAt = Instant.now();
 
-    public static BankTransaction from(SepayWebhookRequest request) {
+    /** A movement as the bank reported it. Texts longer than their columns are cut; no type means "unknown". */
+    public static BankTransaction received(String providerTxnId, String gateway, String accountNumber, long amount,
+                                           String content, String code, String transferType) {
         BankTransaction tx = new BankTransaction();
-        tx.providerTxnId = String.valueOf(request.id());
-        tx.gateway = cut(request.gateway(), 50);
-        tx.accountNumber = cut(request.accountNumber(), 30);
-        tx.amount = request.transferAmount() == null ? 0 : request.transferAmount();
-        tx.content = cut(request.content(), 500);
-        tx.code = cut(request.code(), 50);
-        tx.transferType = request.transferType() == null ? "unknown"
-                : cut(request.transferType().toLowerCase(Locale.ROOT), 10);
+        tx.providerTxnId = providerTxnId;
+        tx.gateway = cut(gateway, 50);
+        tx.accountNumber = cut(accountNumber, 30);
+        tx.amount = amount;
+        tx.content = cut(content, 500);
+        tx.code = cut(code, 50);
+        tx.transferType = transferType == null ? "unknown" : cut(transferType.toLowerCase(Locale.ROOT), 10);
         return tx;
     }
 
