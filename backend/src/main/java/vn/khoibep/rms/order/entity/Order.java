@@ -22,6 +22,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import vn.khoibep.rms.order.enums.AdjustmentStatus;
 import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
 import vn.khoibep.rms.order.enums.OrderType;
@@ -67,13 +68,33 @@ public class Order {
     @OrderBy("id")
     private List<OrderItem> items = new ArrayList<>();
 
+    /** Discounts and dishes given free, in every status (BR-35). */
+    @OneToMany(mappedBy = "order")
+    @OrderBy("id")
+    private List<Adjustment> adjustments = new ArrayList<>();
+
     public boolean isOpen() {
         return status == OrderStatus.OPEN;
     }
 
-    /** BR-12: sum of confirmed, not cancelled dishes. */
-    public long total() {
+    /** BR-12: sum of confirmed, not cancelled dishes, before any discount. */
+    public long subtotal() {
         return items.stream().filter(i -> i.getStatus().isBillable()).mapToLong(OrderItem::lineTotal).sum();
+    }
+
+    /** BR-35: what the adjustments in effect take off. */
+    public long discountTotal() {
+        return adjustments.stream().filter(Adjustment::isInEffect).mapToLong(Adjustment::getAmount).sum();
+    }
+
+    /** BR-12: what the guest pays, never below zero. */
+    public long total() {
+        return Math.max(0, subtotal() - discountTotal());
+    }
+
+    /** BR-13: a bill is not paid while a manager has a discount on it to decide. */
+    public int countPendingAdjustments() {
+        return (int) adjustments.stream().filter(a -> a.getStatus() == AdjustmentStatus.PENDING).count();
     }
 
     public boolean hasBillableItems() {

@@ -10,9 +10,13 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import vn.khoibep.rms.order.entity.Adjustment;
 import vn.khoibep.rms.order.entity.Order;
 import vn.khoibep.rms.order.entity.OrderItem;
 import vn.khoibep.rms.order.entity.ServiceRequest;
+import vn.khoibep.rms.order.enums.AdjustmentReason;
+import vn.khoibep.rms.order.enums.AdjustmentStatus;
+import vn.khoibep.rms.order.enums.AdjustmentType;
 import vn.khoibep.rms.order.enums.ItemSource;
 import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
@@ -45,6 +49,32 @@ public final class OrderDtos {
     public record CancelRequest(@Size(max = 300) String reason) {
     }
 
+    /**
+     * FR-08.10: {@code orderItemId} for a dish given free (COMP), {@code amount} for a discount on the whole bill.
+     */
+    public record AdjustmentRequest(@NotNull AdjustmentType type,
+                                    Long orderItemId,
+                                    @Min(1) @Max(100_000_000) Long amount,
+                                    @NotNull AdjustmentReason reason,
+                                    @Size(max = 300) String note) {
+    }
+
+    /** @param itemName the dish given free and its quantity; null for a discount on the whole bill */
+    public record AdjustmentDto(Long id, Long orderId, String tableName, AdjustmentType type, Long orderItemId,
+                                String itemName, long amount, AdjustmentReason reason, String note,
+                                AdjustmentStatus status, String createdByName, Instant createdAt,
+                                String decidedByName, Instant decidedAt) {
+        public static AdjustmentDto from(Adjustment a) {
+            Order o = a.getOrder();
+            OrderItem item = a.getItem();
+            return new AdjustmentDto(a.getId(), o.getId(), o.getTable() == null ? null : o.getTable().getName(),
+                    a.getType(), item == null ? null : item.getId(),
+                    item == null ? null : item.getItemName() + " x" + item.getQuantity(), a.getAmount(),
+                    a.getReason(), a.getNote(), a.getStatus(), a.getCreatedBy().getFullName(), a.getCreatedAt(),
+                    a.getDecidedBy() == null ? null : a.getDecidedBy().getFullName(), a.getDecidedAt());
+        }
+    }
+
     public record OrderItemDto(Long id, Long menuItemId, String itemName, long unitPrice, int quantity, String note,
                                ItemStatus status, ItemSource source, String cancelReason, Instant createdAt,
                                Instant sentAt, Instant updatedAt) {
@@ -60,15 +90,18 @@ public final class OrderDtos {
      * @param unservedCount dishes still in the kitchen or waiting to be served
      */
     public record OrderDto(Long id, OrderType type, OrderStatus status, Long tableId, String tableName,
-                           Integer guestCount, String note, Instant openedAt, Instant closedAt, long total,
-                           int pendingCount, int unservedCount, List<OrderItemDto> items) {
+                           Integer guestCount, String note, Instant openedAt, Instant closedAt, long subtotal,
+                           long discountTotal, long total, int pendingCount, int unservedCount,
+                           int pendingAdjustmentCount, List<OrderItemDto> items, List<AdjustmentDto> adjustments) {
         public static OrderDto from(Order o) {
             int unserved = o.countItems(ItemStatus.WAITING) + o.countItems(ItemStatus.COOKING)
                     + o.countItems(ItemStatus.READY);
             return new OrderDto(o.getId(), o.getType(), o.getStatus(), o.tableId(),
                     o.getTable() == null ? null : o.getTable().getName(), o.getGuestCount(), o.getNote(),
-                    o.getOpenedAt(), o.getClosedAt(), o.total(), o.countItems(ItemStatus.PENDING), unserved,
-                    o.getItems().stream().map(OrderItemDto::from).toList());
+                    o.getOpenedAt(), o.getClosedAt(), o.subtotal(), o.discountTotal(), o.total(),
+                    o.countItems(ItemStatus.PENDING), unserved, o.countPendingAdjustments(),
+                    o.getItems().stream().map(OrderItemDto::from).toList(),
+                    o.getAdjustments().stream().map(AdjustmentDto::from).toList());
         }
     }
 
@@ -91,8 +124,9 @@ public final class OrderDtos {
         }
     }
 
-    public record GuestOrderDto(Long orderId, List<GuestItemDto> items, long total, int pendingCount,
-                                boolean canPay) {
+    /** @param discountTotal what the discounts in effect take off; total is what is left to pay (FR-08.10) */
+    public record GuestOrderDto(Long orderId, List<GuestItemDto> items, long discountTotal, long total,
+                                int pendingCount, boolean canPay) {
     }
 
     /**

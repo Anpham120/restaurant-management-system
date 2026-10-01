@@ -97,6 +97,17 @@ classDiagram
         String bankAccountName
         int waitAlertMinutes
     }
+    class Adjustment {
+        Long id
+        AdjustmentType type
+        long amount
+        AdjustmentReason reason
+        String note
+        AdjustmentStatus status
+        Instant createdAt
+        Instant decidedAt
+        isInEffect() boolean
+    }
     class AuditEntry {
         Long id
         AuditAction action
@@ -121,6 +132,10 @@ classDiagram
     Employee "0..1" --> "0..*" ServiceRequest : nhận
     Employee "1" --> "0..*" AuditEntry : thực hiện
     Order "0..1" --> "0..*" AuditEntry : liên quan
+    Order "1" *-- "0..*" Adjustment : giảm giá
+    OrderItem "0..1" --> "0..*" Adjustment : tặng
+    Employee "1" --> "0..*" Adjustment : tạo
+    Employee "0..1" --> "0..*" Adjustment : duyệt
 ```
 
 Các kiểu liệt kê:
@@ -138,7 +153,10 @@ Các kiểu liệt kê:
 | `MatchStatus` | `MATCHED`, `UNMATCHED`, `IGNORED` (tiền ra) |
 | `MovementType` | `IN` (nhập), `OUT` (xuất), `ADJUST` (kiểm kê) |
 | `ServiceRequestType` | `CALL_STAFF` (gọi nhân viên), `BILL` (xin tính tiền) |
-| `AuditAction` | `ITEM_CANCELLED` (huỷ hoặc từ chối món), `MANUAL_CONFIRMATION` (xác nhận tay chuyển khoản), `PRICE_CHANGED` (đổi giá món) |
+| `AuditAction` | `ITEM_CANCELLED` (huỷ hoặc từ chối món), `MANUAL_CONFIRMATION` (xác nhận tay chuyển khoản), `PRICE_CHANGED` (đổi giá món), `DISCOUNT_GIVEN` (giảm giá, tặng món có hiệu lực) |
+| `AdjustmentType` | `DISCOUNT` (giảm một số tiền trên cả bill), `COMP` (tặng nguyên một dòng món) |
+| `AdjustmentReason` | `WAIT` (chờ lâu), `FOOD_QUALITY` (lỗi món), `STAFF_ERROR` (lỗi nhân viên), `PROMOTION` (khuyến mãi), `OTHER` (khác, phải ghi chú) |
+| `AdjustmentStatus` | `PENDING` (chờ duyệt), `APPLIED` (có hiệu lực), `REJECTED` (bị từ chối), `CANCELLED` (đã huỷ) |
 | `PayType` (nhân sự) | `HOURLY` (theo giờ), `MONTHLY` (theo tháng) |
 | `LeaveType` (nhân sự) | `PAID` (có lương), `UNPAID` (không lương) |
 | `LeaveStatus` (nhân sự) | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
@@ -211,6 +229,8 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Huỷ món Đang làm hoặc Xong | ✅ | ✅ | | | |
 | Xem bill, in phiếu tạm tính | ✅ | ✅ | ✅ | | ✅ |
 | Thu tiền, tạo VietQR, xác nhận tay, in phiếu thanh toán | ✅ | ✅ | | | ✅ |
+| Giảm giá, tặng món (trong hạn mức thì có hiệu lực ngay) | ✅ | ✅ | | | ✅ |
+| Duyệt giảm giá vượt hạn mức | ✅ | ✅ | | | |
 | Kho | ✅ | ✅ | | | |
 | Báo cáo | ✅ | ✅ | | | |
 | Xem nhật ký thao tác | ✅ | ✅ | | | |

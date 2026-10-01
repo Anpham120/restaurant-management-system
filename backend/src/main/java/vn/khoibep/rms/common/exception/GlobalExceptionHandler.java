@@ -75,6 +75,8 @@ public class GlobalExceptionHandler {
             detail = "Thực nhận không được âm";
         } else if (message.contains("foreign key")) {
             detail = "Dữ liệu đang được sử dụng nên không xoá được";
+        } else if (message.contains("ux_adjustment_comp_item")) {
+            detail = "Món này đã được tặng";
         } else if (message.contains("duplicate key")) {
             detail = "Dữ liệu bị trùng";
         } else {

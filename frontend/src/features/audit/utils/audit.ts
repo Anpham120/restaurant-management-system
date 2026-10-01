@@ -5,6 +5,7 @@ export const auditActionLabel: Record<AuditAction, string> = {
   ITEM_CANCELLED: 'Huỷ món',
   MANUAL_CONFIRMATION: 'Xác nhận tay',
   PRICE_CHANGED: 'Đổi giá',
+  DISCOUNT_GIVEN: 'Giảm giá',
 }
 
 /** The raw before and after of a line in words: an item status, or a price. Empty when the action has none. */

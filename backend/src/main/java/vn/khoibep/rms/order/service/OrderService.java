@@ -19,6 +19,7 @@ import vn.khoibep.rms.order.dto.OrderDtos.AddItemsRequest;
 import vn.khoibep.rms.order.dto.OrderDtos.CreateOrderRequest;
 import vn.khoibep.rms.order.dto.OrderDtos.ItemLine;
 import vn.khoibep.rms.order.dto.OrderDtos.OrderDto;
+import vn.khoibep.rms.order.entity.Adjustment;
 import vn.khoibep.rms.order.entity.Order;
 import vn.khoibep.rms.order.entity.OrderItem;
 import vn.khoibep.rms.order.enums.ItemSource;
@@ -109,6 +110,8 @@ public class OrderService {
             throw ApiException.conflict("Chỉ huỷ được đơn khi mọi món đã huỷ");
         }
         payments.cancelPendingTransfers(orderId);
+        // BR-35: nothing is left for a manager to decide on a cancelled order.
+        order.getAdjustments().stream().filter(Adjustment::isOpen).forEach(Adjustment::cancel);
         order.close(OrderStatus.CANCELLED);
         publish(order);
         return OrderDto.from(order);

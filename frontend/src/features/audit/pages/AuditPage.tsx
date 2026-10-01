@@ -7,9 +7,14 @@ import type { AuditAction, AuditEntry } from '@/shared/api/types'
 import { money, time } from '@/shared/utils/format'
 import { auditActionLabel, auditChange, auditOrder } from '../utils/audit'
 
-const ACTION_COLOR: Record<AuditAction, string> = { ITEM_CANCELLED: 'red', MANUAL_CONFIRMATION: 'gold', PRICE_CHANGED: 'blue' }
+const ACTION_COLOR: Record<AuditAction, string> = {
+  ITEM_CANCELLED: 'red',
+  MANUAL_CONFIRMATION: 'gold',
+  PRICE_CHANGED: 'blue',
+  DISCOUNT_GIVEN: 'green',
+}
 
-/** FR-16: who cancelled dishes, confirmed transfers by hand or changed prices (BR-34). Read only. */
+/** FR-16: who cancelled dishes, confirmed transfers by hand, changed prices or gave discounts (BR-34). Read only. */
 export default function AuditPage() {
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(6, 'day'), dayjs()])
   const [action, setAction] = useState<AuditAction | undefined>()

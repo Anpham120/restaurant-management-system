@@ -16,6 +16,7 @@ import vn.khoibep.rms.common.security.CurrentUser;
 import vn.khoibep.rms.employee.enums.Role;
 import vn.khoibep.rms.order.dto.OrderDtos.KitchenItemDto;
 import vn.khoibep.rms.order.dto.OrderDtos.OrderItemDto;
+import vn.khoibep.rms.order.entity.Adjustment;
 import vn.khoibep.rms.order.entity.Order;
 import vn.khoibep.rms.order.entity.OrderItem;
 import vn.khoibep.rms.order.enums.ItemStatus;
@@ -87,6 +88,8 @@ public class OrderItemService {
         // BR-34: who cancelled which dish, and how far it had gone.
         audit.record(AuditAction.ITEM_CANCELLED, order, item.getItemName() + " x" + item.getQuantity(), before.name(),
                 ItemStatus.CANCELLED.name(), item.getUnitPrice() * item.getQuantity(), why);
+        // BR-35: a dish given free and then cancelled takes nothing off the bill any more.
+        order.getAdjustments().stream().filter(a -> a.isOpen() && a.gives(item)).forEach(Adjustment::cancel);
         if (wasBillable) {
             payments.cancelPendingTransfers(orderId);
         }
