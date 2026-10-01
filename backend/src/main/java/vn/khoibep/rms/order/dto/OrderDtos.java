@@ -22,6 +22,7 @@ import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
 import vn.khoibep.rms.order.enums.OrderType;
 import vn.khoibep.rms.order.enums.ServiceRequestType;
+import vn.khoibep.rms.table.entity.DiningTable;
 
 public final class OrderDtos {
 
@@ -49,6 +50,10 @@ public final class OrderDtos {
     public record CancelRequest(@Size(max = 300) String reason) {
     }
 
+    /** BR-36: the tables the order should hold, the first being the main one. */
+    public record MoveTablesRequest(@NotEmpty @Size(max = 10) List<@NotNull Long> tableIds) {
+    }
+
     /**
      * FR-08.10: {@code orderItemId} for a dish given free (COMP), {@code amount} for a discount on the whole bill.
      */
@@ -67,7 +72,7 @@ public final class OrderDtos {
         public static AdjustmentDto from(Adjustment a) {
             Order o = a.getOrder();
             OrderItem item = a.getItem();
-            return new AdjustmentDto(a.getId(), o.getId(), o.getTable() == null ? null : o.getTable().getName(),
+            return new AdjustmentDto(a.getId(), o.getId(), o.tableLabel(),
                     a.getType(), item == null ? null : item.getId(),
                     item == null ? null : item.getItemName() + " x" + item.getQuantity(), a.getAmount(),
                     a.getReason(), a.getNote(), a.getStatus(), a.getCreatedBy().getFullName(), a.getCreatedAt(),
@@ -89,15 +94,16 @@ public final class OrderDtos {
      * @param pendingCount  guest dishes waiting for confirmation
      * @param unservedCount dishes still in the kitchen or waiting to be served
      */
-    public record OrderDto(Long id, OrderType type, OrderStatus status, Long tableId, String tableName,
-                           Integer guestCount, String note, Instant openedAt, Instant closedAt, long subtotal,
-                           long discountTotal, long total, int pendingCount, int unservedCount,
+    public record OrderDto(Long id, OrderType type, OrderStatus status, Long tableId, List<Long> tableIds,
+                           String tableName, Integer guestCount, String note, Instant openedAt, Instant closedAt,
+                           long subtotal, long discountTotal, long total, int pendingCount, int unservedCount,
                            int pendingAdjustmentCount, List<OrderItemDto> items, List<AdjustmentDto> adjustments) {
         public static OrderDto from(Order o) {
             int unserved = o.countItems(ItemStatus.WAITING) + o.countItems(ItemStatus.COOKING)
                     + o.countItems(ItemStatus.READY);
             return new OrderDto(o.getId(), o.getType(), o.getStatus(), o.tableId(),
-                    o.getTable() == null ? null : o.getTable().getName(), o.getGuestCount(), o.getNote(),
+                    o.activeTables().stream().map(DiningTable::getId).toList(), o.tableLabel(), o.getGuestCount(),
+                    o.getNote(),
                     o.getOpenedAt(), o.getClosedAt(), o.subtotal(), o.discountTotal(), o.total(),
                     o.countItems(ItemStatus.PENDING), unserved, o.countPendingAdjustments(),
                     o.getItems().stream().map(OrderItemDto::from).toList(),
@@ -110,7 +116,7 @@ public final class OrderDtos {
         public static KitchenItemDto from(OrderItem i) {
             Order o = i.getOrder();
             return new KitchenItemDto(i.getId(), o.getId(), o.getType(),
-                    o.getTable() == null ? null : o.getTable().getName(), i.getItemName(), i.getQuantity(),
+                    o.tableLabel(), i.getItemName(), i.getQuantity(),
                     i.getNote(), i.getStatus(), i.getSentAt(), i.getUpdatedAt());
         }
     }

@@ -3,6 +3,8 @@ package vn.khoibep.rms.order.entity;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -21,6 +23,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import vn.khoibep.rms.order.enums.AdjustmentStatus;
 import vn.khoibep.rms.order.enums.ItemStatus;
@@ -68,6 +71,12 @@ public class Order {
     @OrderBy("id")
     private List<OrderItem> items = new ArrayList<>();
 
+    /** Every table the order holds or held (BR-36); loaded in batches for the floor plan. */
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @OrderBy("id")
+    @BatchSize(size = 50)
+    private List<OrderTable> tableLinks = new ArrayList<>();
+
     /** Discounts and dishes given free, in every status (BR-35). */
     @OneToMany(mappedBy = "order")
     @OrderBy("id")
@@ -114,17 +123,57 @@ public class Order {
         items.add(item);
     }
 
+    /** BR-36: a closed order gives back every table it held. */
     public void close(OrderStatus finalStatus) {
         status = finalStatus;
         closedAt = Instant.now();
+        tableLinks.stream().filter(OrderTable::isActive).forEach(l -> l.release(closedAt));
     }
 
+    /** The main table: the first one the order holds. Null for takeaway. */
     public Long tableId() {
         return table == null ? null : table.getId();
     }
 
-    /** QR token of the table, used to notify the guest page. */
-    public String guestToken() {
-        return table == null ? null : table.getQrToken();
+    /** BR-04: the tables the order holds now, the main one first. */
+    public List<DiningTable> activeTables() {
+        return tableLinks.stream().filter(OrderTable::isActive).map(OrderTable::getTable).toList();
+    }
+
+    /** "B05 + B06" for tables put together; the main table once the order has closed. */
+    public String tableLabel() {
+        List<DiningTable> held = activeTables();
+        if (held.isEmpty()) {
+            return table == null ? null : table.getName();
+        }
+        return held.stream().map(DiningTable::getName).collect(Collectors.joining(" + "));
+    }
+
+    /** QR tokens of the tables the order holds, so the guest pages at all of them are notified. */
+    public List<String> guestTokens() {
+        return activeTables().stream().map(DiningTable::getQrToken).toList();
+    }
+
+    /** FR-05.1: an order opened at a table holds it. */
+    public void hold(DiningTable diningTable) {
+        if (table == null) {
+            table = diningTable;
+        }
+        tableLinks.add(new OrderTable(this, diningTable, Instant.now()));
+    }
+
+    /**
+     * BR-36: the order now holds exactly {@code wanted}, the first being the main table. Tables left out are given
+     * back, new ones are taken, the bill does not change.
+     */
+    public void moveTo(List<DiningTable> wanted) {
+        Instant now = Instant.now();
+        Set<Long> keep = wanted.stream().map(DiningTable::getId).collect(Collectors.toSet());
+        tableLinks.stream().filter(l -> l.isActive() && !keep.contains(l.getTable().getId()))
+                .forEach(l -> l.release(now));
+        Set<Long> held = activeTables().stream().map(DiningTable::getId).collect(Collectors.toSet());
+        wanted.stream().filter(t -> !held.contains(t.getId()))
+                .forEach(t -> tableLinks.add(new OrderTable(this, t, now)));
+        table = wanted.getFirst();
     }
 }

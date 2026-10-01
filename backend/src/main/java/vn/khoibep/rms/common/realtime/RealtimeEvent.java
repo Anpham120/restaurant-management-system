@@ -1,12 +1,15 @@
 package vn.khoibep.rms.common.realtime;
 
+import java.util.List;
+
 /**
  * Small change notice pushed over STOMP after commit. Clients refetch over REST when they receive it.
  *
- * @param guestToken QR token of the table, so the guest page of that table is notified too; never sent to clients
- * @param alert      set when staff screens should ring (FR-07.5), otherwise null
+ * @param guestTokens QR tokens of the tables concerned, so their guest pages are notified too (several when tables
+ *                    are put together, BR-36); never sent to clients
+ * @param alert       set when staff screens should ring (FR-07.5), otherwise null
  */
-public record RealtimeEvent(String type, Long orderId, Long tableId, String guestToken, Alert alert) {
+public record RealtimeEvent(String type, Long orderId, Long tableId, List<String> guestTokens, Alert alert) {
 
     public static final String ORDER_CHANGED = "ORDER_CHANGED";
     public static final String PAYMENT_PAID = "PAYMENT_PAID";

@@ -1,9 +1,8 @@
 package vn.khoibep.rms.table.service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,12 +30,13 @@ public class TableService {
     private final RealtimeEvents realtime;
     private final AppProperties props;
 
-    /** Floor plan: state is derived from open orders, never stored (BR-04). */
+    /** Floor plan: state is derived from open orders, never stored (BR-04); tables put together share one order. */
     @Transactional(readOnly = true)
     public List<TableDto> list() {
-        Map<Long, Order> openByTable = orders.findWithItemsByStatus(OrderStatus.OPEN).stream()
-                .filter(o -> o.getTable() != null)
-                .collect(Collectors.toMap(Order::tableId, Function.identity()));
+        Map<Long, Order> openByTable = new HashMap<>();
+        for (Order order : orders.findWithItemsByStatus(OrderStatus.OPEN)) {
+            order.activeTables().forEach(t -> openByTable.put(t.getId(), order));
+        }
         return tables.findAllByOrderByAreaAscNameAsc().stream()
                 .map(t -> toDto(t, openByTable.get(t.getId())))
                 .toList();
@@ -69,7 +69,7 @@ public class TableService {
     /** BR-18: a table with order history is kept. */
     @Transactional
     public void delete(Long id) {
-        if (orders.existsByTableId(id)) {
+        if (orders.tableEverHeld(id)) {
             throw ApiException.conflict("Bàn đã có đơn, không xoá được");
         }
         tables.delete(get(id));
@@ -89,11 +89,11 @@ public class TableService {
         String qrUrl = props.publicBaseUrl() + "/q/" + t.getQrToken();
         if (open == null) {
             return new TableDto(t.getId(), t.getName(), t.getArea(), t.getSeats(), t.getQrToken(), qrUrl,
-                    "AVAILABLE", null, null, 0, 0);
+                    "AVAILABLE", null, null, 0, 0, null);
         }
         return new TableDto(t.getId(), t.getName(), t.getArea(), t.getSeats(), t.getQrToken(), qrUrl,
                 "OCCUPIED", open.getId(), open.getGuestCount(), open.countItems(ItemStatus.PENDING),
-                open.countItems(ItemStatus.READY));
+                open.countItems(ItemStatus.READY), open.activeTables().size() > 1 ? open.tableLabel() : null);
     }
 
     private void apply(DiningTable table, TableRequest request) {

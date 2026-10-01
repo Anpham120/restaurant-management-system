@@ -34,6 +34,7 @@ const ORDER: Order = {
   type: 'DINE_IN',
   status: 'OPEN',
   tableId: 5,
+  tableIds: [5],
   tableName: 'B05',
   guestCount: 2,
   note: null,

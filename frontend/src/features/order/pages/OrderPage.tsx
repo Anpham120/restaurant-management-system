@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Col, Flex, Input, Modal, Popconfirm, Result, Row, Spin, Table, Tag, Typography } from 'antd'
-import { ArrowLeftOutlined, PrinterOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PrinterOutlined, SwapOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
 import type { MenuItem, Order, OrderItem, Settings } from '@/shared/api/types'
 import { useAuth } from '@/features/auth/context/AuthContext'
@@ -10,6 +10,7 @@ import BillSlip from '@/features/payment/components/BillSlip'
 import { usePrintSlip } from '@/shared/print/usePrintSlip'
 import CartPanel from '../components/CartPanel'
 import MenuPicker, { toSections } from '../components/MenuPicker'
+import MoveTablesModal from '../components/MoveTablesModal'
 import StatusTag from '../components/StatusTag'
 import { useCart } from '../hooks/useCart'
 import { hasRole, money, orderStatusLabel } from '@/shared/utils/format'
@@ -24,6 +25,7 @@ export default function OrderPage() {
   const cart = useCart()
   const [cancelling, setCancelling] = useState<OrderItem | null>(null)
   const [reason, setReason] = useState('')
+  const [moving, setMoving] = useState(false)
 
   const order = useQuery({
     queryKey: ['order', orderId],
@@ -105,6 +107,11 @@ export default function OrderPage() {
           <Typography.Title level={4} style={{ margin: 0 }}>
             {money(o.total)}
           </Typography.Title>
+          {o.type === 'DINE_IN' && (
+            <Button icon={<SwapOutlined />} onClick={() => setMoving(true)}>
+              Chuyển, ghép bàn
+            </Button>
+          )}
           {/* FR-08.9: the bill guests check before paying. */}
           <Button icon={<PrinterOutlined />} onClick={() => printer.print(<BillSlip order={o} settings={settings.data} />)}>
             In tạm tính
@@ -216,6 +223,16 @@ export default function OrderPage() {
           onChange={(e) => setReason(e.target.value)}
         />
       </Modal>
+      {moving && (
+        <MoveTablesModal
+          order={o}
+          onClose={() => setMoving(false)}
+          onMoved={(moved) => {
+            onOrder(moved)
+            queryClient.invalidateQueries({ queryKey: ['tables'] })
+          }}
+        />
+      )}
       {printer.area}
     </>
   )

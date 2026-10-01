@@ -98,6 +98,6 @@ public class OrderItemService {
     }
 
     private void publish(Order order, Alert alert) {
-        realtime.orderChanged(order.getId(), order.tableId(), order.guestToken(), alert);
+        realtime.orderChanged(order.getId(), order.tableId(), order.guestTokens(), alert);
     }
 }
