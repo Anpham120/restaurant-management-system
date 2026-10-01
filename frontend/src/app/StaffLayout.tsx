@@ -1,16 +1,19 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { App, Badge, Button, Drawer, Form, Input, Layout, Menu, Modal, Spin, Typography } from 'antd'
+import { App, Badge, Button, Divider, Drawer, Form, Input, Layout, Menu, Modal, Popconfirm, Spin, Typography } from 'antd'
 import {
   AccountBookOutlined,
+  AuditOutlined,
   BarChartOutlined,
   BookOutlined,
   CalendarOutlined,
+  CarryOutOutlined,
   CoffeeOutlined,
   DollarOutlined,
   FieldTimeOutlined,
   FireOutlined,
+  IdcardOutlined,
   InboxOutlined,
   KeyOutlined,
   LogoutOutlined,
@@ -20,11 +23,13 @@ import {
   TableOutlined,
   TeamOutlined,
   UserOutlined,
+  WalletOutlined,
 } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
-import type { RealtimeMessage, Role } from '@/shared/api/types'
+import type { LoginResponse, RealtimeMessage, Role } from '@/shared/api/types'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import ServiceRequestsButton from '@/features/order/components/ServiceRequestsButton'
+import ApprovalsButton from '@/features/payment/components/ApprovalsButton'
 import SoundButton from '@/features/order/components/SoundButton'
 import { useRealtime } from '@/shared/realtime/useRealtime'
 import { hasRole, roleLabel } from '@/shared/utils/format'
@@ -33,12 +38,16 @@ import { pageAlerts, ring, setSoundWanted, soundWanted } from '@/features/order/
 /** role null: every signed-in employee. */
 const NAV: { key: string; label: string; icon: ReactNode; role: Role | null }[] = [
   { key: '/tables', label: 'Sơ đồ bàn', icon: <TableOutlined />, role: 'WAITER' },
+  { key: '/reservations', label: 'Đặt bàn', icon: <CarryOutOutlined />, role: 'WAITER' },
   { key: '/kitchen', label: 'Bếp', icon: <FireOutlined />, role: 'CHEF' },
   { key: '/cashier', label: 'Thu ngân', icon: <DollarOutlined />, role: 'CASHIER' },
   { key: '/admin/menu', label: 'Thực đơn', icon: <BookOutlined />, role: 'MANAGER' },
   { key: '/admin/tables', label: 'Bàn và QR', icon: <QrcodeOutlined />, role: 'MANAGER' },
   { key: '/admin/inventory', label: 'Kho', icon: <InboxOutlined />, role: 'MANAGER' },
+  { key: '/admin/customers', label: 'Khách hàng', icon: <IdcardOutlined />, role: 'MANAGER' },
   { key: '/admin/reports', label: 'Báo cáo', icon: <BarChartOutlined />, role: 'MANAGER' },
+  { key: '/admin/audit', label: 'Nhật ký', icon: <AuditOutlined />, role: 'MANAGER' },
+  { key: '/admin/cash-shifts', label: 'Ca két', icon: <WalletOutlined />, role: 'MANAGER' },
   { key: '/admin/schedule', label: 'Xếp ca', icon: <CalendarOutlined />, role: 'MANAGER' },
   { key: '/admin/attendance', label: 'Chấm công', icon: <FieldTimeOutlined />, role: 'MANAGER' },
   { key: '/admin/leave', label: 'Nghỉ phép', icon: <CoffeeOutlined />, role: 'MANAGER' },
@@ -49,7 +58,7 @@ const NAV: { key: string; label: string; icon: ReactNode; role: Role | null }[] 
 ]
 
 export default function StaffLayout() {
-  const { user, token, loading, logout } = useAuth()
+  const { user, token, loading, logout, replaceToken } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -86,6 +95,12 @@ export default function StaffLayout() {
         case 'WEBHOOK_STATUS':
           refresh(['webhook-status'])
           break
+        case 'ADJUSTMENTS_CHANGED':
+          refresh(['adjustments'])
+          break
+        case 'RESERVATIONS_CHANGED':
+          refresh(['reservations'])
+          break
       }
       if (m.alert && soundOn && pageAlerts(location.pathname).includes(m.alert)) ring(m.alert)
     },
@@ -101,9 +116,21 @@ export default function StaffLayout() {
 
   const changePassword = async (values: { currentPassword: string; newPassword: string }) => {
     try {
-      await api.post('/auth/change-password', values)
-      message.success('Đã đổi mật khẩu')
+      // BR-41: the other devices are signed out; this one goes on with the new token.
+      const res = await api.post<LoginResponse>('/auth/change-password', values)
+      replaceToken(res.data.token)
+      message.success('Đã đổi mật khẩu. Các máy khác phải đăng nhập lại.')
       setPasswordOpen(false)
+    } catch (e) {
+      message.error(errorMessage(e))
+    }
+  }
+
+  /** FR-01.7: every session ends, this one too. */
+  const logoutEverywhere = async () => {
+    try {
+      await api.post('/auth/logout-all')
+      logout()
     } catch (e) {
       message.error(errorMessage(e))
     }
@@ -141,6 +168,7 @@ export default function StaffLayout() {
             <Button icon={<MenuOutlined />} onClick={() => setMenuOpen(true)} title="Menu" style={{ marginRight: 'auto' }} />
           )}
           {hasRole(user.role, 'WAITER') && <ServiceRequestsButton />}
+          {hasRole(user.role, 'MANAGER') && <ApprovalsButton />}
           {pageAlerts(location.pathname).length > 0 && (
             <SoundButton
               on={soundOn}
@@ -161,7 +189,7 @@ export default function StaffLayout() {
           <Typography.Text type="secondary" className="wide-only">
             ({roleLabel[user.role]})
           </Typography.Text>
-          <Button icon={<KeyOutlined />} onClick={() => setPasswordOpen(true)} title="Đổi mật khẩu" />
+          <Button icon={<KeyOutlined />} onClick={() => setPasswordOpen(true)} title="Mật khẩu, đăng xuất mọi thiết bị" />
           <Button icon={<LogoutOutlined />} onClick={logout} title="Đăng xuất" />
         </Layout.Header>
         <Layout.Content style={{ padding: 16 }}>
@@ -176,10 +204,18 @@ export default function StaffLayout() {
           <Form.Item name="newPassword" label="Mật khẩu mới" rules={[{ required: true, min: 6, message: 'Ít nhất 6 ký tự' }]}>
             <Input.Password />
           </Form.Item>
+          <Typography.Paragraph type="secondary">Đổi mật khẩu thì các máy khác đang đăng nhập phải đăng nhập lại.</Typography.Paragraph>
           <Button type="primary" htmlType="submit" block>
             Lưu
           </Button>
         </Form>
+        <Divider />
+        <Typography.Paragraph>Mất điện thoại, hoặc quên đăng xuất ở máy khác?</Typography.Paragraph>
+        <Popconfirm title="Đăng xuất mọi thiết bị, cả máy này?" okText="Đăng xuất" cancelText="Không" onConfirm={logoutEverywhere}>
+          <Button danger block>
+            Đăng xuất mọi thiết bị
+          </Button>
+        </Popconfirm>
       </Modal>
     </Layout>
   )

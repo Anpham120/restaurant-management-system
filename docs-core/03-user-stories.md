@@ -22,6 +22,13 @@ Là **quản trị**, tôi muốn khoá tài khoản người đã nghỉ để 
 - AC1: Khi khoá tài khoản đang đăng nhập thì yêu cầu kế tiếp của người đó bị từ chối (401).
 - AC2: Nhân viên không có nút xoá, chỉ có khoá và mở khoá.
 
+### US-36 Thu hồi phiên đăng nhập — FR-01.6, FR-01.7
+Là **nhân viên**, tôi muốn đổi mật khẩu hoặc đăng xuất mọi thiết bị, để không ai dùng được phiên cũ, ví dụ khi mất điện thoại.
+- AC1: Đổi mật khẩu ở máy A thì máy B đang đăng nhập bị từ chối (401) ở yêu cầu kế tiếp và về trang đăng nhập; máy A vẫn dùng tiếp.
+- AC2: Quản trị đặt lại mật khẩu thì mọi phiên của nhân viên đó hết hiệu lực.
+- AC3: Bấm "Đăng xuất mọi thiết bị" thì mọi phiên, kể cả máy đang dùng, hết hiệu lực; đăng nhập lại thì dùng bình thường.
+- AC4: Token đã thu hồi cũng không kết nối realtime được.
+
 ## Quản lý (MANAGER)
 
 ### US-04 Quản lý thực đơn — FR-03.1, FR-03.2
@@ -40,10 +47,46 @@ Là **quản lý**, tôi muốn ghi nhập, xuất và kiểm kê để biết t
 - AC2: Khi kiểm kê nhập số thực tế thì hệ thống ghi phiếu điều chỉnh bằng phần chênh lệch.
 - AC3: Khi tồn ≤ mức tối thiểu thì nguyên liệu hiện nhãn "Sắp hết".
 
+### US-32 Nhập hàng có giá — FR-09.5 → FR-09.7
+Là **quản lý**, tôi muốn ghi phiếu nhập kèm nhà cung cấp và giá mua, để biết đã chi bao nhiêu và giá vốn từng nguyên liệu.
+- AC1: Lưu phiếu nhập 10 kg ba chỉ, giá 120.000 đ/kg, từ nhà cung cấp A: tồn ba chỉ tăng 10 kg, lịch sử kho có dòng nhập ghi số phiếu, phiếu có tổng 1.200.000 đ.
+- AC2: Ba chỉ đang tồn 12 kg, giá vốn 110.000 đ; nhập thêm 10 kg giá 120.000 đ thì giá vốn mới là (12 × 110.000 + 10 × 120.000) ÷ 22 = 114.545 đ.
+- AC3: Phiếu không có dòng nào, có số lượng ≤ 0 hoặc đơn giá âm thì bị từ chối; nhà cung cấp đã ngừng giao dịch thì không lập phiếu được.
+- AC4: Phiếu đã lưu không sửa, không xoá được. Nhập, xuất, kiểm kê bằng tay không đổi giá vốn.
+- AC5: Chỉ quản lý và quản trị xem, lập phiếu và sửa nhà cung cấp.
+
+### US-33 Định lượng và trừ kho tự động — FR-09.8 → FR-09.10
+Là **quản lý**, tôi muốn ghi định lượng cho món để kho tự trừ khi món vào bếp, và so tiêu hao theo định lượng với số kiểm kê.
+- AC1: Phở bò định lượng 0,15 kg bắp bò và 0,3 kg bánh phở; phục vụ gọi 2 bát thì bắp bò giảm 0,3 kg, bánh phở giảm 0,6 kg, lịch sử kho có dòng "Bán món" ghi bàn, số đơn và "Phở bò × 2".
+- AC2: Khách gọi qua QR thì kho chưa trừ; nhân viên xác nhận món thì mới trừ.
+- AC3: Huỷ món còn Chờ làm thì kho được hoàn đúng lượng đã trừ; huỷ món Đang làm thì không hoàn.
+- AC4: Tồn không đủ thì món vẫn vào bếp, tồn thành số âm và hiện "Sắp hết". Xuất tay vẫn không được vượt tồn.
+- AC5: Định lượng có nguyên liệu trùng hoặc lượng ≤ 0 thì bị từ chối. Sửa định lượng không đổi các lần trừ đã có.
+- AC6: Báo cáo tiêu hao trong khoảng ngày cho từng nguyên liệu: lượng trừ theo định lượng (đã bớt phần hoàn), lượng xuất tay, chênh lệch kiểm kê.
+- AC7: Chỉ quản lý và quản trị xem, sửa định lượng và xem tiêu hao.
+
 ### US-07 Xem báo cáo — FR-10.1 → FR-10.3
 Là **quản lý**, tôi muốn xem doanh thu và món bán chạy để quyết định nhập hàng và thực đơn.
 - AC1: Doanh thu chỉ tính khoản đã xác nhận, theo ngày giờ Việt Nam.
 - AC2: Món bị huỷ không tính vào món bán chạy.
+
+### US-35 Lãi gộp và báo cáo ngoại lệ — FR-10.4 → FR-10.7
+Là **quản lý**, tôi muốn biết mỗi món lãi bao nhiêu, và ai huỷ món, giảm giá, xác nhận tay nhiều, để chỉnh giá và chặn thất thoát.
+- AC1: Phở bò bán 2 bát giá 65.000 đ, mỗi bát trừ 0,15 kg bắp bò lúc giá vốn 200.000 đ/kg: doanh thu 130.000 đ, giá vốn 60.000 đ, lãi gộp 70.000 đ (54%).
+- AC2: Giá vốn tính theo giá lúc món vào bếp: nhập hàng giá khác sau đó không đổi lãi gộp đã có.
+- AC3: Món chưa có định lượng, hoặc dùng nguyên liệu chưa có giá vốn, hiện giá vốn "chưa đủ" và không tính lãi gộp. Món huỷ và món của đơn chưa trả không tính.
+- AC4: Báo cáo ngoại lệ đếm số lần và cộng số tiền theo loại thao tác và theo người làm, trong khoảng ngày.
+- AC5: Doanh thu theo ngày hiện thành biểu đồ cột. Nút "Xuất Excel" tải về một file mở được bằng Excel, có đủ các bảng của khoảng ngày đang xem.
+- AC6: Chỉ quản lý và quản trị xem được.
+
+### US-29 Xem nhật ký thao tác — FR-16.1 → FR-16.3
+Là **quản lý**, tôi muốn biết ai đã huỷ món, xác nhận tay hay đổi giá, để phát hiện sai sót và gian lận.
+- AC1: Khi quản lý huỷ một món đang làm kèm lý do thì nhật ký có một dòng ghi người huỷ, món và số lượng, trạng thái trước khi huỷ, số tiền của món, lý do.
+- AC2: Khi thu ngân xác nhận tay một khoản chuyển khoản thì nhật ký ghi người xác nhận, mã thanh toán và số tiền.
+- AC3: Khi quản lý đổi giá món thì nhật ký ghi giá cũ và giá mới. Sửa món mà giá không đổi thì không ghi.
+- AC4: Thao tác bị từ chối (sai quyền, thiếu lý do) thì không có dòng nhật ký.
+- AC5: Không ai sửa hay xoá được nhật ký: API không có chức năng đó, và CSDL chặn lệnh sửa, xoá.
+- AC6: Phục vụ, bếp, thu ngân không xem được nhật ký (403).
 
 ## Phục vụ (WAITER)
 
@@ -71,6 +114,24 @@ Là **phục vụ**, tôi muốn huỷ món khách đổi ý khi bếp chưa là
 - AC1: Món Chờ làm: phục vụ huỷ được.
 - AC2: Món Đang làm hoặc Xong: chỉ quản lý huỷ được và phải nhập lý do.
 - AC3: Món đã ra thì không huỷ được.
+
+### US-31 Chuyển bàn và ghép bàn — FR-04.5, FR-04.6
+Là **phục vụ**, tôi muốn ghép thêm bàn khi nhóm khách đông, và chuyển bàn khi khách đổi chỗ, mà không phải lập đơn mới.
+- AC1: Đơn ở B05, ghép thêm B06: cả hai bàn hiện "có khách" trên sơ đồ, cùng một đơn và ghi nhóm "B05 + B06"; khách quét QR ở B06 gọi món vào đơn đó.
+- AC2: Chuyển đơn từ B05 + B06 sang S01: B05, B06 trở lại trống, S01 có khách. Bill giữ nguyên: món, tổng, khoản giảm, mã chuyển khoản đang chờ.
+- AC3: Không ghép hay chuyển vào bàn đang có đơn khác (409), và đơn mang về không gắn bàn được.
+- AC4: Màn hình bếp, trang đơn và thu ngân thấy tên bàn mới.
+- AC5: Thanh toán xong thì mọi bàn của đơn trở lại trống.
+- AC6: Lịch sử bàn của đơn được lưu: bàn nào, từ lúc nào tới lúc nào. Bếp không chuyển bàn được (403).
+
+### US-37 Đặt bàn và cọc — FR-18.1 → FR-18.5
+Là **phục vụ**, tôi muốn ghi lịch đặt bàn và nhận cọc qua VietQR, để giữ bàn cho khách và trừ cọc vào bill khi khách tới.
+- AC1: Đặt bàn cho 6 khách lúc 19:00 ngày mai, cọc 500.000 đ: booking có mã dạng KB + 8 ký tự, nằm trong danh sách ngày mai, cọc ở trạng thái chờ.
+- AC2: Tin xác nhận có mã booking, ngày giờ, số khách, số tiền cọc, tài khoản nhận và nội dung chuyển khoản; bấm "Đã gửi" thì lưu nội dung và giờ gửi.
+- AC3: Khách chuyển đúng 500.000 đ với nội dung là mã booking thì cọc tự sang đã nhận; sai số tiền thì không, giao dịch nằm ở danh sách không khớp. Quản lý xác nhận tay được, và việc đó vào nhật ký.
+- AC4: Khách tới, nhận khách ở bàn dự kiến: đơn mở ở bàn đó; bill 1.800.000 đ hiện "Cọc đã trả −500.000 đ", còn phải trả 1.300.000 đ. Trả xong, doanh thu ngày đó là 1.800.000 đ, trong đó 500.000 đ là cọc.
+- AC5: Cọc lớn hơn bill thì chỉ trừ bằng bill, còn phải trả 0 đ. Booking đã huỷ, không tới hoặc đã nhận khách thì không sửa, không nhận khách được nữa.
+- AC6: Bếp và thu ngân không xem, không tạo được booking. Chỉ quản lý xác nhận cọc tay.
 
 ## Bếp (CHEF)
 
@@ -132,6 +193,47 @@ Là **thu ngân**, tôi muốn xử lý khi tiền về nhưng hệ thống khô
 - AC2: Khi thu ngân xác nhận tay thì hệ thống ghi tên người xác nhận.
 - AC3: Khi webhook SePay lỗi 3 lần liên tiếp thì màn hình thu ngân hiện cảnh báo "Chuyển khoản đang không tự xác nhận" trong ≤ 2 giây, kèm lý do và lúc bắt đầu lỗi.
 - AC4: Khi lại nhận được một webhook hợp lệ thì cảnh báo tắt.
+
+### US-28 In phiếu — FR-08.9
+Là **thu ngân** hoặc **phục vụ**, tôi muốn in phiếu tạm tính để khách kiểm tra trước khi trả, và in phiếu thanh toán sau khi trả.
+- AC1: Phiếu tạm tính chỉ có các món tính tiền, tổng bằng tổng trên màn hình. Món khách gửi còn chờ xác nhận được ghi riêng, không cộng vào tổng.
+- AC2: Phiếu thanh toán của đơn trả tiền mặt ghi tiền khách đưa và tiền thối; đơn trả chuyển khoản ghi mã chuyển khoản.
+- AC3: Đơn chưa trả thì không in được phiếu thanh toán. Phục vụ không lấy được thông tin thanh toán (403).
+- AC4: Phiếu vừa khổ giấy 80 mm và ghi rõ không thay hoá đơn GTGT.
+
+### US-30 Giảm giá và tặng món — FR-08.10, FR-08.11
+Là **thu ngân**, tôi muốn giảm giá hoặc tặng món cho khách khi có lý do, và nhờ quản lý duyệt khi vượt hạn mức.
+- AC1: Bill 600.000 đ, thu ngân giảm 50.000 đ lý do "chờ lâu" thì có hiệu lực ngay, tổng còn 550.000 đ.
+- AC2: Thu ngân giảm vượt 10% tiền món hoặc vượt 150.000 đ thì khoản giảm **chờ duyệt**, tổng chưa đổi, và bill chưa thanh toán được.
+- AC3: Quản lý thấy yêu cầu ở nút "Duyệt" đầu trang trong ≤ 2 giây. Duyệt thì tổng giảm; từ chối thì tổng giữ nguyên và bill thanh toán được.
+- AC4: Tặng một dòng món thì tổng giảm đúng tiền dòng đó. Món tặng bị huỷ thì khoản tặng tự huỷ; tặng lại cùng dòng khi khoản cũ còn hiệu lực thì bị từ chối.
+- AC5: Không có lý do, hoặc lý do "khác" mà không ghi chú, thì bị từ chối. Phục vụ không giảm giá được (403).
+- AC6: Khoản giảm có hiệu lực được ghi vào nhật ký thao tác.
+
+### US-38 Tách bill — FR-08.12, FR-08.13
+Là **thu ngân**, tôi muốn thu tiền một bàn thành nhiều lần khi khách muốn trả riêng, để mỗi người trả phần của mình mà tổng vẫn khớp bill.
+- AC1: Bill 1.000.001 đ chia đều 3 người: các phần 333.334 đ, 333.334 đ, 333.333 đ. Thu đủ 3 phần thì đơn đóng, bàn trống.
+- AC2: Thu một phần bằng tiền mặt, phần còn lại bằng VietQR: bill hiện đã thu và còn phải thu; webhook xác nhận phần chuyển khoản; đơn chỉ đóng khi thu đủ.
+- AC3: Theo món: tiền món 600.000 đ, giảm 60.000 đ; khách chọn các món 200.000 đ thì trả 180.000 đ.
+- AC4: Khoản thu lớn hơn số còn phải thu, hoặc bằng 0 khi bill chưa hết, thì bị từ chối. Đơn đã thu một phần thì không huỷ món, không giảm giá được nữa.
+- AC5: Phiếu thanh toán liệt kê từng khoản: phương thức, số tiền, tiền khách đưa và tiền thối, hoặc mã chuyển khoản. Báo cáo đếm một đơn dù thu nhiều khoản.
+
+### US-34 Ca và két — FR-17.1 → FR-17.4
+Là **thu ngân**, tôi muốn mở ca, ghi phiếu chi và chốt ca bằng số đếm thực tế, để két khớp và mọi chênh lệch có lý do.
+- AC1: Chưa mở ca thì thu tiền mặt bị từ chối. Mở ca với quỹ đầu ca 1.000.000 đ; đang có ca mở thì không mở thêm được.
+- AC2: Thu tiền mặt bill 350.000 đ, khách đưa 500.000 đ: tiền mặt dự kiến tăng 350.000 đ. Chuyển khoản không đổi tiền mặt dự kiến.
+- AC3: Phiếu chi 120.000 đ "Mua đá": tiền mặt dự kiến giảm 120.000 đ. Phiếu chi trên 300.000 đ thì thu ngân bị từ chối, quản lý lập được. Không chi quá tiền mặt dự kiến.
+- AC4: Chốt ca với số đếm khác dự kiến mà không ghi lý do thì bị từ chối. Ca đã chốt không thêm phiếu chi được; muốn thu tiền mặt tiếp thì mở ca mới.
+- AC5: Quản lý xem danh sách ca theo ngày với quỹ đầu ca, tiền mặt thu, phiếu chi, dự kiến, thực đếm, chênh lệch và lý do.
+- AC6: Phục vụ và bếp không mở ca, không chi, không chốt ca được; chỉ quản lý và quản trị xem danh sách ca.
+
+### US-39 Khách hàng — FR-19.1 → FR-19.4
+Là **thu ngân**, tôi muốn ghi khách quen theo số điện thoại, để biết họ ghé bao nhiêu lần và ai đã đồng ý nhận tin.
+- AC1: Gắn khách 0912 345 678 vào đơn: chưa có thì tạo khách mới; lần sau nhập "+84912345678" thì ra đúng khách đó.
+- AC2: Đơn có khách được thanh toán thì lịch sử của khách có đơn đó, số lần ghé tăng 1, tổng chi cộng đúng tiền đã trả. Booking cùng số điện thoại cũng nằm trong lịch sử.
+- AC3: Ghi đồng ý nhận tin qua Zalo, cách thu thập "hỏi tại quầy": khách được nhận tin. Ghi từ chối thì không còn được nhận tin, cho tới khi đồng ý lại.
+- AC4: Số điện thoại không đủ 10 số thì bị từ chối.
+- AC5: Phục vụ và bếp không xem được danh sách khách; bếp không gắn khách được.
 
 ## Nhân sự
 

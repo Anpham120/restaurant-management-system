@@ -13,7 +13,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import vn.khoibep.rms.IntegrationTest;
 
-/** US-16, US-17, US-18, US-19 and BR-12 to BR-17. */
+/** US-16, US-17, US-18, US-19, US-28 and BR-12 to BR-17, BR-33. */
 class PaymentIntegrationTest extends IntegrationTest {
 
     @Test
@@ -35,6 +35,26 @@ class PaymentIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$[?(@.id == %d)].status", table.id()).value(hasItem("AVAILABLE")));
         post("/api/orders/" + orderId + "/payments/cash", as("thungan"), Map.of("receivedAmount", 100_000))
                 .andExpect(status().isConflict());
+    }
+
+    /** US-28 AC2, AC3, BR-33: a receipt only for a paid order, and only for cashiers. */
+    @Test
+    void receiptOnlyOnceTheOrderIsPaid() throws Exception {
+        long orderId = openOrder(newTable().id());
+        addDish(orderId, newDish(30_000), 2);
+        String receipt = "/api/orders/" + orderId + "/payments";
+        get(receipt, as("thungan")).andExpect(status().isNotFound());
+
+        post("/api/orders/" + orderId + "/payments/cash", as("thungan"), Map.of("receivedAmount", 100_000))
+                .andExpect(status().isOk());
+        get(receipt, as("thungan"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].method").value("CASH"))
+                .andExpect(jsonPath("$[0].amount").value(60_000))
+                .andExpect(jsonPath("$[0].receivedAmount").value(100_000))
+                .andExpect(jsonPath("$[0].change").value(40_000));
+        get(receipt, as("phucvu")).andExpect(status().isForbidden());
     }
 
     @Test
@@ -81,6 +101,11 @@ class PaymentIntegrationTest extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
         get("/api/orders/" + orderId, as("thungan")).andExpect(jsonPath("$.status").value("PAID"));
+        // US-28 AC2: the receipt of a transfer shows its code.
+        get("/api/orders/" + orderId + "/payments", as("thungan"))
+                .andExpect(jsonPath("$[0].method").value("BANK_TRANSFER"))
+                .andExpect(jsonPath("$[0].reference").value(reference))
+                .andExpect(jsonPath("$[0].confirmation").value("AUTO"));
 
         // SePay retries: the same transaction is recorded once.
         sepay(SEPAY_KEY, txnId, content, 120_000, "in").andExpect(jsonPath("$.success").value(true));

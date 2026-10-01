@@ -127,10 +127,31 @@ export default function GuestPage() {
           <StatusTag status={item.status} />
         </div>
       ))}
+      {/* FR-08.10: what the restaurant took off, already out of the amount below. */}
+      {order.discountTotal > 0 && (
+        <Flex justify="space-between">
+          <Typography.Text>Giảm giá</Typography.Text>
+          <Typography.Text>-{money(order.discountTotal)}</Typography.Text>
+        </Flex>
+      )}
+      {/* BR-42: the deposit paid when booking. */}
+      {order.depositCredit > 0 && (
+        <Flex justify="space-between">
+          <Typography.Text>Cọc đã trả</Typography.Text>
+          <Typography.Text>-{money(order.depositCredit)}</Typography.Text>
+        </Flex>
+      )}
+      {/* BR-43: parts of the bill already paid. */}
+      {order.paidAmount > 0 && (
+        <Flex justify="space-between">
+          <Typography.Text>Đã thanh toán</Typography.Text>
+          <Typography.Text>-{money(order.paidAmount)}</Typography.Text>
+        </Flex>
+      )}
       <Flex justify="space-between">
-        <Typography.Text>Tạm tính</Typography.Text>
+        <Typography.Text>{order.paidAmount > 0 ? 'Còn phải trả' : 'Tạm tính'}</Typography.Text>
         <Typography.Title level={4} style={{ margin: 0 }}>
-          {money(order.total)}
+          {money(order.due)}
         </Typography.Title>
       </Flex>
       {order.pendingCount > 0 && (

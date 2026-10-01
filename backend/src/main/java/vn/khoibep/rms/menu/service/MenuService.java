@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import vn.khoibep.rms.audit.enums.AuditAction;
+import vn.khoibep.rms.audit.service.AuditService;
 import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.realtime.RealtimeEvent;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
@@ -30,6 +32,7 @@ public class MenuService {
     private final CategoryRepository categories;
     private final MenuItemRepository menuItems;
     private final OrderItemRepository orderItems;
+    private final AuditService audit;
     private final RealtimeEvents realtime;
 
     @Transactional(readOnly = true)
@@ -103,7 +106,13 @@ public class MenuService {
     @Transactional
     public MenuItemDto updateItem(Long id, MenuItemRequest request) {
         MenuItem item = item(id);
+        long oldPrice = item.getPrice();
         apply(item, request);
+        if (item.getPrice() != oldPrice) {
+            // BR-34: a price change is logged; other edits are not.
+            audit.record(AuditAction.PRICE_CHANGED, null, item.getName(), String.valueOf(oldPrice),
+                    String.valueOf(item.getPrice()), item.getPrice(), null);
+        }
         realtime.staffNotice(RealtimeEvent.MENU_CHANGED);
         return MenuItemDto.from(item);
     }

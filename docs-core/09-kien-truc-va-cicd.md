@@ -51,7 +51,8 @@ flowchart LR
 │       ├── inventory/  report/  settings/
 │       ├── schedule/  attendance/   xếp ca, chấm công
 │       ├── leave/  payroll/         nghỉ phép, bảng lương
-│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên), V10 (đổi tên quán)
+│       ├── audit/                   nhật ký thao tác (chỉ thêm)
+│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên), V10 (đổi tên quán), V11 (nhật ký thao tác), V12 (giảm giá, tặng món), V13 (chuyển, ghép bàn), V14 (nhà cung cấp, phiếu nhập), V15 (định lượng, trừ kho tự động), V16 (ca và két), V17 (giá vốn lúc trừ kho, view báo cáo), V18 (thu hồi token), V19 (đặt bàn và cọc), V20 (tách bill), V21 (khách hàng)
 ├── frontend/                        React + Vite
 │   └── src/ app/ (định tuyến, khung trang), shared/ (API, realtime, định dạng), features/<module>/
 ├── scripts/check-erd.mjs            so ERD với migration (database-first)
@@ -96,9 +97,9 @@ frontend/src/
 ├── test/         setup.ts
 └── features/
     ├── order/    pages/ (OrderPage, KitchenPage, GuestPage), components/, hooks/useCart, utils/sound
-    ├── payment/  pages/CashierPage, components/TransferQr
+    ├── payment/  pages/CashierPage, components/TransferQr, BillSlip
     ├── payroll/  pages/PayrollPage, utils/payroll
-    └── ...       auth, table, settings, menu, inventory, report, employee, schedule, attendance, leave
+    └── ...       auth, table, settings, menu, inventory, report, employee, schedule, attendance, leave, audit
 ```
 
 - Mỗi feature chỉ có các thư mục nó cần: `pages/`, `components/`, `hooks/`, `utils/`, `context/`.
@@ -108,7 +109,7 @@ frontend/src/
 ## 9.4 Bảo mật
 
 - Mật khẩu băm **BCrypt**. Đăng nhập trả **JWT HS256** có hạn 12 giờ. Khoá bí mật lấy từ biến môi trường `APP_JWT_SECRET`.
-- Mỗi request kiểm tra nhân viên **còn hoạt động** (BR-03).
+- Mỗi request kiểm tra nhân viên **còn hoạt động** (BR-03), và token còn đúng **số phiên bản** của tài khoản (BR-41). Đổi mật khẩu hay đăng xuất mọi thiết bị là thu hồi mọi token cũ, không cần danh sách token bị cấm.
 - API công khai chỉ gồm `/api/public/**`, `/api/auth/login`, `/api/webhooks/sepay`, `/ws`, `/actuator/health`.
 - Actuator chỉ mở `health` (công khai), `info` và `metrics` (chỉ ADMIN). Nginx chỉ chuyển tiếp `/actuator/health`, nên từ Internet không gọi được các endpoint còn lại.
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
@@ -176,9 +177,9 @@ flowchart LR
 | Mức | Công cụ | Nội dung chính |
 |---|---|---|
 | Đơn vị | JUnit 5 | Chuyển trạng thái món (BR-07), dò mã thanh toán trong nội dung chuyển khoản (BR-15), công thức lương (BR-26) |
-| Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, cảnh báo webhook lỗi liên tiếp, phân quyền (cả quyền xem số liệu Actuator), kho, xếp ca, chấm công, nghỉ phép, bảng lương. Test chấm công đặt giờ bằng một `Clock` giả |
+| Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, cảnh báo webhook lỗi liên tiếp, giảm giá và duyệt vượt hạn mức, chuyển và ghép bàn, phân quyền (cả quyền xem số liệu Actuator), nhật ký thao tác (kể cả CSDL chặn sửa, xoá), kho, phiếu nhập và giá vốn, định lượng và trừ kho tự động, ca và két, báo cáo lãi gộp và ngoại lệ, đặt bàn và cọc, tách bill, khách hàng, xếp ca, chấm công, nghỉ phép, bảng lương. Test chấm công đặt giờ bằng một `Clock` giả |
 | Frontend | Vitest | Định dạng tiền, nhãn trạng thái, giờ công, bảng lương xuất Excel |
-| Component | Vitest + Testing Library, trình duyệt giả lập jsdom | Chọn món vào giỏ (tổng tiền, bớt món, ghi chú, món hết, đổi nhóm), giỏ tối đa 50 phần mỗi món (BR-06), mã VietQR, nhãn trạng thái món |
+| Component | Vitest + Testing Library, trình duyệt giả lập jsdom | Chọn món vào giỏ (tổng tiền, bớt món, ghi chú, món hết, đổi nhóm), giỏ tối đa 50 phần mỗi món (BR-06), mã VietQR, nhãn trạng thái món, phiếu in 80 mm (BR-33) |
 | Độ phủ | JaCoCo | Backend phải chạy tới ≥ 70% số dòng, thấp hơn thì CI đỏ. Con số in ở trang kết quả của lần chạy CI, báo cáo HTML ở artifact `backend-coverage` |
 | Kiến trúc | ArchUnit (`ArchitectureTest`) | Mỗi class nằm đúng thư mục con của lớp mình, và chỉ gọi xuống các lớp dưới (mục 9.3) |
 | E2E | Playwright, chạy trong CI | Kịch bản nghiệm thu ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu): khách QR, phục vụ, bếp, chuyển khoản, bàn trống; phân quyền; trang "Của tôi" |

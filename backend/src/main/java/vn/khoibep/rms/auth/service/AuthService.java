@@ -52,13 +52,21 @@ public class AuthService {
         return EmployeeDto.from(get(employeeId));
     }
 
+    /** FR-01.6, BR-41: every other session ends; this one goes on with the new token returned. */
     @Transactional
-    public void changePassword(Long employeeId, ChangePasswordRequest request) {
+    public LoginResponse changePassword(Long employeeId, ChangePasswordRequest request) {
         Employee employee = get(employeeId);
         if (!passwordEncoder.matches(request.currentPassword(), employee.getPasswordHash())) {
             throw ApiException.badRequest("Mật khẩu hiện tại không đúng");
         }
-        employee.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        employee.changePassword(passwordEncoder.encode(request.newPassword()));
+        return new LoginResponse(tokenService.issue(employee), EmployeeDto.from(employee));
+    }
+
+    /** FR-01.7, BR-41: every session ends, this one too. */
+    @Transactional
+    public void logoutEverywhere(Long employeeId) {
+        get(employeeId).revokeTokens();
     }
 
     private Employee get(Long id) {

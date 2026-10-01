@@ -56,7 +56,7 @@ public class InventoryService {
         return InventoryItemDto.from(item);
     }
 
-    /** FR-09.2, BR-19: every change is a movement; stock never goes below zero. */
+    /** FR-09.2, BR-19: every change is a movement; a movement by hand never takes stock below zero. */
     @Transactional
     public InventoryItemDto addMovement(Long id, MovementRequest request, Long employeeId) {
         InventoryItem item = items.findByIdForUpdate(id)
@@ -76,6 +76,7 @@ public class InventoryService {
                 yield quantity.negate();
             }
             case ADJUST -> quantity.subtract(item.getQuantity());
+            case SALE -> throw ApiException.badRequest("Phiếu bán món do hệ thống tự ghi khi món vào bếp");
         };
         item.setQuantity(item.getQuantity().add(change));
         String note = request.note() == null || request.note().isBlank() ? null : request.note().trim();

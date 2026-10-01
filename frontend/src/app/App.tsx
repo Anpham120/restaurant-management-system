@@ -10,13 +10,17 @@ const StaffLayout = lazy(() => import('./StaffLayout'))
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 const GuestPage = lazy(() => import('@/features/order/pages/GuestPage'))
 const TablesPage = lazy(() => import('@/features/table/pages/TablesPage'))
+const ReservationsPage = lazy(() => import('@/features/reservation/pages/ReservationsPage'))
 const OrderPage = lazy(() => import('@/features/order/pages/OrderPage'))
 const KitchenPage = lazy(() => import('@/features/order/pages/KitchenPage'))
 const CashierPage = lazy(() => import('@/features/payment/pages/CashierPage'))
 const MenuAdminPage = lazy(() => import('@/features/menu/pages/MenuAdminPage'))
 const TablesAdminPage = lazy(() => import('@/features/table/pages/TablesAdminPage'))
 const InventoryPage = lazy(() => import('@/features/inventory/pages/InventoryPage'))
+const CustomersPage = lazy(() => import('@/features/customer/pages/CustomersPage'))
 const ReportsPage = lazy(() => import('@/features/report/pages/ReportsPage'))
+const AuditPage = lazy(() => import('@/features/audit/pages/AuditPage'))
+const CashShiftsPage = lazy(() => import('@/features/payment/pages/CashShiftsPage'))
 const EmployeesPage = lazy(() => import('@/features/employee/pages/EmployeesPage'))
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'))
 const SchedulePage = lazy(() => import('@/features/schedule/pages/SchedulePage'))
@@ -39,13 +43,17 @@ export default function App() {
         <Route path="/q/:token" element={<GuestPage />} />
         <Route element={<StaffLayout />}>
           <Route path="/tables" element={<RequireRole roles={['WAITER']}><TablesPage /></RequireRole>} />
+          <Route path="/reservations" element={<RequireRole roles={['WAITER']}><ReservationsPage /></RequireRole>} />
           <Route path="/orders/:id" element={<RequireRole roles={['WAITER']}><OrderPage /></RequireRole>} />
           <Route path="/kitchen" element={<RequireRole roles={['CHEF']}><KitchenPage /></RequireRole>} />
           <Route path="/cashier" element={<RequireRole roles={['CASHIER']}><CashierPage /></RequireRole>} />
           <Route path="/admin/menu" element={<RequireRole roles={['MANAGER']}><MenuAdminPage /></RequireRole>} />
           <Route path="/admin/tables" element={<RequireRole roles={['MANAGER']}><TablesAdminPage /></RequireRole>} />
           <Route path="/admin/inventory" element={<RequireRole roles={['MANAGER']}><InventoryPage /></RequireRole>} />
+          <Route path="/admin/customers" element={<RequireRole roles={['MANAGER']}><CustomersPage /></RequireRole>} />
           <Route path="/admin/reports" element={<RequireRole roles={['MANAGER']}><ReportsPage /></RequireRole>} />
+          <Route path="/admin/audit" element={<RequireRole roles={['MANAGER']}><AuditPage /></RequireRole>} />
+          <Route path="/admin/cash-shifts" element={<RequireRole roles={['MANAGER']}><CashShiftsPage /></RequireRole>} />
           <Route path="/admin/schedule" element={<RequireRole roles={['MANAGER']}><SchedulePage /></RequireRole>} />
           <Route path="/admin/attendance" element={<RequireRole roles={['MANAGER']}><AttendancePage /></RequireRole>} />
           <Route path="/admin/leave" element={<RequireRole roles={['MANAGER']}><LeavePage /></RequireRole>} />

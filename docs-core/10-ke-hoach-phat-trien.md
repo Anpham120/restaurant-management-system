@@ -42,9 +42,14 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 | P1-06 | **Âm báo**: bếp có món mới, phục vụ có món xong hoặc đơn QR mới; tô đỏ món chờ quá lâu | FR-KIT-03, 08 | S | S | Ngưỡng chờ trong `restaurant_settings` |
 | P1-07 | **Tách bill**: chia đều hoặc theo món, nhiều khoản thanh toán cho một đơn | FR-BIL-02, 07 | L | C | Bỏ `ux_payment_paid_order`; sửa BR-13 |
 
-P1-05 và P1-06 **đã làm xong** (issue #12, #13), trước lịch:
+P1-01 → P1-07 **đã làm xong** (issue #8 → #14), trước lịch:
+- P1-01: yêu cầu FR-04.5, FR-04.6, US-31, BR-36, sửa BR-04; CSDL là migration `V13` (bảng `order_table`, chép bàn của các đơn cũ sang). Một đơn giữ một hoặc nhiều bàn; phục vụ đặt lại bàn của đơn ở trang đơn, bill giữ nguyên. Bản core chưa chuyển một phần món sang bàn khác và chưa có nhóm bàn định sẵn (FR-TBL-04, 05 của bản mở rộng).
+- P1-02: yêu cầu FR-08.9, US-28, BR-33; không đổi CSDL. Phục vụ và thu ngân in phiếu tạm tính, thu ngân in phiếu thanh toán, từ trình duyệt ra máy in nhiệt 80 mm.
+- P1-03: yêu cầu FR-16, US-29, BR-34; CSDL là migration `V11` (bảng `audit_entry`, trigger chặn sửa, xoá). Ghi nhật ký khi huỷ hoặc từ chối món, xác nhận tay, đổi giá món; quản lý tra cứu ở `/admin/audit`. Giảm giá (P1-04) sẽ ghi vào cùng nhật ký.
+- P1-04: yêu cầu FR-08.10, FR-08.11, US-30, BR-35, sửa BR-12, BR-13, BR-14, BR-34; CSDL là migration `V12` (bảng `adjustment`). Hạn mức 10% tiền món và 150.000 đ mỗi bill đang cố định trong mã; sau khi quán chạy thử, nếu cần đổi thì chuyển vào màn hình Cài đặt. Bản core chưa có hạn mức theo ca và duyệt dự phòng khi chủ không trả lời (BR-02, BR-03 của bản mở rộng).
 - P1-05: yêu cầu FR-06.6, FR-06.7, US-27, BR-29; CSDL là migration `V9` (bảng `service_request`). Bản core có 2 loại yêu cầu. Danh sách yêu cầu nhanh (đá, khăn giấy...) và cờ khẩn của FR-GST-11 chưa làm.
 - P1-06: yêu cầu FR-07.4, FR-07.5, FR-11.3 và BR-28; CSDL là migration `V8`.
+- P1-07: yêu cầu FR-08.12, FR-08.13, US-38, BR-43, sửa BR-13 và BR-21; CSDL là migration `V20` (bỏ `ux_payment_paid_order`). Một đơn thu được nhiều khoản: chia đều, theo món hoặc theo số tiền, tổng các khoản đúng bằng bill. Khách chưa tự tách bill trên trang QR (FR-GST-24 bản mở rộng).
 
 ### Giai đoạn 2 — Ca két, kho, nhân sự, báo cáo (sprint 1–6)
 
@@ -62,6 +67,14 @@ P1-05 và P1-06 **đã làm xong** (issue #12, #13), trước lịch:
 
 P2-05 → P2-09 là phần **nhân sự**, thêm theo yêu cầu của môn. Yêu cầu nằm ở tài liệu 02 (FR-12 → FR-15, không phải bản mở rộng), CSDL ở [tài liệu 07, mục 7.5](07-erd.md#75-nhân-sự). **Đã làm xong** cả 5 việc (issue #35 → #39), trước lịch.
 
+P2-03 **đã làm xong** (issue #17), trước lịch: yêu cầu FR-09.5 → FR-09.7, US-32, BR-37; CSDL là migration `V14` (bảng `supplier`, `goods_receipt`, `receipt_line`, cột `inventory_item.unit_cost`, `stock_movement.goods_receipt_id`). Giá vốn tính theo bình quân gia quyền. Bản core chưa có giá thoả thuận theo nhà cung cấp và chưa ghi hoá đơn VAT đầu vào (FR-PUR-01 bản mở rộng).
+
+P2-02 **đã làm xong** (issue #16), trước lịch: yêu cầu FR-09.8 → FR-09.10, US-33, BR-38; CSDL là migration `V15` (bảng `recipe_line`, loại biến động `SALE`, cột `stock_movement.order_item_id`, bỏ ràng buộc tồn không âm). Kho trừ lúc món vào bếp và cho phép tồn âm để không chặn bếp. Bản core chưa có định lượng theo size và chưa giấu công thức chi tiết với người ngoài bếp trưởng, vì chưa có vai trò bếp trưởng (FR-INV-03 bản mở rộng): chỉ quản lý và quản trị xem định lượng.
+
+P2-01 **đã làm xong** (issue #15), trước lịch: yêu cầu FR-17.1 → FR-17.4, US-34, BR-39; CSDL là migration `V16` (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`). Thu tiền mặt giờ cần ca đang mở. Giao ca là chốt ca cũ rồi mở ca mới. Bản core chưa có giao ca xác nhận bằng PIN, ảnh chứng từ cho phiếu chi, đếm theo mệnh giá, quản lý ký chốt ca và báo cáo tự gửi kế toán (FR-SHF-02 → FR-SHF-06 bản mở rộng).
+
+P2-04 **đã làm xong** (issue #18), trước lịch: yêu cầu FR-10.4 → FR-10.7, US-35, BR-40; CSDL là migration `V17` (cột `stock_movement.unit_cost`, view `v_order_item_cost`). Excel xuất từ trình duyệt thành một bảng tính mở được bằng Excel, như bảng lương. Bản core chưa có báo cáo tuần, biến động giá nhà cung cấp, hoàn tiền và xuất toàn bộ dữ liệu (FR-RPT-06, FR-RPT-07, FR-INT-05 bản mở rộng).
+
 ### Giai đoạn 3 — Chất lượng, bảo mật, hiệu năng (sprint 6)
 
 | Mã | Việc | Công sức | Ưu tiên |
@@ -72,8 +85,9 @@ P2-05 → P2-09 là phần **nhân sự**, thêm theo yêu cầu của môn. Yê
 | P3-04 | Test component cho frontend (Testing Library); đo độ phủ backend bằng JaCoCo, mục tiêu ≥ 70% | M | S |
 | P3-05 | Log JSON, số liệu Actuator; cảnh báo khi webhook SePay lỗi liên tục | S | C |
 
-P3-01, P3-03, P3-04 và P3-05 **đã làm xong** (issue #19, #21, #22, #23), trước lịch:
+P3-01 → P3-05 **đã làm xong** (issue #19 → #23), trước lịch:
 - P3-01: giới hạn theo bàn (10 lần gửi mỗi phút, tối đa 30 món chờ xác nhận) và theo tên đăng nhập (10 lần thử mỗi phút), bằng Bucket4j. Không giới hạn theo IP, lý do ở tài liệu 09 mục 9.4.
+- P3-02: yêu cầu FR-01.6, FR-01.7, US-36, BR-41; CSDL là migration `V18` (cột `employee.token_version`). Token mang số phiên bản lúc cấp; đổi mật khẩu, đặt lại mật khẩu hoặc đăng xuất mọi thiết bị thì số tăng, token cũ bị từ chối cả ở API lẫn realtime.
 - P3-03: đo bằng k6 với 30 người trong 2 phút, sau khi nạp 6 tháng bán hàng (khoảng 21.500 đơn, 107.000 món). p95 toàn bộ là 19,5 ms, 0% lỗi. Chậm nhất là báo cáo 30 ngày (p95 156 ms). Không có truy vấn nào cần sửa: báo cáo đã cộng dồn trong SQL, báo cáo 180 ngày trả lời trong khoảng 0,2 giây.
 - P3-04: lúc bật JaCoCo, test backend chạy tới 83,2% số dòng; từ nay CI đỏ nếu dưới 70%. Test component phủ phần chọn món vào giỏ, mã VietQR và nhãn trạng thái món.
 - P3-05: yêu cầu FR-08.8, NFR-11, AC3 và AC4 của US-19, BR-32; không đổi CSDL. Staging và production ghi log JSON chuẩn ECS; `/actuator/metrics` chỉ ADMIN xem được; webhook SePay lỗi 3 lần liên tiếp thì màn hình thu ngân hiện cảnh báo, tự tắt khi webhook chạy lại.
@@ -87,6 +101,10 @@ P3-01, P3-03, P3-04 và P3-05 **đã làm xong** (issue #19, #21, #22, #23), tr�
 | P4-03 | **Hoá đơn điện tử**: hàng chờ dữ liệu HĐĐT, xuất file theo mẫu nhà cung cấp; tích hợp API sau | FR-BIL-12, 15, FR-INT-02, 03 | L | C |
 | P4-04 | **Đơn app giao hàng** nhập tay (GrabFood, ShopeeFood), chống trùng mã đơn | FR-DLV-02, 03 | M | C |
 | P4-05 | Nhiều chi nhánh; chạy offline khi mất mạng | FR-OFF | XL | W, chỉ thiết kế |
+
+P4-01 **đã làm xong** (issue #24): yêu cầu FR-18.1 → FR-18.5, US-37, BR-42; CSDL là migration `V19` (bảng `reservation`, cột `orders.reservation_id`, `bank_transaction.reservation_id`). Mã booking cũng là nội dung chuyển khoản cọc, nên webhook SePay tự xác nhận cọc như xác nhận bill. Bản core chưa tự tính hoàn cọc khi huỷ hoặc không tới, chưa dời booking, chưa có tiệc nhiều bàn và lịch booking trên sơ đồ bàn (FR-RSV-05 → FR-RSV-09 bản mở rộng): quản lý xử lý hoàn cọc ngoài hệ thống.
+
+P4-02 **đã làm xong** (issue #25): yêu cầu FR-19.1 → FR-19.4, US-39, BR-44; CSDL là migration `V21` (bảng `customer`, cột `orders.customer_id`, `reservation.customer_id`). Bản core có một danh sách khách cho một quán; chưa có tích điểm, voucher và xử lý yêu cầu xoá dữ liệu cá nhân (FR-CUS-04, FR-CUS-05 bản mở rộng).
 
 ### Giai đoạn 5 — Hồ sơ nộp môn (làm song song, chốt ở sprint 8)
 
@@ -170,5 +188,6 @@ Sửa code, bảng hoặc API thuộc service nào thì chủ service đó revie
 - P1-01 và P2-02 đụng `order`.
 - P4-01 đụng `payment`.
 - P1-06 thêm cột vào `restaurant_settings`.
+- P1-04 đổi cách tính tổng tiền của đơn (`order`).
 - P1-03 và P2-04 đọc, ghi dữ liệu của nhiều service.
 - P2-05 thêm cột vào `employee`, bảng mà mọi service đều trỏ tới.

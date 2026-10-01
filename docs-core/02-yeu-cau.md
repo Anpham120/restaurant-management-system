@@ -13,6 +13,8 @@
 | FR-01.3 | Tài khoản bị khoá không đăng nhập được, token cũ mất hiệu lực ngay | M | BR-03 |
 | FR-01.4 | Nhân viên tự đổi mật khẩu | S | BR-01 |
 | FR-01.5 | **Chống dò mật khẩu**: đăng nhập quá 10 lần trong một phút với cùng tên đăng nhập thì bị chặn tạm thời | M | BR-31 |
+| FR-01.6 | **Thu hồi token**: đổi mật khẩu, hoặc quản trị đặt lại mật khẩu, thì mọi phiên đăng nhập cũ của người đó hết hiệu lực; máy vừa đổi mật khẩu vẫn dùng tiếp | S | BR-41 |
+| FR-01.7 | **Đăng xuất mọi thiết bị**: nhân viên tự kết thúc mọi phiên đăng nhập của mình, kể cả máy đang dùng | S | BR-41 |
 
 ### FR-02 Quản lý nhân viên (ADMIN)
 
@@ -38,6 +40,8 @@
 | FR-04.2 | Mỗi bàn có **mã QR riêng**. Quản lý xem và in thẻ QR | M | BR-09 |
 | FR-04.3 | Tạo lại mã QR khi thẻ mất hoặc bị lộ. Mã cũ hết hiệu lực ngay | M | BR-09 |
 | FR-04.4 | Sơ đồ bàn hiện trạng thái: trống, có khách, có món chờ xác nhận, có món xong chờ ra | M | BR-04 |
+| FR-04.5 | **Ghép bàn**: một đơn chiếm nhiều bàn cho một nhóm khách. Mỗi bàn vẫn hiện riêng trên sơ đồ, kèm nhóm bàn của đơn. Khách quét QR ở bàn nào trong nhóm cũng gọi món vào cùng đơn | M | BR-04, 36 |
+| FR-04.6 | **Chuyển bàn**: chuyển cả đơn sang bàn khác, kể cả từ N bàn sang M bàn. **Bill giữ nguyên**. Bếp, phục vụ, thu ngân thấy tên bàn mới; bàn cũ trống ngay. Hệ thống lưu lịch sử bàn của đơn | M | BR-04, 36 |
 
 ### FR-05 Gọi món (phục vụ)
 
@@ -85,6 +89,11 @@
 | FR-08.6 | Thu ngân **xác nhận tay** khi webhook không tới. Hệ thống ghi người xác nhận | M | BR-17 |
 | FR-08.7 | Xem danh sách giao dịch ngân hàng **không khớp** để kiểm tra | S | BR-16 |
 | FR-08.8 | **Cảnh báo webhook lỗi**: webhook SePay bị từ chối hoặc xử lý lỗi **3 lần liên tiếp** thì màn hình thu ngân hiện cảnh báo trong ≤ 2 giây, kèm lý do và lúc bắt đầu lỗi, để thu ngân kiểm tra app ngân hàng rồi xác nhận tay. Nhận được một webhook hợp lệ thì cảnh báo tự tắt | C | BR-32 |
+| FR-08.9 | **In phiếu khổ 80 mm** từ trình duyệt. Phục vụ và thu ngân in **phiếu tạm tính** của đơn đang mở để khách kiểm tra. Thu ngân in **phiếu thanh toán** sau khi đơn đã trả, in lại được. Phiếu ghi tên, địa chỉ, điện thoại quán, bàn, các món tính tiền và tổng; phiếu thanh toán ghi thêm cách trả, tiền khách đưa và tiền thối, hoặc mã chuyển khoản | M | BR-12, 33 |
+| FR-08.10 | **Giảm giá, tặng món**: thu ngân hoặc quản lý giảm một số tiền trên cả bill, hoặc tặng nguyên một dòng món, kèm lý do. Bill, trang khách và phiếu in ghi tiền món, từng khoản giảm và tổng sau giảm. Khoản giảm còn huỷ được khi đơn chưa trả | M | BR-12, 35 |
+| FR-08.11 | **Duyệt giảm giá**: thu ngân giảm vượt hạn mức thì khoản giảm chờ quản lý duyệt. Quản lý thấy yêu cầu ở đầu trang trong ≤ 2 giây, duyệt hoặc từ chối từ máy của mình. Còn khoản chờ duyệt thì chưa thanh toán được | M | BR-13, 35 |
+| FR-08.12 | **Tách bill**: thu nhiều khoản cho một đơn, mỗi khoản bằng tiền mặt hoặc VietQR. Chia đều theo số người, theo món (giảm giá và cọc chia theo tỉ lệ tiền món), hoặc nhập số tiền. Tổng các khoản đúng bằng tổng bill tới từng đồng; đơn đóng khi thu đủ | C | BR-13, 43 |
+| FR-08.13 | Bill, trang khách và phiếu thanh toán ghi **đã thu** và **còn phải thu**; phiếu thanh toán liệt kê từng khoản | C | BR-33, 43 |
 
 ### FR-09 Kho nguyên liệu (MANAGER)
 
@@ -94,6 +103,12 @@
 | FR-09.2 | Nhập kho, xuất kho, kiểm kê (điều chỉnh về số thực tế), có ghi chú | M | BR-19 |
 | FR-09.3 | Xem lịch sử biến động của từng nguyên liệu | M | BR-19 |
 | FR-09.4 | Cảnh báo nguyên liệu có tồn ≤ mức tối thiểu | M | BR-20 |
+| FR-09.5 | **Nhà cung cấp**: tên, điện thoại, địa chỉ, mã số thuế, ghi chú. Ngừng giao dịch thì không chọn được khi lập phiếu, nhưng phiếu cũ vẫn giữ | S | BR-37 |
+| FR-09.6 | **Phiếu nhập có giá**: chọn nhà cung cấp, các dòng nguyên liệu với số lượng và đơn giá; tổng tiền phiếu tự tính. Lưu phiếu thì tồn tăng, lịch sử kho ghi số phiếu. Xem lại phiếu theo khoảng ngày | S | BR-19, 37 |
+| FR-09.7 | **Giá vốn nguyên liệu** tính lại theo bình quân gia quyền mỗi lần nhập theo phiếu. Màn hình kho hiện giá vốn và giá trị tồn | S | BR-37 |
+| FR-09.8 | **Định lượng món**: mỗi món ghi các nguyên liệu và lượng dùng cho một phần. Chỉ quản lý, quản trị xem và sửa | S | BR-38 |
+| FR-09.9 | **Trừ kho tự động** theo định lượng khi món vào bếp; huỷ món còn Chờ làm thì hoàn kho. Lịch sử kho ghi bàn, số đơn, tên món | S | BR-19, 38 |
+| FR-09.10 | **Tiêu hao theo định lượng** của từng nguyên liệu trong khoảng ngày, đặt cạnh lượng xuất tay và chênh lệch kiểm kê | S | BR-38 |
 
 ### FR-10 Báo cáo (MANAGER)
 
@@ -102,6 +117,10 @@
 | FR-10.1 | Theo khoảng ngày: doanh thu, số đơn, trung bình mỗi đơn | M | BR-21 |
 | FR-10.2 | Doanh thu theo ngày và theo phương thức (tiền mặt, chuyển khoản) | M | BR-21 |
 | FR-10.3 | Top 10 món bán chạy theo số lượng | S | BR-21 |
+| FR-10.4 | **Lãi gộp theo món**: số lượng, doanh thu, giá vốn theo định lượng, lãi gộp và tỷ lệ; tổng giảm giá, tặng món của kỳ | S | BR-40 |
+| FR-10.5 | **Báo cáo ngoại lệ**: số lần và số tiền huỷ món, giảm giá và tặng món, xác nhận tay chuyển khoản, theo loại và theo người làm | S | BR-34, 40 |
+| FR-10.6 | **Biểu đồ** doanh thu theo ngày | S | BR-21 |
+| FR-10.7 | **Xuất Excel** báo cáo của khoảng ngày đang xem | S | — |
 
 ### FR-11 Cài đặt (ADMIN)
 
@@ -150,6 +169,42 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | FR-15.3 | Chốt bảng lương. Đã chốt thì không sửa được bảng lương và chấm công của tháng đó | M | BR-27 |
 | FR-15.4 | Nhân viên xem phiếu lương đã chốt của mình | M | BR-27 |
 | FR-15.5 | Xuất bảng lương ra Excel | S | — |
+
+### FR-16 Nhật ký thao tác (MANAGER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-16.1 | Hệ thống tự **ghi nhật ký** khi có người huỷ hoặc từ chối món, xác nhận tay chuyển khoản, đổi giá món. Mỗi dòng ghi người làm, lúc nào, đơn liên quan, món hoặc mã thanh toán, giá trị trước và sau, số tiền, lý do | M | BR-34 |
+| FR-16.2 | Quản lý **tra cứu nhật ký** theo khoảng ngày, lọc theo người, loại thao tác, đơn hoặc bàn | M | BR-34 |
+| FR-16.3 | Nhật ký **không sửa, không xoá được**, kể cả khi thao tác thẳng trong CSDL | M | BR-34 |
+
+### FR-17 Ca và két (CASHIER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-17.1 | **Mở ca** với quỹ đầu ca (mặc định 1.000.000 đ). Két chỉ có một ca mở; chưa mở ca thì không thu tiền mặt | M | BR-39 |
+| FR-17.2 | **Phiếu chi** tiền mặt từ két: số tiền, lý do, người chi. Trên 300.000 đ chỉ quản lý lập. Không sửa, không xoá | M | BR-39 |
+| FR-17.3 | **Chốt ca**: hệ thống tính tiền mặt dự kiến, thu ngân nhập số đếm thực tế, hệ thống tính chênh lệch; lệch thì bắt buộc lý do. Ca đã chốt không sửa được | M | BR-39 |
+| FR-17.4 | Quản lý xem **danh sách ca** theo khoảng ngày: quỹ đầu ca, tiền mặt thu, phiếu chi, dự kiến, thực đếm, chênh lệch, lý do | M | BR-39 |
+
+### FR-18 Đặt bàn và cọc (WAITER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-18.1 | **Đặt bàn**: tên khách, số điện thoại, ngày giờ, số khách, bàn dự kiến, ghi chú, số tiền cọc. Mỗi booking có **mã** riêng. Xem danh sách theo ngày; sửa khi khách chưa tới | S | BR-42 |
+| FR-18.2 | **Tin xác nhận**: hệ thống soạn sẵn tin gồm mã booking, ngày giờ, số khách, tiền cọc và cách chuyển khoản; nhân viên gửi qua Zalo hoặc SMS rồi bấm "Đã gửi" để lưu nội dung và thời điểm gửi | S | BR-42 |
+| FR-18.3 | **Cọc qua VietQR**: mã QR có số tiền cọc và nội dung là mã booking; webhook SePay tự xác nhận khi đúng mã, đúng số tiền; quản lý xác nhận tay được. Cọc **không phải doanh thu** khi chưa trừ vào bill | S | BR-42 |
+| FR-18.4 | **Nhận khách**: mở đơn từ booking ở bàn dự kiến hoặc bàn trống khác; cọc đã nhận được **trừ vào bill**, hiện trên bill và phiếu in, và tính vào doanh thu ngày thanh toán | S | BR-21, 42 |
+| FR-18.5 | Ghi booking **huỷ** hoặc **không tới**; cọc đã nhận giữ nguyên để quản lý xử lý hoàn | S | BR-42 |
+
+### FR-19 Khách hàng (CASHIER, MANAGER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-19.1 | **Khách hàng** theo số điện thoại: số được chuẩn hoá, mỗi số một khách; quản lý tìm theo số hoặc tên, sửa tên và ghi chú | C | BR-44 |
+| FR-19.2 | Thu ngân **gắn khách vào đơn** bằng số điện thoại, chưa có thì tạo mới; booking tự gắn khách cùng số điện thoại | C | BR-44 |
+| FR-19.3 | **Lịch sử ghé** của khách: các đơn đã thanh toán và booking, số lần ghé, tổng chi | C | BR-44 |
+| FR-19.4 | **Đồng ý nhận tin**: kênh (Zalo, SMS), thời điểm, cách thu thập; **từ chối nhận tin** ghi thời điểm. Chỉ khách đang đồng ý mới được nhận tin | C | BR-44 |
 
 ## 2.2 Yêu cầu phi chức năng
 

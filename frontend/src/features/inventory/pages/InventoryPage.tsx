@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Drawer, Form, Input, InputNumber, Modal, Space, Switch, Table, Tag, Typography } from 'antd'
+import { App, Button, Drawer, Flex, Form, Input, InputNumber, Modal, Space, Switch, Table, Tabs, Tag, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
 import type { InventoryItem, MovementType, StockMovement } from '@/shared/api/types'
-import { movementLabel, time } from '@/shared/utils/format'
+import { money, movementLabel, time } from '@/shared/utils/format'
+import ReceiptsTab from '../components/ReceiptsTab'
+import SuppliersTab from '../components/SuppliersTab'
+import UsageTab from '../components/UsageTab'
+import { stockValue } from '../utils/receipt'
 
-/** FR-09: ingredients, stock movements and low-stock warnings. */
+/** FR-09: ingredients, stock movements and low-stock warnings; receipts, suppliers (FR-09.5 → FR-09.7); usage (FR-09.10). */
 export default function InventoryPage() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
@@ -46,40 +50,72 @@ export default function InventoryPage() {
   })
 
   const data = (items.data ?? []).filter((i) => !lowOnly || i.lowStock)
+  const totalValue = (items.data ?? []).reduce((sum, i) => sum + (stockValue(i) ?? 0), 0)
 
   return (
     <>
       <div className="page-title">
         <Typography.Title level={3}>Kho nguyên liệu</Typography.Title>
-        <Space>
-          <Switch checked={lowOnly} onChange={setLowOnly} /> Chỉ hiện sắp hết
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing({ record: null })}>
-            Thêm nguyên liệu
-          </Button>
-        </Space>
       </div>
-      <Table<InventoryItem>
-        size="small"
-        rowKey="id"
-        loading={items.isLoading}
-        dataSource={data}
-        columns={[
-          { title: 'Nguyên liệu', dataIndex: 'name' },
-          { title: 'Tồn', render: (_, i) => `${i.quantity} ${i.unit}` },
-          { title: 'Tối thiểu', render: (_, i) => `${i.minQuantity} ${i.unit}` },
-          { title: '', render: (_, i) => (i.lowStock ? <Tag color="red">Sắp hết</Tag> : <Tag color="green">Đủ</Tag>) },
+      <Tabs
+        items={[
           {
-            title: '',
-            render: (_, i) => (
-              <Space wrap>
-                <Button size="small" onClick={() => setMoving({ item: i, type: 'IN' })}>Nhập</Button>
-                <Button size="small" onClick={() => setMoving({ item: i, type: 'OUT' })}>Xuất</Button>
-                <Button size="small" onClick={() => setMoving({ item: i, type: 'ADJUST' })}>Kiểm kê</Button>
-                <Button size="small" onClick={() => setHistoryOf(i)}>Lịch sử</Button>
-                <Button size="small" onClick={() => setEditing({ record: i })}>Sửa</Button>
-              </Space>
+            key: 'items',
+            label: 'Nguyên liệu',
+            children: (
+              <>
+                <Flex justify="space-between" align="center" gap={8} wrap style={{ marginBottom: 16 }}>
+                  <Typography.Text strong>Giá trị tồn: {money(totalValue)}</Typography.Text>
+                  <Space>
+                    <Switch checked={lowOnly} onChange={setLowOnly} /> Chỉ hiện sắp hết
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing({ record: null })}>
+                      Thêm nguyên liệu
+                    </Button>
+                  </Space>
+                </Flex>
+                <Table<InventoryItem>
+                  size="small"
+                  rowKey="id"
+                  loading={items.isLoading}
+                  dataSource={data}
+                  scroll={{ x: 960 }}
+                  columns={[
+                    { title: 'Nguyên liệu', dataIndex: 'name' },
+                    {
+                      title: 'Tồn',
+                      // BR-38: dishes can take stock below zero; it needs a stock count.
+                      render: (_, i) => <Typography.Text type={i.quantity < 0 ? 'danger' : undefined}>{`${i.quantity} ${i.unit}`}</Typography.Text>,
+                    },
+                    { title: 'Tối thiểu', render: (_, i) => `${i.minQuantity} ${i.unit}` },
+                    { title: 'Giá vốn', render: (_, i) => (i.unitCost === null ? '' : `${money(i.unitCost)}/${i.unit}`) },
+                    {
+                      title: 'Giá trị tồn',
+                      render: (_, i) => {
+                        const value = stockValue(i)
+                        return value === null ? '' : money(value)
+                      },
+                    },
+                    { title: '', render: (_, i) => (i.lowStock ? <Tag color="red">Sắp hết</Tag> : <Tag color="green">Đủ</Tag>) },
+                    {
+                      title: '',
+                      render: (_, i) => (
+                        <Space wrap>
+                          <Button size="small" onClick={() => setMoving({ item: i, type: 'IN' })}>Nhập</Button>
+                          <Button size="small" onClick={() => setMoving({ item: i, type: 'OUT' })}>Xuất</Button>
+                          <Button size="small" onClick={() => setMoving({ item: i, type: 'ADJUST' })}>Kiểm kê</Button>
+                          <Button size="small" onClick={() => setHistoryOf(i)}>Lịch sử</Button>
+                          <Button size="small" onClick={() => setEditing({ record: i })}>Sửa</Button>
+                        </Space>
+                      ),
+                    },
+                  ]}
+                />
+              </>
             ),
           },
+          { key: 'receipts', label: 'Phiếu nhập', children: <ReceiptsTab items={items.data ?? []} /> },
+          { key: 'suppliers', label: 'Nhà cung cấp', children: <SuppliersTab /> },
+          { key: 'usage', label: 'Tiêu hao', children: <UsageTab /> },
         ]}
       />
 
@@ -111,6 +147,11 @@ export default function InventoryPage() {
             <Typography.Paragraph>
               Tồn hiện tại: {moving.item.quantity} {moving.item.unit}
             </Typography.Paragraph>
+            {moving.type === 'IN' && (
+              <Typography.Paragraph type="secondary">
+                Nhập tay không có giá nên giá vốn giữ nguyên. Hàng mua có giá thì lập ở thẻ "Phiếu nhập".
+              </Typography.Paragraph>
+            )}
             <Form.Item
               name="quantity"
               label={moving.type === 'ADJUST' ? `Số đếm thực tế (${moving.item.unit})` : `Số lượng (${moving.item.unit})`}

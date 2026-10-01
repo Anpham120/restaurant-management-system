@@ -2,8 +2,12 @@ import { Flex, Spin, Typography } from 'antd'
 import type { PaymentInstruction } from '@/shared/api/types'
 import { money } from '@/shared/utils/format'
 
-/** VietQR for one payment. The reference in the transfer content is how the webhook finds the bill (BR-15). */
-export default function TransferQr({ instruction }: { instruction: PaymentInstruction }) {
+/** VietQR for a payment or a deposit. The reference in the transfer content is how the webhook finds it (BR-15, BR-42). */
+export default function TransferQr({
+  instruction,
+}: {
+  instruction: Pick<PaymentInstruction, 'amount' | 'reference' | 'qrImageUrl' | 'bankAccountName' | 'bankAccountNo'>
+}) {
   return (
     <Flex vertical align="center" gap={4}>
       <img

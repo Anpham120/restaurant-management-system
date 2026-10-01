@@ -7,13 +7,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import vn.khoibep.rms.audit.enums.AuditAction;
+import vn.khoibep.rms.audit.service.AuditService;
 import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.realtime.RealtimeEvent.Alert;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
 import vn.khoibep.rms.common.security.CurrentUser;
 import vn.khoibep.rms.employee.enums.Role;
+import vn.khoibep.rms.inventory.service.StockUsageService;
 import vn.khoibep.rms.order.dto.OrderDtos.KitchenItemDto;
 import vn.khoibep.rms.order.dto.OrderDtos.OrderItemDto;
+import vn.khoibep.rms.order.entity.Adjustment;
 import vn.khoibep.rms.order.entity.Order;
 import vn.khoibep.rms.order.entity.OrderItem;
 import vn.khoibep.rms.order.enums.ItemStatus;
@@ -28,6 +32,8 @@ public class OrderItemService {
     private final OrderItemRepository items;
     private final OrderRepository orders;
     private final PaymentService payments;
+    private final StockUsageService stockUsage;
+    private final AuditService audit;
     private final CurrentUser currentUser;
     private final RealtimeEvents realtime;
 
@@ -61,6 +67,10 @@ public class OrderItemService {
             throw ApiException.conflict("Đơn đã đóng, không huỷ món được");
         }
         OrderItem item = items.findById(itemId).orElseThrow();
+        // BR-43: part of the bill is already taken, so the bill can only grow.
+        if (item.getStatus().isBillable() && order.paidAmount() > 0) {
+            throw ApiException.conflict("Đơn đã thu một phần, không huỷ món được nữa");
+        }
         String why = reason == null || reason.isBlank() ? null : reason.trim();
         switch (item.getStatus()) {
             case PENDING -> {
@@ -78,8 +88,19 @@ public class OrderItemService {
             }
             default -> throw ApiException.conflict("Món đã ra hoặc đã huỷ, không huỷ được");
         }
-        boolean wasBillable = item.getStatus().isBillable();
+        ItemStatus before = item.getStatus();
+        boolean wasBillable = before.isBillable();
         item.cancel(why);
+        // BR-34: who cancelled which dish, and how far it had gone.
+        audit.record(AuditAction.ITEM_CANCELLED, order, item.getItemName() + " x" + item.getQuantity(), before.name(),
+                ItemStatus.CANCELLED.name(), item.getUnitPrice() * item.getQuantity(), why);
+        // BR-35: a dish given free and then cancelled takes nothing off the bill any more.
+        order.getAdjustments().stream().filter(a -> a.isOpen() && a.gives(item)).forEach(Adjustment::cancel);
+        // BR-38: a dish the kitchen had not started gives its ingredients back; one being cooked has used them.
+        if (before == ItemStatus.WAITING) {
+            stockUsage.giveBack(item.getId(), "Huỷ món, hoàn kho · " + OrderService.dishNote(order, item),
+                    currentUser.id());
+        }
         if (wasBillable) {
             payments.cancelPendingTransfers(orderId);
         }
@@ -88,6 +109,6 @@ public class OrderItemService {
     }
 
     private void publish(Order order, Alert alert) {
-        realtime.orderChanged(order.getId(), order.tableId(), order.guestToken(), alert);
+        realtime.orderChanged(order.getId(), order.tableId(), order.guestTokens(), alert);
     }
 }

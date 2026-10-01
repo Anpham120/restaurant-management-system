@@ -18,6 +18,7 @@ import vn.khoibep.rms.payment.dto.PaymentDtos.BankTransactionDto;
 import vn.khoibep.rms.payment.dto.PaymentDtos.CashRequest;
 import vn.khoibep.rms.payment.dto.PaymentDtos.PaymentDto;
 import vn.khoibep.rms.payment.dto.PaymentDtos.PaymentInstruction;
+import vn.khoibep.rms.payment.dto.PaymentDtos.TransferRequest;
 import vn.khoibep.rms.payment.dto.PaymentDtos.WebhookStatus;
 import vn.khoibep.rms.payment.enums.MatchStatus;
 import vn.khoibep.rms.payment.service.PaymentService;
@@ -35,17 +36,25 @@ public class PaymentController {
 
     @PostMapping("/orders/{id}/payments/cash")
     public PaymentDto payCash(@PathVariable Long id, @Valid @RequestBody CashRequest request) {
-        return paymentService.payCash(id, request.receivedAmount(), currentUser.id());
+        return paymentService.payCash(id, request.amount(), request.receivedAmount(), currentUser.id());
     }
 
+    /** No body: the whole rest of the bill. */
     @PostMapping("/orders/{id}/payments/transfer")
-    public PaymentInstruction requestTransfer(@PathVariable Long id) {
-        return paymentService.requestTransfer(id);
+    public PaymentInstruction requestTransfer(@PathVariable Long id,
+                                              @Valid @RequestBody(required = false) TransferRequest request) {
+        return paymentService.requestTransfer(id, request == null ? null : request.amount());
     }
 
     @PostMapping("/payments/{id}/confirm")
     public PaymentDto confirmManually(@PathVariable Long id) {
         return paymentService.confirmManually(id, currentUser.id());
+    }
+
+    /** FR-08.9, FR-08.13: for the receipt; 404 until the bill is covered. */
+    @GetMapping("/orders/{id}/payments")
+    public List<PaymentDto> paidPayments(@PathVariable Long id) {
+        return paymentService.paidPayments(id);
     }
 
     @GetMapping("/bank-transactions")

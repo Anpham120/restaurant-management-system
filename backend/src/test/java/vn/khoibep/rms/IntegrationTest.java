@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -51,6 +52,14 @@ public abstract class IntegrationTest {
     /** Real time unless a test pins it; released after every test. */
     @Autowired
     protected MutableClock clock;
+
+    /** Cash needs an open shift (BR-39); like a restaurant in service, every test starts with one open. */
+    @BeforeEach
+    void openCashShift() throws Exception {
+        if (get("/api/cash-shifts/current", as("thungan")).andReturn().getResponse().getStatus() == 204) {
+            post("/api/cash-shifts", as("thungan"), Map.of("openingFloat", 1_000_000)).andExpect(status().isCreated());
+        }
+    }
 
     @AfterEach
     void releaseClock() {

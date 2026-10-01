@@ -21,6 +21,7 @@ import vn.khoibep.rms.order.dto.OrderDtos.AddItemsRequest;
 import vn.khoibep.rms.order.dto.OrderDtos.CancelRequest;
 import vn.khoibep.rms.order.dto.OrderDtos.CreateOrderRequest;
 import vn.khoibep.rms.order.dto.OrderDtos.KitchenItemDto;
+import vn.khoibep.rms.order.dto.OrderDtos.MoveTablesRequest;
 import vn.khoibep.rms.order.dto.OrderDtos.OrderDto;
 import vn.khoibep.rms.order.dto.OrderDtos.OrderItemDto;
 import vn.khoibep.rms.order.dto.OrderDtos.StatusRequest;
@@ -59,13 +60,20 @@ public class OrderController {
     @PostMapping("/orders/{id}/items")
     @PreAuthorize("hasRole('WAITER')")
     public OrderDto addItems(@PathVariable Long id, @Valid @RequestBody AddItemsRequest request) {
-        return orderService.addStaffItems(id, request);
+        return orderService.addStaffItems(id, request, currentUser.id());
+    }
+
+    /** FR-04.5, FR-04.6: put tables together or move the order; the bill stays (BR-36). */
+    @PostMapping("/orders/{id}/tables")
+    @PreAuthorize("hasRole('WAITER')")
+    public OrderDto moveTables(@PathVariable Long id, @Valid @RequestBody MoveTablesRequest request) {
+        return orderService.moveTables(id, request.tableIds());
     }
 
     @PostMapping("/orders/{id}/confirm-pending")
     @PreAuthorize("hasRole('WAITER')")
     public OrderDto confirmPending(@PathVariable Long id) {
-        return orderService.confirmPending(id);
+        return orderService.confirmPending(id, currentUser.id());
     }
 
     @PostMapping("/orders/{id}/cancel")

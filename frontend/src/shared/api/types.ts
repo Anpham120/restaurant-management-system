@@ -5,7 +5,10 @@ export type OrderType = 'DINE_IN' | 'TAKEAWAY'
 export type OrderStatus = 'OPEN' | 'PAID' | 'CANCELLED'
 export type ItemStatus = 'PENDING' | 'WAITING' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED'
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
-export type MovementType = 'IN' | 'OUT' | 'ADJUST'
+export type RevenueMethod = PaymentMethod | 'DEPOSIT'
+export type ReservationStatus = 'BOOKED' | 'SEATED' | 'CANCELLED' | 'NO_SHOW'
+export type ConsentChannel = 'ZALO' | 'SMS'
+export type MovementType = 'IN' | 'OUT' | 'ADJUST' | 'SALE'
 export type PayType = 'HOURLY' | 'MONTHLY'
 export type LeaveType = 'PAID' | 'UNPAID'
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
@@ -67,6 +70,8 @@ export interface DiningTable {
   guestCount: number | null
   pendingCount: number
   readyCount: number
+  /** FR-04.5: the tables of the open order, "B05 + B06", when it holds more than this one. */
+  groupLabel: string | null
 }
 
 export interface OrderItem {
@@ -88,16 +93,59 @@ export interface Order {
   id: number
   type: OrderType
   status: OrderStatus
+  /** The main table; null for takeaway. */
   tableId: number | null
+  /** BR-36: every table the order holds, the main one first. */
+  tableIds: number[]
+  /** "B05 + B06" when tables are put together. */
   tableName: string | null
   guestCount: number | null
   note: string | null
+  /** BR-44: the guest known by phone number, or none. */
+  customerId: number | null
+  customerName: string | null
+  customerPhone: string | null
   openedAt: string
   closedAt: string | null
+  /** BR-12: dishes billed, before discounts. */
+  subtotal: number
+  /** BR-35: what the adjustments in effect take off. */
+  discountTotal: number
+  /** BR-42: the deposit of the booking taken off the bill. */
+  depositCredit: number
+  /** What the guest pays: subtotal minus discounts and the deposit. */
   total: number
+  /** BR-43: what the parts of a split bill paid so far add up to; due is what is left. */
+  paidAmount: number
+  due: number
   pendingCount: number
   unservedCount: number
+  /** BR-13: discounts waiting for a manager block payment. */
+  pendingAdjustmentCount: number
   items: OrderItem[]
+  adjustments: Adjustment[]
+}
+
+export type AdjustmentType = 'DISCOUNT' | 'COMP'
+export type AdjustmentReason = 'WAIT' | 'FOOD_QUALITY' | 'STAFF_ERROR' | 'PROMOTION' | 'OTHER'
+export type AdjustmentStatus = 'PENDING' | 'APPLIED' | 'REJECTED' | 'CANCELLED'
+
+/** FR-08.10: a discount on the bill, or a dish line given free (orderItemId, itemName). */
+export interface Adjustment {
+  id: number
+  orderId: number
+  tableName: string | null
+  type: AdjustmentType
+  orderItemId: number | null
+  itemName: string | null
+  amount: number
+  reason: AdjustmentReason
+  note: string | null
+  status: AdjustmentStatus
+  createdByName: string
+  createdAt: string
+  decidedByName: string | null
+  decidedAt: string | null
 }
 
 export interface KitchenItem {
@@ -156,6 +204,25 @@ export interface BankTransaction {
   receivedAt: string
 }
 
+/** BR-34: the sensitive actions in the audit log. */
+export type AuditAction = 'ITEM_CANCELLED' | 'MANUAL_CONFIRMATION' | 'PRICE_CHANGED' | 'DISCOUNT_GIVEN'
+
+/** FR-16: one line of the audit log; before and after are raw, an item status code or a price in VND. */
+export interface AuditEntry {
+  id: number
+  action: AuditAction
+  employeeId: number
+  employeeName: string
+  orderId: number | null
+  tableName: string | null
+  subject: string
+  beforeValue: string | null
+  afterValue: string | null
+  amount: number | null
+  reason: string | null
+  createdAt: string
+}
+
 /** BR-32: failing once SePay deliveries failed 3 times in a row; since is when that run of failures began. */
 export interface WebhookStatus {
   failing: boolean
@@ -180,7 +247,14 @@ export interface GuestTable {
   order: {
     orderId: number
     items: GuestItem[]
+    /** FR-08.10: what discounts take off; total is what is left to pay. */
+    discountTotal: number
+    /** BR-42: the deposit of the booking taken off the bill. */
+    depositCredit: number
     total: number
+    /** BR-43: what was paid already, and what is left to pay. */
+    paidAmount: number
+    due: number
     pendingCount: number
     canPay: boolean
   } | null
@@ -205,6 +279,175 @@ export interface InventoryItem {
   quantity: number
   minQuantity: number
   lowStock: boolean
+  /** VND for one unit, the weighted average of receipts; null before the first receipt (BR-37). */
+  unitCost: number | null
+}
+
+/** FR-09.5: never deleted; one that is not active cannot be picked for a new receipt. */
+export interface Supplier {
+  id: number
+  name: string
+  phone: string | null
+  address: string | null
+  taxCode: string | null
+  note: string | null
+  active: boolean
+}
+
+export interface ReceiptLine {
+  id: number
+  inventoryItemId: number
+  itemName: string
+  unit: string
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
+
+/** FR-09.6: saved once, never edited or deleted (BR-37). */
+export interface GoodsReceipt {
+  id: number
+  supplierId: number
+  supplierName: string
+  note: string | null
+  createdByName: string
+  createdAt: string
+  total: number
+  lines: ReceiptLine[]
+}
+
+/** FR-18: a booking. The code is also the transfer content of the deposit (BR-42). */
+export interface Reservation {
+  id: number
+  code: string
+  guestName: string
+  phone: string
+  reservedAt: string
+  guestCount: number
+  tableId: number | null
+  tableName: string | null
+  note: string | null
+  status: ReservationStatus
+  depositAmount: number
+  depositPaidAt: string | null
+  depositConfirmation: 'AUTO' | 'MANUAL' | null
+  /** What came off the bill when the order was paid. */
+  depositApplied: number | null
+  confirmationSentAt: string | null
+  orderId: number | null
+}
+
+/** FR-19: a guest known by a normalised phone number (BR-44). */
+export interface Customer {
+  id: number
+  phone: string
+  name: string | null
+  note: string | null
+  /** The latest agreement to hear from the restaurant; optedOutAt is a refusal since then. */
+  consentChannel: ConsentChannel | null
+  consentAt: string | null
+  consentSource: string | null
+  optedOutAt: string | null
+  /** BR-44: agreed, and not refused since. */
+  mayContact: boolean
+  /** Paid orders, and what they brought in with the deposits taken off them. */
+  visits: number
+  spent: number
+  lastVisitAt: string | null
+}
+
+export interface CustomerVisit {
+  orderId: number
+  closedAt: string
+  tableName: string | null
+  /** Payments and the deposit taken off the bill. */
+  paid: number
+}
+
+export interface CustomerBooking {
+  id: number
+  code: string
+  reservedAt: string
+  guestCount: number
+  status: ReservationStatus
+}
+
+/** FR-19.3: the guest with the latest visits and bookings. */
+export interface CustomerDetail {
+  customer: Customer
+  visits: CustomerVisit[]
+  bookings: CustomerBooking[]
+}
+
+export interface ReservationDay {
+  date: string
+  /** Every deposit received and not yet taken off a bill. */
+  depositsHeld: number
+  reservations: Reservation[]
+}
+
+export interface ReservationConfirmation {
+  text: string
+  sentAt: string | null
+}
+
+export interface DepositInstruction {
+  reservationId: number
+  amount: number
+  reference: string
+  qrImageUrl: string
+  bankCode: string
+  bankAccountNo: string
+  bankAccountName: string
+}
+
+export interface CashExpense {
+  id: number
+  amount: number
+  reason: string
+  createdByName: string
+  createdAt: string
+}
+
+/** FR-17, BR-39: expectedCash is the opening float + cash taken − cash paid out; difference is counted − expected once closed. */
+export interface CashShift {
+  id: number
+  openedByName: string
+  openedAt: string
+  openingFloat: number
+  cashTaken: number
+  cashPayments: number
+  expenseTotal: number
+  expectedCash: number
+  closedByName: string | null
+  closedAt: string | null
+  countedCash: number | null
+  difference: number | null
+  closeNote: string | null
+  expenses: CashExpense[]
+}
+
+/** FR-09.8: how much of an ingredient one portion of a dish takes, in the ingredient's unit (BR-38). */
+export interface RecipeLine {
+  inventoryItemId: number
+  itemName: string
+  unit: string
+  quantity: number
+}
+
+export interface Recipe {
+  menuItemId: number
+  lines: RecipeLine[]
+}
+
+/** FR-09.10, in the ingredient's unit: used and removed left the stock; adjusted is negative when a count found less. */
+export interface StockUsage {
+  inventoryItemId: number
+  name: string
+  unit: string
+  used: number
+  removed: number
+  adjusted: number
 }
 
 export interface StockMovement {
@@ -223,9 +466,42 @@ export interface ReportSummary {
   revenue: number
   orderCount: number
   averagePerOrder: number
-  byMethod: { method: PaymentMethod; amount: number; count: number }[]
+  /** BR-21, BR-42: DEPOSIT is the deposits taken off the bills paid, counted per deposit. */
+  byMethod: { method: RevenueMethod; amount: number; count: number }[]
   byDay: { date: string; amount: number; count: number }[]
   topItems: { itemName: string; quantity: number; amount: number }[]
+}
+
+/** BR-40: cost and grossProfit are null when some portion sold had no cost. */
+export interface DishProfit {
+  itemName: string
+  quantity: number
+  revenue: number
+  cost: number | null
+  grossProfit: number | null
+}
+
+/** FR-10.4: cost and grossProfit cover the dishes with a full cost, whose dish revenue is costedRevenue. */
+export interface GrossProfitReport {
+  from: string
+  to: string
+  dishRevenue: number
+  revenue: number
+  discounts: number
+  costedRevenue: number
+  cost: number
+  grossProfit: number
+  dishes: DishProfit[]
+}
+
+export type ExceptionAction = Extract<AuditAction, 'ITEM_CANCELLED' | 'DISCOUNT_GIVEN' | 'MANUAL_CONFIRMATION'>
+
+/** FR-10.5 */
+export interface ExceptionsReport {
+  from: string
+  to: string
+  byAction: { action: ExceptionAction; count: number; amount: number }[]
+  byPerson: { employeeId: number; employeeName: string; action: ExceptionAction; count: number; amount: number }[]
 }
 
 export interface Settings {
@@ -357,7 +633,16 @@ export interface MyPayslip {
 export type StaffAlert = 'NEW_DISHES' | 'GUEST_DISHES' | 'DISH_READY' | 'SERVICE_REQUEST'
 
 export interface RealtimeMessage {
-  type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION' | 'REQUESTS_CHANGED' | 'WEBHOOK_STATUS'
+  type:
+    | 'ORDER_CHANGED'
+    | 'PAYMENT_PAID'
+    | 'MENU_CHANGED'
+    | 'TABLES_CHANGED'
+    | 'BANK_TRANSACTION'
+    | 'REQUESTS_CHANGED'
+    | 'WEBHOOK_STATUS'
+    | 'ADJUSTMENTS_CHANGED'
+    | 'RESERVATIONS_CHANGED'
   orderId: number | null
   tableId: number | null
   alert: StaffAlert | null
