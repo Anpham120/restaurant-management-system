@@ -124,6 +124,15 @@ Là **phục vụ**, tôi muốn ghép thêm bàn khi nhóm khách đông, và c
 - AC5: Thanh toán xong thì mọi bàn của đơn trở lại trống.
 - AC6: Lịch sử bàn của đơn được lưu: bàn nào, từ lúc nào tới lúc nào. Bếp không chuyển bàn được (403).
 
+### US-37 Đặt bàn và cọc — FR-18.1 → FR-18.5
+Là **phục vụ**, tôi muốn ghi lịch đặt bàn và nhận cọc qua VietQR, để giữ bàn cho khách và trừ cọc vào bill khi khách tới.
+- AC1: Đặt bàn cho 6 khách lúc 19:00 ngày mai, cọc 500.000 đ: booking có mã dạng KB + 8 ký tự, nằm trong danh sách ngày mai, cọc ở trạng thái chờ.
+- AC2: Tin xác nhận có mã booking, ngày giờ, số khách, số tiền cọc, tài khoản nhận và nội dung chuyển khoản; bấm "Đã gửi" thì lưu nội dung và giờ gửi.
+- AC3: Khách chuyển đúng 500.000 đ với nội dung là mã booking thì cọc tự sang đã nhận; sai số tiền thì không, giao dịch nằm ở danh sách không khớp. Quản lý xác nhận tay được, và việc đó vào nhật ký.
+- AC4: Khách tới, nhận khách ở bàn dự kiến: đơn mở ở bàn đó; bill 1.800.000 đ hiện "Cọc đã trả −500.000 đ", còn phải trả 1.300.000 đ. Trả xong, doanh thu ngày đó là 1.800.000 đ, trong đó 500.000 đ là cọc.
+- AC5: Cọc lớn hơn bill thì chỉ trừ bằng bill, còn phải trả 0 đ. Booking đã huỷ, không tới hoặc đã nhận khách thì không sửa, không nhận khách được nữa.
+- AC6: Bếp và thu ngân không xem, không tạo được booking. Chỉ quản lý xác nhận cọc tay.
+
 ## Bếp (CHEF)
 
 ### US-12 Màn hình bếp — FR-07.1 → FR-07.5

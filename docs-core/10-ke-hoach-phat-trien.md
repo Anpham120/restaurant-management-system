@@ -101,6 +101,8 @@ P3-01 → P3-05 **đã làm xong** (issue #19 → #23), trước lịch:
 | P4-04 | **Đơn app giao hàng** nhập tay (GrabFood, ShopeeFood), chống trùng mã đơn | FR-DLV-02, 03 | M | C |
 | P4-05 | Nhiều chi nhánh; chạy offline khi mất mạng | FR-OFF | XL | W, chỉ thiết kế |
 
+P4-01 **đã làm xong** (issue #24): yêu cầu FR-18.1 → FR-18.5, US-37, BR-42; CSDL là migration `V19` (bảng `reservation`, cột `orders.reservation_id`, `bank_transaction.reservation_id`). Mã booking cũng là nội dung chuyển khoản cọc, nên webhook SePay tự xác nhận cọc như xác nhận bill. Bản core chưa tự tính hoàn cọc khi huỷ hoặc không tới, chưa dời booking, chưa có tiệc nhiều bàn và lịch booking trên sơ đồ bàn (FR-RSV-05 → FR-RSV-09 bản mở rộng): quản lý xử lý hoàn cọc ngoài hệ thống.
+
 ### Giai đoạn 5 — Hồ sơ nộp môn (làm song song, chốt ở sprint 8)
 
 | Mã | Việc |

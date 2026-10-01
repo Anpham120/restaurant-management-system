@@ -171,6 +171,20 @@ classDiagram
         String reason
         Instant createdAt
     }
+    class Reservation {
+        Long id
+        String code
+        String guestName
+        String phone
+        Instant reservedAt
+        int guestCount
+        ReservationStatus status
+        long depositAmount
+        Instant depositPaidAt
+        Long depositApplied
+        isDepositPaid() boolean
+        depositCredit(billBeforeDeposit) long
+    }
     Category "1" --> "0..*" MenuItem
     DiningTable "1" --> "0..*" Order : bàn chính
     Order "1" *-- "0..*" OrderTable : giữ bàn
@@ -190,6 +204,9 @@ classDiagram
     CashShift "1" *-- "0..*" CashExpense : phiếu chi
     CashShift "0..1" --> "0..*" Payment : tiền mặt thu
     Employee "1" --> "0..*" CashShift : mở, chốt
+    DiningTable "0..1" <-- "0..*" Reservation : bàn dự kiến
+    Reservation "0..1" <-- "0..1" Order : mở từ booking
+    Reservation "0..1" <-- "0..*" BankTransaction : tiền cọc
     Employee "1" --> "0..*" Order : mở đơn
     Employee "0..1" --> "0..*" Payment : xác nhận
     Employee "1" --> "0..*" StockMovement : lập phiếu
@@ -222,6 +239,7 @@ Các kiểu liệt kê:
 | `AdjustmentType` | `DISCOUNT` (giảm một số tiền trên cả bill), `COMP` (tặng nguyên một dòng món) |
 | `AdjustmentReason` | `WAIT` (chờ lâu), `FOOD_QUALITY` (lỗi món), `STAFF_ERROR` (lỗi nhân viên), `PROMOTION` (khuyến mãi), `OTHER` (khác, phải ghi chú) |
 | `AdjustmentStatus` | `PENDING` (chờ duyệt), `APPLIED` (có hiệu lực), `REJECTED` (bị từ chối), `CANCELLED` (đã huỷ) |
+| `ReservationStatus` | `BOOKED` (chờ khách tới), `SEATED` (đã nhận khách, mở đơn), `CANCELLED` (đã huỷ), `NO_SHOW` (không tới) |
 | `PayType` (nhân sự) | `HOURLY` (theo giờ), `MONTHLY` (theo tháng) |
 | `LeaveType` (nhân sự) | `PAID` (có lương), `UNPAID` (không lương) |
 | `LeaveStatus` (nhân sự) | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
@@ -237,6 +255,7 @@ Ghi chú thiết kế:
 - Hoàn kho khi huỷ món đọc lại các biến động `SALE` đã ghi cho chính món đó (`StockMovement.orderItemId`), không tính lại theo định lượng hiện tại, nên sửa định lượng giữa chừng không làm lệch kho.
 - Biến động `SALE` ghi lại **giá vốn một đơn vị lúc trừ** (`unitCost`), nên lãi gộp của món đã bán không đổi khi giá vốn nguyên liệu đổi sau đó (BR-40).
 - `CashShift` chỉ ghi **tiền mặt dự kiến** lúc chốt, cạnh số đếm. Trong lúc ca mở, số dự kiến được tính từ quỹ đầu ca, các khoản tiền mặt gắn vào ca và phiếu chi, nên không bao giờ lệch với các khoản thật.
+- Cọc của booking **không phải** khoản thanh toán: tiền cọc nằm ở `Reservation`, bill chỉ **trừ** nó (`Order.total`), và lúc thanh toán mới ghi phần đã trừ (`depositApplied`). Vì vậy két (BR-39) chỉ đếm tiền mặt thật, còn báo cáo cộng phần cọc đã trừ vào doanh thu (BR-21).
 
 ## 6.2 Trạng thái món
 
@@ -302,6 +321,8 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Thu tiền, tạo VietQR, xác nhận tay, in phiếu thanh toán | ✅ | ✅ | | | ✅ |
 | Mở ca, phiếu chi đến 300.000 đ, chốt ca | ✅ | ✅ | | | ✅ |
 | Phiếu chi trên 300.000 đ, xem danh sách ca | ✅ | ✅ | | | |
+| Đặt bàn, tin xác nhận, mã cọc VietQR, nhận khách, huỷ | ✅ | ✅ | ✅ | | |
+| Xác nhận cọc tay | ✅ | ✅ | | | |
 | Giảm giá, tặng món (trong hạn mức thì có hiệu lực ngay) | ✅ | ✅ | | | ✅ |
 | Duyệt giảm giá vượt hạn mức | ✅ | ✅ | | | |
 | Kho, nhà cung cấp, phiếu nhập có giá, định lượng món, tiêu hao | ✅ | ✅ | | | |
