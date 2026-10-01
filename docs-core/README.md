@@ -5,10 +5,10 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | # | Tài liệu | Tương ứng repo tham khảo | Nội dung |
 |---|---|---|---|
 | 1 | [Tầm nhìn dự án](01-tam-nhin-du-an.md) | 01-project-vision | Vấn đề, mục tiêu, người dùng, phạm vi, tiêu chí nghiệm thu |
-| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 92 yêu cầu chức năng (17 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 11 yêu cầu phi chức năng |
-| 3 | [User stories](03-user-stories.md) | 03-user-stories | 35 story theo vai trò (7 story nhân sự), kèm tiêu chí chấp nhận |
+| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 94 yêu cầu chức năng (17 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 11 yêu cầu phi chức năng |
+| 3 | [User stories](03-user-stories.md) | 03-user-stories | 36 story theo vai trò (7 story nhân sự), kèm tiêu chí chấp nhận |
 | 4 | [Quy trình nghiệp vụ](04-quy-trinh-nghiep-vu.md) | 04-business-workflow | Trước và sau; 5 quy trình P1 đến P5 |
-| 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 40 quy tắc (6 quy tắc nhân sự), ghi rõ nơi kiểm tra trong mã |
+| 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 41 quy tắc (6 quy tắc nhân sự), ghi rõ nơi kiểm tra trong mã |
 | 6 | [Mô hình miền](06-mo-hinh-mien.md) | 06-domain-model | Sơ đồ lớp, sơ đồ trạng thái, ma trận quyền |
 | 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 28 bảng (7 bảng nhân sự ở mục 7.5), ràng buộc, index (database-first) |
 | 8 | [Thiết kế hệ thống](08-thiet-ke-he-thong.md) | 08-system-design | REST API, kênh realtime, màn hình, sơ đồ tuần tự |
@@ -23,7 +23,7 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 
 | Yêu cầu | User story | Quy tắc | API và màn hình | Test tự động |
 |---|---|---|---|---|
-| FR-01 Đăng nhập, phân quyền | US-01, US-03 | BR-01, 02, 03, 31 | `/api/auth/*`; `/login` | `AuthIntegrationTest`, `RateLimitIntegrationTest` |
+| FR-01 Đăng nhập, phân quyền | US-01, US-03, US-36 | BR-01, 02, 03, 31, 41 | `/api/auth/*`; `/login` | `AuthIntegrationTest`, `RateLimitIntegrationTest`, `TokenRevocationIntegrationTest` |
 | FR-02 Nhân viên | US-02, US-03 | BR-01, 03 | `/api/employees`; `/admin/employees` | `AuthIntegrationTest` |
 | FR-03 Thực đơn | US-04, US-13 | BR-05, 06, 18 | `/api/categories`, `/api/menu-items`; `/admin/menu`, `/kitchen` | `OrderFlowIntegrationTest`, `GuestQrIntegrationTest` |
 | FR-04 Bàn và QR | US-05, US-31 | BR-04, 09, 36 | `/api/tables`, `/api/orders/{id}/tables`; `/admin/tables`, `/tables` | `GuestQrIntegrationTest`, `OrderFlowIntegrationTest`, `MoveTablesIntegrationTest` |
@@ -42,8 +42,8 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-17 Ca và két | US-34 | BR-39 | `/api/cash-shifts`; `/cashier`, `/admin/cash-shifts` | `CashShiftIntegrationTest` |
 
 Kết quả lần chạy gần nhất:
-- Backend: 146 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
+- Backend: 150 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
 - Frontend: 61 test (gồm test component), lint và kiểm tra kiểu sạch.
-- Độ phủ backend (JaCoCo): 89,0% số dòng (1860/2089), tối thiểu 70%.
-- `scripts/check-erd.mjs`, chạy trong CI: 17 migration, 28 bảng, 225 cột, 85 khoá, 0 lệch.
+- Độ phủ backend (JaCoCo): 89,6% số dòng (1883/2101), tối thiểu 70%.
+- `scripts/check-erd.mjs`, chạy trong CI: 18 migration, 28 bảng, 226 cột, 85 khoá, 0 lệch.
 - E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 19,5 ms với 30 người dùng và 6 tháng dữ liệu.

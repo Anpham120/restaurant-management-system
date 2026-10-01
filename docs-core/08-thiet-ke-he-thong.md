@@ -14,7 +14,8 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 |---|---|---|---|
 | Đăng nhập | `POST /auth/login` | Công khai | FR-01.1 |
 | | `GET /auth/me` | NV | FR-01.1 |
-| | `POST /auth/change-password` | NV | FR-01.4 |
+| | `POST /auth/change-password` (trả token mới cho máy đang dùng) | NV | FR-01.4, FR-01.6 |
+| | `POST /auth/logout-all` (thu hồi mọi token của mình) | NV | FR-01.7 |
 | Nhân viên | `GET /employees`, `POST /employees`, `PUT /employees/{id}` | ADMIN | FR-02.1 |
 | | `PATCH /employees/{id}/active` | ADMIN | FR-02.2 |
 | | `POST /employees/{id}/reset-password` | ADMIN | FR-02.3 |

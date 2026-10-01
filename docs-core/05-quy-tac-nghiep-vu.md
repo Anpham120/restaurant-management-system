@@ -10,6 +10,7 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 | BR-02 | Quyền theo vai trò như ma trận ở [mô hình miền §6.4](06-mo-hinh-mien.md#64-ma-trận-quyền). `ADMIN` có mọi quyền | `@PreAuthorize` trên controller |
 | BR-03 | Nhân viên **không bị xoá**, chỉ bị khoá. Tài khoản bị khoá không đăng nhập được, token cũ bị từ chối ngay | `AuthService`, `ActiveEmployeeJwtConverter` |
 | BR-31 | Mỗi tên đăng nhập được thử **tối đa 10 lần mỗi phút**, tính cả lần đúng. Quá giới hạn thì trả 429 kèm số giây phải chờ. Giới hạn theo tên đăng nhập, không theo địa chỉ IP, vì IP sau nginx có thể bị giả | `AuthService`, `RateLimiter` |
+| BR-41 | Mỗi tài khoản có **số phiên bản token**, ghi vào token lúc đăng nhập. Đổi mật khẩu, quản trị đặt lại mật khẩu, hoặc đăng xuất mọi thiết bị thì số này tăng: mọi token mang số cũ bị từ chối (401), cả khi gọi API lẫn khi kết nối realtime. Đổi mật khẩu thì máy vừa đổi nhận token mới | `AuthService`, `EmployeeService`, `ActiveEmployeeJwtConverter` |
 
 ## 5.2 Bàn, đơn và món
 

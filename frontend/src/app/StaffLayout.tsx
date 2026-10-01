@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { App, Badge, Button, Drawer, Form, Input, Layout, Menu, Modal, Spin, Typography } from 'antd'
+import { App, Badge, Button, Divider, Drawer, Form, Input, Layout, Menu, Modal, Popconfirm, Spin, Typography } from 'antd'
 import {
   AccountBookOutlined,
   AuditOutlined,
@@ -24,7 +24,7 @@ import {
   WalletOutlined,
 } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
-import type { RealtimeMessage, Role } from '@/shared/api/types'
+import type { LoginResponse, RealtimeMessage, Role } from '@/shared/api/types'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import ServiceRequestsButton from '@/features/order/components/ServiceRequestsButton'
 import ApprovalsButton from '@/features/payment/components/ApprovalsButton'
@@ -54,7 +54,7 @@ const NAV: { key: string; label: string; icon: ReactNode; role: Role | null }[] 
 ]
 
 export default function StaffLayout() {
-  const { user, token, loading, logout } = useAuth()
+  const { user, token, loading, logout, replaceToken } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -109,9 +109,21 @@ export default function StaffLayout() {
 
   const changePassword = async (values: { currentPassword: string; newPassword: string }) => {
     try {
-      await api.post('/auth/change-password', values)
-      message.success('Đã đổi mật khẩu')
+      // BR-41: the other devices are signed out; this one goes on with the new token.
+      const res = await api.post<LoginResponse>('/auth/change-password', values)
+      replaceToken(res.data.token)
+      message.success('Đã đổi mật khẩu. Các máy khác phải đăng nhập lại.')
       setPasswordOpen(false)
+    } catch (e) {
+      message.error(errorMessage(e))
+    }
+  }
+
+  /** FR-01.7: every session ends, this one too. */
+  const logoutEverywhere = async () => {
+    try {
+      await api.post('/auth/logout-all')
+      logout()
     } catch (e) {
       message.error(errorMessage(e))
     }
@@ -170,7 +182,7 @@ export default function StaffLayout() {
           <Typography.Text type="secondary" className="wide-only">
             ({roleLabel[user.role]})
           </Typography.Text>
-          <Button icon={<KeyOutlined />} onClick={() => setPasswordOpen(true)} title="Đổi mật khẩu" />
+          <Button icon={<KeyOutlined />} onClick={() => setPasswordOpen(true)} title="Mật khẩu, đăng xuất mọi thiết bị" />
           <Button icon={<LogoutOutlined />} onClick={logout} title="Đăng xuất" />
         </Layout.Header>
         <Layout.Content style={{ padding: 16 }}>
@@ -185,10 +197,18 @@ export default function StaffLayout() {
           <Form.Item name="newPassword" label="Mật khẩu mới" rules={[{ required: true, min: 6, message: 'Ít nhất 6 ký tự' }]}>
             <Input.Password />
           </Form.Item>
+          <Typography.Paragraph type="secondary">Đổi mật khẩu thì các máy khác đang đăng nhập phải đăng nhập lại.</Typography.Paragraph>
           <Button type="primary" htmlType="submit" block>
             Lưu
           </Button>
         </Form>
+        <Divider />
+        <Typography.Paragraph>Mất điện thoại, hoặc quên đăng xuất ở máy khác?</Typography.Paragraph>
+        <Popconfirm title="Đăng xuất mọi thiết bị, cả máy này?" okText="Đăng xuất" cancelText="Không" onConfirm={logoutEverywhere}>
+          <Button danger block>
+            Đăng xuất mọi thiết bị
+          </Button>
+        </Popconfirm>
       </Modal>
     </Layout>
   )

@@ -52,7 +52,7 @@ flowchart LR
 │       ├── schedule/  attendance/   xếp ca, chấm công
 │       ├── leave/  payroll/         nghỉ phép, bảng lương
 │       ├── audit/                   nhật ký thao tác (chỉ thêm)
-│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên), V10 (đổi tên quán), V11 (nhật ký thao tác), V12 (giảm giá, tặng món), V13 (chuyển, ghép bàn), V14 (nhà cung cấp, phiếu nhập), V15 (định lượng, trừ kho tự động), V16 (ca và két), V17 (giá vốn lúc trừ kho, view báo cáo)
+│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên), V10 (đổi tên quán), V11 (nhật ký thao tác), V12 (giảm giá, tặng món), V13 (chuyển, ghép bàn), V14 (nhà cung cấp, phiếu nhập), V15 (định lượng, trừ kho tự động), V16 (ca và két), V17 (giá vốn lúc trừ kho, view báo cáo), V18 (thu hồi token)
 ├── frontend/                        React + Vite
 │   └── src/ app/ (định tuyến, khung trang), shared/ (API, realtime, định dạng), features/<module>/
 ├── scripts/check-erd.mjs            so ERD với migration (database-first)
@@ -109,7 +109,7 @@ frontend/src/
 ## 9.4 Bảo mật
 
 - Mật khẩu băm **BCrypt**. Đăng nhập trả **JWT HS256** có hạn 12 giờ. Khoá bí mật lấy từ biến môi trường `APP_JWT_SECRET`.
-- Mỗi request kiểm tra nhân viên **còn hoạt động** (BR-03).
+- Mỗi request kiểm tra nhân viên **còn hoạt động** (BR-03), và token còn đúng **số phiên bản** của tài khoản (BR-41). Đổi mật khẩu hay đăng xuất mọi thiết bị là thu hồi mọi token cũ, không cần danh sách token bị cấm.
 - API công khai chỉ gồm `/api/public/**`, `/api/auth/login`, `/api/webhooks/sepay`, `/ws`, `/actuator/health`.
 - Actuator chỉ mở `health` (công khai), `info` và `metrics` (chỉ ADMIN). Nginx chỉ chuyển tiếp `/actuator/health`, nên từ Internet không gọi được các endpoint còn lại.
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.

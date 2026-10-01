@@ -48,6 +48,10 @@ public class Employee {
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    /** Tokens carry the version they were issued with; counting it up revokes all of them (BR-41). */
+    @Column(nullable = false)
+    private int tokenVersion;
+
     // Profile and pay (FR-12). Pay is shown to ADMIN only (BR-22).
 
     private String phone;
@@ -70,5 +74,16 @@ public class Employee {
         this.username = username;
         this.passwordHash = passwordHash;
         this.role = role;
+    }
+
+    /** BR-41: a new password, and every token issued before it stops working. */
+    public void changePassword(String newHash) {
+        passwordHash = newHash;
+        revokeTokens();
+    }
+
+    /** BR-41: every token issued until now stops working. */
+    public void revokeTokens() {
+        tokenVersion++;
     }
 }

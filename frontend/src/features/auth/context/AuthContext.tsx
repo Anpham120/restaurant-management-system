@@ -8,6 +8,8 @@ interface AuthState {
   loading: boolean
   login: (username: string, password: string) => Promise<Employee>
   logout: () => void
+  /** BR-41: after a password change, this device goes on with the new token. */
+  replaceToken: (token: string) => void
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -44,7 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
-  const value = useMemo(() => ({ user, token, loading, login, logout }), [user, token, loading, login, logout])
+  const replaceToken = useCallback((next: string) => {
+    setToken(next)
+    setTokenState(next)
+  }, [])
+
+  const value = useMemo(
+    () => ({ user, token, loading, login, logout, replaceToken }),
+    [user, token, loading, login, logout, replaceToken],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

@@ -111,9 +111,10 @@ public class EmployeeService {
         return EmployeeDetailDto.from(employee);
     }
 
+    /** BR-41: every session of the person ends. */
     @Transactional
     public void resetPassword(Long id, String newPassword) {
-        get(id).setPasswordHash(passwordEncoder.encode(newPassword));
+        get(id).changePassword(passwordEncoder.encode(newPassword));
     }
 
     static String normalize(String username) {

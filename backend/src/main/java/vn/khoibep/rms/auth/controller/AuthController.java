@@ -35,9 +35,15 @@ public class AuthController {
         return authService.me(currentUser.id());
     }
 
+    /** The other sessions end; the new token keeps this one going (BR-41). */
     @PostMapping("/change-password")
+    public LoginResponse changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        return authService.changePassword(currentUser.id(), request);
+    }
+
+    @PostMapping("/logout-all")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        authService.changePassword(currentUser.id(), request);
+    public void logoutAll() {
+        authService.logoutEverywhere(currentUser.id());
     }
 }

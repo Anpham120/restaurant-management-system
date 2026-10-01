@@ -11,6 +11,7 @@ classDiagram
         String passwordHash
         Role role
         boolean active
+        int tokenVersion
     }
     class Category {
         Long id
@@ -231,6 +232,7 @@ Ghi chú thiết kế:
 - `OrderItem` lưu **tên và đơn giá lúc gọi** (BR-05), nên báo cáo và bill không đổi khi thực đơn đổi.
 - Trạng thái bàn **không lưu** mà tính từ đơn đang mở (BR-04), nên không bao giờ lệch.
 - `OrderTable` nối đơn với từng bàn nó giữ. Dòng còn hiệu lực (`releasedAt` rỗng) là bàn đang giữ; dòng đã trả là lịch sử chuyển bàn. `Order` vẫn giữ một **bàn chính** để in, báo cáo và chặn hai đơn cùng mở một bàn lúc khách quét QR.
+- `Employee.tokenVersion` thu hồi token mà không cần danh sách token bị cấm: token mang số phiên bản lúc cấp, khác số hiện tại là bị từ chối (BR-41).
 - `AuditEntry` lưu giá trị **thô**: trạng thái món là mã (`COOKING`), giá là số. Màn hình tự đổi sang chữ và định dạng tiền, còn báo cáo sau này đọc được ngay.
 - Hoàn kho khi huỷ món đọc lại các biến động `SALE` đã ghi cho chính món đó (`StockMovement.orderItemId`), không tính lại theo định lượng hiện tại, nên sửa định lượng giữa chừng không làm lệch kho.
 - Biến động `SALE` ghi lại **giá vốn một đơn vị lúc trừ** (`unitCost`), nên lãi gộp của món đã bán không đổi khi giá vốn nguyên liệu đổi sau đó (BR-40).

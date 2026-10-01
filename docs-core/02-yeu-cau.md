@@ -13,6 +13,8 @@
 | FR-01.3 | Tài khoản bị khoá không đăng nhập được, token cũ mất hiệu lực ngay | M | BR-03 |
 | FR-01.4 | Nhân viên tự đổi mật khẩu | S | BR-01 |
 | FR-01.5 | **Chống dò mật khẩu**: đăng nhập quá 10 lần trong một phút với cùng tên đăng nhập thì bị chặn tạm thời | M | BR-31 |
+| FR-01.6 | **Thu hồi token**: đổi mật khẩu, hoặc quản trị đặt lại mật khẩu, thì mọi phiên đăng nhập cũ của người đó hết hiệu lực; máy vừa đổi mật khẩu vẫn dùng tiếp | S | BR-41 |
+| FR-01.7 | **Đăng xuất mọi thiết bị**: nhân viên tự kết thúc mọi phiên đăng nhập của mình, kể cả máy đang dùng | S | BR-41 |
 
 ### FR-02 Quản lý nhân viên (ADMIN)
 

@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02), `V16` thêm ca và két (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`) (P2-01), `V17` thêm giá vốn lúc trừ kho (`stock_movement.unit_cost`) và view `v_order_item_cost` cho báo cáo lãi gộp (P2-04).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02), `V16` thêm ca và két (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`) (P2-01), `V17` thêm giá vốn lúc trừ kho (`stock_movement.unit_cost`) và view `v_order_item_cost` cho báo cáo lãi gộp (P2-04), `V18` thêm số phiên bản token của nhân viên để thu hồi token (P3-02).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V18__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V19__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -56,6 +56,7 @@ erDiagram
         varchar role "ADMIN, MANAGER, WAITER, CHEF, CASHIER"
         boolean active
         timestamptz created_at
+        int token_version "tăng khi đổi, đặt lại mật khẩu hoặc đăng xuất mọi thiết bị"
     }
     CATEGORY {
         bigint id PK
@@ -271,6 +272,7 @@ erDiagram
 | Tên nhà cung cấp duy nhất | `UNIQUE (name)` trên `supplier` | BR-37 |
 | Định lượng hợp lệ | `CHECK (quantity > 0)` và `CONSTRAINT ux_recipe_line_item UNIQUE (menu_item_id, inventory_item_id)` trên `recipe_line` | BR-38 |
 | Loại biến động hợp lệ | `CONSTRAINT ck_stock_movement_type CHECK (type IN ('IN','OUT','ADJUST','SALE'))` trên `stock_movement`, thay ràng buộc của `V1` | BR-19, BR-38 |
+| Số phiên bản token không âm | `CHECK (token_version >= 0)` trên `employee` | BR-41 |
 | Một ca mở mỗi lúc | `CREATE UNIQUE INDEX ux_cash_shift_open ON cash_shift ((closed_at IS NULL)) WHERE closed_at IS NULL` | BR-39 |
 | Ca chốt đủ thông tin, lệch có lý do | `CONSTRAINT ck_cash_shift_closed CHECK ((closed_at IS NULL) = (closed_by IS NULL) AND (closed_at IS NULL) = (expected_cash IS NULL) AND (closed_at IS NULL) = (counted_cash IS NULL))`, `CONSTRAINT ck_cash_shift_reason CHECK (counted_cash = expected_cash OR close_note IS NOT NULL)`; `CHECK (opening_float >= 0)`, `CHECK (counted_cash >= 0)` | BR-39 |
 | Phiếu chi hợp lệ | `CHECK (amount > 0)` trên `cash_expense` | BR-39 |
