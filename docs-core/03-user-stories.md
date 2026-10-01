@@ -133,6 +133,13 @@ Là **thu ngân**, tôi muốn xử lý khi tiền về nhưng hệ thống khô
 - AC3: Khi webhook SePay lỗi 3 lần liên tiếp thì màn hình thu ngân hiện cảnh báo "Chuyển khoản đang không tự xác nhận" trong ≤ 2 giây, kèm lý do và lúc bắt đầu lỗi.
 - AC4: Khi lại nhận được một webhook hợp lệ thì cảnh báo tắt.
 
+### US-28 In phiếu — FR-08.9
+Là **thu ngân** hoặc **phục vụ**, tôi muốn in phiếu tạm tính để khách kiểm tra trước khi trả, và in phiếu thanh toán sau khi trả.
+- AC1: Phiếu tạm tính chỉ có các món tính tiền, tổng bằng tổng trên màn hình. Món khách gửi còn chờ xác nhận được ghi riêng, không cộng vào tổng.
+- AC2: Phiếu thanh toán của đơn trả tiền mặt ghi tiền khách đưa và tiền thối; đơn trả chuyển khoản ghi mã chuyển khoản.
+- AC3: Đơn chưa trả thì không in được phiếu thanh toán. Phục vụ không lấy được thông tin thanh toán (403).
+- AC4: Phiếu vừa khổ giấy 80 mm và ghi rõ không thay hoá đơn GTGT.
+
 ## Nhân sự
 
 Phần thêm theo yêu cầu của môn sau bản core (P2-05 → P2-09 trong [kế hoạch](10-ke-hoach-phat-trien.md)).

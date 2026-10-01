@@ -50,6 +50,7 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | Thanh toán | `POST /orders/{id}/payments/cash` | CASHIER, MANAGER | FR-08.2 |
 | | `POST /orders/{id}/payments/transfer` | CASHIER, MANAGER | FR-08.3 |
 | | `POST /payments/{id}/confirm` | CASHIER, MANAGER | FR-08.6 |
+| | `GET /orders/{id}/payment` (khoản đã trả của đơn, để in phiếu thanh toán; chưa trả thì 404) | CASHIER, MANAGER | FR-08.9 |
 | | `GET /bank-transactions?status=UNMATCHED` | CASHIER, MANAGER | FR-08.7 |
 | | `GET /bank-transactions/webhook-status` (webhook SePay có đang lỗi liên tiếp không) | CASHIER, MANAGER | FR-08.8 |
 | | `POST /webhooks/sepay` | SePay (header API key) | FR-08.4 |
@@ -103,9 +104,9 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 |---|---|---|---|
 | `/login` | Mọi nhân viên | Đăng nhập | FR-01.1 |
 | `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nút mở đơn và mang về; kêu khi có món xong, món QR mới | FR-04.4, FR-05.1, FR-07.5 |
-| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; kêu như sơ đồ bàn | FR-05, FR-06.3, FR-07.5 |
+| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; in phiếu tạm tính; kêu như sơ đồ bàn | FR-05, FR-06.3, FR-07.5, FR-08.9 |
 | `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
-| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; cảnh báo khi webhook SePay lỗi liên tiếp | FR-08 |
+| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp | FR-08 |
 | `/admin/menu` | MANAGER | Danh mục và món | FR-03 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
 | `/admin/inventory` | MANAGER | Nguyên liệu, nhập, xuất, kiểm kê, lịch sử | FR-09 |
@@ -147,6 +148,30 @@ Phác thảo màn hình bếp:
 │ B01 Phở bò x1  │ ...            │                 │
 └────────────────┴────────────────┴─────────────────┘
 ```
+
+Phác thảo phiếu tạm tính khổ 80 mm (FR-08.9). Trình duyệt chỉ in phần phiếu, rộng 72 mm, vừa vùng in của máy in nhiệt 80 mm:
+
+```text
+┌──────────────────────────────┐
+│           KHÓI BẾP           │
+│    Phường Đống Đa, Hà Nội    │
+│        ĐT 0900000000         │
+│        PHIẾU TẠM TÍNH        │
+│ Bàn B05 · Đơn #128 · 2 khách │
+│ Vào 18:05 · In 19:42 01/10   │
+├──────────────────────────────┤
+│ Lẩu riêu cua bắp bò          │
+│   1 x 329.000 đ    329.000 đ │
+│ Nem rán                      │
+│   2 x 65.000 đ     130.000 đ │
+├──────────────────────────────┤
+│ TỔNG CỘNG          459.000 đ │
+│ Giá đã gồm VAT. Phiếu này    │
+│ không thay hoá đơn GTGT.     │
+└──────────────────────────────┘
+```
+
+Phiếu thanh toán có thêm cách trả, tiền khách đưa và tiền thối (tiền mặt) hoặc mã chuyển khoản, giờ trả và lời cảm ơn.
 
 ## 8.4 Tuần tự: khách gọi món qua QR
 
