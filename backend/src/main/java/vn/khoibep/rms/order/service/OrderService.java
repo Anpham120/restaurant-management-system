@@ -84,6 +84,7 @@ public class OrderService {
         order.setNote("Đặt bàn " + reservation.getCode());
         order.setCreatedBy(employeeId);
         order.setReservation(reservation);
+        order.setCustomer(reservation.getCustomer());
         holdFreeTable(order, tableId);
         return open(order);
     }

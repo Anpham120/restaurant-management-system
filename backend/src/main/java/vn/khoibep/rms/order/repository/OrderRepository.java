@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -25,6 +26,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("select o.reservation.id as reservationId, o.id as orderId from Order o where o.reservation.id in :reservationIds")
     List<BookingOrder> findByReservationIds(@Param("reservationIds") Collection<Long> reservationIds);
+
+    /** BR-44: a guest's visits, the latest first. */
+    List<Order> findByCustomerIdAndStatusOrderByClosedAtDesc(Long customerId, OrderStatus status, Pageable page);
 
     @Query("select distinct o from Order o left join fetch o.table left join fetch o.items"
             + " where o.status = :status order by o.openedAt")

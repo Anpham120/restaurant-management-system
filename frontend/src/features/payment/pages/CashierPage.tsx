@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Col, Empty, Flex, InputNumber, Modal, Popconfirm, Result, Row, Table, Tabs, Tag, Typography } from 'antd'
-import { PercentageOutlined, PrinterOutlined, SplitCellsOutlined } from '@ant-design/icons'
+import { PercentageOutlined, PrinterOutlined, SplitCellsOutlined, UserAddOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
 import type { BankTransaction, Order, Payment, PaymentInstruction, Settings, WebhookStatus } from '@/shared/api/types'
 import { useAuth } from '@/features/auth/context/AuthContext'
+import AttachCustomerModal from '@/features/customer/components/AttachCustomerModal'
 import StatusTag from '@/features/order/components/StatusTag'
 import AdjustmentModal from '../components/AdjustmentModal'
 import BillSlip from '../components/BillSlip'
@@ -29,6 +30,7 @@ export default function CashierPage() {
   // FR-08.12: the part of a split bill being taken; null takes the whole rest.
   const [part, setPart] = useState<number | null>(null)
   const [splitting, setSplitting] = useState(false)
+  const [attaching, setAttaching] = useState(false)
   // What was paid and left when the VietQR code was made, to tell a part that came in from a bill that changed.
   const [askedWhen, setAskedWhen] = useState<{ paid: number; due: number } | null>(null)
   const { user } = useAuth()
@@ -133,6 +135,15 @@ export default function CashierPage() {
     />
   ) : (
     <Flex vertical gap={12}>
+      {/* FR-19.2: the guest by phone number, for their visits and what they agreed to hear. */}
+      <Flex justify="space-between" align="center" gap={8}>
+        <Typography.Text type={o.customerId ? undefined : 'secondary'}>
+          {o.customerId ? `Khách: ${o.customerName ?? 'Chưa có tên'}, ${o.customerPhone}` : 'Chưa gắn khách'}
+        </Typography.Text>
+        <Button size="small" icon={<UserAddOutlined />} onClick={() => setAttaching(true)}>
+          {o.customerId ? 'Khách hàng' : 'Gắn khách'}
+        </Button>
+      </Flex>
       <Table
         size="small"
         rowKey="id"
@@ -425,6 +436,7 @@ export default function CashierPage() {
           }}
         />
       )}
+      {attaching && o && <AttachCustomerModal order={o} onClose={() => setAttaching(false)} />}
       {adjusting && o && (
         <AdjustmentModal
           order={o}

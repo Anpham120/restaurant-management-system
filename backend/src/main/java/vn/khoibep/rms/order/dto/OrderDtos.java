@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import vn.khoibep.rms.customer.entity.Customer;
 import vn.khoibep.rms.order.entity.Adjustment;
 import vn.khoibep.rms.order.entity.Order;
 import vn.khoibep.rms.order.entity.OrderItem;
@@ -91,21 +92,24 @@ public final class OrderDtos {
     }
 
     /**
+     * @param customerId    the guest known by phone number (BR-44), or none
      * @param pendingCount  guest dishes waiting for confirmation
      * @param unservedCount dishes still in the kitchen or waiting to be served
      */
     public record OrderDto(Long id, OrderType type, OrderStatus status, Long tableId, List<Long> tableIds,
-                           String tableName, Integer guestCount, String note, Instant openedAt, Instant closedAt,
+                           String tableName, Integer guestCount, String note, Long customerId,
+                           String customerName, String customerPhone, Instant openedAt, Instant closedAt,
                            long subtotal, long discountTotal, long depositCredit, long total, long paidAmount,
                            long due, int pendingCount, int unservedCount,
                            int pendingAdjustmentCount, List<OrderItemDto> items, List<AdjustmentDto> adjustments) {
         public static OrderDto from(Order o) {
             int unserved = o.countItems(ItemStatus.WAITING) + o.countItems(ItemStatus.COOKING)
                     + o.countItems(ItemStatus.READY);
+            Customer c = o.getCustomer();
             return new OrderDto(o.getId(), o.getType(), o.getStatus(), o.tableId(),
                     o.activeTables().stream().map(DiningTable::getId).toList(), o.tableLabel(), o.getGuestCount(),
-                    o.getNote(),
-                    o.getOpenedAt(), o.getClosedAt(), o.subtotal(), o.discountTotal(), o.depositCredit(), o.total(),
+                    o.getNote(), c == null ? null : c.getId(), c == null ? null : c.getName(),
+                    c == null ? null : c.getPhone(), o.getOpenedAt(), o.getClosedAt(), o.subtotal(), o.discountTotal(), o.depositCredit(), o.total(),
                     o.paidAmount(), o.due(),
                     o.countItems(ItemStatus.PENDING), unserved, o.countPendingAdjustments(),
                     o.getItems().stream().map(OrderItemDto::from).toList(),

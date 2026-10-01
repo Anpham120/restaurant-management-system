@@ -7,6 +7,7 @@ export type ItemStatus = 'PENDING' | 'WAITING' | 'COOKING' | 'READY' | 'SERVED' 
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
 export type RevenueMethod = PaymentMethod | 'DEPOSIT'
 export type ReservationStatus = 'BOOKED' | 'SEATED' | 'CANCELLED' | 'NO_SHOW'
+export type ConsentChannel = 'ZALO' | 'SMS'
 export type MovementType = 'IN' | 'OUT' | 'ADJUST' | 'SALE'
 export type PayType = 'HOURLY' | 'MONTHLY'
 export type LeaveType = 'PAID' | 'UNPAID'
@@ -100,6 +101,10 @@ export interface Order {
   tableName: string | null
   guestCount: number | null
   note: string | null
+  /** BR-44: the guest known by phone number, or none. */
+  customerId: number | null
+  customerName: string | null
+  customerPhone: string | null
   openedAt: string
   closedAt: string | null
   /** BR-12: dishes billed, before discounts. */
@@ -330,6 +335,48 @@ export interface Reservation {
   depositApplied: number | null
   confirmationSentAt: string | null
   orderId: number | null
+}
+
+/** FR-19: a guest known by a normalised phone number (BR-44). */
+export interface Customer {
+  id: number
+  phone: string
+  name: string | null
+  note: string | null
+  /** The latest agreement to hear from the restaurant; optedOutAt is a refusal since then. */
+  consentChannel: ConsentChannel | null
+  consentAt: string | null
+  consentSource: string | null
+  optedOutAt: string | null
+  /** BR-44: agreed, and not refused since. */
+  mayContact: boolean
+  /** Paid orders, and what they brought in with the deposits taken off them. */
+  visits: number
+  spent: number
+  lastVisitAt: string | null
+}
+
+export interface CustomerVisit {
+  orderId: number
+  closedAt: string
+  tableName: string | null
+  /** Payments and the deposit taken off the bill. */
+  paid: number
+}
+
+export interface CustomerBooking {
+  id: number
+  code: string
+  reservedAt: string
+  guestCount: number
+  status: ReservationStatus
+}
+
+/** FR-19.3: the guest with the latest visits and bookings. */
+export interface CustomerDetail {
+  customer: Customer
+  visits: CustomerVisit[]
+  bookings: CustomerBooking[]
 }
 
 export interface ReservationDay {

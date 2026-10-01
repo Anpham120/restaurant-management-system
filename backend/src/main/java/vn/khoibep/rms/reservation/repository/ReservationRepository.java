@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +16,9 @@ import vn.khoibep.rms.reservation.entity.Reservation;
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
     boolean existsByCode(String code);
+
+    /** BR-44: a guest's bookings, the latest first. */
+    List<Reservation> findByCustomerIdOrderByReservedAtDesc(Long customerId, Pageable page);
 
     /** By time of arrival. */
     @Query("""
