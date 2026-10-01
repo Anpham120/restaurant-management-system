@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V10__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V11__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -89,7 +89,7 @@ erDiagram
         varchar method "CASH, BANK_TRANSFER"
         varchar status "PENDING, PAID, CANCELLED"
         bigint amount
-        varchar reference UK "BNN + 8 ký tự"
+        varchar reference UK "KB + 8 ký tự"
         bigint received_amount "tiền mặt khách đưa"
         varchar confirmation "AUTO, MANUAL"
         bigint confirmed_by FK
@@ -181,7 +181,7 @@ erDiagram
 - 4 danh mục, 16 món.
 - 12 bàn ở 2 khu: "Tầng 1", "Sân trong".
 - 6 nguyên liệu. Tồn đầu kỳ được ghi thành phiếu nhập, đúng BR-19.
-- Thông tin nhà hàng.
+- Thông tin nhà hàng. `V10__doi_ten_quan.sql` đổi tên quán mẫu thành "Khói Bếp", chỉ khi tên và chủ tài khoản vẫn là giá trị mẫu: quản trị đã sửa ở màn hình Cài đặt thì giữ nguyên.
 
 Tài khoản demo cho 5 vai trò được tạo lúc khởi động khi bật `app.demo-accounts.enabled=true`. Mặc định cờ này **tắt** ở môi trường production.
 

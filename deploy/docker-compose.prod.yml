@@ -1,5 +1,5 @@
 # Staging and production: images come from GHCR, secrets from the .env file next to this file
-# (never from Git). The pipeline copies this file to ~/bnn-rms (production) or ~/bnn-rms-staging
+# (never from Git). The pipeline copies this file to ~/khoibep-rms (production) or ~/khoibep-rms-staging
 # (staging) and runs: IMAGE_TAG=<commit sha> docker compose up -d. The folder name keeps the two
 # stacks' containers and volumes apart.
 services:

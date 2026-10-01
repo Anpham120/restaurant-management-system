@@ -145,7 +145,7 @@ Bảng việc nằm trên GitHub: mỗi sprint là một [milestone](https://git
 
 Theo yêu cầu của môn, mỗi người giữ **một service** và làm cả backend lẫn frontend của service đó, gồm cả test và tài liệu. Hạ tầng dùng chung không phải service, nên Anpham120 (mạnh hạ tầng) giữ thêm.
 
-| Service | Người | Backend (`vn.bnn.rms.*`) | Frontend | Việc |
+| Service | Người | Backend (`vn.khoibep.rms.*`) | Frontend | Việc |
 |---|---|---|---|---|
 | Gọi món, bếp, QR | Anpham120 | `order` | `/orders/:id`, `/kitchen`, `/q/:token` | P1-05, P1-06, P3-01; tuỳ chọn P4-04 |
 | Bàn và đặt bàn | totototototoads | `table` | `/tables`, `/admin/tables` | P1-01, P4-01; tuỳ chọn P4-02 |

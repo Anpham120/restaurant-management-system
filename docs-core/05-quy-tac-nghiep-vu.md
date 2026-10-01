@@ -38,7 +38,7 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 |---|---|---|
 | BR-12 | Tổng tiền = Σ (đơn giá × số lượng) của các món **đã xác nhận và không huỷ**. Giá đã gồm VAT. Bản 1 không có giảm giá | `Order.total()` |
 | BR-13 | Chỉ thanh toán khi đơn **đang mở**, có ít nhất một món tính tiền, và **không còn món chờ xác nhận**. Trả **một lần đủ tổng** (không chia bill). Tiền mặt: tiền khách đưa ≥ tổng | `PaymentService` |
-| BR-14 | Mỗi yêu cầu chuyển khoản có **mã thanh toán duy nhất** dạng `BNN` + 8 ký tự, và số tiền bằng tổng lúc tạo. Mỗi đơn có **tối đa một** yêu cầu đang chờ. Tạo lại thì dùng lại mã cũ nếu tổng không đổi, còn nếu đổi thì huỷ mã cũ. Đơn có thêm món thì mã đang chờ bị huỷ | `PaymentService`, unique index `ux_payment_pending_order` |
+| BR-14 | Mỗi yêu cầu chuyển khoản có **mã thanh toán duy nhất** dạng `KB` + 8 ký tự, và số tiền bằng tổng lúc tạo. Mỗi đơn có **tối đa một** yêu cầu đang chờ. Tạo lại thì dùng lại mã cũ nếu tổng không đổi, còn nếu đổi thì huỷ mã cũ. Đơn có thêm món thì mã đang chờ bị huỷ | `PaymentService`, unique index `ux_payment_pending_order` |
 | BR-15 | Tự xác nhận khi: webhook có **đúng API key**, là **tiền vào**, trường `code` hoặc nội dung chứa **mã đang chờ**, và **số tiền đúng bằng** số yêu cầu | `SepayWebhookService` |
 | BR-16 | Mỗi giao dịch SePay (`id`) chỉ xử lý **một lần**. Giao dịch sai tiền, không có mã hoặc mã đã huỷ được lưu **KHÔNG KHỚP** để thu ngân xử lý, và **không tự đóng đơn** | Unique `bank_transaction.provider_txn_id` |
 | BR-17 | Chỉ thu ngân và quản lý được **xác nhận tay**. Hệ thống ghi người xác nhận và thời điểm | `PaymentService.confirmManually` |

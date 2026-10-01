@@ -1,4 +1,4 @@
-# Tài liệu phân tích và thiết kế — BNN-RMS (bản core)
+# Tài liệu phân tích và thiết kế — KB-RMS (bản core)
 
 Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-ancala/Restaurant-Management-System](https://github.com/nazrul-ancala/Restaurant-Management-System), nội dung viết cho một nhà hàng ở Hà Nội.
 
@@ -19,7 +19,7 @@ Bản phân tích mở rộng (chuỗi quán, máy chủ tại quán, chạy off
 
 ## Truy vết
 
-Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test tự động. Test nằm trong `backend/src/test/java/vn/bnn/rms/`.
+Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test tự động. Test nằm trong `backend/src/test/java/vn/khoibep/rms/`.
 
 | Yêu cầu | User story | Quy tắc | API và màn hình | Test tự động |
 |---|---|---|---|---|
@@ -43,5 +43,5 @@ Kết quả lần chạy gần nhất:
 - Backend: 105 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
 - Frontend: 30 test (gồm test component), lint và kiểm tra kiểu sạch.
 - Độ phủ backend (JaCoCo): 85,2% số dòng (1316/1545), tối thiểu 70%.
-- `scripts/check-erd.mjs`, chạy trong CI: 9 migration, 19 bảng, 157 cột, 54 khoá, 0 lệch.
+- `scripts/check-erd.mjs`, chạy trong CI: 10 migration, 19 bảng, 157 cột, 54 khoá, 0 lệch.
 - E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 19,5 ms với 30 người dùng và 6 tháng dữ liệu.

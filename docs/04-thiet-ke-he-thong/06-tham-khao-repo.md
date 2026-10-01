@@ -25,7 +25,7 @@
 
 ## 2. Mẫu thiết kế được chọn và cách chuyển về stack của dự án
 
-| Mẫu | Lấy từ | Áp dụng trong BNN-RMS (Spring Boot / React / PostgreSQL) | Tài liệu cập nhật |
+| Mẫu | Lấy từ | Áp dụng trong KB-RMS (Spring Boot / React / PostgreSQL) | Tài liệu cập nhật |
 |---|---|---|---|
 | **Phiên bàn + khách tham gia qua QR** | numa, Plato | `table_session` (đã có) + `guest_session` (mới): token ngẫu nhiên 128-bit, hết hạn trượt, **chỉ tạo được khi bàn đang mở** (BR-41) | Mô hình lớp, CSDL |
 | **Token QR bàn** | Plato `QrTokenService` | `table_qr_code.token` sinh bằng `SecureRandom`, in trên thẻ bàn chống bóc dán; đổi được khi nghi bị giả (BR-53) | CSDL |

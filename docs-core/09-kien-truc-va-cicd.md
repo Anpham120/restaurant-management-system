@@ -40,7 +40,7 @@ flowchart LR
 ```text
 .
 ├── backend/                         Spring Boot (Maven Wrapper)
-│   └── src/main/java/vn/bnn/rms/
+│   └── src/main/java/vn/khoibep/rms/
 │       ├── common/                  exception/ (lỗi chung), realtime/ (sự kiện), security/ (người đăng nhập,
 │       │                            giới hạn tần suất), util/
 │       ├── config/                  Security, JWT, WebSocket
@@ -51,7 +51,7 @@ flowchart LR
 │       ├── inventory/  report/  settings/
 │       ├── schedule/  attendance/   xếp ca, chấm công
 │       ├── leave/  payroll/         nghỉ phép, bảng lương
-│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên)
+│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên), V10 (đổi tên quán)
 ├── frontend/                        React + Vite
 │   └── src/ app/ (định tuyến, khung trang), shared/ (API, realtime, định dạng), features/<module>/
 ├── scripts/check-erd.mjs            so ERD với migration (database-first)
@@ -124,8 +124,8 @@ frontend/src/
 | Môi trường | Nhánh | Cách chạy | Ghi chú |
 |---|---|---|---|
 | Máy dev | bất kỳ | `docker compose up --build` rồi mở `http://localhost:8080` | Có tài khoản demo |
-| Staging | `develop` | `deploy/docker-compose.prod.yml` trong `~/bnn-rms-staging`, image tag theo commit | Tự deploy, có thể bật tài khoản demo để cả nhóm thử |
-| Production | `main` | `deploy/docker-compose.prod.yml` trong `~/bnn-rms` | Deploy sau khi có người duyệt |
+| Staging | `develop` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms-staging`, image tag theo commit | Tự deploy, có thể bật tài khoản demo để cả nhóm thử |
+| Production | `main` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms` | Deploy sau khi có người duyệt |
 
 Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. Biến chính: `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `SEPAY_API_KEY`, `APP_PUBLIC_BASE_URL` (địa chỉ in trong QR bàn), `HTTP_PORT`, `APP_DEMO_ACCOUNTS_ENABLED`.
 

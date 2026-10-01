@@ -1,5 +1,5 @@
 #!/bin/sh
-# P0-04: restores a dump made by backup.sh. Run it next to docker-compose.prod.yml (~/bnn-rms or ~/bnn-rms-staging).
+# P0-04: restores a dump made by backup.sh. Run it next to docker-compose.prod.yml (~/khoibep-rms or ~/khoibep-rms-staging).
 #   sh restore.sh --check backups/rms-2026-10-05-0300.dump
 #       loads the dump into a scratch database, prints the row count of each table, then drops it.
 #       The live data is not touched: run it after each backup you want to trust.

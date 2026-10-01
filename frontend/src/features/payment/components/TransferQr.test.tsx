@@ -7,8 +7,8 @@ const INSTRUCTION: PaymentInstruction = {
   paymentId: 7,
   orderId: 3,
   amount: 245_000,
-  reference: 'BNN12345678',
-  qrImageUrl: 'https://img.vietqr.io/image/970436-0123456789-compact2.png?amount=245000&addInfo=BNN12345678',
+  reference: 'KB12345678',
+  qrImageUrl: 'https://img.vietqr.io/image/970436-0123456789-compact2.png?amount=245000&addInfo=KB12345678',
   bankCode: '970436',
   bankAccountNo: '0123456789',
   bankAccountName: 'NGUYEN VAN A',
@@ -20,7 +20,7 @@ describe('TransferQr', () => {
     const qr = screen.getByRole('img', { name: 'Mã VietQR 245.000 đ' })
     expect(qr.getAttribute('src')).toBe(INSTRUCTION.qrImageUrl)
     expect(screen.getByRole('heading', { name: '245.000 đ' })).toBeTruthy()
-    expect(screen.getByText('BNN12345678')).toBeTruthy()
+    expect(screen.getByText('KB12345678')).toBeTruthy()
     expect(screen.getByText('NGUYEN VAN A · 0123456789')).toBeTruthy()
   })
 })

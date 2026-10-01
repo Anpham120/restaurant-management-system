@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div className="center-page">
       <Card style={{ width: 360, maxWidth: '100%' }}>
         <Typography.Title level={3} style={{ color: '#b45309', marginTop: 0 }}>
-          Bếp Nhà &amp; Nướng
+          Khói Bếp
         </Typography.Title>
         <Typography.Paragraph type="secondary">Đăng nhập dành cho nhân viên</Typography.Paragraph>
         <Form layout="vertical" onFinish={onFinish} requiredMark={false}>

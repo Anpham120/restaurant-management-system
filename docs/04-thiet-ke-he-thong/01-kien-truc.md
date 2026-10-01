@@ -99,7 +99,7 @@ flowchart LR
 3. **Một mã nguồn, hai chế độ triển khai** (edge, cloud). Đây là một ứng dụng Spring Boot chạy với hai **profile**: `edge` và `cloud`. Profile edge chỉ bật các mô-đun vận hành quán.
 4. *(CR-01)* **Điện thoại khách không bao giờ nói chuyện trực tiếp với máy chủ tại quán.** Khách đi qua **Guest API ở cloud**. Cloud chuyển đơn xuống edge qua **kênh trực tiếp** (WebSocket do edge chủ động mở ra ngoài, nên không cần mở cổng ở quán). **Edge vẫn là nơi ghi duy nhất** của đơn và bill. Nếu kênh trực tiếp mất, cloud **từ chối đơn ngay** (BR-55).
 5. *(CR-02)* **Một thẻ QR, hai đường đi:**
-   - Thẻ chứa URL `https://order.bnn.vn/t/<token>`.
+   - Thẻ chứa URL `https://order.khoibep.vn/t/<token>`.
    - **Camera hoặc Zalo** mở URL đó, tức là đi đường khách qua cloud.
    - **App nhân viên** tự đọc token và hỏi **máy chủ tại quán**, tức là đi đường nhân viên trong LAN, chạy được khi mất Internet. Edge chỉ giữ **băm của token**.
 
@@ -162,7 +162,7 @@ flowchart LR
 | Tích hợp | Thí điểm | Toàn chuỗi | Cơ chế | Phương án thủ công | Câu hỏi mở |
 |---|---|---|---|---|---|
 | Ngân hàng (thông báo giao dịch) | Should (tuỳ ngân hàng cho truy cập) | Should | Webhook hoặc API của ngân hàng, hoặc dịch vụ trung gian đọc biến động số dư (ứng viên cần đánh giá, ví dụ PayOS, SePay, Casso) | Thu ngân xác nhận có mã tham chiếu (FR-BIL-10) | OI-08 |
-| QR động | Should | Should | Chuẩn VietQR (NAPAS); nội dung ASCII ≤ 25 ký tự, ví dụ `BNN DDA 7K3F2Q` | QR tĩnh có mã bill in trên bill | OI-08 |
+| QR động | Should | Should | Chuẩn VietQR (NAPAS); nội dung ASCII ≤ 25 ký tự, ví dụ `KB DDA 7K3F2Q` | QR tĩnh có mã bill in trên bill | OI-08 |
 | HĐĐT | Xuất file theo mẫu nhập của MISA meInvoice (Must) | API nhà cung cấp (Should) | Hàng chờ HĐ → file hoặc API → nhập lại số HĐ | Kế toán nhập tay như hiện tại | Tài liệu API và mẫu nhập của nhà cung cấp |
 | Phần mềm kế toán | File Excel theo mẫu nhập của MISA (Should) | Must, **đã được kế toán thử** | Xuất theo kỳ | — | Mẫu nhập chứng từ bán hàng và mua hàng |
 | Nhắn tin | Mẫu tin để nhân viên gửi và ghi nhận | Zalo ZNS hoặc SMS | Adapter nhắn tin | Nhân viên gửi Zalo thủ công theo mẫu | Chi phí mỗi tin (biến đổi) |
@@ -205,7 +205,7 @@ flowchart TB
     RT -->|HTTPS| VM
     PH["Điện thoại chủ, quản lý"] -->|HTTPS| VM
     PC["Máy tính kế toán, mua hàng"] -->|HTTPS| VM
-    GP["Điện thoại khách - 4G, CR-01"] -->|HTTPS order.bnn.vn| RP["Reverse proxy và CDN cho App Khách"]
+    GP["Điện thoại khách - 4G, CR-01"] -->|HTTPS order.khoibep.vn| RP["Reverse proxy và CDN cho App Khách"]
     RP --> VM
     PROV["Ngân hàng hoặc trung gian thanh toán"] -->|webhook có chữ ký| VM
 ```
@@ -217,7 +217,7 @@ flowchart TB
 | UPS | Lưu điện cho edge, router, máy in bếp | NFR-09 |
 | Wi-Fi nhân viên | Mạng riêng cho thiết bị, tách Wi-Fi khách | NFR-15; khảo sát bàn mặt tiền Cầu Giấy (OI-11) |
 | Máy in | ESC/POS mạng | Số lượng chốt sau khảo sát bếp (OI-10) |
-| *(CR-01)* Reverse proxy + CDN cho App Khách | Phục vụ trang khách tĩnh (React build), chống tấn công từ chối dịch vụ, giới hạn tốc độ | Tên miền riêng cho khách, ví dụ `order.bnn.vn` (OI-29) |
+| *(CR-01)* Reverse proxy + CDN cho App Khách | Phục vụ trang khách tĩnh (React build), chống tấn công từ chối dịch vụ, giới hạn tốc độ | Tên miền riêng cho khách, ví dụ `order.khoibep.vn` (OI-29) |
 | *(CR-01)* Thẻ QR bàn | Thẻ in chống bóc dán ở 6 bàn thí điểm | Kiểm tra mỗi lần mở bàn (TR-16) |
 
 ## 8. Bảo mật
@@ -245,7 +245,7 @@ flowchart TB
   - Chỉ **thiết bị đã ghép cặp** với edge và **nhân viên đã đăng nhập PIN** mới dùng được chế độ nhân viên. Trên điện thoại cá nhân hay trình duyệt thường, URL chỉ mở trang khách.
   - Edge **từ chối** token không thuộc quán mình.
   - Mọi lần mở bàn đều ghi **cách chọn** (quét hoặc chọn tay) vào nhật ký.
-  - **HTTPS trong LAN:** edge có chứng chỉ cho tên nội bộ, ví dụ `dda.edge.bnn.vn` trỏ IP LAN. Chứng chỉ được gia hạn qua ACME DNS-01 khi có mạng. Phương án dự phòng là CA nội bộ cài trên thiết bị của quán (NFR-48).
+  - **HTTPS trong LAN:** edge có chứng chỉ cho tên nội bộ, ví dụ `dda.edge.khoibep.vn` trỏ IP LAN. Chứng chỉ được gia hạn qua ACME DNS-01 khi có mạng. Phương án dự phòng là CA nội bộ cài trên thiết bị của quán (NFR-48).
 
 ## 9. Kế hoạch kiểm tra kỹ thuật 2 tuần (TR-03)
 
@@ -294,7 +294,7 @@ flowchart TB
 
 > Cập nhật 30/09/2026 theo **yêu cầu bắt buộc của nhóm dự án** (DEC-26, CON-11). Thay cho đề xuất Node.js/NestJS trước đó. Cách tổ chức mã nguồn và pipeline chi tiết ở [07-ma-nguon-va-cicd.md](07-ma-nguon-va-cicd.md).
 
-| Lớp | Công nghệ | Vai trò trong BNN-RMS | Học từ repo tham khảo |
+| Lớp | Công nghệ | Vai trò trong KB-RMS | Học từ repo tham khảo |
 |---|---|---|---|
 | Ngôn ngữ, nền tảng backend | **Java 21 LTS, Spring Boot 3.x** (Maven) | Một ứng dụng, hai profile `edge` và `cloud` | numa, Plato, order_by_qr |
 | Ranh giới mô-đun | **Spring Modulith** (package theo mô-đun ở §4; kiểm tra phụ thuộc bằng test `ApplicationModules.verify()`); sự kiện miền nội bộ `ApplicationEventPublisher` | Giữ modular monolith sạch (ADR-02) | restaurant-pos (KDS theo sự kiện) |

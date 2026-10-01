@@ -648,7 +648,7 @@ erDiagram
 | id | uuid | PK | |
 | bill_id | uuid | FK, NOT NULL | |
 | amount | bigint | > 0 | Số còn phải trả lúc tạo (INV-16) |
-| reference | varchar(25) | UNIQUE | ASCII, ví dụ `BNN DDA 7K3F2Q`, dùng làm nội dung chuyển khoản |
+| reference | varchar(25) | UNIQUE | ASCII, ví dụ `KB DDA 7K3F2Q`, dùng làm nội dung chuyển khoản |
 | provider | text | | `vietcombank`, `payos`, `sepay`, `casso`, `manual` (ADR-10) |
 | provider_ref | varchar(64) | | Mã lệnh phía nhà cung cấp (nếu có) |
 | status | text | CHECK | `created`, `awaiting`, `confirmed`, `partly_paid`, `expired`, `cancelled` |

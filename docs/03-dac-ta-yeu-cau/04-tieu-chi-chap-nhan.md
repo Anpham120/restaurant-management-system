@@ -90,7 +90,7 @@
 
 **AC-15 · FR-BIL-09, FR-INT-01: QR động tự xác nhận**
 - Cho trước bill B-205 của quán Đống Đa, phải trả 780.000đ.
-- Khi ngân hàng gửi thông báo giao dịch 780.000đ với nội dung "BNN DDA B205".
+- Khi ngân hàng gửi thông báo giao dịch 780.000đ với nội dung "KB DDA B205".
 - Thì khoản thanh toán **tự chuyển sang Đã xác nhận**.
 - Khi số tiền là 700.000đ.
 - Thì **không** tự xác nhận; giao dịch vào **hàng chờ xử lý tay**.
@@ -333,7 +333,7 @@
 - Thì trang hiện đủ món, giảm giá, cọc, và **số còn phải trả**.
 
 **AC-54 · FR-GST-14, FR-GST-15, FR-GST-17, BR-49: tự thanh toán thành công**
-- Cho trước lệnh thanh toán 1.230.000đ, mã tham chiếu "BNN DDA 7K3F2Q".
+- Cho trước lệnh thanh toán 1.230.000đ, mã tham chiếu "KB DDA 7K3F2Q".
 - Khi tuyến ngân hàng gửi thông báo **có chữ ký hợp lệ**, đúng số tiền và đúng mã.
 - Thì bill **đã thanh toán** trong ≤ 10 giây. Khách thấy "Đã nhận thanh toán". Máy của phục vụ hiện bàn 6 **đã trả, có thể dọn**. Dữ liệu HĐĐT vào hàng chờ.
 - Thông báo **sai chữ ký** bị **bỏ qua** và ghi nhật ký.

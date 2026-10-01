@@ -179,7 +179,7 @@ flowchart LR
 │ HĐ: ○ Khách lẻ  ● Công ty [Tên][MST][Email]   │
 ├───────────────────────────────────────────────┤
 │ [Tiền mặt] [Chuyển khoản QR] [Thẻ] [Ví]       │
-│  QR: 1.330.000  "BNN DDA 7K3F2Q" ✔ ĐÃ NHẬN    │
+│  QR: 1.330.000  "KB DDA 7K3F2Q" ✔ ĐÃ NHẬN     │
 │  Thẻ: 500.000   mã chuẩn chi [______]         │
 │  Tiền mặt: 500.000  khách đưa 500.000         │
 ├───────────────────────────────────────────────┤
@@ -280,7 +280,7 @@ flowchart LR
 
 ```text
 ┌──────────────────────────────┐
-│ Bếp Nhà & Nướng · Bàn 6      │
+│ Khói Bếp · Bàn 6             │
 │ ⏰ Món ăn nhận tới 21:45      │
 │ [Nướng] [Lẩu] [Món Việt] [Uống]│
 ├──────────────────────────────┤
@@ -325,9 +325,9 @@ flowchart LR
 │       ▓▓▓▓▓▓▓▓▓▓▓▓            │
 │       ▓  VietQR   ▓           │
 │       ▓▓▓▓▓▓▓▓▓▓▓▓            │
-│ Chủ TK: CTY TNHH BEP NHA VA NUONG│
+│ Chủ TK: CTY TNHH KHOI BEP        │
 │ Số TK: •••• 1234  (Vietcombank)│
-│ Nội dung: BNN DDA 7K3F2Q      │
+│ Nội dung: KB DDA 7K3F2Q       │
 │ [ Mở app ngân hàng ]          │
 │ [ Lưu ảnh QR ]                │
 ├──────────────────────────────┤
@@ -364,10 +364,10 @@ flowchart LR
 ┌───────────────────────────────────────────────────┐
 │ TỰ THANH TOÁN · Đống Đa                           │
 ├───────────────────────────────────────────────────┤
-│ Bàn 6  1.230.000  BNN DDA 7K3F2Q ✔ Đã xác nhận    │
-│ Bàn 4    980.000  BNN DDA 9P2L4X ⏳ Chờ xác nhận 3'│
+│ Bàn 6  1.230.000  KB DDA 7K3F2Q ✔ Đã xác nhận     │
+│ Bàn 4    980.000  KB DDA 9P2L4X ⏳ Chờ xác nhận 3' │
 │                   → Kiểm tra tài khoản trước       │
-│ Bàn 2    650.000  BNN DDA 2M8K1D ◐ Trả một phần    │
+│ Bàn 2    650.000  KB DDA 2M8K1D ◐ Trả một phần     │
 │                   đã nhận 500.000 · thiếu 150.000  │
 ├───────────────────────────────────────────────────┤
 │ KHÔNG KHỚP (1)                                     │

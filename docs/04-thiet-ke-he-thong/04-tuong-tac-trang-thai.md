@@ -105,7 +105,7 @@ sequenceDiagram
     participant NH as Ngân hàng hoặc trung gian
     actor KH as Khách
     TN->>E: Chọn chuyển khoản cho bill con
-    E->>E: Sinh nội dung BNN mã quán mã bill và QR theo chuẩn VietQR
+    E->>E: Sinh nội dung KB mã quán mã bill và QR theo chuẩn VietQR
     E-->>TN: Hiện QR có sẵn số tiền
     KH->>NH: Quét QR và chuyển khoản
     NH->>C: Thông báo giao dịch
