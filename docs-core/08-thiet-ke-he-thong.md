@@ -43,6 +43,7 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `POST /orders` | WAITER, MANAGER | FR-05.1 |
 | | `POST /orders/{id}/items` | WAITER, MANAGER | FR-05.2, FR-05.3 |
 | | `POST /orders/{id}/confirm-pending` | WAITER, MANAGER | FR-06.3 |
+| | `POST /orders/{id}/tables` (`tableIds`: 1 đến 10 bàn; đặt lại bàn của đơn: thêm là ghép, thay là chuyển) | WAITER, MANAGER | FR-04.5, FR-04.6 |
 | | `POST /orders/{id}/cancel` | WAITER, MANAGER | FR-05.6 |
 | | `PATCH /order-items/{id}/status` | CHEF (COOKING, READY), WAITER (SERVED), MANAGER | FR-07.2, FR-05.5 |
 | | `POST /order-items/{id}/cancel` | WAITER, MANAGER (theo BR-08) | FR-05.4, FR-06.3 |
@@ -107,8 +108,8 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 | Đường dẫn | Vai trò | Nội dung | Yêu cầu |
 |---|---|---|---|
 | `/login` | Mọi nhân viên | Đăng nhập | FR-01.1 |
-| `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nút mở đơn và mang về; kêu khi có món xong, món QR mới | FR-04.4, FR-05.1, FR-07.5 |
-| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; in phiếu tạm tính; kêu như sơ đồ bàn | FR-05, FR-06.3, FR-07.5, FR-08.9 |
+| `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nhóm bàn của đơn ghép; nút mở đơn và mang về; kêu khi có món xong, món QR mới | FR-04.4, FR-04.5, FR-05.1, FR-07.5 |
+| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; chuyển, ghép bàn; in phiếu tạm tính; kêu như sơ đồ bàn | FR-04.5, FR-04.6, FR-05, FR-06.3, FR-07.5, FR-08.9 |
 | `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
 | `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; giảm giá, tặng món; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp | FR-08 |
 | `/admin/menu` | MANAGER | Danh mục và món | FR-03 |

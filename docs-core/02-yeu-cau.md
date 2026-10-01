@@ -38,6 +38,8 @@
 | FR-04.2 | Mỗi bàn có **mã QR riêng**. Quản lý xem và in thẻ QR | M | BR-09 |
 | FR-04.3 | Tạo lại mã QR khi thẻ mất hoặc bị lộ. Mã cũ hết hiệu lực ngay | M | BR-09 |
 | FR-04.4 | Sơ đồ bàn hiện trạng thái: trống, có khách, có món chờ xác nhận, có món xong chờ ra | M | BR-04 |
+| FR-04.5 | **Ghép bàn**: một đơn chiếm nhiều bàn cho một nhóm khách. Mỗi bàn vẫn hiện riêng trên sơ đồ, kèm nhóm bàn của đơn. Khách quét QR ở bàn nào trong nhóm cũng gọi món vào cùng đơn | M | BR-04, 36 |
+| FR-04.6 | **Chuyển bàn**: chuyển cả đơn sang bàn khác, kể cả từ N bàn sang M bàn. **Bill giữ nguyên**. Bếp, phục vụ, thu ngân thấy tên bàn mới; bàn cũ trống ngay. Hệ thống lưu lịch sử bàn của đơn | M | BR-04, 36 |
 
 ### FR-05 Gọi món (phục vụ)
 

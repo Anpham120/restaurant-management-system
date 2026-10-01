@@ -42,7 +42,8 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 | P1-06 | **Âm báo**: bếp có món mới, phục vụ có món xong hoặc đơn QR mới; tô đỏ món chờ quá lâu | FR-KIT-03, 08 | S | S | Ngưỡng chờ trong `restaurant_settings` |
 | P1-07 | **Tách bill**: chia đều hoặc theo món, nhiều khoản thanh toán cho một đơn | FR-BIL-02, 07 | L | C | Bỏ `ux_payment_paid_order`; sửa BR-13 |
 
-P1-02, P1-03, P1-04, P1-05 và P1-06 **đã làm xong** (issue #9, #10, #11, #12, #13), trước lịch:
+P1-01 → P1-06 **đã làm xong** (issue #8 → #13), trước lịch:
+- P1-01: yêu cầu FR-04.5, FR-04.6, US-31, BR-36, sửa BR-04; CSDL là migration `V13` (bảng `order_table`, chép bàn của các đơn cũ sang). Một đơn giữ một hoặc nhiều bàn; phục vụ đặt lại bàn của đơn ở trang đơn, bill giữ nguyên. Bản core chưa chuyển một phần món sang bàn khác và chưa có nhóm bàn định sẵn (FR-TBL-04, 05 của bản mở rộng).
 - P1-02: yêu cầu FR-08.9, US-28, BR-33; không đổi CSDL. Phục vụ và thu ngân in phiếu tạm tính, thu ngân in phiếu thanh toán, từ trình duyệt ra máy in nhiệt 80 mm.
 - P1-03: yêu cầu FR-16, US-29, BR-34; CSDL là migration `V11` (bảng `audit_entry`, trigger chặn sửa, xoá). Ghi nhật ký khi huỷ hoặc từ chối món, xác nhận tay, đổi giá món; quản lý tra cứu ở `/admin/audit`. Giảm giá (P1-04) sẽ ghi vào cùng nhật ký.
 - P1-04: yêu cầu FR-08.10, FR-08.11, US-30, BR-35, sửa BR-12, BR-13, BR-14, BR-34; CSDL là migration `V12` (bảng `adjustment`). Hạn mức 10% tiền món và 150.000 đ mỗi bill đang cố định trong mã; sau khi quán chạy thử, nếu cần đổi thì chuyển vào màn hình Cài đặt. Bản core chưa có hạn mức theo ca và duyệt dự phòng khi chủ không trả lời (BR-02, BR-03 của bản mở rộng).

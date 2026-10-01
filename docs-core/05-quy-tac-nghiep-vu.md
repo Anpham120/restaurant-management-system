@@ -15,7 +15,8 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 
 | Mã | Quy tắc | Kiểm tra ở |
 |---|---|---|
-| BR-04 | Mỗi bàn có **tối đa một đơn đang mở**. Bàn trống là bàn không có đơn mở. Đơn mang về không gắn bàn | Unique index `ux_orders_open_table` |
+| BR-04 | Mỗi bàn thuộc **tối đa một đơn đang mở**; một đơn tại bàn chiếm **một hoặc nhiều bàn** (ghép bàn), bàn đầu tiên là bàn chính. Bàn trống là bàn không thuộc đơn mở nào. Đơn mang về không gắn bàn | Unique index `ux_order_table_active` (mọi bàn của đơn mở) và `ux_orders_open_table` (bàn chính) |
+| BR-36 | Phục vụ hoặc quản lý **đặt lại danh sách bàn** của một đơn đang mở, từ 1 đến 10 bàn: thêm bàn là ghép, thay bàn là chuyển. Bàn mới phải trống hoặc đã thuộc đơn đó. **Bill giữ nguyên**: món, khoản giảm, mã chuyển khoản đang chờ không đổi. Bàn bỏ ra trống ngay, QR của bàn đó không còn gọi món vào đơn này. Mỗi bàn của đơn được ghi lại lúc bắt đầu và lúc thôi giữ, làm lịch sử. Đơn đóng thì mọi bàn của nó được trả | `OrderService.moveTables`, `Order.moveTo`, bảng `order_table` |
 | BR-05 | Tên và **đơn giá được chốt** khi gọi món. Sửa giá thực đơn không đổi đơn đã gọi | `OrderService.buildItems` |
 | BR-06 | Chỉ gọi được món **đang bán**. Mỗi dòng có số lượng từ 1 đến 50 | `OrderService`, validation |
 | BR-07 | Trạng thái món chỉ đi tiến: **Chờ xác nhận → Chờ làm → Đang làm → Xong → Đã ra**. Bếp đổi "Chờ làm → Đang làm → Xong"; phục vụ đổi "Xong → Đã ra" | `ItemStatus.canMoveTo`, `OrderItemService` |
