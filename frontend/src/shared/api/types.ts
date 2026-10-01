@@ -110,6 +110,9 @@ export interface Order {
   depositCredit: number
   /** What the guest pays: subtotal minus discounts and the deposit. */
   total: number
+  /** BR-43: what the parts of a split bill paid so far add up to; due is what is left. */
+  paidAmount: number
+  due: number
   pendingCount: number
   unservedCount: number
   /** BR-13: discounts waiting for a manager block payment. */
@@ -244,6 +247,9 @@ export interface GuestTable {
     /** BR-42: the deposit of the booking taken off the bill. */
     depositCredit: number
     total: number
+    /** BR-43: what was paid already, and what is left to pay. */
+    paidAmount: number
+    due: number
     pendingCount: number
     canPay: boolean
   } | null

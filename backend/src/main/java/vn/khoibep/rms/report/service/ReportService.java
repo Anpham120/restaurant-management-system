@@ -37,20 +37,24 @@ public class ReportService {
             p.status = 'PAID'
             and (p.paid_at at time zone :tz)::date between :from and :to""";
 
+    /** BR-21, BR-43: orders covered on those days; a split bill is covered by its last payment. */
+    private static final String CLOSED_IN_RANGE = """
+            o.status = 'PAID'
+            and (o.closed_at at time zone :tz)::date between :from and :to""";
+
     /**
-     * BR-21, BR-42: what came in for the bills paid on those days: each payment, and each deposit taken off a bill.
-     * Only payments count as orders.
+     * BR-21, BR-42: what came in on those days: each payment, and each deposit taken off a bill covered then.
+     * Only payments count orders, each order once however many parts it was paid in (BR-43).
      */
     private static final String MONEY_IN = """
-            select p.method, p.amount, p.paid_at, 1 as orders
+            select p.method, p.amount, p.paid_at as at, p.order_id, true as payment
             from payment p
-            where %1$s
+            where %s
             union all
-            select 'DEPOSIT', r.deposit_applied, p.paid_at, 0
+            select 'DEPOSIT', r.deposit_applied, o.closed_at, o.id, false
             from reservation r
             join orders o on o.reservation_id = r.id
-            join payment p on p.order_id = o.id
-            where %1$s and r.deposit_applied > 0""".formatted(PAID_IN_RANGE);
+            where %s and r.deposit_applied > 0""".formatted(PAID_IN_RANGE, CLOSED_IN_RANGE);
 
     private final NamedParameterJdbcTemplate jdbc;
     private final AppProperties props;
@@ -68,7 +72,8 @@ public class ReportService {
                         rs.getLong("amount"), rs.getLong("cnt")));
 
         List<DayRevenue> byDay = jdbc.query("""
-                select (m.paid_at at time zone :tz)::date as day, sum(m.amount) as amount, sum(m.orders) as cnt
+                select (m.at at time zone :tz)::date as day, sum(m.amount) as amount,
+                       count(distinct m.order_id) filter (where m.payment) as cnt
                 from (%s) m
                 group by day
                 order by day""".formatted(MONEY_IN), params,
@@ -78,17 +83,18 @@ public class ReportService {
         List<TopItem> topItems = jdbc.query("""
                 select oi.item_name, sum(oi.quantity) as qty, sum(oi.quantity * oi.unit_price) as amount
                 from order_item oi
-                join payment p on p.order_id = oi.order_id
+                join orders o on o.id = oi.order_id
                 where %s
                   and oi.status not in ('CANCELLED', 'PENDING')
                 group by oi.item_name
                 order by qty desc, amount desc
-                limit 10""".formatted(PAID_IN_RANGE), params,
+                limit 10""".formatted(CLOSED_IN_RANGE), params,
                 (rs, i) -> new TopItem(rs.getString("item_name"), rs.getLong("qty"), rs.getLong("amount")));
 
         long revenue = byMethod.stream().mapToLong(MethodRevenue::amount).sum();
-        long orderCount = byMethod.stream().filter(m -> m.method() != RevenueMethod.DEPOSIT)
-                .mapToLong(MethodRevenue::count).sum();
+        Long orders = jdbc.queryForObject("select count(distinct m.order_id) from (" + MONEY_IN + ") m where m.payment",
+                params, Long.class);
+        long orderCount = orders == null ? 0 : orders;
         return new SummaryDto(from, to, revenue, orderCount, orderCount == 0 ? 0 : revenue / orderCount,
                 byMethod, byDay, topItems);
     }
@@ -101,12 +107,12 @@ public class ReportService {
                 select oi.item_name, sum(oi.quantity) as qty, sum(oi.quantity * oi.unit_price) as revenue,
                        sum(c.cost) as cost, bool_and(coalesce(c.cost_complete, false)) as complete
                 from order_item oi
-                join payment p on p.order_id = oi.order_id
+                join orders o on o.id = oi.order_id
                 left join v_order_item_cost c on c.order_item_id = oi.id
                 where %s
                   and oi.status not in ('CANCELLED', 'PENDING')
                 group by oi.item_name
-                order by revenue desc, oi.item_name""".formatted(PAID_IN_RANGE), params,
+                order by revenue desc, oi.item_name""".formatted(CLOSED_IN_RANGE), params,
                 (rs, i) -> DishProfit.of(rs.getString("item_name"), rs.getLong("qty"), rs.getLong("revenue"),
                         rs.getBoolean("complete") ? rs.getLong("cost") : null));
         Long revenue = jdbc.queryForObject("select coalesce(sum(m.amount), 0) from (" + MONEY_IN + ") m",

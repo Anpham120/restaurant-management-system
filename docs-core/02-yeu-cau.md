@@ -92,6 +92,8 @@
 | FR-08.9 | **In phiếu khổ 80 mm** từ trình duyệt. Phục vụ và thu ngân in **phiếu tạm tính** của đơn đang mở để khách kiểm tra. Thu ngân in **phiếu thanh toán** sau khi đơn đã trả, in lại được. Phiếu ghi tên, địa chỉ, điện thoại quán, bàn, các món tính tiền và tổng; phiếu thanh toán ghi thêm cách trả, tiền khách đưa và tiền thối, hoặc mã chuyển khoản | M | BR-12, 33 |
 | FR-08.10 | **Giảm giá, tặng món**: thu ngân hoặc quản lý giảm một số tiền trên cả bill, hoặc tặng nguyên một dòng món, kèm lý do. Bill, trang khách và phiếu in ghi tiền món, từng khoản giảm và tổng sau giảm. Khoản giảm còn huỷ được khi đơn chưa trả | M | BR-12, 35 |
 | FR-08.11 | **Duyệt giảm giá**: thu ngân giảm vượt hạn mức thì khoản giảm chờ quản lý duyệt. Quản lý thấy yêu cầu ở đầu trang trong ≤ 2 giây, duyệt hoặc từ chối từ máy của mình. Còn khoản chờ duyệt thì chưa thanh toán được | M | BR-13, 35 |
+| FR-08.12 | **Tách bill**: thu nhiều khoản cho một đơn, mỗi khoản bằng tiền mặt hoặc VietQR. Chia đều theo số người, theo món (giảm giá và cọc chia theo tỉ lệ tiền món), hoặc nhập số tiền. Tổng các khoản đúng bằng tổng bill tới từng đồng; đơn đóng khi thu đủ | C | BR-13, 43 |
+| FR-08.13 | Bill, trang khách và phiếu thanh toán ghi **đã thu** và **còn phải thu**; phiếu thanh toán liệt kê từng khoản | C | BR-33, 43 |
 
 ### FR-09 Kho nguyên liệu (MANAGER)
 

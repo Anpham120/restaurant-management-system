@@ -49,10 +49,10 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `PATCH /order-items/{id}/status` | CHEF (COOKING, READY), WAITER (SERVED), MANAGER | FR-07.2, FR-05.5 |
 | | `POST /order-items/{id}/cancel` | WAITER, MANAGER (theo BR-08) | FR-05.4, FR-06.3 |
 | Bếp | `GET /kitchen/items` | CHEF, MANAGER | FR-07.1 |
-| Thanh toán | `POST /orders/{id}/payments/cash` | CASHIER, MANAGER | FR-08.2 |
-| | `POST /orders/{id}/payments/transfer` | CASHIER, MANAGER | FR-08.3 |
+| Thanh toán | `POST /orders/{id}/payments/cash` (`receivedAmount`; `amount` là khoản thu lần này, bỏ trống là toàn bộ số còn phải thu) | CASHIER, MANAGER | FR-08.2, FR-08.12 |
+| | `POST /orders/{id}/payments/transfer` (`amount` như trên) | CASHIER, MANAGER | FR-08.3, FR-08.12 |
 | | `POST /payments/{id}/confirm` | CASHIER, MANAGER | FR-08.6 |
-| | `GET /orders/{id}/payment` (khoản đã trả của đơn, để in phiếu thanh toán; chưa trả thì 404) | CASHIER, MANAGER | FR-08.9 |
+| | `GET /orders/{id}/payments` (các khoản đã thu của đơn, để in phiếu thanh toán) | CASHIER, MANAGER | FR-08.9, FR-08.13 |
 | | `POST /orders/{id}/adjustments` (giảm một số tiền trên cả bill, hoặc tặng một dòng món; kèm lý do) | CASHIER, MANAGER | FR-08.10 |
 | | `POST /adjustments/{id}/cancel` (huỷ khoản giảm khi đơn chưa trả) | CASHIER, MANAGER | FR-08.10 |
 | | `GET /adjustments?status=PENDING`, `POST /adjustments/{id}/approve`, `POST /adjustments/{id}/reject` | MANAGER | FR-08.11 |
@@ -125,7 +125,7 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 | `/reservations` | WAITER, MANAGER | Đặt bàn theo ngày: thêm, sửa, tin xác nhận, mã cọc VietQR, xác nhận cọc tay, nhận khách, huỷ, không tới; tổng cọc đang giữ | FR-18 |
 | `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; chuyển, ghép bàn; in phiếu tạm tính; kêu như sơ đồ bàn | FR-04.5, FR-04.6, FR-05, FR-06.3, FR-07.5, FR-08.9 |
 | `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
-| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; giảm giá, tặng món; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp; ca két: mở ca, phiếu chi, chốt ca; bill trừ cọc của booking | FR-08, FR-17.1 → FR-17.3, FR-18.4 |
+| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; giảm giá, tặng món; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp; ca két: mở ca, phiếu chi, chốt ca; bill trừ cọc của booking; tách bill | FR-08, FR-17.1 → FR-17.3, FR-18.4 |
 | `/admin/menu` | MANAGER | Danh mục và món; định lượng từng món | FR-03, FR-09.8 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
 | `/admin/inventory` | MANAGER | Nguyên liệu, giá vốn, giá trị tồn; nhập, xuất, kiểm kê, lịch sử; phiếu nhập có giá; nhà cung cấp; tiêu hao theo định lượng | FR-09 |

@@ -255,6 +255,7 @@ Ghi chú thiết kế:
 - Hoàn kho khi huỷ món đọc lại các biến động `SALE` đã ghi cho chính món đó (`StockMovement.orderItemId`), không tính lại theo định lượng hiện tại, nên sửa định lượng giữa chừng không làm lệch kho.
 - Biến động `SALE` ghi lại **giá vốn một đơn vị lúc trừ** (`unitCost`), nên lãi gộp của món đã bán không đổi khi giá vốn nguyên liệu đổi sau đó (BR-40).
 - `CashShift` chỉ ghi **tiền mặt dự kiến** lúc chốt, cạnh số đếm. Trong lúc ca mở, số dự kiến được tính từ quỹ đầu ca, các khoản tiền mặt gắn vào ca và phiếu chi, nên không bao giờ lệch với các khoản thật.
+- Một đơn có thể có **nhiều khoản đã thu** (tách bill, BR-43). Số đã thu tính từ chính các khoản `PAID` của đơn (`Order.paidAmount`), không lưu riêng, nên không thể lệch với các khoản thật.
 - Cọc của booking **không phải** khoản thanh toán: tiền cọc nằm ở `Reservation`, bill chỉ **trừ** nó (`Order.total`), và lúc thanh toán mới ghi phần đã trừ (`depositApplied`). Vì vậy két (BR-39) chỉ đếm tiền mặt thật, còn báo cáo cộng phần cọc đã trừ vào doanh thu (BR-21).
 
 ## 6.2 Trạng thái món

@@ -29,6 +29,8 @@ import vn.khoibep.rms.order.enums.AdjustmentStatus;
 import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
 import vn.khoibep.rms.order.enums.OrderType;
+import vn.khoibep.rms.payment.entity.Payment;
+import vn.khoibep.rms.payment.enums.PaymentStatus;
 import vn.khoibep.rms.reservation.entity.Reservation;
 import vn.khoibep.rms.table.entity.DiningTable;
 
@@ -83,6 +85,12 @@ public class Order {
     @BatchSize(size = 50)
     private List<OrderTable> tableLinks = new ArrayList<>();
 
+    /** Every payment asked for or taken, several when the bill is split (BR-43); loaded in batches for lists. */
+    @OneToMany(mappedBy = "order")
+    @OrderBy("id")
+    @BatchSize(size = 50)
+    private List<Payment> payments = new ArrayList<>();
+
     /** Discounts and dishes given free, in every status (BR-35). */
     @OneToMany(mappedBy = "order")
     @OrderBy("id")
@@ -110,6 +118,16 @@ public class Order {
     /** BR-12: what the guest pays, never below zero. */
     public long total() {
         return Math.max(0, subtotal() - discountTotal() - depositCredit());
+    }
+
+    /** BR-43: what the payments taken so far add up to. */
+    public long paidAmount() {
+        return payments.stream().filter(p -> p.getStatus() == PaymentStatus.PAID).mapToLong(Payment::getAmount).sum();
+    }
+
+    /** BR-13, BR-43: what is left to pay. */
+    public long due() {
+        return Math.max(0, total() - paidAmount());
     }
 
     /** BR-42: the bill is paid, so the deposit that came off it is fixed, and counts as revenue. */
