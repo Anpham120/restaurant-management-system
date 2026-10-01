@@ -21,6 +21,8 @@ public record RealtimeEvent(String type, Long orderId, Long tableId, List<String
     public static final String WEBHOOK_STATUS = "WEBHOOK_STATUS";
     /** A discount was asked for, approved, rejected or cancelled (FR-08.11). */
     public static final String ADJUSTMENTS_CHANGED = "ADJUSTMENTS_CHANGED";
+    /** A booking was made or changed, its deposit came in, or its guests arrived (FR-18). */
+    public static final String RESERVATIONS_CHANGED = "RESERVATIONS_CHANGED";
 
     /** Why staff screens ring. Each screen decides which alerts it rings for. */
     public enum Alert {

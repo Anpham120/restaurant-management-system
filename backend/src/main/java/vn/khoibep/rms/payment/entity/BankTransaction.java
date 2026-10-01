@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import vn.khoibep.rms.payment.enums.MatchStatus;
+import vn.khoibep.rms.reservation.entity.Reservation;
 
 /** A bank movement reported by SePay. Kept even when it matches nothing, so a cashier can check it. */
 @Entity
@@ -60,6 +61,11 @@ public class BankTransaction {
     @JoinColumn(name = "payment_id")
     private Payment payment;
 
+    /** The booking whose deposit this transfer carried, matched or not (BR-42). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reservation_id")
+    private Reservation reservation;
+
     @Column(nullable = false, updatable = false)
     private Instant receivedAt = Instant.now();
 
@@ -81,6 +87,12 @@ public class BankTransaction {
         this.matchStatus = status;
         this.payment = payment;
         this.note = cut(note, 200);
+    }
+
+    /** BR-42: the transfer is about the deposit of a booking. */
+    public void resolveDeposit(MatchStatus status, Reservation reservation, String note) {
+        resolve(status, null, note);
+        this.reservation = reservation;
     }
 
     private static String cut(String value, int max) {

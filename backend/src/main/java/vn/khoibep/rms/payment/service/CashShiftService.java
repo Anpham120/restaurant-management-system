@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -17,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.security.CurrentUser;
 import vn.khoibep.rms.common.util.DateRange;
+import vn.khoibep.rms.common.util.Money;
 import vn.khoibep.rms.employee.enums.Role;
 import vn.khoibep.rms.employee.repository.EmployeeRepository;
 import vn.khoibep.rms.payment.dto.CashShiftDtos.CashShiftDto;
@@ -69,8 +69,7 @@ public class CashShiftService {
         CashShift shift = lockOpen();
         long expected = summary(shift).expectedCash();
         if (amount > expected) {
-            throw ApiException.conflict("Két không đủ tiền: tiền mặt dự kiến còn "
-                    + String.format(Locale.ROOT, "%,d", expected).replace(',', '.') + " đ");
+            throw ApiException.conflict("Két không đủ tiền: tiền mặt dự kiến còn " + Money.vnd(expected));
         }
         expenses.save(new CashExpense(shift, amount, reason.trim(), employees.getReferenceById(employeeId),
                 clock.instant()));

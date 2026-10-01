@@ -33,6 +33,7 @@ const order = (subtotal: number, adjustments: Adjustment[] = []): Order => ({
   closedAt: null,
   subtotal,
   discountTotal: 0,
+  depositCredit: 0,
   total: subtotal,
   pendingCount: 0,
   unservedCount: 0,

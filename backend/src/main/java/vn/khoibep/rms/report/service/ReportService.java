@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.khoibep.rms.audit.enums.AuditAction;
 import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.config.AppProperties;
-import vn.khoibep.rms.payment.enums.PaymentMethod;
 import vn.khoibep.rms.report.dto.ReportDtos.ActionTotal;
 import vn.khoibep.rms.report.dto.ReportDtos.DayRevenue;
 import vn.khoibep.rms.report.dto.ReportDtos.DishProfit;
@@ -23,6 +22,7 @@ import vn.khoibep.rms.report.dto.ReportDtos.MethodRevenue;
 import vn.khoibep.rms.report.dto.ReportDtos.PersonTotal;
 import vn.khoibep.rms.report.dto.ReportDtos.SummaryDto;
 import vn.khoibep.rms.report.dto.ReportDtos.TopItem;
+import vn.khoibep.rms.report.enums.RevenueMethod;
 
 /** BR-21: revenue = confirmed payments, grouped by the Vietnam-time date they were confirmed. */
 @Service
@@ -37,6 +37,21 @@ public class ReportService {
             p.status = 'PAID'
             and (p.paid_at at time zone :tz)::date between :from and :to""";
 
+    /**
+     * BR-21, BR-42: what came in for the bills paid on those days: each payment, and each deposit taken off a bill.
+     * Only payments count as orders.
+     */
+    private static final String MONEY_IN = """
+            select p.method, p.amount, p.paid_at, 1 as orders
+            from payment p
+            where %1$s
+            union all
+            select 'DEPOSIT', r.deposit_applied, p.paid_at, 0
+            from reservation r
+            join orders o on o.reservation_id = r.id
+            join payment p on p.order_id = o.id
+            where %1$s and r.deposit_applied > 0""".formatted(PAID_IN_RANGE);
+
     private final NamedParameterJdbcTemplate jdbc;
     private final AppProperties props;
 
@@ -45,20 +60,18 @@ public class ReportService {
         MapSqlParameterSource params = range(from, to);
 
         List<MethodRevenue> byMethod = jdbc.query("""
-                select p.method, sum(p.amount) as amount, count(*) as cnt
-                from payment p
-                where %s
-                group by p.method
-                order by p.method""".formatted(PAID_IN_RANGE), params,
-                (rs, i) -> new MethodRevenue(PaymentMethod.valueOf(rs.getString("method")),
+                select m.method, sum(m.amount) as amount, count(*) as cnt
+                from (%s) m
+                group by m.method
+                order by m.method""".formatted(MONEY_IN), params,
+                (rs, i) -> new MethodRevenue(RevenueMethod.valueOf(rs.getString("method")),
                         rs.getLong("amount"), rs.getLong("cnt")));
 
         List<DayRevenue> byDay = jdbc.query("""
-                select (p.paid_at at time zone :tz)::date as day, sum(p.amount) as amount, count(*) as cnt
-                from payment p
-                where %s
+                select (m.paid_at at time zone :tz)::date as day, sum(m.amount) as amount, sum(m.orders) as cnt
+                from (%s) m
                 group by day
-                order by day""".formatted(PAID_IN_RANGE), params,
+                order by day""".formatted(MONEY_IN), params,
                 (rs, i) -> new DayRevenue(rs.getObject("day", LocalDate.class), rs.getLong("amount"),
                         rs.getLong("cnt")));
 
@@ -74,7 +87,8 @@ public class ReportService {
                 (rs, i) -> new TopItem(rs.getString("item_name"), rs.getLong("qty"), rs.getLong("amount")));
 
         long revenue = byMethod.stream().mapToLong(MethodRevenue::amount).sum();
-        long orderCount = byMethod.stream().mapToLong(MethodRevenue::count).sum();
+        long orderCount = byMethod.stream().filter(m -> m.method() != RevenueMethod.DEPOSIT)
+                .mapToLong(MethodRevenue::count).sum();
         return new SummaryDto(from, to, revenue, orderCount, orderCount == 0 ? 0 : revenue / orderCount,
                 byMethod, byDay, topItems);
     }
@@ -95,7 +109,7 @@ public class ReportService {
                 order by revenue desc, oi.item_name""".formatted(PAID_IN_RANGE), params,
                 (rs, i) -> DishProfit.of(rs.getString("item_name"), rs.getLong("qty"), rs.getLong("revenue"),
                         rs.getBoolean("complete") ? rs.getLong("cost") : null));
-        Long revenue = jdbc.queryForObject("select coalesce(sum(p.amount), 0) from payment p where " + PAID_IN_RANGE,
+        Long revenue = jdbc.queryForObject("select coalesce(sum(m.amount), 0) from (" + MONEY_IN + ") m",
                 params, Long.class);
         return GrossProfitDto.of(from, to, revenue == null ? 0 : revenue, dishes);
     }

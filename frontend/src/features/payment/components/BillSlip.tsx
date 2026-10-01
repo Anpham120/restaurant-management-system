@@ -43,7 +43,7 @@ export default function BillSlip({ order, settings, payment, printedAt = new Dat
         </div>
       ))}
       <hr />
-      {order.discountTotal > 0 && (
+      {(order.discountTotal > 0 || order.depositCredit > 0) && (
         <>
           <div className="slip-row">
             <span>Cộng tiền món</span>
@@ -57,6 +57,12 @@ export default function BillSlip({ order, settings, payment, printedAt = new Dat
                 <span>-{money(a.amount)}</span>
               </div>
             ))}
+          {order.depositCredit > 0 && (
+            <div className="slip-row">
+              <span>Cọc đã trả</span>
+              <span>-{money(order.depositCredit)}</span>
+            </div>
+          )}
         </>
       )}
       <div className="slip-row slip-strong">

@@ -61,6 +61,11 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `POST /webhooks/sepay` | SePay (header API key) | FR-08.4 |
 | Ca két | `GET /cash-shifts/current` (ca đang mở và tiền mặt dự kiến; chưa có ca thì 204), `POST /cash-shifts` (mở ca), `POST /cash-shifts/current/expenses`, `POST /cash-shifts/current/close`. Không có API sửa, xoá | CASHIER, MANAGER | FR-17.1 → FR-17.3 |
 | | `GET /cash-shifts?from=&to=` (tối đa 92 ngày) | MANAGER | FR-17.4 |
+| Đặt bàn | `GET /reservations?date=YYYY-MM-DD`, `POST /reservations`, `PUT /reservations/{id}` | WAITER, MANAGER | FR-18.1 |
+| | `GET /reservations/{id}/confirmation` (tin soạn sẵn), `POST /reservations/{id}/confirmation` (lưu là đã gửi) | WAITER, MANAGER | FR-18.2 |
+| | `POST /reservations/{id}/deposit` (mã VietQR cho cọc) | WAITER, MANAGER | FR-18.3 |
+| | `POST /reservations/{id}/deposit/confirm` (xác nhận cọc tay) | MANAGER | FR-18.3 |
+| | `POST /reservations/{id}/seat` (nhận khách, mở đơn; chọn bàn khác được), `POST /reservations/{id}/cancel`, `POST /reservations/{id}/no-show` | WAITER, MANAGER | FR-18.4, FR-18.5 |
 | Khách | `GET /public/tables/{qrToken}` | Công khai | FR-06.1, FR-06.4 |
 | | `GET /public/menu` | Công khai | FR-06.1 |
 | | `POST /public/tables/{qrToken}/items` | Công khai | FR-06.2, FR-06.5 |
@@ -94,7 +99,7 @@ Ngoài `/api`, backend có `/actuator/health` (công khai, pipeline gọi để 
 | Kênh | Ai nghe | Xác thực | Sự kiện |
 |---|---|---|---|
 | Điểm kết nối `/ws` | — | JWT trong header `Authorization` của khung `CONNECT`. Khách kết nối không cần token | — |
-| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp), `REQUESTS_CHANGED` (khách gọi, hoặc có người nhận), `WEBHOOK_STATUS` (webhook SePay bắt đầu lỗi liên tiếp, hoặc chạy lại), `ADJUSTMENTS_CHANGED` (có khoản giảm giá mới, được duyệt, bị từ chối hoặc bị huỷ) |
+| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp), `REQUESTS_CHANGED` (khách gọi, hoặc có người nhận), `WEBHOOK_STATUS` (webhook SePay bắt đầu lỗi liên tiếp, hoặc chạy lại), `ADJUSTMENTS_CHANGED` (có khoản giảm giá mới, được duyệt, bị từ chối hoặc bị huỷ), `RESERVATIONS_CHANGED` (booking mới hoặc đổi, cọc về, khách đã tới) |
 | `/topic/guest/{qrToken}` | Điện thoại khách ở bàn đó | Không cần | `ORDER_CHANGED`, `PAYMENT_PAID`, `REQUESTS_CHANGED` |
 | `/topic/menu` | Điện thoại khách | Không cần | `MENU_CHANGED` (có món vừa hết hoặc bán lại) |
 
@@ -117,9 +122,10 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 |---|---|---|---|
 | `/login` | Mọi nhân viên | Đăng nhập | FR-01.1 |
 | `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nhóm bàn của đơn ghép; nút mở đơn và mang về; kêu khi có món xong, món QR mới | FR-04.4, FR-04.5, FR-05.1, FR-07.5 |
+| `/reservations` | WAITER, MANAGER | Đặt bàn theo ngày: thêm, sửa, tin xác nhận, mã cọc VietQR, xác nhận cọc tay, nhận khách, huỷ, không tới; tổng cọc đang giữ | FR-18 |
 | `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; chuyển, ghép bàn; in phiếu tạm tính; kêu như sơ đồ bàn | FR-04.5, FR-04.6, FR-05, FR-06.3, FR-07.5, FR-08.9 |
 | `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
-| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; giảm giá, tặng món; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp; ca két: mở ca, phiếu chi, chốt ca | FR-08, FR-17.1 → FR-17.3 |
+| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; giảm giá, tặng món; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp; ca két: mở ca, phiếu chi, chốt ca; bill trừ cọc của booking | FR-08, FR-17.1 → FR-17.3, FR-18.4 |
 | `/admin/menu` | MANAGER | Danh mục và món; định lượng từng món | FR-03, FR-09.8 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
 | `/admin/inventory` | MANAGER | Nguyên liệu, giá vốn, giá trị tồn; nhập, xuất, kiểm kê, lịch sử; phiếu nhập có giá; nhà cung cấp; tiêu hao theo định lượng | FR-09 |

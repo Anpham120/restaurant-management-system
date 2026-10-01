@@ -5,12 +5,12 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | # | Tài liệu | Tương ứng repo tham khảo | Nội dung |
 |---|---|---|---|
 | 1 | [Tầm nhìn dự án](01-tam-nhin-du-an.md) | 01-project-vision | Vấn đề, mục tiêu, người dùng, phạm vi, tiêu chí nghiệm thu |
-| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 94 yêu cầu chức năng (17 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 11 yêu cầu phi chức năng |
-| 3 | [User stories](03-user-stories.md) | 03-user-stories | 36 story theo vai trò (7 story nhân sự), kèm tiêu chí chấp nhận |
+| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 99 yêu cầu chức năng (18 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 11 yêu cầu phi chức năng |
+| 3 | [User stories](03-user-stories.md) | 03-user-stories | 37 story theo vai trò (7 story nhân sự), kèm tiêu chí chấp nhận |
 | 4 | [Quy trình nghiệp vụ](04-quy-trinh-nghiep-vu.md) | 04-business-workflow | Trước và sau; 5 quy trình P1 đến P5 |
-| 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 41 quy tắc (6 quy tắc nhân sự), ghi rõ nơi kiểm tra trong mã |
+| 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 42 quy tắc (6 quy tắc nhân sự), ghi rõ nơi kiểm tra trong mã |
 | 6 | [Mô hình miền](06-mo-hinh-mien.md) | 06-domain-model | Sơ đồ lớp, sơ đồ trạng thái, ma trận quyền |
-| 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 28 bảng (7 bảng nhân sự ở mục 7.5), ràng buộc, index (database-first) |
+| 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 29 bảng (7 bảng nhân sự ở mục 7.5), ràng buộc, index (database-first) |
 | 8 | [Thiết kế hệ thống](08-thiet-ke-he-thong.md) | 08-system-design | REST API, kênh realtime, màn hình, sơ đồ tuần tự |
 | 9 | [Kiến trúc và CI/CD](09-kien-truc-va-cicd.md) | 09-system-architecture | Kiến trúc, công nghệ, bảo mật, triển khai, pipeline, kiểm thử |
 | 10 | [Kế hoạch phát triển tiếp](10-ke-hoach-phat-trien.md) | — | Backlog theo giai đoạn, lịch 8 sprint, quy trình làm tính năng, rủi ro, phân công theo service |
@@ -40,10 +40,11 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-15 Tính lương | US-25, US-26 | BR-26, 27 | `/api/payrolls`, `/api/payslips`, `/api/me/payslips`; `/admin/payroll`, `/me` | `PayCalculatorTest`, `PayrollIntegrationTest` |
 | FR-16 Nhật ký thao tác | US-29 | BR-34 | `/api/audit-entries`; `/admin/audit` | `AuditIntegrationTest`, `audit.test.ts` |
 | FR-17 Ca và két | US-34 | BR-39 | `/api/cash-shifts`; `/cashier`, `/admin/cash-shifts` | `CashShiftIntegrationTest` |
+| FR-18 Đặt bàn và cọc | US-37 | BR-21, 42 | `/api/reservations`; `/reservations`, `/cashier` | `ReservationIntegrationTest` |
 
 Kết quả lần chạy gần nhất:
-- Backend: 150 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
-- Frontend: 61 test (gồm test component), lint và kiểm tra kiểu sạch.
-- Độ phủ backend (JaCoCo): 89,6% số dòng (1883/2101), tối thiểu 70%.
-- `scripts/check-erd.mjs`, chạy trong CI: 18 migration, 28 bảng, 226 cột, 85 khoá, 0 lệch.
+- Backend: 157 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
+- Frontend: 64 test (gồm test component), lint và kiểm tra kiểu sạch.
+- Độ phủ backend (JaCoCo): 90,2% số dòng (2077/2303), tối thiểu 70%.
+- `scripts/check-erd.mjs`, chạy trong CI: 19 migration, 29 bảng, 246 cột, 93 khoá, 0 lệch.
 - E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 19,5 ms với 30 người dùng và 6 tháng dữ liệu.

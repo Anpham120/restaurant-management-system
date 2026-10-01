@@ -10,6 +10,7 @@ const StaffLayout = lazy(() => import('./StaffLayout'))
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 const GuestPage = lazy(() => import('@/features/order/pages/GuestPage'))
 const TablesPage = lazy(() => import('@/features/table/pages/TablesPage'))
+const ReservationsPage = lazy(() => import('@/features/reservation/pages/ReservationsPage'))
 const OrderPage = lazy(() => import('@/features/order/pages/OrderPage'))
 const KitchenPage = lazy(() => import('@/features/order/pages/KitchenPage'))
 const CashierPage = lazy(() => import('@/features/payment/pages/CashierPage'))
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/q/:token" element={<GuestPage />} />
         <Route element={<StaffLayout />}>
           <Route path="/tables" element={<RequireRole roles={['WAITER']}><TablesPage /></RequireRole>} />
+          <Route path="/reservations" element={<RequireRole roles={['WAITER']}><ReservationsPage /></RequireRole>} />
           <Route path="/orders/:id" element={<RequireRole roles={['WAITER']}><OrderPage /></RequireRole>} />
           <Route path="/kitchen" element={<RequireRole roles={['CHEF']}><KitchenPage /></RequireRole>} />
           <Route path="/cashier" element={<RequireRole roles={['CASHIER']}><CashierPage /></RequireRole>} />

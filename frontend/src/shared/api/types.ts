@@ -5,6 +5,8 @@ export type OrderType = 'DINE_IN' | 'TAKEAWAY'
 export type OrderStatus = 'OPEN' | 'PAID' | 'CANCELLED'
 export type ItemStatus = 'PENDING' | 'WAITING' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED'
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
+export type RevenueMethod = PaymentMethod | 'DEPOSIT'
+export type ReservationStatus = 'BOOKED' | 'SEATED' | 'CANCELLED' | 'NO_SHOW'
 export type MovementType = 'IN' | 'OUT' | 'ADJUST' | 'SALE'
 export type PayType = 'HOURLY' | 'MONTHLY'
 export type LeaveType = 'PAID' | 'UNPAID'
@@ -104,7 +106,9 @@ export interface Order {
   subtotal: number
   /** BR-35: what the adjustments in effect take off. */
   discountTotal: number
-  /** What the guest pays: subtotal minus discounts. */
+  /** BR-42: the deposit of the booking taken off the bill. */
+  depositCredit: number
+  /** What the guest pays: subtotal minus discounts and the deposit. */
   total: number
   pendingCount: number
   unservedCount: number
@@ -237,6 +241,8 @@ export interface GuestTable {
     items: GuestItem[]
     /** FR-08.10: what discounts take off; total is what is left to pay. */
     discountTotal: number
+    /** BR-42: the deposit of the booking taken off the bill. */
+    depositCredit: number
     total: number
     pendingCount: number
     canPay: boolean
@@ -297,6 +303,49 @@ export interface GoodsReceipt {
   createdAt: string
   total: number
   lines: ReceiptLine[]
+}
+
+/** FR-18: a booking. The code is also the transfer content of the deposit (BR-42). */
+export interface Reservation {
+  id: number
+  code: string
+  guestName: string
+  phone: string
+  reservedAt: string
+  guestCount: number
+  tableId: number | null
+  tableName: string | null
+  note: string | null
+  status: ReservationStatus
+  depositAmount: number
+  depositPaidAt: string | null
+  depositConfirmation: 'AUTO' | 'MANUAL' | null
+  /** What came off the bill when the order was paid. */
+  depositApplied: number | null
+  confirmationSentAt: string | null
+  orderId: number | null
+}
+
+export interface ReservationDay {
+  date: string
+  /** Every deposit received and not yet taken off a bill. */
+  depositsHeld: number
+  reservations: Reservation[]
+}
+
+export interface ReservationConfirmation {
+  text: string
+  sentAt: string | null
+}
+
+export interface DepositInstruction {
+  reservationId: number
+  amount: number
+  reference: string
+  qrImageUrl: string
+  bankCode: string
+  bankAccountNo: string
+  bankAccountName: string
 }
 
 export interface CashExpense {
@@ -364,7 +413,8 @@ export interface ReportSummary {
   revenue: number
   orderCount: number
   averagePerOrder: number
-  byMethod: { method: PaymentMethod; amount: number; count: number }[]
+  /** BR-21, BR-42: DEPOSIT is the deposits taken off the bills paid, counted per deposit. */
+  byMethod: { method: RevenueMethod; amount: number; count: number }[]
   byDay: { date: string; amount: number; count: number }[]
   topItems: { itemName: string; quantity: number; amount: number }[]
 }
@@ -530,7 +580,16 @@ export interface MyPayslip {
 export type StaffAlert = 'NEW_DISHES' | 'GUEST_DISHES' | 'DISH_READY' | 'SERVICE_REQUEST'
 
 export interface RealtimeMessage {
-  type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION' | 'REQUESTS_CHANGED' | 'WEBHOOK_STATUS' | 'ADJUSTMENTS_CHANGED'
+  type:
+    | 'ORDER_CHANGED'
+    | 'PAYMENT_PAID'
+    | 'MENU_CHANGED'
+    | 'TABLES_CHANGED'
+    | 'BANK_TRANSACTION'
+    | 'REQUESTS_CHANGED'
+    | 'WEBHOOK_STATUS'
+    | 'ADJUSTMENTS_CHANGED'
+    | 'RESERVATIONS_CHANGED'
   orderId: number | null
   tableId: number | null
   alert: StaffAlert | null

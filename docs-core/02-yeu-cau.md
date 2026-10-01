@@ -185,6 +185,16 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | FR-17.3 | **Chốt ca**: hệ thống tính tiền mặt dự kiến, thu ngân nhập số đếm thực tế, hệ thống tính chênh lệch; lệch thì bắt buộc lý do. Ca đã chốt không sửa được | M | BR-39 |
 | FR-17.4 | Quản lý xem **danh sách ca** theo khoảng ngày: quỹ đầu ca, tiền mặt thu, phiếu chi, dự kiến, thực đếm, chênh lệch, lý do | M | BR-39 |
 
+### FR-18 Đặt bàn và cọc (WAITER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-18.1 | **Đặt bàn**: tên khách, số điện thoại, ngày giờ, số khách, bàn dự kiến, ghi chú, số tiền cọc. Mỗi booking có **mã** riêng. Xem danh sách theo ngày; sửa khi khách chưa tới | S | BR-42 |
+| FR-18.2 | **Tin xác nhận**: hệ thống soạn sẵn tin gồm mã booking, ngày giờ, số khách, tiền cọc và cách chuyển khoản; nhân viên gửi qua Zalo hoặc SMS rồi bấm "Đã gửi" để lưu nội dung và thời điểm gửi | S | BR-42 |
+| FR-18.3 | **Cọc qua VietQR**: mã QR có số tiền cọc và nội dung là mã booking; webhook SePay tự xác nhận khi đúng mã, đúng số tiền; quản lý xác nhận tay được. Cọc **không phải doanh thu** khi chưa trừ vào bill | S | BR-42 |
+| FR-18.4 | **Nhận khách**: mở đơn từ booking ở bàn dự kiến hoặc bàn trống khác; cọc đã nhận được **trừ vào bill**, hiện trên bill và phiếu in, và tính vào doanh thu ngày thanh toán | S | BR-21, 42 |
+| FR-18.5 | Ghi booking **huỷ** hoặc **không tới**; cọc đã nhận giữ nguyên để quản lý xử lý hoàn | S | BR-42 |
+
 ## 2.2 Yêu cầu phi chức năng
 
 | Mã | Yêu cầu | Cách kiểm tra |

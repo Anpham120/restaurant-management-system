@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02), `V16` thêm ca và két (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`) (P2-01), `V17` thêm giá vốn lúc trừ kho (`stock_movement.unit_cost`) và view `v_order_item_cost` cho báo cáo lãi gộp (P2-04), `V18` thêm số phiên bản token của nhân viên để thu hồi token (P3-02).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02), `V16` thêm ca và két (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`) (P2-01), `V17` thêm giá vốn lúc trừ kho (`stock_movement.unit_cost`) và view `v_order_item_cost` cho báo cáo lãi gộp (P2-04), `V18` thêm số phiên bản token của nhân viên để thu hồi token (P3-02), `V19` thêm đặt bàn và cọc (bảng `reservation`, cột `orders.reservation_id`, `bank_transaction.reservation_id`) (P4-01).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V19__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V20__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -39,6 +39,10 @@ erDiagram
     CASH_SHIFT ||--o{ CASH_EXPENSE : "phiếu chi"
     EMPLOYEE ||--o{ CASH_EXPENSE : "lập"
     CASH_SHIFT |o--o{ PAYMENT : "thu tiền mặt"
+    DINING_TABLE |o--o{ RESERVATION : "bàn dự kiến"
+    RESERVATION |o--o| ORDERS : "nhận khách"
+    RESERVATION |o--o{ BANK_TRANSACTION : "tiền cọc"
+    EMPLOYEE ||--o{ RESERVATION : "tạo"
     EMPLOYEE ||--o{ GOODS_RECEIPT : "lập"
     DINING_TABLE ||--o{ SERVICE_REQUEST : "khách gọi"
     EMPLOYEE |o--o{ SERVICE_REQUEST : "nhận"
@@ -88,6 +92,7 @@ erDiagram
         bigint created_by FK "null nếu khách mở qua QR"
         timestamptz opened_at
         timestamptz closed_at
+        bigint reservation_id FK, UK "booking mở ra đơn; null khi không đặt trước"
     }
     ORDER_ITEM {
         bigint id PK
@@ -131,6 +136,7 @@ erDiagram
         varchar note "lý do không khớp"
         bigint payment_id FK
         timestamptz received_at
+        bigint reservation_id FK "booking nhận cọc qua giao dịch này"
     }
     INVENTORY_ITEM {
         bigint id PK
@@ -224,6 +230,26 @@ erDiagram
         bigint counted_cash "số đếm thực tế"
         varchar close_note "lý do chênh lệch"
     }
+    RESERVATION {
+        bigint id PK
+        varchar code UK "KB + 8 ký tự, cũng là nội dung chuyển khoản cọc"
+        varchar guest_name
+        varchar phone
+        timestamptz reserved_at "giờ khách tới"
+        int guest_count "1 đến 200"
+        bigint table_id FK "bàn dự kiến; có thể trống"
+        varchar note
+        varchar status "BOOKED, SEATED, CANCELLED, NO_SHOW"
+        bigint deposit_amount "tiền cọc cần, VND; 0 là không cọc"
+        timestamptz deposit_paid_at "lúc cọc về; null khi chưa"
+        varchar deposit_confirmation "AUTO, MANUAL"
+        bigint deposit_confirmed_by FK "quản lý xác nhận tay"
+        bigint deposit_applied "phần cọc đã trừ vào bill lúc thanh toán"
+        varchar confirmation_text "tin xác nhận đã gửi"
+        timestamptz confirmation_sent_at
+        bigint created_by FK
+        timestamptz created_at
+    }
     CASH_EXPENSE {
         bigint id PK
         bigint cash_shift_id FK
@@ -273,6 +299,8 @@ erDiagram
 | Định lượng hợp lệ | `CHECK (quantity > 0)` và `CONSTRAINT ux_recipe_line_item UNIQUE (menu_item_id, inventory_item_id)` trên `recipe_line` | BR-38 |
 | Loại biến động hợp lệ | `CONSTRAINT ck_stock_movement_type CHECK (type IN ('IN','OUT','ADJUST','SALE'))` trên `stock_movement`, thay ràng buộc của `V1` | BR-19, BR-38 |
 | Số phiên bản token không âm | `CHECK (token_version >= 0)` trên `employee` | BR-41 |
+| Mã booking duy nhất, mỗi booking một đơn | `UNIQUE (code)` trên `reservation`; `UNIQUE (reservation_id)` trên `orders` | BR-42 |
+| Booking hợp lệ | `CHECK (guest_count BETWEEN 1 AND 200)`, `CHECK (deposit_amount >= 0)`, `CHECK (deposit_applied >= 0)`; `CONSTRAINT ck_reservation_deposit_paid CHECK ((deposit_paid_at IS NULL) = (deposit_confirmation IS NULL))`; `CONSTRAINT ck_reservation_deposit_due CHECK (deposit_paid_at IS NULL OR deposit_amount > 0)` | BR-42 |
 | Một ca mở mỗi lúc | `CREATE UNIQUE INDEX ux_cash_shift_open ON cash_shift ((closed_at IS NULL)) WHERE closed_at IS NULL` | BR-39 |
 | Ca chốt đủ thông tin, lệch có lý do | `CONSTRAINT ck_cash_shift_closed CHECK ((closed_at IS NULL) = (closed_by IS NULL) AND (closed_at IS NULL) = (expected_cash IS NULL) AND (closed_at IS NULL) = (counted_cash IS NULL))`, `CONSTRAINT ck_cash_shift_reason CHECK (counted_cash = expected_cash OR close_note IS NOT NULL)`; `CHECK (opening_float >= 0)`, `CHECK (counted_cash >= 0)` | BR-39 |
 | Phiếu chi hợp lệ | `CHECK (amount > 0)` trên `cash_expense` | BR-39 |
@@ -306,6 +334,7 @@ erDiagram
 | `cash_shift(opened_at DESC)` | Danh sách ca theo ngày |
 | `cash_expense(cash_shift_id)` | Phiếu chi của một ca |
 | `payment(cash_shift_id) WHERE cash_shift_id IS NOT NULL` | Tiền mặt thu trong ca |
+| `reservation(reserved_at)` | Danh sách đặt bàn theo ngày |
 | `stock_movement(order_item_id) WHERE order_item_id IS NOT NULL` | Hoàn kho khi huỷ món |
 | `adjustment(created_at) WHERE status = 'PENDING'` | Danh sách chờ duyệt của quản lý |
 
