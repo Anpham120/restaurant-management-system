@@ -17,11 +17,12 @@ public final class InventoryDtos {
     private InventoryDtos() {
     }
 
+    /** @param unitCost cost of one unit in VND, the weighted average of receipts; null before the first (BR-37) */
     public record InventoryItemDto(Long id, String name, String unit, BigDecimal quantity, BigDecimal minQuantity,
-                                   boolean lowStock) {
+                                   boolean lowStock, Long unitCost) {
         public static InventoryItemDto from(InventoryItem i) {
             return new InventoryItemDto(i.getId(), i.getName(), i.getUnit(), i.getQuantity(), i.getMinQuantity(),
-                    i.isLowStock());
+                    i.isLowStock(), i.getUnitCost());
         }
     }
 
