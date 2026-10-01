@@ -60,7 +60,7 @@ public class OrderController {
     @PostMapping("/orders/{id}/items")
     @PreAuthorize("hasRole('WAITER')")
     public OrderDto addItems(@PathVariable Long id, @Valid @RequestBody AddItemsRequest request) {
-        return orderService.addStaffItems(id, request);
+        return orderService.addStaffItems(id, request, currentUser.id());
     }
 
     /** FR-04.5, FR-04.6: put tables together or move the order; the bill stays (BR-36). */
@@ -73,7 +73,7 @@ public class OrderController {
     @PostMapping("/orders/{id}/confirm-pending")
     @PreAuthorize("hasRole('WAITER')")
     public OrderDto confirmPending(@PathVariable Long id) {
-        return orderService.confirmPending(id);
+        return orderService.confirmPending(id, currentUser.id());
     }
 
     @PostMapping("/orders/{id}/cancel")

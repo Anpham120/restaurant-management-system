@@ -15,6 +15,8 @@ import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.realtime.RealtimeEvent;
 import vn.khoibep.rms.common.realtime.RealtimeEvent.Alert;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
+import vn.khoibep.rms.inventory.service.StockUsageService;
+import vn.khoibep.rms.inventory.service.StockUsageService.SentDish;
 import vn.khoibep.rms.menu.entity.MenuItem;
 import vn.khoibep.rms.menu.repository.MenuItemRepository;
 import vn.khoibep.rms.order.dto.OrderDtos.AddItemsRequest;
@@ -41,6 +43,7 @@ public class OrderService {
     private final DiningTableRepository tables;
     private final MenuItemRepository menuItems;
     private final PaymentService payments;
+    private final StockUsageService stockUsage;
     private final RealtimeEvents realtime;
 
     @Transactional(readOnly = true)
@@ -105,26 +108,29 @@ public class OrderService {
         return OrderDto.from(order);
     }
 
-    /** FR-05.2, FR-05.3: staff dishes go straight to the kitchen. */
+    /** FR-05.2, FR-05.3: staff dishes go straight to the kitchen, and take their ingredients (BR-38). */
     @Transactional
-    public OrderDto addStaffItems(Long orderId, AddItemsRequest request) {
+    public OrderDto addStaffItems(Long orderId, AddItemsRequest request, Long employeeId) {
         Order order = lockOpen(orderId);
-        buildItems(request.items(), ItemSource.STAFF).forEach(order::addItem);
+        List<OrderItem> added = buildItems(request.items(), ItemSource.STAFF);
+        added.forEach(order::addItem);
         payments.cancelPendingTransfers(orderId);
         orders.flush();
+        stockUsage.use(sent(order, added), employeeId);
         publish(order, Alert.NEW_DISHES);
         return OrderDto.from(order);
     }
 
-    /** FR-06.3: confirmed guest dishes enter the kitchen. */
+    /** FR-06.3: confirmed guest dishes enter the kitchen, and only now take their ingredients (BR-38). */
     @Transactional
-    public OrderDto confirmPending(Long orderId) {
+    public OrderDto confirmPending(Long orderId, Long employeeId) {
         Order order = lockOpen(orderId);
         List<OrderItem> pending = order.itemsWith(ItemStatus.PENDING);
         if (pending.isEmpty()) {
             throw ApiException.conflict("Không có món chờ xác nhận");
         }
         pending.forEach(item -> item.moveTo(ItemStatus.WAITING));
+        stockUsage.use(sent(order, pending), employeeId);
         payments.cancelPendingTransfers(orderId);
         publish(order, Alert.NEW_DISHES);
         return OrderDto.from(order);
@@ -164,6 +170,18 @@ public class OrderService {
             result.add(OrderItem.create(menuItem, line.quantity(), note, source));
         }
         return result;
+    }
+
+    /** BR-38: "Bàn B05 · đơn #128 · Phở bò × 2", as the stock history shows it. */
+    static String dishNote(Order order, OrderItem item) {
+        String where = order.getType() == OrderType.TAKEAWAY ? "Mang về" : "Bàn " + order.tableLabel();
+        return where + " · đơn #" + order.getId() + " · " + item.getItemName() + " × " + item.getQuantity();
+    }
+
+    private static List<SentDish> sent(Order order, List<OrderItem> dishes) {
+        return dishes.stream()
+                .map(i -> new SentDish(i.getId(), i.getMenuItem().getId(), i.getQuantity(), dishNote(order, i)))
+                .toList();
     }
 
     private Order lockOpen(Long orderId) {

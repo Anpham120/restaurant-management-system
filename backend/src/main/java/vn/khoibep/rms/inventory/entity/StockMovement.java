@@ -57,6 +57,9 @@ public class StockMovement {
     @JoinColumn(name = "goods_receipt_id")
     private GoodsReceipt goodsReceipt;
 
+    /** The dish in an order that used the stock or gave it back; only for SALE (BR-38). */
+    private Long orderItemId;
+
     public StockMovement(InventoryItem item, MovementType type, BigDecimal quantityChange, String note,
                          Long createdBy) {
         this.item = item;
@@ -73,6 +76,14 @@ public class StockMovement {
         StockMovement movement = new StockMovement(line.getItem(), MovementType.IN, line.getQuantity(),
                 "Phiếu nhập #" + receipt.getId() + " · " + receipt.getSupplier().getName(), createdBy);
         movement.goodsReceipt = receipt;
+        return movement;
+    }
+
+    /** BR-38: stock a dish used (a negative change) or gave back (positive), after the item has changed. */
+    public static StockMovement forDish(InventoryItem item, BigDecimal change, Long orderItemId, String note,
+                                       Long createdBy) {
+        StockMovement movement = new StockMovement(item, MovementType.SALE, change, note, createdBy);
+        movement.orderItemId = orderItemId;
         return movement;
     }
 }
