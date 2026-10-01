@@ -50,7 +50,7 @@ flowchart LR
 │       ├── inventory/  report/  settings/
 │       ├── schedule/  attendance/   xếp ca, chấm công
 │       ├── leave/  payroll/         nghỉ phép, bảng lương
-│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự)
+│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên)
 ├── frontend/                        React + Vite
 │   └── src/ api/ auth/ realtime/ layouts/ pages/ utils/
 ├── scripts/check-erd.mjs            so ERD với migration (database-first)
