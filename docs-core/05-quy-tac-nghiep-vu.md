@@ -28,7 +28,7 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 |---|---|---|
 | BR-09 | Mã QR bàn là **chuỗi ngẫu nhiên 128 bit**, không đoán được. Tạo lại mã thì mã cũ **hết hiệu lực ngay** | `QrTokenGenerator`, `TableService` |
 | BR-10 | Món khách gửi ở trạng thái **Chờ xác nhận** và **không hiện ở bếp**. Món chỉ vào bếp khi nhân viên xác nhận. Từ chối phải có lý do, và khách thấy lý do. Nếu bàn chưa có đơn, lần gửi đầu tiên tự mở đơn | `GuestOrderService`, `OrderItemService` |
-| BR-11 | Khách chỉ thấy **đơn đang mở của bàn có mã QR đó**. Trang khách không hiện tên nhân viên | `PublicController` |
+| BR-11 | Khách chỉ thấy **đơn đang mở của bàn có mã QR đó**. Trang khách không hiện tên nhân viên | `GuestOrderController` |
 | BR-29 | Mỗi bàn có **tối đa một yêu cầu đang chờ cho mỗi loại** (gọi nhân viên, xin tính tiền). Khách bấm lại khi yêu cầu cũ chưa có người nhận thì không tạo yêu cầu mới, máy phục vụ cũng không kêu lại. Chỉ xin tính tiền được khi bàn có đơn đang mở. Mỗi yêu cầu chỉ một người nhận | Unique index `ux_service_request_open`, `GuestOrderService`, `ServiceRequestService` |
 | BR-30 | Mỗi bàn gửi **tối đa 10 lần mỗi phút** qua trang QR, tính chung gửi món, gọi nhân viên và thanh toán, và có **tối đa 30 món chờ xác nhận**. Quá giới hạn thì từ chối kèm lời nhắn cho khách; bàn khác không bị ảnh hưởng. Giới hạn theo bàn, không theo IP, vì khách dùng chung Wi-Fi của quán | `GuestOrderService`, `RateLimiter` |
 

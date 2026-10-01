@@ -10,7 +10,7 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.stereotype.Component;
 
-import vn.bnn.rms.common.RealtimeEvents;
+import vn.bnn.rms.common.realtime.RealtimeEvents;
 
 /**
  * Staff connect with "Authorization: Bearer ..." in the CONNECT frame and may listen to /topic/staff.
