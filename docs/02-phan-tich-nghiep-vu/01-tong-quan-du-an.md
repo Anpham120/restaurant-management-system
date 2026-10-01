@@ -2,8 +2,8 @@
 
 | Mục | Nội dung |
 |---|---|
-| Dự án | Hệ thống quản lý chuỗi nhà hàng **Bếp Nhà & Nướng** (gọi tắt: **BNN-RMS**) |
-| Khách hàng | Công ty TNHH Bếp Nhà & Nướng: 3 quán tại Hà Nội. Đại diện: chị Mai Anh (chủ) |
+| Dự án | Hệ thống quản lý chuỗi nhà hàng **Khói Bếp** (gọi tắt: **KB-RMS**) |
+| Khách hàng | Công ty TNHH Khói Bếp: 3 quán tại Hà Nội. Đại diện: chị Mai Anh (chủ) |
 | Phiên bản | 1.0, ngày 29/09/2026 |
 | Trạng thái | **Baseline yêu cầu đã được khách xác nhận** (Buổi 6). **CR-01** (khách gọi món qua QR, trạng thái realtime, tự thanh toán) được **duyệt đưa vào thiết kế** (Buổi 10). Việc **duyệt xây dựng** còn chờ kiểm tra kỹ thuật 2 tuần có kèm chi phí |
 | Công nghệ bắt buộc | **Spring Boot (Java) · React · PostgreSQL · CI/CD đầy đủ** (yêu cầu của nhóm dự án, DEC-26) |
@@ -235,7 +235,7 @@ Nguồn: S1-Q10, S5-D9, D10, S7-Q1, Q2. Ngày go-live của Cầu Giấy và Hai
 
 ```mermaid
 gantt
-    title Lộ trình dự kiến BNN-RMS
+    title Lộ trình dự kiến KB-RMS
     dateFormat YYYY-MM-DD
     axisFormat %d/%m
     section Khởi động

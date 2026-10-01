@@ -6,12 +6,12 @@
 ## 1. Cấu trúc repository (monorepo)
 
 ```text
-bnn-rms/
+khoibep-rms/
 ├── backend/                         # Spring Boot 3, Java 21, Maven
 │   ├── pom.xml
 │   └── src/
-│       ├── main/java/vn/bnn/rms/
-│       │   ├── BnnRmsApplication.java
+│       ├── main/java/vn/khoibep/rms/
+│       │   ├── KhoiBepRmsApplication.java
 │       │   ├── identity/            # mỗi thư mục là 1 mô-đun Spring Modulith
 │       │   ├── catalog/
 │       │   ├── outletops/           # bàn, lượt phục vụ, order, bếp
@@ -67,7 +67,7 @@ guest/
 └── infrastructure/          # Spring Data repository, adapter, cấu hình STOMP topic
 ```
 
-- **Mô-đun khác chỉ dùng được** package `api` và **sự kiện miền** được công bố. Test `ApplicationModules.of(BnnRmsApplication.class).verify()` chạy trong CI để chặn phụ thuộc vòng.
+- **Mô-đun khác chỉ dùng được** package `api` và **sự kiện miền** được công bố. Test `ApplicationModules.of(KhoiBepRmsApplication.class).verify()` chạy trong CI để chặn phụ thuộc vòng.
 - **Profile:** `edge` bật `outletops`, `billing`, `approvals`, `recovery`, `sync`, và phần tiếp nhận đơn QR của `guest`. `cloud` bật tất cả trừ dịch vụ in.
 
 ## 2. Quy trình làm việc với mã nguồn
@@ -186,10 +186,10 @@ jobs:
           username: ${{ secrets.CLOUD_USER }}
           key: ${{ secrets.CLOUD_SSH_KEY }}
           script: |
-            cd /opt/bnn-rms && export TAG=${{ inputs.version }}
+            cd /opt/khoibep-rms && export TAG=${{ inputs.version }}
             docker compose pull && docker compose up -d
       - name: Smoke test
-        run: curl -fsS --retry 10 --retry-delay 15 https://api.bnn.vn/actuator/health/readiness
+        run: curl -fsS --retry 10 --retry-delay 15 https://api.khoibep.vn/actuator/health/readiness
   edge-rollout:
     needs: cloud
     runs-on: ubuntu-latest
@@ -197,7 +197,7 @@ jobs:
     steps:
       - name: Publish desired version for pilot ring (edge-dda)
         run: |
-          curl -fsS -X PUT https://api.bnn.vn/admin/edge-rings/bt/desired-version \
+          curl -fsS -X PUT https://api.khoibep.vn/admin/edge-rings/bt/desired-version \
             -H "Authorization: Bearer ${{ secrets.RELEASE_TOKEN }}" \
             -d '{"version":"${{ inputs.version }}"}'
 ```

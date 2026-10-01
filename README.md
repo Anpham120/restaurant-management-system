@@ -1,6 +1,6 @@
-# Bếp Nhà & Nướng — Hệ thống quản lý nhà hàng (bản core)
+# Khói Bếp — Hệ thống quản lý nhà hàng (bản core)
 
-Đồ án môn học: quản lý một nhà hàng ở Hà Nội.
+Đồ án môn học: quản lý một quán lẩu nướng và cơm nhà ở Hà Nội, phục vụ tại bàn.
 - **Gọi món:** phục vụ gọi món trên điện thoại, hoặc khách tự gọi bằng **QR trên bàn**, nhân viên xác nhận.
 - **Bếp:** màn hình bếp cập nhật **theo thời gian thực**, khách thấy trạng thái từng món trên điện thoại.
 - **Thanh toán:** tiền mặt, hoặc **chuyển khoản VietQR tự xác nhận** qua webhook SePay.
@@ -65,12 +65,12 @@ Mở http://localhost:5173. Vite chuyển `/api` và `/ws` sang backend ở cổ
 
 ## Giả lập tiền về (webhook SePay)
 
-Khi chưa nối SePay thật, tự gửi webhook bằng lệnh dưới. Thay `BNNXXXXXXXX` bằng mã thanh toán hiện trên màn hình, và `245000` bằng số tiền. Mỗi lần gửi phải dùng một `id` mới.
+Khi chưa nối SePay thật, tự gửi webhook bằng lệnh dưới. Thay `KBXXXXXXXX` bằng mã thanh toán hiện trên màn hình, và `245000` bằng số tiền. Mỗi lần gửi phải dùng một `id` mới.
 
 ```bash
 curl -X POST http://localhost:8080/api/webhooks/sepay \
   -H "Authorization: Apikey dev-sepay-key" -H "Content-Type: application/json" \
-  -d '{"id": 1001, "gateway": "Vietcombank", "content": "BNNXXXXXXXX", "transferType": "in", "transferAmount": 245000}'
+  -d '{"id": 1001, "gateway": "Vietcombank", "content": "KBXXXXXXXX", "transferType": "in", "transferAmount": 245000}'
 ```
 
 PowerShell:
@@ -78,7 +78,7 @@ PowerShell:
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/webhooks/sepay `
   -Headers @{ Authorization = "Apikey dev-sepay-key" } -ContentType "application/json" `
-  -Body '{"id": 1001, "gateway": "Vietcombank", "content": "BNNXXXXXXXX", "transferType": "in", "transferAmount": 245000}'
+  -Body '{"id": 1001, "gateway": "Vietcombank", "content": "KBXXXXXXXX", "transferType": "in", "transferAmount": 245000}'
 ```
 
 Nối SePay thật:
@@ -171,8 +171,8 @@ File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
 1. Pull request vào `develop` hoặc `main` thì chạy test backend (PostgreSQL thật qua Testcontainers) và frontend (lint, test, build).
 2. Push vào `develop` hoặc `main` thì build 2 image, đẩy lên GHCR. Tag là mã commit, kèm `develop` hoặc `latest`.
 3. Deploy:
-   - `develop` lên máy chủ staging, thư mục `~/bnn-rms-staging`.
-   - `main` lên production, thư mục `~/bnn-rms`.
+   - `develop` lên máy chủ staging, thư mục `~/khoibep-rms-staging`.
+   - `main` lên production, thư mục `~/khoibep-rms`.
    - Mỗi thư mục có một file `.env` làm từ [deploy/.env.example](deploy/.env.example). Staging dùng `HTTP_PORT=8080` nếu chạy chung máy với production.
 4. Sau khi deploy, pipeline gọi `/actuator/health` để kiểm tra.
 5. Quay lại bản cũ: chạy lại job deploy của lần chạy tốt gần nhất.
@@ -184,7 +184,7 @@ File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
 
 ## Sao lưu và khôi phục
 
-Trên máy chủ, dịch vụ `backup` sao lưu CSDL mỗi đêm vào thư mục `backups/` cạnh file compose (mặc định 3 giờ sáng, giữ 7 bản). Pipeline chép sẵn [deploy/backup.sh](deploy/backup.sh) và [deploy/restore.sh](deploy/restore.sh) lên máy chủ. Chạy các lệnh sau trong `~/bnn-rms` (hoặc `~/bnn-rms-staging`):
+Trên máy chủ, dịch vụ `backup` sao lưu CSDL mỗi đêm vào thư mục `backups/` cạnh file compose (mặc định 3 giờ sáng, giữ 7 bản). Pipeline chép sẵn [deploy/backup.sh](deploy/backup.sh) và [deploy/restore.sh](deploy/restore.sh) lên máy chủ. Chạy các lệnh sau trong `~/khoibep-rms` (hoặc `~/khoibep-rms-staging`):
 
 ```bash
 # Sao lưu ngay, ví dụ trước khi deploy bản lớn
@@ -202,7 +202,7 @@ Nên chép thư mục `backups/` ra ngoài máy chủ định kỳ (ổ khác, G
 
 ## Log, số liệu và cảnh báo
 
-Trên máy chủ, backend ghi log dạng JSON, mỗi dòng một đối tượng theo chuẩn ECS. Số liệu của Spring Boot Actuator chỉ ADMIN xem được, và Nginx không mở chúng ra ngoài, nên phải hỏi từ trong mạng Docker. Chạy trong `~/bnn-rms` (hoặc `~/bnn-rms-staging`):
+Trên máy chủ, backend ghi log dạng JSON, mỗi dòng một đối tượng theo chuẩn ECS. Số liệu của Spring Boot Actuator chỉ ADMIN xem được, và Nginx không mở chúng ra ngoài, nên phải hỏi từ trong mạng Docker. Chạy trong `~/khoibep-rms` (hoặc `~/khoibep-rms-staging`):
 
 ```bash
 # Chỉ xem các dòng lỗi

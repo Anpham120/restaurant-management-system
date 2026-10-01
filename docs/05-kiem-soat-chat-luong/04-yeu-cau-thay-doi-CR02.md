@@ -13,9 +13,9 @@ Buổi 1–10 được ghi với tên địa bàn TP.HCM. **Từ CR-02, mọi t�
 
 | Trước (Buổi 1–10) | Sau CR-02 | Mã | Phường hiện hành (sau 01/07/2025); tên quận cũ quen gọi | Quản lý | Đặc điểm giữ nguyên | Đặc điểm chỉnh theo Hà Nội |
 |---|---|---|---|---|---|---|
-| Bình Thạnh (BT) | **Bếp Nhà & Nướng Đống Đa** | **DDA** | Phường Đống Đa; quận Đống Đa cũ | Lan | Quán cũ nhất, đông nhất; 24 bàn (~96 chỗ); **bếp sơ chế chung** ở phòng sau; **quán thí điểm** | 6 bàn ngoài trời nằm ở **sân trong có mái, trong khuôn viên quán**, không ở vỉa hè |
-| Phú Nhuận (PN) | **Bếp Nhà & Nướng Cầu Giấy** | **CGY** | Phường Cầu Giấy (khu Dịch Vọng cũ); quận Cầu Giấy cũ | Thanh | 20 bàn (~80 chỗ); khu quây 4 bàn; **mạng không ổn định**; tỷ trọng giao hàng lớn hơn | 4 bàn phía trước nằm ở **khoảng lùi trong khuôn viên**, dời vào trong khi nóng hoặc mưa |
-| Quận 3 (Q3) | **Bếp Nhà & Nướng Hai Bà Trưng** | **HBT** | Phường Hai Bà Trưng; quận Hai Bà Trưng cũ | Quyên | 22 bàn (~88 chỗ); **phòng riêng 3 bàn**; 4 bàn ngoài trời | 4 bàn trên **sân thượng**; mưa và lạnh thì chuyển cả nhóm vào trong |
+| Bình Thạnh (BT) | **Khói Bếp Đống Đa** | **DDA** | Phường Đống Đa; quận Đống Đa cũ | Lan | Quán cũ nhất, đông nhất; 24 bàn (~96 chỗ); **bếp sơ chế chung** ở phòng sau; **quán thí điểm** | 6 bàn ngoài trời nằm ở **sân trong có mái, trong khuôn viên quán**, không ở vỉa hè |
+| Phú Nhuận (PN) | **Khói Bếp Cầu Giấy** | **CGY** | Phường Cầu Giấy (khu Dịch Vọng cũ); quận Cầu Giấy cũ | Thanh | 20 bàn (~80 chỗ); khu quây 4 bàn; **mạng không ổn định**; tỷ trọng giao hàng lớn hơn | 4 bàn phía trước nằm ở **khoảng lùi trong khuôn viên**, dời vào trong khi nóng hoặc mưa |
+| Quận 3 (Q3) | **Khói Bếp Hai Bà Trưng** | **HBT** | Phường Hai Bà Trưng; quận Hai Bà Trưng cũ | Quyên | 22 bàn (~88 chỗ); **phòng riêng 3 bàn**; 4 bàn ngoài trời | 4 bàn trên **sân thượng**; mưa và lạnh thì chuyển cả nhóm vào trong |
 
 **Giữ nguyên:**
 - mô hình kinh doanh, số bàn, nhân sự, giờ mở cửa, số khách, chi tiêu bình quân;

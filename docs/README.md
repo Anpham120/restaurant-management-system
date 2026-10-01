@@ -1,4 +1,4 @@
-# Bộ tài liệu phân tích thiết kế hệ thống — Quản lý chuỗi nhà hàng Bếp Nhà & Nướng
+# Bộ tài liệu phân tích thiết kế hệ thống — Quản lý chuỗi nhà hàng Khói Bếp
 
 > **Bản mở rộng, chỉ để tham khảo.** Đồ án dùng **bản core** ở [`../docs-core/`](../docs-core/README.md) (một nhà hàng, có mã nguồn chạy được). Bộ tài liệu này không còn được cập nhật. Phần CR-02 (chuyển sang Hà Nội, nhân viên quét QR) mới tích hợp một phần.
 

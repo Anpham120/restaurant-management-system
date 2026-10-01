@@ -8,7 +8,7 @@
 
 ## Buổi 0 — Yêu cầu ban đầu
 
-- Khách: chị **Mai Anh**, chủ chuỗi 3 quán **Bếp Nhà & Nướng** tại Hà Nội. [F]
+- Khách: chị **Mai Anh**, chủ chuỗi 3 quán **Khói Bếp** tại Hà Nội. [F]
 - Mỗi quán có POS nhưng vẫn ghi order giấy và tổng hợp số liệu bằng Excel. [F]
 - Đau: giờ đông bếp sót món gọi thêm; chủ không thấy tình hình 3 quán cho tới hôm sau. [F]
 - Mong muốn: phục vụ trơn tru hơn; thấy doanh thu và kho toàn chuỗi; thí điểm 1 quán rồi nhân rộng. [F]
@@ -398,7 +398,7 @@ Gạo và rau thường để giai đoạn sau.
 
 ### 4.1 Pháp lý, thuế, hóa đơn [F] (S4-F1, F2)
 
-- **Công ty TNHH Bếp Nhà & Nướng** có 3 địa điểm kinh doanh, nộp thuế GTGT theo **phương pháp khấu trừ**. Không phải hộ kinh doanh.
+- **Công ty TNHH Khói Bếp** có 3 địa điểm kinh doanh, nộp thuế GTGT theo **phương pháp khấu trừ**. Không phải hộ kinh doanh.
 - **Thuế suất không đồng nhất:** đồ ăn thông thường được mức giảm; **bia và một số mặt hàng khác phân loại riêng**.
   - Kế toán gán loại thuế cho từng món, chủ duyệt giá bán.
   - Tư vấn thuế phải rà danh mục trước khi nạp vào hệ thống mới.

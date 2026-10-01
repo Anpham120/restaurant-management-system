@@ -124,7 +124,7 @@ Phác thảo trang khách trên điện thoại:
 
 ```text
 ┌──────────────────────────────┐
-│ Bếp Nhà & Nướng · Bàn B05    │
+│ Khói Bếp · Bàn B05           │
 ├──────────────────────────────┤
 │ [Thực đơn]  [Món đã gọi (4)] │
 │                              │
@@ -184,7 +184,7 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant SP as SePay
     FE->>API: POST .../payment (hoặc /payments/transfer)
-    API->>DB: Tạo payment PENDING, reference = BNN + 8 ký tự
+    API->>DB: Tạo payment PENDING, reference = KB + 8 ký tự
     API-->>FE: Số tiền, mã, link ảnh VietQR
     K->>SP: Quét VietQR bằng app ngân hàng, chuyển tiền
     SP->>API: POST /api/webhooks/sepay (Authorization: Apikey ...)
