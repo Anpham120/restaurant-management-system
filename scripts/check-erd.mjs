@@ -1,6 +1,8 @@
 // Database-first check: the ERD in docs-core/07-erd.md must match what the Flyway migrations create.
 // Reads every Mermaid erDiagram block of the ERD and every V<n>__*.sql migration in version order
-// (CREATE TABLE and ALTER TABLE ... ADD COLUMN), then compares tables, columns and types.
+// (CREATE TABLE and ALTER TABLE ... ADD COLUMN), then compares tables, columns, types and the keys of single
+// columns: PK (primary key), FK (REFERENCES) and UK (UNIQUE). A UNIQUE over several columns and a partial unique
+// index cannot be drawn on one column, so the ERD lists them in section 7.2 instead.
 // Usage: node scripts/check-erd.mjs [docs-core/07-erd.md] [backend/src/main/resources/db/migration]
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -15,14 +17,26 @@ const normalize = (type) => {
   return t
 }
 
+const KEYS = ['PK', 'FK', 'UK']
+/** The keys a column definition declares, ignoring its comment. */
+const keysOf = (definition) => {
+  const text = definition.replace(/--.*$/m, '')
+  return new Set([
+    ...(/PRIMARY KEY/.test(text) ? ['PK'] : []),
+    ...(/\bREFERENCES\b/.test(text) ? ['FK'] : []),
+    ...(/\bUNIQUE\b/.test(text) ? ['UK'] : []),
+  ])
+}
+const listed = (keys) => [...keys].sort().join(', ') || 'no key'
+
 // An entity may appear in several diagrams (the HR diagram repeats EMPLOYEE); its columns are merged.
 const erd = {}
 for (const [, block] of readFileSync(erdPath, 'utf8').matchAll(/```mermaid\s+erDiagram([\s\S]*?)```/g)) {
   for (const [, entity, body] of block.matchAll(/^\s*([A-Z_]+)\s*\{([\s\S]*?)\}/gm)) {
     const columns = (erd[entity.toLowerCase()] ??= {})
     for (const line of body.split('\n').map((l) => l.trim()).filter(Boolean)) {
-      const [type, name] = line.split(/\s+/)
-      columns[name] = normalize(type)
+      const [type, name, ...rest] = line.replace(/"[^"]*"/g, '').split(/[\s,]+/)
+      columns[name] = { type: normalize(type), keys: new Set(rest.filter((k) => KEYS.includes(k))) }
     }
   }
 }
@@ -37,14 +51,23 @@ for (const file of files) {
   for (const [, table, body] of source.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
     const columns = (sql[table] = {})
     for (const line of body.split('\n').map((l) => l.trim())) {
-      if (!line || line.startsWith('--') || line.startsWith('CONSTRAINT')) continue
+      if (!line || line.startsWith('--')) continue
+      const constraint = line.match(/^(?:CONSTRAINT \w+ )?(PRIMARY KEY|FOREIGN KEY|UNIQUE|CHECK)\s*\(([^)]*)\)/)
+      if (constraint) {
+        const names = constraint[2].split(',').map((c) => c.trim())
+        const key = { 'PRIMARY KEY': 'PK', 'FOREIGN KEY': 'FK', UNIQUE: 'UK' }[constraint[1]]
+        // A UNIQUE over several columns is not a key of any one of them.
+        if (key && (key !== 'UK' || names.length === 1)) names.forEach((c) => columns[c]?.keys.add(key))
+        continue
+      }
       const [name, type] = line.split(/\s+/)
-      columns[name] = normalize(type.replace(/[(,].*$/, ''))
+      columns[name] = { type: normalize(type.replace(/[(,].*$/, '')), keys: keysOf(line) }
     }
   }
   for (const [, table, body] of source.matchAll(/ALTER TABLE (\w+)\s+([\s\S]*?);/g)) {
-    for (const [, name, type] of body.matchAll(/ADD COLUMN (\w+)\s+(\w+)/g)) {
-      (sql[table] ??= {})[name] = normalize(type)
+    for (const definition of body.split(/ADD COLUMN/).slice(1)) {
+      const [name, type] = definition.trim().split(/\s+/)
+      ;(sql[table] ??= {})[name] = { type: normalize(type.replace(/[(,].*$/, '')), keys: keysOf(definition) }
     }
   }
 }
@@ -60,13 +83,19 @@ for (const table of new Set([...Object.keys(erd), ...Object.keys(sql)])) {
     continue
   }
   for (const column of new Set([...Object.keys(erd[table]), ...Object.keys(sql[table])])) {
-    if (!(column in erd[table])) report(`${table}.${column}: missing in the ERD`)
-    else if (!(column in sql[table])) report(`${table}.${column}: missing in the migrations`)
-    else if (erd[table][column] !== sql[table][column]) {
-      report(`${table}.${column}: the ERD says ${erd[table][column]}, the migrations say ${sql[table][column]}`)
+    const inErd = erd[table][column]
+    const inSql = sql[table][column]
+    if (!inErd) report(`${table}.${column}: missing in the ERD`)
+    else if (!inSql) report(`${table}.${column}: missing in the migrations`)
+    else {
+      if (inErd.type !== inSql.type) report(`${table}.${column}: the ERD says ${inErd.type}, the migrations say ${inSql.type}`)
+      if (listed(inErd.keys) !== listed(inSql.keys)) {
+        report(`${table}.${column}: the ERD marks ${listed(inErd.keys)}, the migrations make ${listed(inSql.keys)}`)
+      }
     }
   }
 }
 const columnCount = Object.values(sql).reduce((n, columns) => n + Object.keys(columns).length, 0)
-console.log(`${files.length} migrations, ${Object.keys(sql).length} tables, ${columnCount} columns: ${problems} problem(s)`)
+const keyCount = Object.values(sql).reduce((n, columns) => n + Object.values(columns).reduce((k, c) => k + c.keys.size, 0), 0)
+console.log(`${files.length} migrations, ${Object.keys(sql).length} tables, ${columnCount} columns, ${keyCount} keys: ${problems} problem(s)`)
 process.exit(problems ? 1 : 0)
