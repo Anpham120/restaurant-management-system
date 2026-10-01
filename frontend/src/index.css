@@ -109,3 +109,53 @@ body {
   background: #b45309;
   border-radius: 5px;
 }
+
+/* FR-08.9: a slip prints alone, 72 mm wide, the printable width of an 80 mm receipt printer. */
+.print-area {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  body > :not(.print-area) {
+    display: none !important;
+  }
+
+  .print-area {
+    display: block;
+    width: 72mm;
+    padding: 2mm 4mm;
+    color: #000;
+    /* The slip sits outside the antd tree, so it gets no font from it; small serif type prints poorly on thermal paper. */
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
+
+.slip-center {
+  text-align: center;
+}
+
+.slip-strong {
+  font-weight: 700;
+}
+
+.slip-title {
+  margin: 4px 0;
+}
+
+.slip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.slip hr {
+  border: 0;
+  border-top: 1px dashed #000;
+  margin: 4px 0;
+}

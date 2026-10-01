@@ -94,6 +94,13 @@ public class PaymentService {
         return PaymentDto.from(payment);
     }
 
+    /** FR-08.9, BR-33: the payment a receipt is printed from, once the order is paid. */
+    @Transactional(readOnly = true)
+    public PaymentDto paidPayment(Long orderId) {
+        return payments.findByOrderIdAndStatus(orderId, PaymentStatus.PAID).map(PaymentDto::from)
+                .orElseThrow(() -> ApiException.notFound("Đơn chưa thanh toán"));
+    }
+
     @Transactional(readOnly = true)
     public List<BankTransactionDto> bankTransactions(MatchStatus status) {
         return bankTransactions.findByMatchStatusOrderByReceivedAtDesc(status).stream()

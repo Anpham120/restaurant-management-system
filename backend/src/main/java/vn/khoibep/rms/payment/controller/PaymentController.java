@@ -48,6 +48,12 @@ public class PaymentController {
         return paymentService.confirmManually(id, currentUser.id());
     }
 
+    /** FR-08.9: for the receipt; 404 until the order is paid. */
+    @GetMapping("/orders/{id}/payment")
+    public PaymentDto paidPayment(@PathVariable Long id) {
+        return paymentService.paidPayment(id);
+    }
+
     @GetMapping("/bank-transactions")
     public List<BankTransactionDto> bankTransactions(
             @RequestParam(defaultValue = "UNMATCHED") MatchStatus status) {

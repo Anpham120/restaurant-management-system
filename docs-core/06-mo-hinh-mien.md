@@ -195,8 +195,8 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Ra món | ✅ | ✅ | ✅ | | |
 | Huỷ món Chờ làm | ✅ | ✅ | ✅ | | |
 | Huỷ món Đang làm hoặc Xong | ✅ | ✅ | | | |
-| Xem bill | ✅ | ✅ | ✅ | | ✅ |
-| Thu tiền, tạo VietQR, xác nhận tay | ✅ | ✅ | | | ✅ |
+| Xem bill, in phiếu tạm tính | ✅ | ✅ | ✅ | | ✅ |
+| Thu tiền, tạo VietQR, xác nhận tay, in phiếu thanh toán | ✅ | ✅ | | | ✅ |
 | Kho | ✅ | ✅ | | | |
 | Báo cáo | ✅ | ✅ | | | |
 | Hồ sơ, mức lương, bảng lương | ✅ | | | | |

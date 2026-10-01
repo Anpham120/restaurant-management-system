@@ -42,7 +42,8 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 | P1-06 | **Âm báo**: bếp có món mới, phục vụ có món xong hoặc đơn QR mới; tô đỏ món chờ quá lâu | FR-KIT-03, 08 | S | S | Ngưỡng chờ trong `restaurant_settings` |
 | P1-07 | **Tách bill**: chia đều hoặc theo món, nhiều khoản thanh toán cho một đơn | FR-BIL-02, 07 | L | C | Bỏ `ux_payment_paid_order`; sửa BR-13 |
 
-P1-05 và P1-06 **đã làm xong** (issue #12, #13), trước lịch:
+P1-02, P1-05 và P1-06 **đã làm xong** (issue #9, #12, #13), trước lịch:
+- P1-02: yêu cầu FR-08.9, US-28, BR-33; không đổi CSDL. Phục vụ và thu ngân in phiếu tạm tính, thu ngân in phiếu thanh toán, từ trình duyệt ra máy in nhiệt 80 mm.
 - P1-05: yêu cầu FR-06.6, FR-06.7, US-27, BR-29; CSDL là migration `V9` (bảng `service_request`). Bản core có 2 loại yêu cầu. Danh sách yêu cầu nhanh (đá, khăn giấy...) và cờ khẩn của FR-GST-11 chưa làm.
 - P1-06: yêu cầu FR-07.4, FR-07.5, FR-11.3 và BR-28; CSDL là migration `V8`.
 
