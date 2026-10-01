@@ -9,6 +9,7 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 | BR-01 | Tên đăng nhập **duy nhất**. Mật khẩu ≥ 6 ký tự, lưu băm **BCrypt**. Token hết hạn sau **12 giờ** | `EmployeeService`, `AuthService` |
 | BR-02 | Quyền theo vai trò như ma trận ở [mô hình miền §6.4](06-mo-hinh-mien.md#64-ma-trận-quyền). `ADMIN` có mọi quyền | `@PreAuthorize` trên controller |
 | BR-03 | Nhân viên **không bị xoá**, chỉ bị khoá. Tài khoản bị khoá không đăng nhập được, token cũ bị từ chối ngay | `AuthService`, `ActiveEmployeeJwtConverter` |
+| BR-31 | Mỗi tên đăng nhập được thử **tối đa 10 lần mỗi phút**, tính cả lần đúng. Quá giới hạn thì trả 429 kèm số giây phải chờ. Giới hạn theo tên đăng nhập, không theo địa chỉ IP, vì IP sau nginx có thể bị giả | `AuthService`, `RateLimiter` |
 
 ## 5.2 Bàn, đơn và món
 
@@ -19,6 +20,7 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 | BR-06 | Chỉ gọi được món **đang bán**. Mỗi dòng có số lượng từ 1 đến 50 | `OrderService`, validation |
 | BR-07 | Trạng thái món chỉ đi tiến: **Chờ xác nhận → Chờ làm → Đang làm → Xong → Đã ra**. Bếp đổi "Chờ làm → Đang làm → Xong"; phục vụ đổi "Xong → Đã ra" | `ItemStatus.canMoveTo`, `OrderItemService` |
 | BR-08 | Huỷ món: "Chờ xác nhận" và "Chờ làm" thì **phục vụ** huỷ được; "Đang làm" và "Xong" thì chỉ **quản lý** huỷ và **bắt buộc lý do**; "Đã ra" thì không huỷ. Đơn chỉ huỷ được khi mọi món đã huỷ | `OrderItemService.cancel` |
+| BR-28 | Món **chờ lâu** khi đã vào bếp được từ số phút ngưỡng trở lên mà chưa ra bàn. Ngưỡng là số phút nguyên từ 1 đến 120, mặc định 15 | `SettingsRequest`, `CHECK` trên `restaurant_settings`; màn hình bếp tô màu |
 
 ## 5.3 Khách gọi món qua QR
 
@@ -26,7 +28,9 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 |---|---|---|
 | BR-09 | Mã QR bàn là **chuỗi ngẫu nhiên 128 bit**, không đoán được. Tạo lại mã thì mã cũ **hết hiệu lực ngay** | `QrTokenGenerator`, `TableService` |
 | BR-10 | Món khách gửi ở trạng thái **Chờ xác nhận** và **không hiện ở bếp**. Món chỉ vào bếp khi nhân viên xác nhận. Từ chối phải có lý do, và khách thấy lý do. Nếu bàn chưa có đơn, lần gửi đầu tiên tự mở đơn | `GuestOrderService`, `OrderItemService` |
-| BR-11 | Khách chỉ thấy **đơn đang mở của bàn có mã QR đó**. Trang khách không hiện tên nhân viên | `PublicController` |
+| BR-11 | Khách chỉ thấy **đơn đang mở của bàn có mã QR đó**. Trang khách không hiện tên nhân viên | `GuestOrderController` |
+| BR-29 | Mỗi bàn có **tối đa một yêu cầu đang chờ cho mỗi loại** (gọi nhân viên, xin tính tiền). Khách bấm lại khi yêu cầu cũ chưa có người nhận thì không tạo yêu cầu mới, máy phục vụ cũng không kêu lại. Chỉ xin tính tiền được khi bàn có đơn đang mở. Mỗi yêu cầu chỉ một người nhận | Unique index `ux_service_request_open`, `GuestOrderService`, `ServiceRequestService` |
+| BR-30 | Mỗi bàn gửi **tối đa 10 lần mỗi phút** qua trang QR, tính chung gửi món, gọi nhân viên và thanh toán, và có **tối đa 30 món chờ xác nhận**. Quá giới hạn thì từ chối kèm lời nhắn cho khách; bàn khác không bị ảnh hưởng. Giới hạn theo bàn, không theo IP, vì khách dùng chung Wi-Fi của quán | `GuestOrderService`, `RateLimiter` |
 
 ## 5.4 Thanh toán
 
@@ -34,10 +38,11 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 |---|---|---|
 | BR-12 | Tổng tiền = Σ (đơn giá × số lượng) của các món **đã xác nhận và không huỷ**. Giá đã gồm VAT. Bản 1 không có giảm giá | `Order.total()` |
 | BR-13 | Chỉ thanh toán khi đơn **đang mở**, có ít nhất một món tính tiền, và **không còn món chờ xác nhận**. Trả **một lần đủ tổng** (không chia bill). Tiền mặt: tiền khách đưa ≥ tổng | `PaymentService` |
-| BR-14 | Mỗi yêu cầu chuyển khoản có **mã thanh toán duy nhất** dạng `BNN` + 8 ký tự, và số tiền bằng tổng lúc tạo. Mỗi đơn có **tối đa một** yêu cầu đang chờ. Tạo lại thì dùng lại mã cũ nếu tổng không đổi, còn nếu đổi thì huỷ mã cũ. Đơn có thêm món thì mã đang chờ bị huỷ | `PaymentService`, unique index `ux_payment_pending_order` |
+| BR-14 | Mỗi yêu cầu chuyển khoản có **mã thanh toán duy nhất** dạng `KB` + 8 ký tự, và số tiền bằng tổng lúc tạo. Mỗi đơn có **tối đa một** yêu cầu đang chờ. Tạo lại thì dùng lại mã cũ nếu tổng không đổi, còn nếu đổi thì huỷ mã cũ. Đơn có thêm món thì mã đang chờ bị huỷ | `PaymentService`, unique index `ux_payment_pending_order` |
 | BR-15 | Tự xác nhận khi: webhook có **đúng API key**, là **tiền vào**, trường `code` hoặc nội dung chứa **mã đang chờ**, và **số tiền đúng bằng** số yêu cầu | `SepayWebhookService` |
 | BR-16 | Mỗi giao dịch SePay (`id`) chỉ xử lý **một lần**. Giao dịch sai tiền, không có mã hoặc mã đã huỷ được lưu **KHÔNG KHỚP** để thu ngân xử lý, và **không tự đóng đơn** | Unique `bank_transaction.provider_txn_id` |
 | BR-17 | Chỉ thu ngân và quản lý được **xác nhận tay**. Hệ thống ghi người xác nhận và thời điểm | `PaymentService.confirmManually` |
+| BR-32 | Webhook SePay **lỗi 3 lần liên tiếp** (sai API key, thiếu mã giao dịch, hoặc lỗi khi xử lý) thì báo cho màn hình thu ngân, **một lần** cho mỗi đợt lỗi. Một webhook hợp lệ tới thì hết cảnh báo. Số lần lỗi giữ trong bộ nhớ của server, khởi động lại thì đếm từ 0. Khi SePay không gọi tới được (sai tên miền, chứng chỉ hết hạn) thì server không biết, nên phải bật thêm cảnh báo của SePay | `SepayWebhookController`, `SepayWebhookMonitor` |
 
 ## 5.5 Thực đơn, kho, báo cáo
 

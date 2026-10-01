@@ -12,6 +12,7 @@
 | FR-01.2 | Mỗi API kiểm tra vai trò. Sai quyền trả 403 | M | BR-02 |
 | FR-01.3 | Tài khoản bị khoá không đăng nhập được, token cũ mất hiệu lực ngay | M | BR-03 |
 | FR-01.4 | Nhân viên tự đổi mật khẩu | S | BR-01 |
+| FR-01.5 | **Chống dò mật khẩu**: đăng nhập quá 10 lần trong một phút với cùng tên đăng nhập thì bị chặn tạm thời | M | BR-31 |
 
 ### FR-02 Quản lý nhân viên (ADMIN)
 
@@ -58,6 +59,9 @@
 | FR-06.3 | Nhân viên nhận thông báo ngay; **xác nhận** (món vào bếp) hoặc **từ chối** (kèm lý do) | M | BR-10 |
 | FR-06.4 | Khách xem các món của bàn, **trạng thái từng món theo thời gian thực**, tổng tạm tính | M | BR-11 |
 | FR-06.5 | Khách gọi thêm nhiều lần khi bàn đang mở | M | BR-10 |
+| FR-06.6 | Khách bấm **Gọi nhân viên** hoặc **Yêu cầu tính tiền** trên trang QR. Máy phục vụ **kêu** và hiện yêu cầu, kèm số phút đã chờ | S | BR-29 |
+| FR-06.7 | Phục vụ bấm **Đã nhận** thì yêu cầu đóng, trang khách báo "Nhân viên đang tới". Hệ thống ghi người nhận và lúc nhận để đo thời gian phản hồi | S | BR-29 |
+| FR-06.8 | **Chống spam đơn QR**: mỗi bàn gửi tối đa 10 lần mỗi phút (gửi món, gọi nhân viên, thanh toán) và có tối đa 30 món chờ xác nhận | M | BR-30 |
 
 ### FR-07 Màn hình bếp
 
@@ -66,6 +70,8 @@
 | FR-07.1 | Bếp xem món theo 3 cột: Chờ làm, Đang làm, Xong. Mỗi món ghi bàn, số lượng, ghi chú, thời gian chờ | M | BR-07 |
 | FR-07.2 | Bếp chuyển trạng thái: Chờ làm → Đang làm → Xong | M | BR-07 |
 | FR-07.3 | Món mới hiện trên màn hình bếp trong ≤ 2 giây, không cần tải lại trang | M | — |
+| FR-07.4 | Món **chờ lâu** thì tô đỏ. Ngưỡng mặc định 15 phút, quản trị đổi ở Cài đặt | S | BR-28 |
+| FR-07.5 | **Âm báo**: màn hình bếp kêu khi có món mới vào bếp. Sơ đồ bàn và trang đơn của phục vụ kêu khi có món xong hoặc khách gửi món qua QR. Mỗi máy tự bật, tắt âm báo | S | BR-10 |
 
 ### FR-08 Thanh toán
 
@@ -78,6 +84,7 @@
 | FR-08.5 | **Khách tự thanh toán** trên trang QR: bấm "Thanh toán" → hiện VietQR → tự xác nhận | M | BR-13, 14 |
 | FR-08.6 | Thu ngân **xác nhận tay** khi webhook không tới. Hệ thống ghi người xác nhận | M | BR-17 |
 | FR-08.7 | Xem danh sách giao dịch ngân hàng **không khớp** để kiểm tra | S | BR-16 |
+| FR-08.8 | **Cảnh báo webhook lỗi**: webhook SePay bị từ chối hoặc xử lý lỗi **3 lần liên tiếp** thì màn hình thu ngân hiện cảnh báo trong ≤ 2 giây, kèm lý do và lúc bắt đầu lỗi, để thu ngân kiểm tra app ngân hàng rồi xác nhận tay. Nhận được một webhook hợp lệ thì cảnh báo tự tắt | C | BR-32 |
 
 ### FR-09 Kho nguyên liệu (MANAGER)
 
@@ -102,6 +109,7 @@
 |---|---|---|---|
 | FR-11.1 | Thông tin nhà hàng: tên, địa chỉ, điện thoại | M | — |
 | FR-11.2 | Tài khoản nhận chuyển khoản: mã ngân hàng, số tài khoản, tên chủ tài khoản | M | BR-14 |
+| FR-11.3 | Ngưỡng **món chờ lâu** (số phút) cho màn hình bếp | S | BR-28 |
 
 ### FR-12 Hồ sơ nhân viên (ADMIN)
 
@@ -148,7 +156,7 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | Mã | Yêu cầu | Cách kiểm tra |
 |---|---|---|
 | NFR-01 | Cập nhật realtime (bếp, phục vụ, khách, thu ngân) ≤ 2 giây | Demo hai trình duyệt; đo thời gian |
-| NFR-02 | API trả lời ≤ 500 ms (p95) với 30 người dùng cùng lúc | Đo bằng k6 hoặc JMeter trước khi nộp |
+| NFR-02 | API trả lời ≤ 500 ms (p95) với 30 người dùng cùng lúc | k6 (`perf/load-test.js`) sau khi nạp 6 tháng bán hàng; workflow Load test chạy tay trên GitHub |
 | NFR-03 | Mật khẩu băm **BCrypt**. API dùng **JWT**. Triển khai thật phải có **HTTPS** | Xem mã, kiểm tra cấu hình |
 | NFR-04 | Webhook chỉ nhận khi header `Authorization: Apikey …` đúng | Test tích hợp |
 | NFR-05 | API công khai chỉ trả dữ liệu **của bàn có mã QR đó**, không lộ thông tin nhân viên | Test tích hợp |
@@ -157,3 +165,4 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | NFR-08 | Tiền là số nguyên VND. Giờ theo múi giờ Việt Nam (`Asia/Ho_Chi_Minh`) | Test báo cáo |
 | NFR-09 | Test tích hợp chạy với **PostgreSQL thật** (Testcontainers). CI chạy test mỗi lần push | Xem pipeline |
 | NFR-10 | Triển khai bằng **Docker Compose**. Quay về phiên bản trước bằng tag image | Làm thử một lần |
+| NFR-11 | Trên staging và production, backend ghi **log dạng JSON** (chuẩn ECS). Số liệu vận hành xem ở `/actuator/metrics`, **chỉ ADMIN**, và Nginx không mở đường dẫn này ra ngoài | Xem `docker compose logs backend`; test tích hợp phân quyền |

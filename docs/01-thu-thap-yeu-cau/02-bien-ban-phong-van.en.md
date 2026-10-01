@@ -1,12 +1,12 @@
 # Requirements elicitation transcript (raw, English)
 
-> BA: Claude · Client (simulated by Codex): Mai Anh, owner of Bếp Nhà & Nướng (3 outlets, HCMC).
+> BA: Claude · Client (simulated by Codex): Mai Anh, owner of Khói Bếp (3 outlets, HCMC).
 > Claude and Codex communicate in English by request. Vietnamese summaries: `03-tom-tat-phong-van.md`.
 
 ## Session 0 — Initial request from client
 
 
-Hi, I’m Mai Anh. I run three Bếp Nhà & Nướng restaurants in Ho Chi Minh City. We have a POS at each place, but my team still uses paper for orders and Excel to put the numbers together. When it gets busy, the kitchen sometimes misses an added dish, and I usually don’t have a clear picture of the three shops until the next day.
+Hi, I’m Mai Anh. I run three Khói Bếp restaurants in Ho Chi Minh City. We have a POS at each place, but my team still uses paper for orders and Excel to put the numbers together. When it gets busy, the kitchen sometimes misses an added dish, and I usually don’t have a clear picture of the three shops until the next day.
 
 I’m looking for software that makes service smoother and lets me see what’s happening with sales and stock across the shops. I’d like to try it in one restaurant first, then roll it out to the others before next April if it works well. Could we talk about what that would involve?
 
@@ -18,7 +18,7 @@ I’m looking for software that makes service smoother and lets me see what’s 
 
 Thanks, Mai Anh. Before we talk about software I'd like to understand the business itself, so today is mostly about how things work now and what you want to achieve. Please answer each numbered question in character, in English. If something is outside what you personally know, say so or tell me who knows ("my head chef would know"), and feel free to bring in a staff member's view. Around 800-1200 words in total is fine.
 
-1. Tell me about Bếp Nhà & Nướng: the concept, the menu style (roughly how many dishes, any set menus, combos, grill items sold by weight, drinks/beer), and why customers come to you.
+1. Tell me about Khói Bếp: the concept, the menu style (roughly how many dishes, any set menus, combos, grill items sold by weight, drinks/beer), and why customers come to you.
 2. For each of the three restaurants: district, number of tables/seats and zones (indoor, outdoor, private rooms), opening hours, typical number of customers on a weekday vs. a weekend, average spend per person, and the rough split between dine-in, takeaway and delivery apps.
 3. Who works in the business? Please describe the roles at head office (if there is one) and at each restaurant, roughly how many people in each role, and who decides what (menu prices, discounts, purchasing, hiring, cash handling).
 4. Walk me through a normal dinner service at your busiest restaurant, from the moment a group walks in until they leave: who does what, and which tools are used at each step (POS, paper, Zalo, anything else)?
@@ -426,7 +426,7 @@ Z1. What have I not asked about that could hurt this project if we get it wrong?
 
 **F1 — Legal form and tax**
 
-**Hạnh:** We are one limited company, Bếp Nhà & Nướng Co., Ltd., with three outlets. We use the VAT credit method, not the household-business method. I maintain the tax setting for new menu items after checking what the item actually is; Mai Anh approves its selling price. Please don’t assume every line has one VAT rate. Ordinary eligible food service currently has the reduced rate, while beer and some other items need separate classification. I would have our tax adviser check the final item list before anyone loads rates into a new system.
+**Hạnh:** We are one limited company, Khói Bếp Co., Ltd., with three outlets. We use the VAT credit method, not the household-business method. I maintain the tax setting for new menu items after checking what the item actually is; Mai Anh approves its selling price. Please don’t assume every line has one VAT rate. Ordinary eligible food service currently has the reduced rate, while beer and some other items need separate classification. I would have our tax adviser check the final item list before anyone loads rates into a new system.
 
 **F2 — E-invoices**
 
@@ -1299,9 +1299,9 @@ Write Mai Anh's short, informal message to the BA confirming the move to Hanoi c
 
 | Outlet and code | Current ward; familiar former district | Manager and preserved operation | Hanoi-specific physical reading |
 |---|---|---|---|
-| **Bếp Nhà & Nướng Đống Đa — DDA** | **Đống Đa ward**; old **Đống Đa district** ([ward profile](https://dongda.hanoi.gov.vn/gioi-thieu-chung-62989/gioi-thieu-chung-ve-phuong-dong-da-thanh-pho-ha-noi-2806250627173844843.htm)) | **Lan**; oldest and busiest; **24 tables**, about 96 seats; two-person shared prep works in the back room; pilot outlet | The six covered outside tables are in a **covered courtyard within the leased premises**, not on the public sidewalk. |
-| **Bếp Nhà & Nướng Cầu Giấy — CGY** | **Cầu Giấy ward**; old **Cầu Giấy district**, around the former Dịch Vọng area ([ward profile](https://caugiay.hanoi.gov.vn/gioi-thieu-chung/gioi-thieu-chung-2805250626170626104.htm)) | **Thanh**; **20 tables**, about 80 seats; four-table screened section; unstable connection; larger delivery share | The four front tables sit in a **recessed area of the premises**. They can be moved indoors during heat or rain. No sidewalk seating is assumed. |
-| **Bếp Nhà & Nướng Hai Bà Trưng — HBT** | **Hai Bà Trưng ward**; old **Hai Bà Trưng district** ([ward example](https://haibatrung.hanoi.gov.vn/tin-tuc-tong-hop-thong-tuyen-truyen/xu-phat-vi-pham-hanh-chinh-doi-voi-dia-diem-kinh-doanh-nha-hang-vien-cong-ty-tnhh-hai-thanh-vien-newex-tai-dia-chi-so-3-ngo-ba-trieu-phuong-hai-ba-trung-thanh-pho-ha-noi-2814251207212917835.htm)) | **Quyên**; **22 tables**, about 88 seats; three-table private room; four outdoor tables | The four outdoor tables are on the property’s **terrace or rooftop**. Rain and cold still prompt whole-group moves; terrace capacity and fire-safety arrangements require a site check. |
+| **Khói Bếp Đống Đa — DDA** | **Đống Đa ward**; old **Đống Đa district** ([ward profile](https://dongda.hanoi.gov.vn/gioi-thieu-chung-62989/gioi-thieu-chung-ve-phuong-dong-da-thanh-pho-ha-noi-2806250627173844843.htm)) | **Lan**; oldest and busiest; **24 tables**, about 96 seats; two-person shared prep works in the back room; pilot outlet | The six covered outside tables are in a **covered courtyard within the leased premises**, not on the public sidewalk. |
+| **Khói Bếp Cầu Giấy — CGY** | **Cầu Giấy ward**; old **Cầu Giấy district**, around the former Dịch Vọng area ([ward profile](https://caugiay.hanoi.gov.vn/gioi-thieu-chung/gioi-thieu-chung-2805250626170626104.htm)) | **Thanh**; **20 tables**, about 80 seats; four-table screened section; unstable connection; larger delivery share | The four front tables sit in a **recessed area of the premises**. They can be moved indoors during heat or rain. No sidewalk seating is assumed. |
+| **Khói Bếp Hai Bà Trưng — HBT** | **Hai Bà Trưng ward**; old **Hai Bà Trưng district** ([ward example](https://haibatrung.hanoi.gov.vn/tin-tuc-tong-hop-thong-tuyen-truyen/xu-phat-vi-pham-hanh-chinh-doi-voi-dia-diem-kinh-doanh-nha-hang-vien-cong-ty-tnhh-hai-thanh-vien-newex-tai-dia-chi-so-3-ngo-ba-trieu-phuong-hai-ba-trung-thanh-pho-ha-noi-2814251207212917835.htm)) | **Quyên**; **22 tables**, about 88 seats; three-table private room; four outdoor tables | The four outdoor tables are on the property’s **terrace or rooftop**. Rain and cold still prompt whole-group moves; terrace capacity and fire-safety arrangements require a site check. |
 
 **Changed because the chain is in Hanoi**
 
@@ -1316,7 +1316,7 @@ Write Mai Anh's short, informal message to the BA confirming the move to Hanoi c
 
 ## C. Message from Mai Anh
 
-Hi—I need to correct the location in our notes. Bếp Nhà & Nướng is in **Hanoi**: Lan’s shop is in Đống Đa, Thanh’s in Cầu Giấy and Quyên’s in Hai Bà Trưng. I described the earlier locations differently, but the teams, shops and problems we walked through are the same. Our outside tables are on our own premises; I don’t want anyone planning to put tables on the pavement.
+Hi—I need to correct the location in our notes. Khói Bếp is in **Hanoi**: Lan’s shop is in Đống Đa, Thanh’s in Cầu Giấy and Quyên’s in Hai Bà Trưng. I described the earlier locations differently, but the teams, shops and problems we walked through are the same. Our outside tables are on our own premises; I don’t want anyone planning to put tables on the pavement.
 
 I like the idea that a server can scan the **same table QR** with their staff app to open the table and take the first order. It may save them searching through table numbers, and guests can then use that card for add-ons. My worry is a server opening the wrong table, especially when Quyên moves a terrace group inside, or a guest trying to order before staff have seated them. Lan also wants the seating code and staff checks we agreed for the guest trial.
 

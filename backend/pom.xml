@@ -8,7 +8,7 @@
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>vn.bnn</groupId>
+	<groupId>vn.khoibep</groupId>
 	<artifactId>rms</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>rms</name>
@@ -70,7 +70,17 @@
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>3.1.0</version>
+			<version>3.1.1</version>
+		</dependency>
+		<!-- P3-01: request limits per table and per user name (BR-30, BR-31); Caffeine forgets idle keys. -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>8.20.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
 		</dependency>
 
 		<dependency>
@@ -136,6 +146,13 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>testcontainers-postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- ArchitectureTest: every class in the sub-package of its layer (doc 09, section 9.3). -->
+		<dependency>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit-junit5</artifactId>
+			<version>1.5.1</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

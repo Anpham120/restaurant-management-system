@@ -1,5 +1,5 @@
 # Build stage: Maven Wrapper downloads Maven, so no Maven install is needed.
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:25-jdk AS build
 WORKDIR /app
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
@@ -8,7 +8,7 @@ COPY src src
 RUN ./mvnw -B -q -DskipTests package
 
 # Runtime stage: JRE only, non-root user.
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 RUN useradd --system --uid 1001 rms
 COPY --from=build /app/target/*.jar app.jar

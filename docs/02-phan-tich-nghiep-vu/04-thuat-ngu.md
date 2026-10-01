@@ -1,6 +1,6 @@
 # Từ điển thuật ngữ
 
-> Dành cho người mới với nghiệp vụ nhà hàng. Mỗi thuật ngữ gồm: tên tiếng Việt và tiếng Anh, định nghĩa, và **ví dụ trong dự án Bếp Nhà & Nướng**.
+> Dành cho người mới với nghiệp vụ nhà hàng. Mỗi thuật ngữ gồm: tên tiếng Việt và tiếng Anh, định nghĩa, và **ví dụ trong dự án Khói Bếp**.
 > Trong mọi tài liệu của bộ này, thuật ngữ được dùng **đúng một nghĩa** như dưới đây.
 
 ## 1. Vận hành nhà hàng
@@ -132,8 +132,8 @@
 | **QR-1 / QR-2** | QR-1 là thí điểm 6 bàn, xác nhận mọi đơn. QR-2 là mở rộng (tự nhận món thêm, tự gọi từ món đầu, tách tự thanh toán), cần chủ quyết riêng | — |
 | **Công tắc QR** (Kill switch) | Nút cho quản lý **tạm dừng** gọi món qua QR ở bàn, khu, hoặc cả quán mà không đóng bill | Tạm dừng khi mất mạng |
 | **Tự thanh toán** (Self-checkout) | Khách tự trả bill trên điện thoại, không cần ra quầy | Chuyển khoản cả bill đã chốt |
-| **Lệnh thanh toán** (Payment intent) | Yêu cầu trả **một số tiền cụ thể** với **mã tham chiếu duy nhất**, có thời hạn | 1.230.000đ, mã `BNN DDA 7K3F2Q` |
-| **Mã tham chiếu** (Reference, addInfo) | Chuỗi đặt trong nội dung chuyển khoản để khớp giao dịch với bill | `BNN DDA 7K3F2Q` |
+| **Lệnh thanh toán** (Payment intent) | Yêu cầu trả **một số tiền cụ thể** với **mã tham chiếu duy nhất**, có thời hạn | 1.230.000đ, mã `KB DDA 7K3F2Q` |
+| **Mã tham chiếu** (Reference, addInfo) | Chuỗi đặt trong nội dung chuyển khoản để khớp giao dịch với bill | `KB DDA 7K3F2Q` |
 | **Webhook** | Thông báo **máy chủ gửi tới máy chủ** khi có giao dịch; phải **xác thực chữ ký** | Ngân hàng hoặc trung gian báo "đã nhận 1.230.000đ" |
 | **Deeplink** | Liên kết mở thẳng app ngân hàng với thông tin chuyển khoản điền sẵn | Nút "Mở app ngân hàng" |
 | **Open API ngân hàng** | Giao diện lập trình mở theo TT 64/2024/TT-NHNN (hiệu lực 01/03/2025). **Không** tự động cho quán quyền nhận thông báo giao dịch | Hỏi Vietcombank trước (BR-60) |

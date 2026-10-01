@@ -65,7 +65,7 @@
 | OI-26 | *(CR-01)* **Ngưỡng "số lượng bất thường"** của đơn QR, theo nhóm món | Lan, Đức | Trước QR-1 | FR-GST-07, BR-43 | Thấp |
 | OI-27 | *(CR-01)* Có **bật trạng thái "Xong"** cho khách không (tuỳ độ đều tay của người ở pass trong buổi thử) | Đức | Sau buổi thử QR-1 | FR-GST-10, BR-47 | Thấp |
 | OI-28 | *(CR-01)* **Deeplink** chạy được với những app ngân hàng nào, kể cả khi mở từ Zalo; tỷ lệ khách trả thành công trên cùng điện thoại | Tech lead | S11, S12 | FR-GST-14, RSK-16 | Trung bình |
-| OI-29 | *(CR-01)* **Tên miền trang khách** (ví dụ `order.bnn.vn`), cách hiển thị tên tài khoản công ty, mẫu **thẻ QR chống bóc dán** | Chủ, tech lead | Trước QR-1 | BR-53, NFR-39 | Trung bình |
+| OI-29 | *(CR-01)* **Tên miền trang khách** (ví dụ `order.khoibep.vn`), cách hiển thị tên tài khoản công ty, mẫu **thẻ QR chống bóc dán** | Chủ, tech lead | Trước QR-1 | BR-53, NFR-39 | Trung bình |
 | OI-30 | *(CR-01)* **Tiêu chí mở QR-2**: tự nhận món thêm thông thường, tự gọi từ món đầu, tách tự thanh toán, thêm bàn | Chủ | Sau khi lõi ổn định (sau tháng 4) | FR-GST-22…24 | Thấp |
 
 ## 3. Việc cần làm tiếp theo (theo thứ tự)

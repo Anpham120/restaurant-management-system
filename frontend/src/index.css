@@ -24,6 +24,13 @@ body {
   margin: 0;
 }
 
+/* Phones: the staff header keeps its buttons and the name; the connection shows as a coloured dot only. */
+@media (max-width: 575px) {
+  .wide-only {
+    display: none;
+  }
+}
+
 .table-card {
   cursor: pointer;
   height: 100%;
@@ -38,6 +45,12 @@ body {
   border-radius: 8px;
   padding: 12px;
   min-height: 200px;
+}
+
+/* BR-28: a dish waiting past the threshold in the settings. */
+.kitchen-column .late {
+  border-color: #cf1322;
+  background: #fff1f0;
 }
 
 .note {

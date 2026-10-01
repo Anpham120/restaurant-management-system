@@ -2,7 +2,7 @@
 
 ## 10.1 Hiện trạng
 
-Bản core đã chạy trọn luồng: gọi món (phục vụ và khách quét QR), bếp realtime, thanh toán tiền mặt và VietQR tự xác nhận, kho, báo cáo, tài khoản nhân viên. Có 64 test backend, CI/CD trên GitHub (`feature/*` → `develop` → `main`). Chi tiết ở tài liệu 01 → 09.
+Bản core đã chạy trọn luồng: gọi món (phục vụ và khách quét QR), bếp realtime, thanh toán tiền mặt và VietQR tự xác nhận, kho, báo cáo, tài khoản nhân viên. Lúc lập kế hoạch có 64 test backend; nay có 89 test backend, 30 test frontend, test E2E và kiểm thử tải, cùng CI/CD trên GitHub (`feature/*` → `develop` → `main`). Chi tiết ở tài liệu 01 → 09.
 
 **Lịch.** Hạn nộp cuối tháng 11/2026 (lấy mốc **30/11**), nhóm **5 người**, chia **8 sprint**. Sprint 1 dài 11 ngày (01/10 → 11/10) để kịp thuê máy chủ, tên miền và nối SePay. Các sprint sau dài 1 tuần, từ thứ Hai đến Chủ nhật. Mỗi sprint ước khoảng 12–17 ngày người, tức mỗi người 2,5–3,5 ngày mỗi tuần, đã tính phần nhân sự.
 
@@ -42,6 +42,10 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 | P1-06 | **Âm báo**: bếp có món mới, phục vụ có món xong hoặc đơn QR mới; tô đỏ món chờ quá lâu | FR-KIT-03, 08 | S | S | Ngưỡng chờ trong `restaurant_settings` |
 | P1-07 | **Tách bill**: chia đều hoặc theo món, nhiều khoản thanh toán cho một đơn | FR-BIL-02, 07 | L | C | Bỏ `ux_payment_paid_order`; sửa BR-13 |
 
+P1-05 và P1-06 **đã làm xong** (issue #12, #13), trước lịch:
+- P1-05: yêu cầu FR-06.6, FR-06.7, US-27, BR-29; CSDL là migration `V9` (bảng `service_request`). Bản core có 2 loại yêu cầu. Danh sách yêu cầu nhanh (đá, khăn giấy...) và cờ khẩn của FR-GST-11 chưa làm.
+- P1-06: yêu cầu FR-07.4, FR-07.5, FR-11.3 và BR-28; CSDL là migration `V8`.
+
 ### Giai đoạn 2 — Ca két, kho, nhân sự, báo cáo (sprint 1–6)
 
 | Mã | Việc | Nguồn | Công sức | Ưu tiên | CSDL |
@@ -68,7 +72,11 @@ P2-05 → P2-09 là phần **nhân sự**, thêm theo yêu cầu của môn. Yê
 | P3-04 | Test component cho frontend (Testing Library); đo độ phủ backend bằng JaCoCo, mục tiêu ≥ 70% | M | S |
 | P3-05 | Log JSON, số liệu Actuator; cảnh báo khi webhook SePay lỗi liên tục | S | C |
 
-P3-04 **đã làm xong** (issue #22), trước lịch. Lúc bật JaCoCo, test backend chạy tới 83,2% số dòng; từ nay CI đỏ nếu dưới 70%. Test component phủ phần chọn món vào giỏ, mã VietQR và nhãn trạng thái món.
+P3-01, P3-03, P3-04 và P3-05 **đã làm xong** (issue #19, #21, #22, #23), trước lịch:
+- P3-01: giới hạn theo bàn (10 lần gửi mỗi phút, tối đa 30 món chờ xác nhận) và theo tên đăng nhập (10 lần thử mỗi phút), bằng Bucket4j. Không giới hạn theo IP, lý do ở tài liệu 09 mục 9.4.
+- P3-03: đo bằng k6 với 30 người trong 2 phút, sau khi nạp 6 tháng bán hàng (khoảng 21.500 đơn, 107.000 món). p95 toàn bộ là 19,5 ms, 0% lỗi. Chậm nhất là báo cáo 30 ngày (p95 156 ms). Không có truy vấn nào cần sửa: báo cáo đã cộng dồn trong SQL, báo cáo 180 ngày trả lời trong khoảng 0,2 giây.
+- P3-04: lúc bật JaCoCo, test backend chạy tới 83,2% số dòng; từ nay CI đỏ nếu dưới 70%. Test component phủ phần chọn món vào giỏ, mã VietQR và nhãn trạng thái món.
+- P3-05: yêu cầu FR-08.8, NFR-11, AC3 và AC4 của US-19, BR-32; không đổi CSDL. Staging và production ghi log JSON chuẩn ECS; `/actuator/metrics` chỉ ADMIN xem được; webhook SePay lỗi 3 lần liên tiếp thì màn hình thu ngân hiện cảnh báo, tự tắt khi webhook chạy lại.
 
 ### Giai đoạn 4 — Mở rộng, chọn theo thời gian còn lại (sprint 7)
 
@@ -137,7 +145,7 @@ Bảng việc nằm trên GitHub: mỗi sprint là một [milestone](https://git
 
 Theo yêu cầu của môn, mỗi người giữ **một service** và làm cả backend lẫn frontend của service đó, gồm cả test và tài liệu. Hạ tầng dùng chung không phải service, nên Anpham120 (mạnh hạ tầng) giữ thêm.
 
-| Service | Người | Backend (`vn.bnn.rms.*`) | Frontend | Việc |
+| Service | Người | Backend (`vn.khoibep.rms.*`) | Frontend | Việc |
 |---|---|---|---|---|
 | Gọi món, bếp, QR | Anpham120 | `order` | `/orders/:id`, `/kitchen`, `/q/:token` | P1-05, P1-06, P3-01; tuỳ chọn P4-04 |
 | Bàn và đặt bàn | totototototoads | `table` | `/tables`, `/admin/tables` | P1-01, P4-01; tuỳ chọn P4-02 |

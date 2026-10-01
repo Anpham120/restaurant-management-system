@@ -1,5 +1,5 @@
 {
-  "name": "bnn-rms-frontend",
+  "name": "khoibep-rms-frontend",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -19,7 +19,7 @@
     "dayjs": "^1.11.23",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-router": "^7.18.4"
+    "react-router": "^8.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

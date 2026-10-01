@@ -4,11 +4,12 @@ Mẫu: *Là [vai trò], tôi muốn [việc] để [lợi ích]*. Tiêu chí ch�
 
 ## Quản trị (ADMIN)
 
-### US-01 Đăng nhập — FR-01.1, FR-01.3
+### US-01 Đăng nhập — FR-01.1, FR-01.3, FR-01.5
 Là **nhân viên**, tôi muốn đăng nhập bằng tài khoản riêng để dùng đúng chức năng của vai trò mình.
 - AC1: Khi nhập đúng tên và mật khẩu thì vào màn hình theo vai trò: phục vụ → sơ đồ bàn; bếp → màn hình bếp; thu ngân → quầy thu ngân; quản lý và quản trị → báo cáo.
 - AC2: Khi sai mật khẩu thì báo "Sai tên đăng nhập hoặc mật khẩu", không nói rõ sai phần nào.
 - AC3: Khi tài khoản bị khoá thì không đăng nhập được.
+- AC4: Khi một tên đăng nhập bị thử quá 10 lần trong một phút thì lần tiếp theo bị chặn, kèm thời gian phải chờ.
 
 ### US-02 Quản lý tài khoản nhân viên — FR-02.1, FR-02.3
 Là **quản trị**, tôi muốn tạo tài khoản và gán vai trò để mỗi người chỉ làm việc của mình.
@@ -52,16 +53,18 @@ Là **phục vụ**, tôi muốn gọi món trên điện thoại để bếp nh
 - AC2: Khi gửi món thì món vào cột Chờ làm ở bếp trong ≤ 2 giây.
 - AC3: Món đang hết không chọn được.
 
-### US-09 Xác nhận đơn QR của khách — FR-06.3
+### US-09 Xác nhận đơn QR của khách — FR-06.3, FR-07.5
 Là **phục vụ**, tôi muốn kiểm tra đơn khách tự gọi trước khi vào bếp để tránh đơn nhầm hoặc đơn phá.
 - AC1: Khi khách gửi món thì sơ đồ bàn hiện dấu "chờ xác nhận" trong ≤ 2 giây.
 - AC2: Món chờ xác nhận **không hiện ở bếp**.
 - AC3: Khi xác nhận thì món vào bếp. Khi từ chối thì khách thấy lý do.
+- AC4: Máy phục vụ đang mở sơ đồ bàn hoặc một đơn thì **kêu** khi khách gửi món.
 
-### US-10 Ra món — FR-05.5
+### US-10 Ra món — FR-05.5, FR-07.5
 Là **phục vụ**, tôi muốn biết món nào đã xong để mang ra ngay.
 - AC1: Khi bếp bấm Xong thì sơ đồ bàn hiện dấu "có món xong".
 - AC2: Khi bấm Đã ra thì món biến khỏi cột Xong của bếp.
+- AC3: Khi bếp bấm Xong thì máy phục vụ đang mở sơ đồ bàn hoặc một đơn **kêu**.
 
 ### US-11 Huỷ món — FR-05.4, FR-05.6
 Là **phục vụ**, tôi muốn huỷ món khách đổi ý khi bếp chưa làm.
@@ -71,10 +74,12 @@ Là **phục vụ**, tôi muốn huỷ món khách đổi ý khi bếp chưa là
 
 ## Bếp (CHEF)
 
-### US-12 Màn hình bếp — FR-07.1 → FR-07.3
+### US-12 Màn hình bếp — FR-07.1 → FR-07.5
 Là **bếp**, tôi muốn thấy món cần làm theo thứ tự để làm đúng và đủ.
 - AC1: Món sắp theo thời gian gửi, món chờ lâu nhất ở trên.
 - AC2: Chỉ đổi trạng thái theo chiều tiến: Chờ làm → Đang làm → Xong.
+- AC3: Món chờ tới ngưỡng ở Cài đặt (mặc định 15 phút) mà chưa ra thì phiếu **tô đỏ**.
+- AC4: Có món mới vào bếp thì màn hình bếp **kêu**. Món khách gọi qua QR chỉ kêu khi phục vụ đã xác nhận.
 
 ### US-13 Báo hết món — FR-03.3
 Là **bếp**, tôi muốn báo hết món để phục vụ và khách không gọi món đó nữa.
@@ -82,16 +87,25 @@ Là **bếp**, tôi muốn báo hết món để phục vụ và khách không g
 
 ## Khách (không đăng nhập)
 
-### US-14 Gọi món bằng QR — FR-06.1, FR-06.2, FR-06.5
+### US-14 Gọi món bằng QR — FR-06.1, FR-06.2, FR-06.5, FR-06.8
 Là **khách**, tôi muốn quét QR trên bàn để tự xem thực đơn và gọi món, không phải chờ nhân viên.
 - AC1: Quét QR mở trang có tên bàn, không cần đăng nhập hay cài app.
 - AC2: Khi gửi món thì các món hiện "Chờ xác nhận".
 - AC3: Khi bàn đang có đơn thì món mới được thêm vào đơn đó.
+- AC4: Khi bàn đã có 30 món chờ xác nhận thì khách được báo chờ nhân viên xác nhận rồi mới gọi thêm.
+- AC5: Khi một bàn gửi quá 10 lần trong một phút thì lần tiếp theo bị chặn, kèm thời gian phải chờ. Bàn khác không bị ảnh hưởng.
 
 ### US-15 Theo dõi món — FR-06.4
 Là **khách**, tôi muốn biết món của mình đang ở đâu để khỏi phải hỏi nhân viên.
 - AC1: Khi bếp đổi trạng thái thì điện thoại khách cập nhật trong ≤ 2 giây, không cần tải lại.
 - AC2: Trang chỉ hiện đơn của bàn này.
+
+### US-27 Gọi nhân viên từ bàn — FR-06.6, FR-06.7
+Là **khách**, tôi muốn gọi nhân viên hoặc xin tính tiền ngay trên điện thoại, không phải vẫy tay chờ.
+- AC1: Khi khách bấm Gọi nhân viên thì máy phục vụ đang mở sơ đồ bàn hoặc một đơn **kêu**, và yêu cầu hiện ở nút chuông đầu trang trong ≤ 2 giây.
+- AC2: Khách bấm lại khi chưa ai nhận thì không có yêu cầu mới; nút hiện "Đang chờ nhân viên".
+- AC3: Bàn chưa gọi món thì chưa xin tính tiền được.
+- AC4: Phục vụ bấm Đã nhận thì yêu cầu biến khỏi danh sách, và trang khách hiện "Nhân viên đang tới".
 
 ### US-16 Tự thanh toán chuyển khoản — FR-08.5, FR-08.4
 Là **khách**, tôi muốn tự quét VietQR để trả tiền mà không phải ra quầy.
@@ -112,10 +126,12 @@ Là **thu ngân**, tôi muốn hệ thống tự báo khi tiền về để khô
 - AC2: Khi webhook gửi lặp cùng một giao dịch thì không ghi nhận hai lần.
 - AC3: Khi webhook sai API key thì bị từ chối (401).
 
-### US-19 Xác nhận tay và giao dịch không khớp — FR-08.6, FR-08.7
+### US-19 Xác nhận tay và giao dịch không khớp — FR-08.6, FR-08.7, FR-08.8
 Là **thu ngân**, tôi muốn xử lý khi tiền về nhưng hệ thống không tự khớp.
 - AC1: Khi khách chuyển sai số tiền thì giao dịch vào danh sách "Không khớp", đơn chưa đóng.
 - AC2: Khi thu ngân xác nhận tay thì hệ thống ghi tên người xác nhận.
+- AC3: Khi webhook SePay lỗi 3 lần liên tiếp thì màn hình thu ngân hiện cảnh báo "Chuyển khoản đang không tự xác nhận" trong ≤ 2 giây, kèm lý do và lúc bắt đầu lỗi.
+- AC4: Khi lại nhận được một webhook hợp lệ thì cảnh báo tắt.
 
 ## Nhân sự
 

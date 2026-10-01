@@ -51,39 +51,61 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `POST /orders/{id}/payments/transfer` | CASHIER, MANAGER | FR-08.3 |
 | | `POST /payments/{id}/confirm` | CASHIER, MANAGER | FR-08.6 |
 | | `GET /bank-transactions?status=UNMATCHED` | CASHIER, MANAGER | FR-08.7 |
+| | `GET /bank-transactions/webhook-status` (webhook SePay có đang lỗi liên tiếp không) | CASHIER, MANAGER | FR-08.8 |
 | | `POST /webhooks/sepay` | SePay (header API key) | FR-08.4 |
 | Khách | `GET /public/tables/{qrToken}` | Công khai | FR-06.1, FR-06.4 |
 | | `GET /public/menu` | Công khai | FR-06.1 |
 | | `POST /public/tables/{qrToken}/items` | Công khai | FR-06.2, FR-06.5 |
 | | `POST /public/tables/{qrToken}/payment` | Công khai | FR-08.5 |
+| | `POST /public/tables/{qrToken}/requests` (`CALL_STAFF` hoặc `BILL`) | Công khai | FR-06.6 |
+| Khách gọi | `GET /service-requests` (đang chờ, cũ nhất trước) | WAITER, MANAGER | FR-06.6 |
+| | `POST /service-requests/{id}/take` (đã nhận) | WAITER, MANAGER | FR-06.7 |
 | Kho | `GET /inventory-items`, `POST /inventory-items`, `PUT /inventory-items/{id}` | MANAGER | FR-09.1, FR-09.4 |
 | | `POST /inventory-items/{id}/movements`, `GET /inventory-items/{id}/movements` | MANAGER | FR-09.2, FR-09.3 |
 | Báo cáo | `GET /reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD` | MANAGER | FR-10 |
-| Cài đặt | `GET /settings` | NV | FR-11 |
-| | `PUT /settings` | ADMIN | FR-11.1, FR-11.2 |
+| Cài đặt | `GET /settings` (bếp đọc ngưỡng món chờ lâu ở đây) | NV | FR-11, FR-07.4 |
+| | `PUT /settings` | ADMIN | FR-11.1 → FR-11.3 |
+
+Giới hạn tần suất (FR-01.5, FR-06.8):
+- `POST /auth/login`: 10 lần mỗi phút cho mỗi tên đăng nhập (BR-31).
+- Các `POST /public/tables/{qrToken}/...` (gửi món, gọi nhân viên, thanh toán): tính chung 10 lần mỗi phút cho mỗi bàn (BR-30).
+- Quá giới hạn thì trả `429 Too Many Requests` kèm header `Retry-After` (số giây phải chờ). Lỗi có câu báo tiếng Việt trong `detail`, như mọi lỗi khác.
 
 Tài liệu API chạy được (Swagger UI) nằm ở `/swagger-ui.html` khi chạy backend.
+
+Ngoài `/api`, backend có `/actuator/health` (công khai, pipeline gọi để kiểm tra bản mới) và `/actuator/metrics` (chỉ ADMIN, NFR-11, xem [tài liệu 09 mục 9.5](09-kien-truc-va-cicd.md#95-triển-khai)).
 
 ## 8.2 Realtime (WebSocket STOMP)
 
 | Kênh | Ai nghe | Xác thực | Sự kiện |
 |---|---|---|---|
 | Điểm kết nối `/ws` | — | JWT trong header `Authorization` của khung `CONNECT`. Khách kết nối không cần token | — |
-| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp) |
-| `/topic/guest/{qrToken}` | Điện thoại khách ở bàn đó | Không cần | `ORDER_CHANGED`, `PAYMENT_PAID` |
+| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp), `REQUESTS_CHANGED` (khách gọi, hoặc có người nhận), `WEBHOOK_STATUS` (webhook SePay bắt đầu lỗi liên tiếp, hoặc chạy lại) |
+| `/topic/guest/{qrToken}` | Điện thoại khách ở bàn đó | Không cần | `ORDER_CHANGED`, `PAYMENT_PAID`, `REQUESTS_CHANGED` |
 | `/topic/menu` | Điện thoại khách | Không cần | `MENU_CHANGED` (có món vừa hết hoặc bán lại) |
 
-Mỗi sự kiện rất nhỏ, ví dụ `{ "type": "ORDER_CHANGED", "orderId": 12, "tableId": 5 }`. Khi nhận, giao diện **tải lại dữ liệu** qua REST, nên dữ liệu trên màn hình luôn khớp CSDL. Backend chỉ gửi sự kiện **sau khi giao dịch CSDL đã commit** (`@TransactionalEventListener(phase = AFTER_COMMIT)`).
+Mỗi sự kiện rất nhỏ, ví dụ `{ "type": "ORDER_CHANGED", "orderId": 12, "tableId": 5, "alert": null }`. Khi nhận, giao diện **tải lại dữ liệu** qua REST, nên dữ liệu trên màn hình luôn khớp CSDL. Backend chỉ gửi sự kiện **sau khi giao dịch CSDL đã commit** (`@TransactionalEventListener(phase = AFTER_COMMIT)`).
+
+Trường `alert` báo khi nào máy nhân viên cần **kêu** (FR-07.5, FR-06.6). Các thay đổi khác để `null`.
+
+| `alert` | Khi nào | Màn hình kêu | Tiếng |
+|---|---|---|---|
+| `NEW_DISHES` | Phục vụ gửi món, hoặc xác nhận món QR (món vào bếp) | `/kitchen` | 2 tiếng, cao rồi thấp |
+| `GUEST_DISHES` | Khách gửi món qua QR, chờ xác nhận | `/tables`, `/orders/:id` | 2 tiếng, thấp rồi cao |
+| `DISH_READY` | Bếp bấm Xong | `/tables`, `/orders/:id` | 3 tiếng ngắn |
+| `SERVICE_REQUEST` | Khách bấm Gọi nhân viên hoặc Yêu cầu tính tiền; bấm lại khi chưa ai nhận thì không kêu (BR-29) | `/tables`, `/orders/:id` | 3 tiếng đi lên |
+
+Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file âm thanh. Màn hình nào kêu thì đầu trang có nút bật, tắt âm báo; lựa chọn lưu trên từng máy. Trình duyệt không cho phát tiếng khi chưa ai chạm vào trang, nên lúc đó nút hiện "Chạm để bật âm báo".
 
 ## 8.3 Màn hình
 
 | Đường dẫn | Vai trò | Nội dung | Yêu cầu |
 |---|---|---|---|
 | `/login` | Mọi nhân viên | Đăng nhập | FR-01.1 |
-| `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nút mở đơn và mang về | FR-04.4, FR-05.1 |
-| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ | FR-05, FR-06.3 |
-| `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; báo hết món | FR-07, FR-03.3 |
-| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp | FR-08 |
+| `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nút mở đơn và mang về; kêu khi có món xong, món QR mới | FR-04.4, FR-05.1, FR-07.5 |
+| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; kêu như sơ đồ bàn | FR-05, FR-06.3, FR-07.5 |
+| `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
+| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; cảnh báo khi webhook SePay lỗi liên tiếp | FR-08 |
 | `/admin/menu` | MANAGER | Danh mục và món | FR-03 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
 | `/admin/inventory` | MANAGER | Nguyên liệu, nhập, xuất, kiểm kê, lịch sử | FR-09 |
@@ -94,14 +116,15 @@ Mỗi sự kiện rất nhỏ, ví dụ `{ "type": "ORDER_CHANGED", "orderId": 1
 | `/admin/leave` | MANAGER | Đơn nghỉ chờ duyệt, duyệt, từ chối | FR-13.5, FR-13.6 |
 | `/admin/payroll` | ADMIN | Bảng lương theo tháng, thưởng phạt, chốt, xuất Excel | FR-15.1 → FR-15.3, FR-15.5 |
 | `/me` | Mọi nhân viên | Vào ca, ra ca; lịch làm; công tháng này; xin nghỉ; phiếu lương | FR-13.4, FR-13.5, FR-14.1, FR-14.4, FR-15.4 |
-| `/admin/settings` | ADMIN | Nhà hàng và tài khoản nhận tiền | FR-11 |
-| `/q/:qrToken` | Khách | Thực đơn, giỏ, món đã gọi và trạng thái, thanh toán VietQR | FR-06, FR-08.5 |
+| `/admin/settings` | ADMIN | Nhà hàng, tài khoản nhận tiền, ngưỡng món chờ lâu | FR-11 |
+| `/q/:qrToken` | Khách | Thực đơn, giỏ, món đã gọi và trạng thái, thanh toán VietQR, nút Gọi nhân viên và Yêu cầu tính tiền | FR-06, FR-08.5 |
+| Đầu mọi trang nhân viên | WAITER, MANAGER | Nút chuông "Khách gọi": số bàn đang gọi; bấm vào thì hiện danh sách, số phút đã chờ, nút Đã nhận | FR-06.6, FR-06.7 |
 
 Phác thảo trang khách trên điện thoại:
 
 ```text
 ┌──────────────────────────────┐
-│ Bếp Nhà & Nướng · Bàn B05    │
+│ Khói Bếp · Bàn B05           │
 ├──────────────────────────────┤
 │ [Thực đơn]  [Món đã gọi (4)] │
 │                              │
@@ -161,7 +184,7 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant SP as SePay
     FE->>API: POST .../payment (hoặc /payments/transfer)
-    API->>DB: Tạo payment PENDING, reference = BNN + 8 ký tự
+    API->>DB: Tạo payment PENDING, reference = KB + 8 ký tự
     API-->>FE: Số tiền, mã, link ảnh VietQR
     K->>SP: Quét VietQR bằng app ngân hàng, chuyển tiền
     SP->>API: POST /api/webhooks/sepay (Authorization: Apikey ...)

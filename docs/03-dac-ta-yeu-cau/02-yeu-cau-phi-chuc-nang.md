@@ -86,7 +86,7 @@
 | NFR-41 | **Tương thích trình duyệt** | Chrome và Safari 2 phiên bản gần nhất; **trình duyệt trong app Zalo** và camera mặc định của iOS và Android; có phương án khi deeplink ngân hàng không chạy (lưu ảnh QR, nhờ nhân viên) | Thử ở S11, S12 | RSK-16 | 🔵 |
 | NFR-42 | **Dễ dùng cho mọi lứa tuổi** | Chữ ≥ 16px, vùng chạm ≥ 44px, tương phản đạt WCAG AA; tiếng Việt (tiếng Anh: Could) | Thử với khách thật | S9-L7 | 🔵 |
 | NFR-47 | *(CR-02)* **Quét QR trên máy nhân viên** nhanh và đọc được **trong điều kiện thật** | Nhận diện bàn ≤ **2 giây** (P90) trong ánh sáng buổi tối của quán; đọc được thẻ hơi ẩm; tên bàn trên màn hình chữ ≥ 24px | Thử ban đêm ở bàn phía trước Cầu Giấy, sân trong Đống Đa, sân thượng Hai Bà Trưng (TR-17) | S11-T1, S12-V3 | 🔵 |
-| NFR-48 | *(CR-02)* **Camera trong app web cần HTTPS**: app nhân viên (PWA) phải chạy qua HTTPS **cả trong mạng nội bộ**. Máy chủ tại quán có chứng chỉ hợp lệ cho tên nội bộ (ví dụ `dda.edge.bnn.vn` trỏ về IP LAN, chứng chỉ cấp qua ACME DNS-01), hoặc dùng CA nội bộ cài trên thiết bị của quán | 100% thiết bị mở được camera, **kể cả khi mất Internet** | Kiểm tra kỹ thuật S13 | Kiến trúc | 🔵 |
+| NFR-48 | *(CR-02)* **Camera trong app web cần HTTPS**: app nhân viên (PWA) phải chạy qua HTTPS **cả trong mạng nội bộ**. Máy chủ tại quán có chứng chỉ hợp lệ cho tên nội bộ (ví dụ `dda.edge.khoibep.vn` trỏ về IP LAN, chứng chỉ cấp qua ACME DNS-01), hoặc dùng CA nội bộ cài trên thiết bị của quán | 100% thiết bị mở được camera, **kể cả khi mất Internet** | Kiểm tra kỹ thuật S13 | Kiến trúc | 🔵 |
 
 ## 9. Công nghệ và CI/CD (yêu cầu của nhóm dự án)
 

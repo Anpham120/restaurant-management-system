@@ -6,8 +6,8 @@ import { App as AntApp, ConfigProvider } from 'antd'
 import viVN from 'antd/locale/vi_VN'
 import dayjs from 'dayjs'
 import 'dayjs/locale/vi'
-import { AuthProvider } from './auth/AuthContext'
-import App from './App'
+import { AuthProvider } from '@/features/auth/context/AuthContext'
+import App from '@/app/App'
 import './index.css'
 
 dayjs.locale('vi')

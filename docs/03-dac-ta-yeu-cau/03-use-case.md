@@ -39,7 +39,7 @@ flowchart LR
     QL(("Quản lý quán"))
     BT(("Bếp trưởng"))
     DB(("Đầu bếp"))
-    subgraph SYS1["BNN-RMS - Sảnh và Bếp"]
+    subgraph SYS1["KB-RMS - Sảnh và Bếp"]
         UC01(["UC-01 Mở bàn và gọi món"])
         UC02(["UC-02 Giữ món, gọi ra món"])
         UC03(["UC-03 Huỷ, đổi món đã gửi bếp"])
@@ -75,7 +75,7 @@ flowchart LR
     PV(("Phục vụ"))
     NH[["Ngân hàng / trung gian"]]
     NT[["Dịch vụ nhắn tin"]]
-    subgraph SYS2["BNN-RMS - Tiền và Đặt bàn"]
+    subgraph SYS2["KB-RMS - Tiền và Đặt bàn"]
         UC08(["UC-08 Thanh toán bill"])
         UC09(["UC-09 Giảm giá, tặng món"])
         UC10(["UC-10 Duyệt yêu cầu từ xa"])
@@ -122,7 +122,7 @@ flowchart LR
     QT(("Quản trị"))
     HD[["Nhà cung cấp HĐĐT"]]
     KTS[["Phần mềm kế toán"]]
-    subgraph SYS3["BNN-RMS - Back-office"]
+    subgraph SYS3["KB-RMS - Back-office"]
         UC20(["UC-20 Yêu cầu và sản xuất sơ chế"])
         UC21(["UC-21 Chuyển kho, xác nhận nhận"])
         UC22(["UC-22 Nhận hàng nhà cung cấp"])
@@ -169,7 +169,7 @@ flowchart LR
     TN(("Thu ngân"))
     QL(("Quản lý quán"))
     NH[["Ngân hàng / trung gian"]]
-    subgraph SYS4["BNN-RMS - Kênh khách QR"]
+    subgraph SYS4["KB-RMS - Kênh khách QR"]
         UC33(["UC-33 Vào phiên bàn, xem thực đơn"])
         UC34(["UC-34 Gửi món thêm"])
         UC35(["UC-35 Xác nhận đơn QR"])
@@ -412,7 +412,7 @@ flowchart LR
 | Hậu điều kiện | Khoản thanh toán *Đã xác nhận*, có mã tham chiếu ngân hàng |
 
 **Luồng chính** (khi có kết nối thông báo ngân hàng)
-1. Thu ngân chọn *Chuyển khoản*. Hệ thống hiện **QR động**: số tiền chính xác, nội dung `BNN <mã quán> <mã bill>`.
+1. Thu ngân chọn *Chuyển khoản*. Hệ thống hiện **QR động**: số tiền chính xác, nội dung `KB <mã quán> <mã bill>`.
 2. Khách quét và chuyển.
 3. Hệ thống nhận thông báo giao dịch, khớp theo mã bill và số tiền, đánh dấu **Đã xác nhận**.
 
