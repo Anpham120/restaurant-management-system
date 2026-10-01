@@ -40,6 +40,14 @@ Là **quản lý**, tôi muốn ghi nhập, xuất và kiểm kê để biết t
 - AC2: Khi kiểm kê nhập số thực tế thì hệ thống ghi phiếu điều chỉnh bằng phần chênh lệch.
 - AC3: Khi tồn ≤ mức tối thiểu thì nguyên liệu hiện nhãn "Sắp hết".
 
+### US-32 Nhập hàng có giá — FR-09.5 → FR-09.7
+Là **quản lý**, tôi muốn ghi phiếu nhập kèm nhà cung cấp và giá mua, để biết đã chi bao nhiêu và giá vốn từng nguyên liệu.
+- AC1: Lưu phiếu nhập 10 kg ba chỉ, giá 120.000 đ/kg, từ nhà cung cấp A: tồn ba chỉ tăng 10 kg, lịch sử kho có dòng nhập ghi số phiếu, phiếu có tổng 1.200.000 đ.
+- AC2: Ba chỉ đang tồn 12 kg, giá vốn 110.000 đ; nhập thêm 10 kg giá 120.000 đ thì giá vốn mới là (12 × 110.000 + 10 × 120.000) ÷ 22 = 114.545 đ.
+- AC3: Phiếu không có dòng nào, có số lượng ≤ 0 hoặc đơn giá âm thì bị từ chối; nhà cung cấp đã ngừng giao dịch thì không lập phiếu được.
+- AC4: Phiếu đã lưu không sửa, không xoá được. Nhập, xuất, kiểm kê bằng tay không đổi giá vốn.
+- AC5: Chỉ quản lý và quản trị xem, lập phiếu và sửa nhà cung cấp.
+
 ### US-07 Xem báo cáo — FR-10.1 → FR-10.3
 Là **quản lý**, tôi muốn xem doanh thu và món bán chạy để quyết định nhập hàng và thực đơn.
 - AC1: Doanh thu chỉ tính khoản đã xác nhận, theo ngày giờ Việt Nam.

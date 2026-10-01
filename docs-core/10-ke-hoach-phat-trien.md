@@ -66,6 +66,8 @@ P1-01 → P1-06 **đã làm xong** (issue #8 → #13), trước lịch:
 
 P2-05 → P2-09 là phần **nhân sự**, thêm theo yêu cầu của môn. Yêu cầu nằm ở tài liệu 02 (FR-12 → FR-15, không phải bản mở rộng), CSDL ở [tài liệu 07, mục 7.5](07-erd.md#75-nhân-sự). **Đã làm xong** cả 5 việc (issue #35 → #39), trước lịch.
 
+P2-03 **đã làm xong** (issue #17), trước lịch: yêu cầu FR-09.5 → FR-09.7, US-32, BR-37; CSDL là migration `V14` (bảng `supplier`, `goods_receipt`, `receipt_line`, cột `inventory_item.unit_cost`, `stock_movement.goods_receipt_id`). Giá vốn tính theo bình quân gia quyền. Bản core chưa có giá thoả thuận theo nhà cung cấp và chưa ghi hoá đơn VAT đầu vào (FR-PUR-01 bản mở rộng).
+
 ### Giai đoạn 3 — Chất lượng, bảo mật, hiệu năng (sprint 6)
 
 | Mã | Việc | Công sức | Ưu tiên |

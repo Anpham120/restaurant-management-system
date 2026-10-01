@@ -99,6 +99,9 @@
 | FR-09.2 | Nhập kho, xuất kho, kiểm kê (điều chỉnh về số thực tế), có ghi chú | M | BR-19 |
 | FR-09.3 | Xem lịch sử biến động của từng nguyên liệu | M | BR-19 |
 | FR-09.4 | Cảnh báo nguyên liệu có tồn ≤ mức tối thiểu | M | BR-20 |
+| FR-09.5 | **Nhà cung cấp**: tên, điện thoại, địa chỉ, mã số thuế, ghi chú. Ngừng giao dịch thì không chọn được khi lập phiếu, nhưng phiếu cũ vẫn giữ | S | BR-37 |
+| FR-09.6 | **Phiếu nhập có giá**: chọn nhà cung cấp, các dòng nguyên liệu với số lượng và đơn giá; tổng tiền phiếu tự tính. Lưu phiếu thì tồn tăng, lịch sử kho ghi số phiếu. Xem lại phiếu theo khoảng ngày | S | BR-19, 37 |
+| FR-09.7 | **Giá vốn nguyên liệu** tính lại theo bình quân gia quyền mỗi lần nhập theo phiếu. Màn hình kho hiện giá vốn và giá trị tồn | S | BR-37 |
 
 ### FR-10 Báo cáo (MANAGER)
 

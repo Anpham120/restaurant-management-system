@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V14__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V15__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -28,6 +28,11 @@ erDiagram
     ORDERS ||--o{ PAYMENT : "thanh toán"
     PAYMENT |o--o{ BANK_TRANSACTION : "khớp"
     INVENTORY_ITEM ||--o{ STOCK_MOVEMENT : "biến động"
+    SUPPLIER ||--o{ GOODS_RECEIPT : "giao"
+    GOODS_RECEIPT ||--|{ RECEIPT_LINE : "gồm"
+    INVENTORY_ITEM ||--o{ RECEIPT_LINE : "được nhập"
+    GOODS_RECEIPT |o--o{ STOCK_MOVEMENT : "tạo"
+    EMPLOYEE ||--o{ GOODS_RECEIPT : "lập"
     DINING_TABLE ||--o{ SERVICE_REQUEST : "khách gọi"
     EMPLOYEE |o--o{ SERVICE_REQUEST : "nhận"
     EMPLOYEE ||--o{ AUDIT_ENTRY : "thực hiện"
@@ -124,6 +129,7 @@ erDiagram
         varchar unit
         numeric quantity
         numeric min_quantity
+        bigint unit_cost "giá vốn một đơn vị, VND; null khi chưa nhập theo phiếu"
     }
     STOCK_MOVEMENT {
         bigint id PK
@@ -133,6 +139,7 @@ erDiagram
         numeric quantity_after
         varchar note
         bigint created_by FK "null chỉ với tồn đầu kỳ"
+        bigint goods_receipt_id FK "phiếu nhập tạo ra biến động; null khi nhập tay"
         timestamptz created_at
     }
     RESTAURANT_SETTINGS {
@@ -165,6 +172,29 @@ erDiagram
         bigint amount "số tiền liên quan, VND"
         varchar reason
         timestamptz created_at
+    }
+    SUPPLIER {
+        bigint id PK
+        varchar name UK
+        varchar phone
+        varchar address
+        varchar tax_code "mã số thuế"
+        varchar note
+        boolean active "false = ngừng giao dịch"
+    }
+    GOODS_RECEIPT {
+        bigint id PK
+        bigint supplier_id FK
+        varchar note
+        bigint created_by FK
+        timestamptz created_at
+    }
+    RECEIPT_LINE {
+        bigint id PK
+        bigint receipt_id FK
+        bigint inventory_item_id FK
+        numeric quantity "lớn hơn 0"
+        bigint unit_price "VND cho một đơn vị, không âm"
     }
     ORDER_TABLE {
         bigint id PK
@@ -202,6 +232,8 @@ erDiagram
 | Mã thanh toán duy nhất | `UNIQUE (reference)` | BR-14 |
 | Giao dịch ngân hàng xử lý một lần | `UNIQUE (provider_txn_id)` | BR-16 |
 | Tồn không âm | `CHECK (quantity >= 0)` trên `inventory_item` | BR-19 |
+| Dòng phiếu nhập hợp lệ | `CHECK (quantity > 0)`, `CHECK (unit_price >= 0)` trên `receipt_line`; `CHECK (unit_cost >= 0)` trên `inventory_item` | BR-37 |
+| Tên nhà cung cấp duy nhất | `UNIQUE (name)` trên `supplier` | BR-37 |
 | Ngưỡng món chờ lâu hợp lệ | `CHECK (wait_alert_minutes BETWEEN 1 AND 120)` trên `restaurant_settings` | BR-28 |
 | Mỗi bàn một yêu cầu đang chờ cho mỗi loại | `CREATE UNIQUE INDEX ux_service_request_open ON service_request(table_id, type) WHERE handled_at IS NULL` | BR-29 |
 | Có người nhận thì có lúc nhận | `CHECK ((handled_by IS NULL) = (handled_at IS NULL))` trên `service_request` | BR-29 |
@@ -224,6 +256,8 @@ erDiagram
 | `audit_entry(created_at DESC)` | Tra cứu nhật ký theo ngày |
 | `adjustment(order_id)` | Bill, tổng tiền |
 | `order_table(order_id)` | Các bàn và lịch sử bàn của một đơn |
+| `goods_receipt(created_at DESC)` | Danh sách phiếu nhập theo ngày |
+| `receipt_line(receipt_id)` | Dòng của một phiếu nhập |
 | `adjustment(created_at) WHERE status = 'PENDING'` | Danh sách chờ duyệt của quản lý |
 
 ## 7.4 Dữ liệu mẫu
