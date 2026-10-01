@@ -21,6 +21,7 @@ import {
   TableOutlined,
   TeamOutlined,
   UserOutlined,
+  WalletOutlined,
 } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
 import type { RealtimeMessage, Role } from '@/shared/api/types'
@@ -42,6 +43,7 @@ const NAV: { key: string; label: string; icon: ReactNode; role: Role | null }[] 
   { key: '/admin/inventory', label: 'Kho', icon: <InboxOutlined />, role: 'MANAGER' },
   { key: '/admin/reports', label: 'Báo cáo', icon: <BarChartOutlined />, role: 'MANAGER' },
   { key: '/admin/audit', label: 'Nhật ký', icon: <AuditOutlined />, role: 'MANAGER' },
+  { key: '/admin/cash-shifts', label: 'Ca két', icon: <WalletOutlined />, role: 'MANAGER' },
   { key: '/admin/schedule', label: 'Xếp ca', icon: <CalendarOutlined />, role: 'MANAGER' },
   { key: '/admin/attendance', label: 'Chấm công', icon: <FieldTimeOutlined />, role: 'MANAGER' },
   { key: '/admin/leave', label: 'Nghỉ phép', icon: <CoffeeOutlined />, role: 'MANAGER' },

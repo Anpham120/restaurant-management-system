@@ -17,6 +17,7 @@ import vn.khoibep.rms.order.repository.OrderRepository;
 import vn.khoibep.rms.payment.dto.PaymentDtos.BankTransactionDto;
 import vn.khoibep.rms.payment.dto.PaymentDtos.PaymentDto;
 import vn.khoibep.rms.payment.dto.PaymentDtos.PaymentInstruction;
+import vn.khoibep.rms.payment.entity.CashShift;
 import vn.khoibep.rms.payment.entity.Payment;
 import vn.khoibep.rms.payment.enums.Confirmation;
 import vn.khoibep.rms.payment.enums.MatchStatus;
@@ -31,13 +32,17 @@ import vn.khoibep.rms.settings.service.SettingsService;
 public class PaymentService {
 
     private final PaymentRepository payments;
+    private final CashShiftService cashShifts;
     private final BankTransactionRepository bankTransactions;
     private final OrderRepository orders;
     private final SettingsService settings;
     private final AuditService audit;
     private final RealtimeEvents realtime;
 
-    /** FR-08.2, BR-13: cash must cover the total; the order closes and the table becomes free. */
+    /**
+     * FR-08.2, BR-13: cash must cover the total; the order closes and the table becomes free.
+     * BR-39: the cash goes into the drawer of the open shift.
+     */
     @Transactional
     public PaymentDto payCash(Long orderId, long receivedAmount, Long cashierId) {
         Order order = lockPayable(orderId);
@@ -45,8 +50,9 @@ public class PaymentService {
         if (receivedAmount < total) {
             throw ApiException.badRequest("Tiền khách đưa nhỏ hơn tổng tiền");
         }
+        CashShift shift = cashShifts.lockOpen();
         cancelPendingTransfers(orderId);
-        Payment payment = payments.save(Payment.cash(order, total, receivedAmount, cashierId));
+        Payment payment = payments.save(Payment.cash(order, total, receivedAmount, cashierId, shift));
         close(order);
         return PaymentDto.from(payment);
     }

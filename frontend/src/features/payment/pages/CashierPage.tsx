@@ -8,13 +8,15 @@ import { useAuth } from '@/features/auth/context/AuthContext'
 import StatusTag from '@/features/order/components/StatusTag'
 import AdjustmentModal from '../components/AdjustmentModal'
 import BillSlip from '../components/BillSlip'
+import CashShiftBar from '../components/CashShiftBar'
 import TransferQr from '../components/TransferQr'
+import { useCashShift } from '../hooks/useCashShift'
 import { adjustmentLabel, adjustmentReason, adjustmentStatusColor, adjustmentStatusLabel, isOpen } from '../utils/adjustment'
 import { orderTitle } from '../utils/bill'
 import { usePrintSlip } from '@/shared/print/usePrintSlip'
 import { cashSuggestions, hasRole, money, time } from '@/shared/utils/format'
 
-/** FR-08: bills, cash, VietQR with automatic confirmation, manual confirmation, unmatched transfers, webhook warning. */
+/** FR-08: bills, cash, VietQR with automatic confirmation, manual confirmation, unmatched transfers, webhook warning. FR-17: the drawer shift. */
 export default function CashierPage() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
@@ -40,6 +42,7 @@ export default function CashierPage() {
     queryFn: () => api.get<WebhookStatus>('/bank-transactions/webhook-status').then((r) => r.data),
   })
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<Settings>('/settings').then((r) => r.data) })
+  const cashShift = useCashShift()
   const printer = usePrintSlip()
 
   const onError = (e: unknown) => message.error(errorMessage(e))
@@ -64,6 +67,7 @@ export default function CashierPage() {
       setCashOpen(false)
       message.success(`Đã thu tiền. Tiền thối: ${money(payment.change ?? 0)}`)
       refresh()
+      queryClient.invalidateQueries({ queryKey: ['cash-shift'] })
     },
     onError,
   })
@@ -208,7 +212,8 @@ export default function CashierPage() {
             <Button
               size="large"
               style={{ flex: 1 }}
-              disabled={blocked}
+              disabled={blocked || !cashShift.data}
+              title={cashShift.data ? undefined : 'Chưa mở ca'}
               onClick={() => {
                 setReceived(o.total)
                 setCashOpen(true)
@@ -237,6 +242,7 @@ export default function CashierPage() {
       <div className="page-title">
         <Typography.Title level={3}>Thu ngân</Typography.Title>
       </div>
+      <CashShiftBar />
       {/* FR-08.8: SePay keeps failing, so transfers are not confirmed by themselves. */}
       {webhook.data?.failing && (
         <Alert
