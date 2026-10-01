@@ -60,6 +60,9 @@ public class StockMovement {
     /** The dish in an order that used the stock or gave it back; only for SALE (BR-38). */
     private Long orderItemId;
 
+    /** VND for one unit of the ingredient when a dish took it; only for SALE, null while it had no cost (BR-40). */
+    private Long unitCost;
+
     public StockMovement(InventoryItem item, MovementType type, BigDecimal quantityChange, String note,
                          Long createdBy) {
         this.item = item;
@@ -79,11 +82,15 @@ public class StockMovement {
         return movement;
     }
 
-    /** BR-38: stock a dish used (a negative change) or gave back (positive), after the item has changed. */
+    /**
+     * BR-38: stock a dish used (a negative change) or gave back (positive), after the item has changed.
+     * BR-40: the unit cost of the moment goes with it, for the profit of the dish.
+     */
     public static StockMovement forDish(InventoryItem item, BigDecimal change, Long orderItemId, String note,
                                        Long createdBy) {
         StockMovement movement = new StockMovement(item, MovementType.SALE, change, note, createdBy);
         movement.orderItemId = orderItemId;
+        movement.unitCost = item.getUnitCost();
         return movement;
     }
 }

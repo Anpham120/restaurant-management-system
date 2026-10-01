@@ -369,6 +369,38 @@ export interface ReportSummary {
   topItems: { itemName: string; quantity: number; amount: number }[]
 }
 
+/** BR-40: cost and grossProfit are null when some portion sold had no cost. */
+export interface DishProfit {
+  itemName: string
+  quantity: number
+  revenue: number
+  cost: number | null
+  grossProfit: number | null
+}
+
+/** FR-10.4: cost and grossProfit cover the dishes with a full cost, whose dish revenue is costedRevenue. */
+export interface GrossProfitReport {
+  from: string
+  to: string
+  dishRevenue: number
+  revenue: number
+  discounts: number
+  costedRevenue: number
+  cost: number
+  grossProfit: number
+  dishes: DishProfit[]
+}
+
+export type ExceptionAction = Extract<AuditAction, 'ITEM_CANCELLED' | 'DISCOUNT_GIVEN' | 'MANUAL_CONFIRMATION'>
+
+/** FR-10.5 */
+export interface ExceptionsReport {
+  from: string
+  to: string
+  byAction: { action: ExceptionAction; count: number; amount: number }[]
+  byPerson: { employeeId: number; employeeName: string; action: ExceptionAction; count: number; amount: number }[]
+}
+
 export interface Settings {
   name: string
   address: string | null
