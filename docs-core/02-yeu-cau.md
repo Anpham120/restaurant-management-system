@@ -170,6 +170,15 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | FR-16.2 | Quản lý **tra cứu nhật ký** theo khoảng ngày, lọc theo người, loại thao tác, đơn hoặc bàn | M | BR-34 |
 | FR-16.3 | Nhật ký **không sửa, không xoá được**, kể cả khi thao tác thẳng trong CSDL | M | BR-34 |
 
+### FR-17 Ca và két (CASHIER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-17.1 | **Mở ca** với quỹ đầu ca (mặc định 1.000.000 đ). Két chỉ có một ca mở; chưa mở ca thì không thu tiền mặt | M | BR-39 |
+| FR-17.2 | **Phiếu chi** tiền mặt từ két: số tiền, lý do, người chi. Trên 300.000 đ chỉ quản lý lập. Không sửa, không xoá | M | BR-39 |
+| FR-17.3 | **Chốt ca**: hệ thống tính tiền mặt dự kiến, thu ngân nhập số đếm thực tế, hệ thống tính chênh lệch; lệch thì bắt buộc lý do. Ca đã chốt không sửa được | M | BR-39 |
+| FR-17.4 | Quản lý xem **danh sách ca** theo khoảng ngày: quỹ đầu ca, tiền mặt thu, phiếu chi, dự kiến, thực đếm, chênh lệch, lý do | M | BR-39 |
+
 ## 2.2 Yêu cầu phi chức năng
 
 | Mã | Yêu cầu | Cách kiểm tra |

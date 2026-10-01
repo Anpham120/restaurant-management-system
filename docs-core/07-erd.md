@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02), `V16` thêm ca và két (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`) (P2-01).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V16__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V17__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -35,6 +35,10 @@ erDiagram
     MENU_ITEM ||--o{ RECIPE_LINE : "định lượng"
     INVENTORY_ITEM ||--o{ RECIPE_LINE : "dùng trong"
     ORDER_ITEM |o--o{ STOCK_MOVEMENT : "trừ kho"
+    EMPLOYEE ||--o{ CASH_SHIFT : "mở, chốt"
+    CASH_SHIFT ||--o{ CASH_EXPENSE : "phiếu chi"
+    EMPLOYEE ||--o{ CASH_EXPENSE : "lập"
+    CASH_SHIFT |o--o{ PAYMENT : "thu tiền mặt"
     EMPLOYEE ||--o{ GOODS_RECEIPT : "lập"
     DINING_TABLE ||--o{ SERVICE_REQUEST : "khách gọi"
     EMPLOYEE |o--o{ SERVICE_REQUEST : "nhận"
@@ -111,6 +115,7 @@ erDiagram
         bigint confirmed_by FK
         timestamptz created_at
         timestamptz paid_at
+        bigint cash_shift_id FK "ca nhận tiền mặt; null với chuyển khoản và tiền mặt trước V16"
     }
     BANK_TRANSACTION {
         bigint id PK
@@ -206,6 +211,25 @@ erDiagram
         bigint inventory_item_id FK
         numeric quantity "lượng cho một phần, theo đơn vị nguyên liệu; lớn hơn 0"
     }
+    CASH_SHIFT {
+        bigint id PK
+        bigint opened_by FK
+        timestamptz opened_at
+        bigint opening_float "quỹ đầu ca, VND"
+        bigint closed_by FK
+        timestamptz closed_at "null khi ca đang mở"
+        bigint expected_cash "tiền mặt dự kiến, ghi lúc chốt"
+        bigint counted_cash "số đếm thực tế"
+        varchar close_note "lý do chênh lệch"
+    }
+    CASH_EXPENSE {
+        bigint id PK
+        bigint cash_shift_id FK
+        bigint amount "VND, lớn hơn 0"
+        varchar reason
+        bigint created_by FK
+        timestamptz created_at
+    }
     ORDER_TABLE {
         bigint id PK
         bigint order_id FK
@@ -246,6 +270,10 @@ erDiagram
 | Tên nhà cung cấp duy nhất | `UNIQUE (name)` trên `supplier` | BR-37 |
 | Định lượng hợp lệ | `CHECK (quantity > 0)` và `CONSTRAINT ux_recipe_line_item UNIQUE (menu_item_id, inventory_item_id)` trên `recipe_line` | BR-38 |
 | Loại biến động hợp lệ | `CONSTRAINT ck_stock_movement_type CHECK (type IN ('IN','OUT','ADJUST','SALE'))` trên `stock_movement`, thay ràng buộc của `V1` | BR-19, BR-38 |
+| Một ca mở mỗi lúc | `CREATE UNIQUE INDEX ux_cash_shift_open ON cash_shift ((closed_at IS NULL)) WHERE closed_at IS NULL` | BR-39 |
+| Ca chốt đủ thông tin, lệch có lý do | `CONSTRAINT ck_cash_shift_closed CHECK ((closed_at IS NULL) = (closed_by IS NULL) AND (closed_at IS NULL) = (expected_cash IS NULL) AND (closed_at IS NULL) = (counted_cash IS NULL))`, `CONSTRAINT ck_cash_shift_reason CHECK (counted_cash = expected_cash OR close_note IS NOT NULL)`; `CHECK (opening_float >= 0)`, `CHECK (counted_cash >= 0)` | BR-39 |
+| Phiếu chi hợp lệ | `CHECK (amount > 0)` trên `cash_expense` | BR-39 |
+| Chỉ tiền mặt thuộc ca | `CONSTRAINT ck_payment_cash_shift CHECK (cash_shift_id IS NULL OR method = 'CASH')` trên `payment` | BR-39 |
 | Xoá món thì xoá định lượng | `recipe_line.menu_item_id` có `ON DELETE CASCADE`; món chỉ xoá được khi chưa từng được gọi | BR-18, BR-38 |
 | Ngưỡng món chờ lâu hợp lệ | `CHECK (wait_alert_minutes BETWEEN 1 AND 120)` trên `restaurant_settings` | BR-28 |
 | Mỗi bàn một yêu cầu đang chờ cho mỗi loại | `CREATE UNIQUE INDEX ux_service_request_open ON service_request(table_id, type) WHERE handled_at IS NULL` | BR-29 |
@@ -272,6 +300,9 @@ erDiagram
 | `goods_receipt(created_at DESC)` | Danh sách phiếu nhập theo ngày |
 | `receipt_line(receipt_id)` | Dòng của một phiếu nhập |
 | `stock_movement(created_at)` | Tiêu hao theo khoảng ngày |
+| `cash_shift(opened_at DESC)` | Danh sách ca theo ngày |
+| `cash_expense(cash_shift_id)` | Phiếu chi của một ca |
+| `payment(cash_shift_id) WHERE cash_shift_id IS NOT NULL` | Tiền mặt thu trong ca |
 | `stock_movement(order_item_id) WHERE order_item_id IS NOT NULL` | Hoàn kho khi huỷ món |
 | `adjustment(created_at) WHERE status = 'PENDING'` | Danh sách chờ duyệt của quản lý |
 

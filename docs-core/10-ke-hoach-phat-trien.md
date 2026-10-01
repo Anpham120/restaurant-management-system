@@ -70,6 +70,8 @@ P2-03 **đã làm xong** (issue #17), trước lịch: yêu cầu FR-09.5 → FR
 
 P2-02 **đã làm xong** (issue #16), trước lịch: yêu cầu FR-09.8 → FR-09.10, US-33, BR-38; CSDL là migration `V15` (bảng `recipe_line`, loại biến động `SALE`, cột `stock_movement.order_item_id`, bỏ ràng buộc tồn không âm). Kho trừ lúc món vào bếp và cho phép tồn âm để không chặn bếp. Bản core chưa có định lượng theo size và chưa giấu công thức chi tiết với người ngoài bếp trưởng, vì chưa có vai trò bếp trưởng (FR-INV-03 bản mở rộng): chỉ quản lý và quản trị xem định lượng.
 
+P2-01 **đã làm xong** (issue #15), trước lịch: yêu cầu FR-17.1 → FR-17.4, US-34, BR-39; CSDL là migration `V16` (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`). Thu tiền mặt giờ cần ca đang mở. Giao ca là chốt ca cũ rồi mở ca mới. Bản core chưa có giao ca xác nhận bằng PIN, ảnh chứng từ cho phiếu chi, đếm theo mệnh giá, quản lý ký chốt ca và báo cáo tự gửi kế toán (FR-SHF-02 → FR-SHF-06 bản mở rộng).
+
 ### Giai đoạn 3 — Chất lượng, bảo mật, hiệu năng (sprint 6)
 
 | Mã | Việc | Công sức | Ưu tiên |

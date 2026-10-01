@@ -299,6 +299,32 @@ export interface GoodsReceipt {
   lines: ReceiptLine[]
 }
 
+export interface CashExpense {
+  id: number
+  amount: number
+  reason: string
+  createdByName: string
+  createdAt: string
+}
+
+/** FR-17, BR-39: expectedCash is the opening float + cash taken − cash paid out; difference is counted − expected once closed. */
+export interface CashShift {
+  id: number
+  openedByName: string
+  openedAt: string
+  openingFloat: number
+  cashTaken: number
+  cashPayments: number
+  expenseTotal: number
+  expectedCash: number
+  closedByName: string | null
+  closedAt: string | null
+  countedCash: number | null
+  difference: number | null
+  closeNote: string | null
+  expenses: CashExpense[]
+}
+
 /** FR-09.8: how much of an ingredient one portion of a dish takes, in the ingredient's unit (BR-38). */
 export interface RecipeLine {
   inventoryItemId: number

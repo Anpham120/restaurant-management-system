@@ -64,12 +64,18 @@ public class Payment {
 
     private Instant paidAt;
 
-    public static Payment cash(Order order, long amount, long receivedAmount, Long cashierId) {
+    /** The drawer shift that took this cash; null for transfers and for cash taken before shifts (BR-39). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cash_shift_id")
+    private CashShift cashShift;
+
+    public static Payment cash(Order order, long amount, long receivedAmount, Long cashierId, CashShift shift) {
         Payment p = new Payment();
         p.order = order;
         p.method = PaymentMethod.CASH;
         p.amount = amount;
         p.receivedAmount = receivedAmount;
+        p.cashShift = shift;
         p.markPaid(Confirmation.MANUAL, cashierId);
         return p;
     }

@@ -151,6 +151,24 @@ classDiagram
         String reason
         Instant createdAt
     }
+    class CashShift {
+        Long id
+        long openingFloat
+        Instant openedAt
+        Instant closedAt
+        Long expectedCash
+        Long countedCash
+        String closeNote
+        isOpen() boolean
+        close(expected, counted, note)
+        difference() long
+    }
+    class CashExpense {
+        Long id
+        long amount
+        String reason
+        Instant createdAt
+    }
     Category "1" --> "0..*" MenuItem
     DiningTable "1" --> "0..*" Order : bàn chính
     Order "1" *-- "0..*" OrderTable : giữ bàn
@@ -167,6 +185,9 @@ classDiagram
     MenuItem "1" *-- "0..*" RecipeLine : định lượng
     RecipeLine "0..*" --> "1" InventoryItem
     OrderItem "0..1" --> "0..*" StockMovement : trừ kho
+    CashShift "1" *-- "0..*" CashExpense : phiếu chi
+    CashShift "0..1" --> "0..*" Payment : tiền mặt thu
+    Employee "1" --> "0..*" CashShift : mở, chốt
     Employee "1" --> "0..*" Order : mở đơn
     Employee "0..1" --> "0..*" Payment : xác nhận
     Employee "1" --> "0..*" StockMovement : lập phiếu
@@ -211,6 +232,7 @@ Ghi chú thiết kế:
 - `OrderTable` nối đơn với từng bàn nó giữ. Dòng còn hiệu lực (`releasedAt` rỗng) là bàn đang giữ; dòng đã trả là lịch sử chuyển bàn. `Order` vẫn giữ một **bàn chính** để in, báo cáo và chặn hai đơn cùng mở một bàn lúc khách quét QR.
 - `AuditEntry` lưu giá trị **thô**: trạng thái món là mã (`COOKING`), giá là số. Màn hình tự đổi sang chữ và định dạng tiền, còn báo cáo sau này đọc được ngay.
 - Hoàn kho khi huỷ món đọc lại các biến động `SALE` đã ghi cho chính món đó (`StockMovement.orderItemId`), không tính lại theo định lượng hiện tại, nên sửa định lượng giữa chừng không làm lệch kho.
+- `CashShift` chỉ ghi **tiền mặt dự kiến** lúc chốt, cạnh số đếm. Trong lúc ca mở, số dự kiến được tính từ quỹ đầu ca, các khoản tiền mặt gắn vào ca và phiếu chi, nên không bao giờ lệch với các khoản thật.
 
 ## 6.2 Trạng thái món
 
@@ -274,6 +296,8 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Huỷ món Đang làm hoặc Xong | ✅ | ✅ | | | |
 | Xem bill, in phiếu tạm tính | ✅ | ✅ | ✅ | | ✅ |
 | Thu tiền, tạo VietQR, xác nhận tay, in phiếu thanh toán | ✅ | ✅ | | | ✅ |
+| Mở ca, phiếu chi đến 300.000 đ, chốt ca | ✅ | ✅ | | | ✅ |
+| Phiếu chi trên 300.000 đ, xem danh sách ca | ✅ | ✅ | | | |
 | Giảm giá, tặng món (trong hạn mức thì có hiệu lực ngay) | ✅ | ✅ | | | ✅ |
 | Duyệt giảm giá vượt hạn mức | ✅ | ✅ | | | |
 | Kho, nhà cung cấp, phiếu nhập có giá, định lượng món, tiêu hao | ✅ | ✅ | | | |
