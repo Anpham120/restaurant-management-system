@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import vn.khoibep.rms.audit.enums.AuditAction;
-import vn.khoibep.rms.payment.enums.PaymentMethod;
+import vn.khoibep.rms.report.enums.RevenueMethod;
 
 public final class ReportDtos {
 
@@ -15,7 +15,8 @@ public final class ReportDtos {
                              List<MethodRevenue> byMethod, List<DayRevenue> byDay, List<TopItem> topItems) {
     }
 
-    public record MethodRevenue(PaymentMethod method, long amount, long count) {
+    /** @param count payments, or deposits taken off bills */
+    public record MethodRevenue(RevenueMethod method, long amount, long count) {
     }
 
     public record DayRevenue(LocalDate date, long amount, long count) {

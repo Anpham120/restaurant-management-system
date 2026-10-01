@@ -29,6 +29,7 @@ import vn.khoibep.rms.order.enums.AdjustmentStatus;
 import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
 import vn.khoibep.rms.order.enums.OrderType;
+import vn.khoibep.rms.reservation.entity.Reservation;
 import vn.khoibep.rms.table.entity.DiningTable;
 
 @Entity
@@ -67,6 +68,11 @@ public class Order {
 
     private Instant closedAt;
 
+    /** The booking the order was opened from; its deposit comes off the bill (BR-42). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reservation_id")
+    private Reservation reservation;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     @OrderBy("id")
     private List<OrderItem> items = new ArrayList<>();
@@ -96,9 +102,21 @@ public class Order {
         return adjustments.stream().filter(Adjustment::isInEffect).mapToLong(Adjustment::getAmount).sum();
     }
 
+    /** BR-42: the deposit of the booking, as far as it covers the bill after discounts. */
+    public long depositCredit() {
+        return reservation == null ? 0 : reservation.depositCredit(subtotal() - discountTotal());
+    }
+
     /** BR-12: what the guest pays, never below zero. */
     public long total() {
-        return Math.max(0, subtotal() - discountTotal());
+        return Math.max(0, subtotal() - discountTotal() - depositCredit());
+    }
+
+    /** BR-42: the bill is paid, so the deposit that came off it is fixed, and counts as revenue. */
+    public void applyDeposit() {
+        if (reservation != null) {
+            reservation.applyDeposit(subtotal() - discountTotal());
+        }
     }
 
     /** BR-13: a bill is not paid while a manager has a discount on it to decide. */

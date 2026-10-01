@@ -42,6 +42,7 @@ const ORDER: Order = {
   closedAt: null,
   subtotal: 459_000,
   discountTotal: 0,
+  depositCredit: 0,
   total: 459_000,
   pendingCount: 1,
   unservedCount: 0,

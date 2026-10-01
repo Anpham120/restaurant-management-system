@@ -161,16 +161,25 @@ export default function CashierPage() {
           ]}
         />
       )}
-      {o.discountTotal > 0 && (
+      {(o.discountTotal > 0 || o.depositCredit > 0) && (
         <>
           <Flex justify="space-between">
             <span>Tiền món</span>
             <span>{money(o.subtotal)}</span>
           </Flex>
-          <Flex justify="space-between">
-            <span>Giảm</span>
-            <span>-{money(o.discountTotal)}</span>
-          </Flex>
+          {o.discountTotal > 0 && (
+            <Flex justify="space-between">
+              <span>Giảm</span>
+              <span>-{money(o.discountTotal)}</span>
+            </Flex>
+          )}
+          {/* BR-42: the deposit of the booking, already paid by transfer. */}
+          {o.depositCredit > 0 && (
+            <Flex justify="space-between">
+              <span>Cọc đã trả</span>
+              <span>-{money(o.depositCredit)}</span>
+            </Flex>
+          )}
         </>
       )}
       <Flex justify="space-between">

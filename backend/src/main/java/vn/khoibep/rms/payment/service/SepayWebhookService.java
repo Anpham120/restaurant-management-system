@@ -1,5 +1,6 @@
 package vn.khoibep.rms.payment.service;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -14,10 +15,14 @@ import vn.khoibep.rms.order.repository.OrderRepository;
 import vn.khoibep.rms.payment.dto.PaymentDtos.SepayWebhookRequest;
 import vn.khoibep.rms.payment.entity.BankTransaction;
 import vn.khoibep.rms.payment.entity.Payment;
+import vn.khoibep.rms.payment.enums.Confirmation;
 import vn.khoibep.rms.payment.enums.MatchStatus;
 import vn.khoibep.rms.payment.enums.PaymentStatus;
 import vn.khoibep.rms.payment.repository.BankTransactionRepository;
 import vn.khoibep.rms.payment.repository.PaymentRepository;
+import vn.khoibep.rms.reservation.entity.Reservation;
+import vn.khoibep.rms.reservation.enums.ReservationStatus;
+import vn.khoibep.rms.reservation.repository.ReservationRepository;
 
 /**
  * BR-15: confirm a transfer only when money came in, the content holds a pending code and the amount is exact.
@@ -30,6 +35,7 @@ public class SepayWebhookService {
 
     private final BankTransactionRepository bankTransactions;
     private final PaymentRepository payments;
+    private final ReservationRepository reservations;
     private final OrderRepository orders;
     private final PaymentService paymentService;
     private final RealtimeEvents realtime;
@@ -52,7 +58,13 @@ public class SepayWebhookService {
         for (String reference : PaymentReference.candidates(request.code(), request.content())) {
             Optional<Long> orderId = payments.findOrderIdByReference(reference);
             if (orderId.isEmpty()) {
-                continue;
+                // BR-42: a booking code is the transfer content of its deposit.
+                Optional<Reservation> booking = reservations.findByCodeForUpdate(reference);
+                if (booking.isEmpty()) {
+                    continue;
+                }
+                matchDeposit(tx, booking.get());
+                break;
             }
             // Lock the order first, as every other payment path does, then read the payment fresh.
             Order order = orders.findByIdForUpdate(orderId.get()).orElseThrow();
@@ -73,6 +85,23 @@ public class SepayWebhookService {
         bankTransactions.save(tx);
         if (tx.getMatchStatus() == MatchStatus.UNMATCHED) {
             realtime.staffNotice(RealtimeEvent.BANK_TRANSACTION);
+        }
+    }
+
+    /** FR-18.3, BR-42: the deposit counts only when the booking still waits for it and the amount is the one asked. */
+    private void matchDeposit(BankTransaction tx, Reservation booking) {
+        String code = booking.getCode();
+        if (booking.isDepositPaid()) {
+            tx.resolveDeposit(MatchStatus.UNMATCHED, booking, "Đã nhận cọc của mã " + code + " trước đó");
+        } else if (booking.getStatus() != ReservationStatus.BOOKED || booking.getDepositAmount() == 0) {
+            tx.resolveDeposit(MatchStatus.UNMATCHED, booking, "Booking " + code + " không còn chờ cọc");
+        } else if (booking.getDepositAmount() != tx.getAmount()) {
+            tx.resolveDeposit(MatchStatus.UNMATCHED, booking,
+                    "Sai số tiền cọc: cần " + booking.getDepositAmount() + ", nhận " + tx.getAmount());
+        } else {
+            booking.depositPaid(Confirmation.AUTO, null, Instant.now());
+            tx.resolveDeposit(MatchStatus.MATCHED, booking, null);
+            realtime.staffNotice(RealtimeEvent.RESERVATIONS_CHANGED);
         }
     }
 }

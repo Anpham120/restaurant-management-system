@@ -134,6 +134,13 @@ export default function GuestPage() {
           <Typography.Text>-{money(order.discountTotal)}</Typography.Text>
         </Flex>
       )}
+      {/* BR-42: the deposit paid when booking. */}
+      {order.depositCredit > 0 && (
+        <Flex justify="space-between">
+          <Typography.Text>Cọc đã trả</Typography.Text>
+          <Typography.Text>-{money(order.depositCredit)}</Typography.Text>
+        </Flex>
+      )}
       <Flex justify="space-between">
         <Typography.Text>Tạm tính</Typography.Text>
         <Typography.Title level={4} style={{ margin: 0 }}>

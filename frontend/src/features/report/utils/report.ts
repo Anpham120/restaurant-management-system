@@ -1,9 +1,9 @@
 import dayjs from 'dayjs'
-import type { DishProfit, ExceptionsReport, GrossProfitReport, PaymentMethod, ReportSummary } from '@/shared/api/types'
+import type { DishProfit, ExceptionsReport, GrossProfitReport, ReportSummary, RevenueMethod } from '@/shared/api/types'
 import { auditActionLabel } from '@/features/audit/utils/audit'
 import { toSheet } from '@/shared/utils/sheet'
 
-export const methodLabel: Record<PaymentMethod, string> = { CASH: 'Tiền mặt', BANK_TRANSFER: 'Chuyển khoản' }
+export const methodLabel: Record<RevenueMethod, string> = { CASH: 'Tiền mặt', BANK_TRANSFER: 'Chuyển khoản', DEPOSIT: 'Cọc' }
 
 /** BR-40: gross profit as a whole percent of the dish revenue; null without a full cost. */
 export function profitRate(dish: Pick<DishProfit, 'revenue' | 'grossProfit'>): number | null {

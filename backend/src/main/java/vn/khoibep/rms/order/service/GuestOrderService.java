@@ -127,8 +127,8 @@ public class GuestOrderService {
         // BR-13: not while dishes or a discount still wait for staff.
         boolean canPay = pending == 0 && order.countPendingAdjustments() == 0 && total > 0;
         return new GuestTableDto(table.getName(), restaurantName, new GuestOrderDto(order.getId(),
-                order.getItems().stream().map(GuestItemDto::from).toList(), order.discountTotal(), total, pending,
-                canPay), openRequests);
+                order.getItems().stream().map(GuestItemDto::from).toList(), order.discountTotal(),
+                order.depositCredit(), total, pending, canPay), openRequests);
     }
 
     private DiningTable table(String token) {

@@ -32,6 +32,7 @@ import vn.khoibep.rms.order.enums.OrderStatus;
 import vn.khoibep.rms.order.enums.OrderType;
 import vn.khoibep.rms.order.repository.OrderRepository;
 import vn.khoibep.rms.payment.service.PaymentService;
+import vn.khoibep.rms.reservation.entity.Reservation;
 import vn.khoibep.rms.table.entity.DiningTable;
 import vn.khoibep.rms.table.repository.DiningTableRepository;
 
@@ -69,13 +70,33 @@ public class OrderService {
             if (request.tableId() == null) {
                 throw ApiException.badRequest("Đơn tại bàn phải chọn bàn");
             }
-            DiningTable table = tables.findById(request.tableId())
-                    .orElseThrow(() -> ApiException.notFound("Không tìm thấy bàn"));
-            if (orders.findOpenOrderIdByTableId(table.getId()).isPresent()) {
-                throw ApiException.conflict("Bàn đã có đơn đang mở");
-            }
-            order.hold(table);
+            holdFreeTable(order, request.tableId());
         }
+        return open(order);
+    }
+
+    /** FR-18.4, BR-42: the guests of a booking arrive; their bill takes the deposit off. */
+    @Transactional
+    public OrderDto openForReservation(Reservation reservation, Long tableId, Long employeeId) {
+        Order order = new Order();
+        order.setType(OrderType.DINE_IN);
+        order.setGuestCount(reservation.getGuestCount());
+        order.setNote("Đặt bàn " + reservation.getCode());
+        order.setCreatedBy(employeeId);
+        order.setReservation(reservation);
+        holdFreeTable(order, tableId);
+        return open(order);
+    }
+
+    private void holdFreeTable(Order order, Long tableId) {
+        DiningTable table = tables.findById(tableId).orElseThrow(() -> ApiException.notFound("Không tìm thấy bàn"));
+        if (orders.findOpenOrderIdByTableId(table.getId()).isPresent()) {
+            throw ApiException.conflict("Bàn đã có đơn đang mở");
+        }
+        order.hold(table);
+    }
+
+    private OrderDto open(Order order) {
         // Flush now so a concurrent open of the same table fails on ux_order_table_active here.
         orders.saveAndFlush(order);
         publish(order);

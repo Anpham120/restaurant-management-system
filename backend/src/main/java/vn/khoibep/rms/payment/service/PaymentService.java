@@ -24,6 +24,7 @@ import vn.khoibep.rms.payment.enums.MatchStatus;
 import vn.khoibep.rms.payment.enums.PaymentStatus;
 import vn.khoibep.rms.payment.repository.BankTransactionRepository;
 import vn.khoibep.rms.payment.repository.PaymentRepository;
+import vn.khoibep.rms.reservation.repository.ReservationRepository;
 import vn.khoibep.rms.settings.entity.RestaurantSettings;
 import vn.khoibep.rms.settings.service.SettingsService;
 
@@ -32,6 +33,7 @@ import vn.khoibep.rms.settings.service.SettingsService;
 public class PaymentService {
 
     private final PaymentRepository payments;
+    private final ReservationRepository reservations;
     private final CashShiftService cashShifts;
     private final BankTransactionRepository bankTransactions;
     private final OrderRepository orders;
@@ -152,6 +154,7 @@ public class PaymentService {
     private void close(Order order) {
         // Read before closing: closing gives the tables back (BR-36), and their guest pages are told after.
         List<String> tokens = order.guestTokens();
+        order.applyDeposit();
         order.close(OrderStatus.PAID);
         realtime.paymentPaid(order.getId(), order.tableId(), tokens);
     }
@@ -166,7 +169,8 @@ public class PaymentService {
     private String newReference() {
         for (int attempt = 0; attempt < 5; attempt++) {
             String reference = PaymentReference.generate();
-            if (!payments.existsByReference(reference)) {
+            // BR-42: booking codes are transfer contents too.
+            if (!payments.existsByReference(reference) && !reservations.existsByCode(reference)) {
                 return reference;
             }
         }

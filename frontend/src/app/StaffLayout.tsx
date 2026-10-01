@@ -8,6 +8,7 @@ import {
   BarChartOutlined,
   BookOutlined,
   CalendarOutlined,
+  CarryOutOutlined,
   CoffeeOutlined,
   DollarOutlined,
   FieldTimeOutlined,
@@ -36,6 +37,7 @@ import { pageAlerts, ring, setSoundWanted, soundWanted } from '@/features/order/
 /** role null: every signed-in employee. */
 const NAV: { key: string; label: string; icon: ReactNode; role: Role | null }[] = [
   { key: '/tables', label: 'Sơ đồ bàn', icon: <TableOutlined />, role: 'WAITER' },
+  { key: '/reservations', label: 'Đặt bàn', icon: <CarryOutOutlined />, role: 'WAITER' },
   { key: '/kitchen', label: 'Bếp', icon: <FireOutlined />, role: 'CHEF' },
   { key: '/cashier', label: 'Thu ngân', icon: <DollarOutlined />, role: 'CASHIER' },
   { key: '/admin/menu', label: 'Thực đơn', icon: <BookOutlined />, role: 'MANAGER' },
@@ -93,6 +95,9 @@ export default function StaffLayout() {
           break
         case 'ADJUSTMENTS_CHANGED':
           refresh(['adjustments'])
+          break
+        case 'RESERVATIONS_CHANGED':
+          refresh(['reservations'])
           break
       }
       if (m.alert && soundOn && pageAlerts(location.pathname).includes(m.alert)) ring(m.alert)

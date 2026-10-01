@@ -1,5 +1,6 @@
 package vn.khoibep.rms.order.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +15,16 @@ import vn.khoibep.rms.order.entity.Order;
 import vn.khoibep.rms.order.enums.OrderStatus;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
+
+    /** The order a booking opened (BR-42). */
+    interface BookingOrder {
+        Long getReservationId();
+
+        Long getOrderId();
+    }
+
+    @Query("select o.reservation.id as reservationId, o.id as orderId from Order o where o.reservation.id in :reservationIds")
+    List<BookingOrder> findByReservationIds(@Param("reservationIds") Collection<Long> reservationIds);
 
     @Query("select distinct o from Order o left join fetch o.table left join fetch o.items"
             + " where o.status = :status order by o.openedAt")
