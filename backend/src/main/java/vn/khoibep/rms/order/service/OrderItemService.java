@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import vn.khoibep.rms.audit.enums.AuditAction;
+import vn.khoibep.rms.audit.service.AuditService;
 import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.realtime.RealtimeEvent.Alert;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
@@ -28,6 +30,7 @@ public class OrderItemService {
     private final OrderItemRepository items;
     private final OrderRepository orders;
     private final PaymentService payments;
+    private final AuditService audit;
     private final CurrentUser currentUser;
     private final RealtimeEvents realtime;
 
@@ -78,8 +81,12 @@ public class OrderItemService {
             }
             default -> throw ApiException.conflict("Món đã ra hoặc đã huỷ, không huỷ được");
         }
-        boolean wasBillable = item.getStatus().isBillable();
+        ItemStatus before = item.getStatus();
+        boolean wasBillable = before.isBillable();
         item.cancel(why);
+        // BR-34: who cancelled which dish, and how far it had gone.
+        audit.record(AuditAction.ITEM_CANCELLED, order, item.getItemName() + " x" + item.getQuantity(), before.name(),
+                ItemStatus.CANCELLED.name(), item.getUnitPrice() * item.getQuantity(), why);
         if (wasBillable) {
             payments.cancelPendingTransfers(orderId);
         }

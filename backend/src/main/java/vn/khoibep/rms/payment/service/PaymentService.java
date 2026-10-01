@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import vn.khoibep.rms.audit.enums.AuditAction;
+import vn.khoibep.rms.audit.service.AuditService;
 import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
 import vn.khoibep.rms.order.entity.Order;
@@ -32,6 +34,7 @@ public class PaymentService {
     private final BankTransactionRepository bankTransactions;
     private final OrderRepository orders;
     private final SettingsService settings;
+    private final AuditService audit;
     private final RealtimeEvents realtime;
 
     /** FR-08.2, BR-13: cash must cover the total; the order closes and the table becomes free. */
@@ -90,6 +93,9 @@ public class PaymentService {
             throw ApiException.conflict("Đơn đã đóng");
         }
         payment.markPaid(Confirmation.MANUAL, employeeId);
+        // BR-34: money taken as received without the bank's word for it.
+        audit.record(AuditAction.MANUAL_CONFIRMATION, order, payment.getReference(), null, null, payment.getAmount(),
+                null);
         close(order);
         return PaymentDto.from(payment);
     }
