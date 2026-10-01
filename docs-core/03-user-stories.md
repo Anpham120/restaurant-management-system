@@ -227,6 +227,14 @@ Là **thu ngân**, tôi muốn mở ca, ghi phiếu chi và chốt ca bằng s�
 - AC5: Quản lý xem danh sách ca theo ngày với quỹ đầu ca, tiền mặt thu, phiếu chi, dự kiến, thực đếm, chênh lệch và lý do.
 - AC6: Phục vụ và bếp không mở ca, không chi, không chốt ca được; chỉ quản lý và quản trị xem danh sách ca.
 
+### US-39 Khách hàng — FR-19.1 → FR-19.4
+Là **thu ngân**, tôi muốn ghi khách quen theo số điện thoại, để biết họ ghé bao nhiêu lần và ai đã đồng ý nhận tin.
+- AC1: Gắn khách 0912 345 678 vào đơn: chưa có thì tạo khách mới; lần sau nhập "+84912345678" thì ra đúng khách đó.
+- AC2: Đơn có khách được thanh toán thì lịch sử của khách có đơn đó, số lần ghé tăng 1, tổng chi cộng đúng tiền đã trả. Booking cùng số điện thoại cũng nằm trong lịch sử.
+- AC3: Ghi đồng ý nhận tin qua Zalo, cách thu thập "hỏi tại quầy": khách được nhận tin. Ghi từ chối thì không còn được nhận tin, cho tới khi đồng ý lại.
+- AC4: Số điện thoại không đủ 10 số thì bị từ chối.
+- AC5: Phục vụ và bếp không xem được danh sách khách; bếp không gắn khách được.
+
 ## Nhân sự
 
 Phần thêm theo yêu cầu của môn sau bản core (P2-05 → P2-09 trong [kế hoạch](10-ke-hoach-phat-trien.md)).
