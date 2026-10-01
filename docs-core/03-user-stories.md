@@ -126,10 +126,12 @@ Là **thu ngân**, tôi muốn hệ thống tự báo khi tiền về để khô
 - AC2: Khi webhook gửi lặp cùng một giao dịch thì không ghi nhận hai lần.
 - AC3: Khi webhook sai API key thì bị từ chối (401).
 
-### US-19 Xác nhận tay và giao dịch không khớp — FR-08.6, FR-08.7
+### US-19 Xác nhận tay và giao dịch không khớp — FR-08.6, FR-08.7, FR-08.8
 Là **thu ngân**, tôi muốn xử lý khi tiền về nhưng hệ thống không tự khớp.
 - AC1: Khi khách chuyển sai số tiền thì giao dịch vào danh sách "Không khớp", đơn chưa đóng.
 - AC2: Khi thu ngân xác nhận tay thì hệ thống ghi tên người xác nhận.
+- AC3: Khi webhook SePay lỗi 3 lần liên tiếp thì màn hình thu ngân hiện cảnh báo "Chuyển khoản đang không tự xác nhận" trong ≤ 2 giây, kèm lý do và lúc bắt đầu lỗi.
+- AC4: Khi lại nhận được một webhook hợp lệ thì cảnh báo tắt.
 
 ## Nhân sự
 

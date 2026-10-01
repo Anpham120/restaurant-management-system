@@ -200,5 +200,6 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Kho | ✅ | ✅ | | | |
 | Báo cáo | ✅ | ✅ | | | |
 | Hồ sơ, mức lương, bảng lương | ✅ | | | | |
+| Xem số liệu vận hành (Actuator) | ✅ | | | | |
 | Ca mẫu, xếp ca, duyệt nghỉ, sửa chấm công | ✅ | ✅ | | | |
 | Xem lịch, chấm công, xin nghỉ, xem phiếu lương của mình | ✅ | ✅ | ✅ | ✅ | ✅ |

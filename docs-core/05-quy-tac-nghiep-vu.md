@@ -42,6 +42,7 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 | BR-15 | Tự xác nhận khi: webhook có **đúng API key**, là **tiền vào**, trường `code` hoặc nội dung chứa **mã đang chờ**, và **số tiền đúng bằng** số yêu cầu | `SepayWebhookService` |
 | BR-16 | Mỗi giao dịch SePay (`id`) chỉ xử lý **một lần**. Giao dịch sai tiền, không có mã hoặc mã đã huỷ được lưu **KHÔNG KHỚP** để thu ngân xử lý, và **không tự đóng đơn** | Unique `bank_transaction.provider_txn_id` |
 | BR-17 | Chỉ thu ngân và quản lý được **xác nhận tay**. Hệ thống ghi người xác nhận và thời điểm | `PaymentService.confirmManually` |
+| BR-32 | Webhook SePay **lỗi 3 lần liên tiếp** (sai API key, thiếu mã giao dịch, hoặc lỗi khi xử lý) thì báo cho màn hình thu ngân, **một lần** cho mỗi đợt lỗi. Một webhook hợp lệ tới thì hết cảnh báo. Số lần lỗi giữ trong bộ nhớ của server, khởi động lại thì đếm từ 0. Khi SePay không gọi tới được (sai tên miền, chứng chỉ hết hạn) thì server không biết, nên phải bật thêm cảnh báo của SePay | `SepayWebhookController`, `SepayWebhookMonitor` |
 
 ## 5.5 Thực đơn, kho, báo cáo
 
