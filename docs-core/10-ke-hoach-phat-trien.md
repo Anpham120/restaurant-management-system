@@ -104,6 +104,8 @@ P3-01 → P3-05 **đã làm xong** (issue #19 → #23), trước lịch:
 
 P4-01 **đã làm xong** (issue #24): yêu cầu FR-18.1 → FR-18.5, US-37, BR-42; CSDL là migration `V19` (bảng `reservation`, cột `orders.reservation_id`, `bank_transaction.reservation_id`). Mã booking cũng là nội dung chuyển khoản cọc, nên webhook SePay tự xác nhận cọc như xác nhận bill. Bản core chưa tự tính hoàn cọc khi huỷ hoặc không tới, chưa dời booking, chưa có tiệc nhiều bàn và lịch booking trên sơ đồ bàn (FR-RSV-05 → FR-RSV-09 bản mở rộng): quản lý xử lý hoàn cọc ngoài hệ thống.
 
+P4-02 **đã làm xong** (issue #25): yêu cầu FR-19.1 → FR-19.4, US-39, BR-44; CSDL là migration `V21` (bảng `customer`, cột `orders.customer_id`, `reservation.customer_id`). Bản core có một danh sách khách cho một quán; chưa có tích điểm, voucher và xử lý yêu cầu xoá dữ liệu cá nhân (FR-CUS-04, FR-CUS-05 bản mở rộng).
+
 ### Giai đoạn 5 — Hồ sơ nộp môn (làm song song, chốt ở sprint 8)
 
 | Mã | Việc |

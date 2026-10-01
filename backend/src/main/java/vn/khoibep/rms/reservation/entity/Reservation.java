@@ -18,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import vn.khoibep.rms.common.exception.ApiException;
+import vn.khoibep.rms.customer.entity.Customer;
 import vn.khoibep.rms.payment.enums.Confirmation;
 import vn.khoibep.rms.reservation.enums.ReservationStatus;
 import vn.khoibep.rms.table.entity.DiningTable;
@@ -87,6 +88,11 @@ public class Reservation {
     @Column(nullable = false)
     private Instant createdAt;
 
+    /** The guest with the same phone number; none when it is not a Vietnamese number (BR-44). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
+
     public Reservation(String code, Long createdBy, Instant createdAt) {
         this.code = code;
         this.createdBy = createdBy;
@@ -107,6 +113,11 @@ public class Reservation {
         this.table = table;
         this.note = note;
         this.depositAmount = depositAmount;
+    }
+
+    /** BR-44: the guest of the booking's phone number; none when it is no Vietnamese number. */
+    public void linkCustomer(Customer guest) {
+        customer = guest;
     }
 
     public boolean isDepositPaid() {

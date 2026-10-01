@@ -21,6 +21,7 @@ import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.realtime.RealtimeEvent;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
 import vn.khoibep.rms.common.util.Money;
+import vn.khoibep.rms.customer.service.CustomerService;
 import vn.khoibep.rms.order.dto.OrderDtos.OrderDto;
 import vn.khoibep.rms.order.repository.OrderRepository;
 import vn.khoibep.rms.order.repository.OrderRepository.BookingOrder;
@@ -54,6 +55,7 @@ public class ReservationService {
     private final PaymentRepository payments;
     private final OrderRepository orders;
     private final OrderService orderService;
+    private final CustomerService customerService;
     private final SettingsService settings;
     private final AuditService audit;
     private final RealtimeEvents realtime;
@@ -155,6 +157,7 @@ public class ReservationService {
         String note = request.note() == null || request.note().isBlank() ? null : request.note().trim();
         reservation.describe(request.guestName().trim(), request.phone().trim(), request.reservedAt(),
                 request.guestCount(), table, note, request.depositAmount());
+        reservation.linkCustomer(customerService.findOrCreate(request.phone(), request.guestName()));
     }
 
     private String confirmationText(Reservation r) {

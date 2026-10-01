@@ -197,6 +197,15 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | FR-18.4 | **Nhận khách**: mở đơn từ booking ở bàn dự kiến hoặc bàn trống khác; cọc đã nhận được **trừ vào bill**, hiện trên bill và phiếu in, và tính vào doanh thu ngày thanh toán | S | BR-21, 42 |
 | FR-18.5 | Ghi booking **huỷ** hoặc **không tới**; cọc đã nhận giữ nguyên để quản lý xử lý hoàn | S | BR-42 |
 
+### FR-19 Khách hàng (CASHIER, MANAGER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-19.1 | **Khách hàng** theo số điện thoại: số được chuẩn hoá, mỗi số một khách; quản lý tìm theo số hoặc tên, sửa tên và ghi chú | C | BR-44 |
+| FR-19.2 | Thu ngân **gắn khách vào đơn** bằng số điện thoại, chưa có thì tạo mới; booking tự gắn khách cùng số điện thoại | C | BR-44 |
+| FR-19.3 | **Lịch sử ghé** của khách: các đơn đã thanh toán và booking, số lần ghé, tổng chi | C | BR-44 |
+| FR-19.4 | **Đồng ý nhận tin**: kênh (Zalo, SMS), thời điểm, cách thu thập; **từ chối nhận tin** ghi thời điểm. Chỉ khách đang đồng ý mới được nhận tin | C | BR-44 |
+
 ## 2.2 Yêu cầu phi chức năng
 
 | Mã | Yêu cầu | Cách kiểm tra |
