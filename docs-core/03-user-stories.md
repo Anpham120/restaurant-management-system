@@ -149,6 +149,15 @@ Là **thu ngân** hoặc **phục vụ**, tôi muốn in phiếu tạm tính đ�
 - AC3: Đơn chưa trả thì không in được phiếu thanh toán. Phục vụ không lấy được thông tin thanh toán (403).
 - AC4: Phiếu vừa khổ giấy 80 mm và ghi rõ không thay hoá đơn GTGT.
 
+### US-30 Giảm giá và tặng món — FR-08.10, FR-08.11
+Là **thu ngân**, tôi muốn giảm giá hoặc tặng món cho khách khi có lý do, và nhờ quản lý duyệt khi vượt hạn mức.
+- AC1: Bill 600.000 đ, thu ngân giảm 50.000 đ lý do "chờ lâu" thì có hiệu lực ngay, tổng còn 550.000 đ.
+- AC2: Thu ngân giảm vượt 10% tiền món hoặc vượt 150.000 đ thì khoản giảm **chờ duyệt**, tổng chưa đổi, và bill chưa thanh toán được.
+- AC3: Quản lý thấy yêu cầu ở nút "Duyệt" đầu trang trong ≤ 2 giây. Duyệt thì tổng giảm; từ chối thì tổng giữ nguyên và bill thanh toán được.
+- AC4: Tặng một dòng món thì tổng giảm đúng tiền dòng đó. Món tặng bị huỷ thì khoản tặng tự huỷ; tặng lại cùng dòng khi khoản cũ còn hiệu lực thì bị từ chối.
+- AC5: Không có lý do, hoặc lý do "khác" mà không ghi chú, thì bị từ chối. Phục vụ không giảm giá được (403).
+- AC6: Khoản giảm có hiệu lực được ghi vào nhật ký thao tác.
+
 ## Nhân sự
 
 Phần thêm theo yêu cầu của môn sau bản core (P2-05 → P2-09 trong [kế hoạch](10-ke-hoach-phat-trien.md)).

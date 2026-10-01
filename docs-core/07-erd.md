@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V12__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V13__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -30,6 +30,10 @@ erDiagram
     EMPLOYEE |o--o{ SERVICE_REQUEST : "nhận"
     EMPLOYEE ||--o{ AUDIT_ENTRY : "thực hiện"
     ORDERS |o--o{ AUDIT_ENTRY : "liên quan"
+    ORDERS ||--o{ ADJUSTMENT : "giảm giá"
+    ORDER_ITEM |o--o{ ADJUSTMENT : "tặng"
+    EMPLOYEE ||--o{ ADJUSTMENT : "tạo"
+    EMPLOYEE |o--o{ ADJUSTMENT : "duyệt"
     EMPLOYEE {
         bigint id PK
         varchar full_name
@@ -150,7 +154,7 @@ erDiagram
     }
     AUDIT_ENTRY {
         bigint id PK
-        varchar action "ITEM_CANCELLED, MANUAL_CONFIRMATION, PRICE_CHANGED"
+        varchar action "ITEM_CANCELLED, MANUAL_CONFIRMATION, PRICE_CHANGED, DISCOUNT_GIVEN"
         bigint employee_id FK "người làm"
         bigint order_id FK "null khi đổi giá món"
         varchar subject "món và số lượng, mã thanh toán, hoặc tên món"
@@ -159,6 +163,20 @@ erDiagram
         bigint amount "số tiền liên quan, VND"
         varchar reason
         timestamptz created_at
+    }
+    ADJUSTMENT {
+        bigint id PK
+        bigint order_id FK
+        bigint order_item_id FK "dòng món được tặng; null khi giảm cả bill"
+        varchar type "DISCOUNT, COMP"
+        bigint amount "VND, lớn hơn 0"
+        varchar reason "WAIT, FOOD_QUALITY, STAFF_ERROR, PROMOTION, OTHER"
+        varchar note "bắt buộc khi reason = OTHER"
+        varchar status "PENDING, APPLIED, REJECTED, CANCELLED"
+        bigint created_by FK
+        timestamptz created_at
+        bigint decided_by FK "quản lý duyệt hoặc từ chối"
+        timestamptz decided_at
     }
 ```
 
@@ -179,7 +197,10 @@ erDiagram
 | Có người nhận thì có lúc nhận | `CHECK ((handled_by IS NULL) = (handled_at IS NULL))` trên `service_request` | BR-29 |
 | Không xoá dữ liệu đã dùng | Khoá ngoại **không** `ON DELETE CASCADE` từ `order_item` tới `menu_item`, từ `orders` tới `dining_table` | BR-18 |
 | Nhật ký chỉ thêm | Trigger `tr_audit_entry_append_only` (`BEFORE UPDATE OR DELETE`, từng dòng) và `tr_audit_entry_no_truncate` (`BEFORE TRUNCATE`) báo lỗi | BR-34 |
-| Loại thao tác hợp lệ | `CONSTRAINT ck_audit_entry_action CHECK (action IN (...))` trên `audit_entry`; thêm loại mới thì thay ràng buộc này trong migration mới | BR-34 |
+| Loại thao tác hợp lệ | `CONSTRAINT ck_audit_entry_action CHECK (action IN (...))` trên `audit_entry`; thêm loại mới thì thay ràng buộc này trong migration mới (`V12` thêm `DISCOUNT_GIVEN`) | BR-34 |
+| Tặng món thì có dòng món, giảm bill thì không | `CONSTRAINT ck_adjustment_comp_item CHECK ((type = 'COMP') = (order_item_id IS NOT NULL))` | BR-35 |
+| Lý do "khác" phải ghi chú | `CONSTRAINT ck_adjustment_other_note CHECK (reason <> 'OTHER' OR note IS NOT NULL)` | BR-35 |
+| Mỗi dòng món tặng một lần | `CREATE UNIQUE INDEX ux_adjustment_comp_item ON adjustment(order_item_id) WHERE status IN ('PENDING','APPLIED')` | BR-35 |
 
 ## 7.3 Index cho màn hình
 
@@ -191,6 +212,8 @@ erDiagram
 | `stock_movement(inventory_item_id, created_at DESC)` | Lịch sử kho |
 | `bank_transaction(match_status)` | Danh sách không khớp |
 | `audit_entry(created_at DESC)` | Tra cứu nhật ký theo ngày |
+| `adjustment(order_id)` | Bill, tổng tiền |
+| `adjustment(created_at) WHERE status = 'PENDING'` | Danh sách chờ duyệt của quản lý |
 
 ## 7.4 Dữ liệu mẫu
 

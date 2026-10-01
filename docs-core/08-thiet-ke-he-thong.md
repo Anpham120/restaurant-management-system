@@ -51,6 +51,9 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `POST /orders/{id}/payments/transfer` | CASHIER, MANAGER | FR-08.3 |
 | | `POST /payments/{id}/confirm` | CASHIER, MANAGER | FR-08.6 |
 | | `GET /orders/{id}/payment` (khoản đã trả của đơn, để in phiếu thanh toán; chưa trả thì 404) | CASHIER, MANAGER | FR-08.9 |
+| | `POST /orders/{id}/adjustments` (giảm một số tiền trên cả bill, hoặc tặng một dòng món; kèm lý do) | CASHIER, MANAGER | FR-08.10 |
+| | `POST /adjustments/{id}/cancel` (huỷ khoản giảm khi đơn chưa trả) | CASHIER, MANAGER | FR-08.10 |
+| | `GET /adjustments?status=PENDING`, `POST /adjustments/{id}/approve`, `POST /adjustments/{id}/reject` | MANAGER | FR-08.11 |
 | | `GET /bank-transactions?status=UNMATCHED` | CASHIER, MANAGER | FR-08.7 |
 | | `GET /bank-transactions/webhook-status` (webhook SePay có đang lỗi liên tiếp không) | CASHIER, MANAGER | FR-08.8 |
 | | `POST /webhooks/sepay` | SePay (header API key) | FR-08.4 |
@@ -82,7 +85,7 @@ Ngoài `/api`, backend có `/actuator/health` (công khai, pipeline gọi để 
 | Kênh | Ai nghe | Xác thực | Sự kiện |
 |---|---|---|---|
 | Điểm kết nối `/ws` | — | JWT trong header `Authorization` của khung `CONNECT`. Khách kết nối không cần token | — |
-| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp), `REQUESTS_CHANGED` (khách gọi, hoặc có người nhận), `WEBHOOK_STATUS` (webhook SePay bắt đầu lỗi liên tiếp, hoặc chạy lại) |
+| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp), `REQUESTS_CHANGED` (khách gọi, hoặc có người nhận), `WEBHOOK_STATUS` (webhook SePay bắt đầu lỗi liên tiếp, hoặc chạy lại), `ADJUSTMENTS_CHANGED` (có khoản giảm giá mới, được duyệt, bị từ chối hoặc bị huỷ) |
 | `/topic/guest/{qrToken}` | Điện thoại khách ở bàn đó | Không cần | `ORDER_CHANGED`, `PAYMENT_PAID`, `REQUESTS_CHANGED` |
 | `/topic/menu` | Điện thoại khách | Không cần | `MENU_CHANGED` (có món vừa hết hoặc bán lại) |
 
@@ -107,7 +110,7 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 | `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nút mở đơn và mang về; kêu khi có món xong, món QR mới | FR-04.4, FR-05.1, FR-07.5 |
 | `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; in phiếu tạm tính; kêu như sơ đồ bàn | FR-05, FR-06.3, FR-07.5, FR-08.9 |
 | `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
-| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp | FR-08 |
+| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; giảm giá, tặng món; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp | FR-08 |
 | `/admin/menu` | MANAGER | Danh mục và món | FR-03 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
 | `/admin/inventory` | MANAGER | Nguyên liệu, nhập, xuất, kiểm kê, lịch sử | FR-09 |
@@ -122,6 +125,7 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 | `/admin/settings` | ADMIN | Nhà hàng, tài khoản nhận tiền, ngưỡng món chờ lâu | FR-11 |
 | `/q/:qrToken` | Khách | Thực đơn, giỏ, món đã gọi và trạng thái, thanh toán VietQR, nút Gọi nhân viên và Yêu cầu tính tiền | FR-06, FR-08.5 |
 | Đầu mọi trang nhân viên | WAITER, MANAGER | Nút chuông "Khách gọi": số bàn đang gọi; bấm vào thì hiện danh sách, số phút đã chờ, nút Đã nhận | FR-06.6, FR-06.7 |
+| Đầu mọi trang nhân viên | MANAGER | Nút "Duyệt": số khoản giảm giá chờ duyệt; bấm vào thì thấy bàn, số tiền, lý do, người xin, nút Duyệt và Từ chối | FR-08.11 |
 
 Phác thảo trang khách trên điện thoại:
 
@@ -173,7 +177,7 @@ Phác thảo phiếu tạm tính khổ 80 mm (FR-08.9). Trình duyệt chỉ in 
 └──────────────────────────────┘
 ```
 
-Phiếu thanh toán có thêm cách trả, tiền khách đưa và tiền thối (tiền mặt) hoặc mã chuyển khoản, giờ trả và lời cảm ơn.
+Phiếu thanh toán có thêm cách trả, tiền khách đưa và tiền thối (tiền mặt) hoặc mã chuyển khoản, giờ trả và lời cảm ơn. Đơn có giảm giá thì phiếu ghi tiền món, từng khoản giảm (món tặng ghi "Tặng"), rồi tổng sau giảm (FR-08.10).
 
 ## 8.4 Tuần tự: khách gọi món qua QR
 
