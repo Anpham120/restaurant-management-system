@@ -49,6 +49,14 @@ public final class PaymentDtos {
         }
     }
 
+    /**
+     * BR-32: failing once SePay deliveries failed 3 times in a row.
+     *
+     * @param since when the current run of failures began; null while the webhook works
+     */
+    public record WebhookStatus(boolean failing, int failures, Instant since, String lastError) {
+    }
+
     /** Body SePay posts to the webhook (docs.sepay.vn/tich-hop-webhooks.html). */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SepayWebhookRequest(Long id, String gateway, String transactionDate, String accountNumber,

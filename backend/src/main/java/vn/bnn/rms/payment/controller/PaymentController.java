@@ -18,8 +18,10 @@ import vn.bnn.rms.payment.dto.PaymentDtos.BankTransactionDto;
 import vn.bnn.rms.payment.dto.PaymentDtos.CashRequest;
 import vn.bnn.rms.payment.dto.PaymentDtos.PaymentDto;
 import vn.bnn.rms.payment.dto.PaymentDtos.PaymentInstruction;
+import vn.bnn.rms.payment.dto.PaymentDtos.WebhookStatus;
 import vn.bnn.rms.payment.enums.MatchStatus;
 import vn.bnn.rms.payment.service.PaymentService;
+import vn.bnn.rms.payment.service.SepayWebhookMonitor;
 
 @RestController
 @RequestMapping("/api")
@@ -28,6 +30,7 @@ import vn.bnn.rms.payment.service.PaymentService;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final SepayWebhookMonitor webhookMonitor;
     private final CurrentUser currentUser;
 
     @PostMapping("/orders/{id}/payments/cash")
@@ -49,5 +52,11 @@ public class PaymentController {
     public List<BankTransactionDto> bankTransactions(
             @RequestParam(defaultValue = "UNMATCHED") MatchStatus status) {
         return paymentService.bankTransactions(status);
+    }
+
+    /** BR-32: whether SePay deliveries keep failing, for the warning on the cashier screen. */
+    @GetMapping("/bank-transactions/webhook-status")
+    public WebhookStatus webhookStatus() {
+        return webhookMonitor.status();
     }
 }

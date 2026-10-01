@@ -32,6 +32,8 @@ services:
       APP_DEMO_ACCOUNTS_ENABLED: ${APP_DEMO_ACCOUNTS_ENABLED:-false}
       SPRINGDOC_APIDOCS_ENABLED: "false"
       SPRINGDOC_SWAGGERUI_ENABLED: "false"
+      # NFR-11: one JSON object per log line (Elastic Common Schema), for jq or a log collector.
+      LOGGING_STRUCTURED_FORMAT_CONSOLE: ecs
     depends_on:
       db:
         condition: service_healthy
