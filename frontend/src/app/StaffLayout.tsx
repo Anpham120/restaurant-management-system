@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { App, Badge, Button, Form, Input, Layout, Menu, Modal, Spin, Typography } from 'antd'
+import { App, Badge, Button, Drawer, Form, Input, Layout, Menu, Modal, Spin, Typography } from 'antd'
 import {
   AccountBookOutlined,
   BarChartOutlined,
@@ -14,6 +14,7 @@ import {
   InboxOutlined,
   KeyOutlined,
   LogoutOutlined,
+  MenuOutlined,
   QrcodeOutlined,
   SettingOutlined,
   TableOutlined,
@@ -55,6 +56,9 @@ export default function StaffLayout() {
   const { message } = App.useApp()
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [soundOn, setSoundOn] = useState(soundWanted)
+  // Below the lg breakpoint the side menu folds away and opens from a button in the header instead.
+  const [narrow, setNarrow] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   // One subscription for every staff screen: refetch whatever the notice touches (FR-07.3, NFR-01), and ring when
   // this page cares about the alert (FR-07.5, FR-06.6).
@@ -102,16 +106,37 @@ export default function StaffLayout() {
     }
   }
 
+  const brand = 'Bếp Nhà & Nướng'
+  const menu = (
+    <Menu
+      mode="inline"
+      items={items}
+      selectedKeys={[selected]}
+      onClick={({ key }) => {
+        navigate(key)
+        setMenuOpen(false)
+      }}
+    />
+  )
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Layout.Sider breakpoint="lg" collapsedWidth={0} theme="light">
-        <div style={{ padding: 16, fontWeight: 700, color: '#b45309' }}>Bếp Nhà &amp; Nướng</div>
-        <Menu mode="inline" items={items} selectedKeys={[selected]} onClick={({ key }) => navigate(key)} />
+      {/* trigger={null}: antd's own folding button floated over the page title on phones. */}
+      <Layout.Sider breakpoint="lg" collapsedWidth={0} trigger={null} onBreakpoint={setNarrow} theme="light">
+        <div style={{ padding: 16, fontWeight: 700, color: '#b45309' }}>{brand}</div>
+        {menu}
       </Layout.Sider>
+      <Drawer title={brand} placement="left" size={240} open={narrow && menuOpen} onClose={() => setMenuOpen(false)}
+        styles={{ body: { padding: 0 } }}>
+        {menu}
+      </Drawer>
       <Layout>
         <Layout.Header
           style={{ background: '#fff', padding: '0 16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}
         >
+          {narrow && (
+            <Button icon={<MenuOutlined />} onClick={() => setMenuOpen(true)} title="Menu" style={{ marginRight: 'auto' }} />
+          )}
           {hasRole(user.role, 'WAITER') && <ServiceRequestsButton />}
           {pageAlerts(location.pathname).length > 0 && (
             <SoundButton
