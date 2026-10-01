@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { App, Badge, Button, Drawer, Form, Input, Layout, Menu, Modal, Spin, Typography } from 'antd'
 import {
   AccountBookOutlined,
+  AuditOutlined,
   BarChartOutlined,
   BookOutlined,
   CalendarOutlined,
@@ -39,6 +40,7 @@ const NAV: { key: string; label: string; icon: ReactNode; role: Role | null }[] 
   { key: '/admin/tables', label: 'Bàn và QR', icon: <QrcodeOutlined />, role: 'MANAGER' },
   { key: '/admin/inventory', label: 'Kho', icon: <InboxOutlined />, role: 'MANAGER' },
   { key: '/admin/reports', label: 'Báo cáo', icon: <BarChartOutlined />, role: 'MANAGER' },
+  { key: '/admin/audit', label: 'Nhật ký', icon: <AuditOutlined />, role: 'MANAGER' },
   { key: '/admin/schedule', label: 'Xếp ca', icon: <CalendarOutlined />, role: 'MANAGER' },
   { key: '/admin/attendance', label: 'Chấm công', icon: <FieldTimeOutlined />, role: 'MANAGER' },
   { key: '/admin/leave', label: 'Nghỉ phép', icon: <CoffeeOutlined />, role: 'MANAGER' },

@@ -156,6 +156,25 @@ export interface BankTransaction {
   receivedAt: string
 }
 
+/** BR-34: the sensitive actions in the audit log. */
+export type AuditAction = 'ITEM_CANCELLED' | 'MANUAL_CONFIRMATION' | 'PRICE_CHANGED'
+
+/** FR-16: one line of the audit log; before and after are raw, an item status code or a price in VND. */
+export interface AuditEntry {
+  id: number
+  action: AuditAction
+  employeeId: number
+  employeeName: string
+  orderId: number | null
+  tableName: string | null
+  subject: string
+  beforeValue: string | null
+  afterValue: string | null
+  amount: number | null
+  reason: string | null
+  createdAt: string
+}
+
 /** BR-32: failing once SePay deliveries failed 3 times in a row; since is when that run of failures began. */
 export interface WebhookStatus {
   failing: boolean

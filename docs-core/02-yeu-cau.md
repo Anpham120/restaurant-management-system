@@ -152,6 +152,14 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | FR-15.4 | Nhân viên xem phiếu lương đã chốt của mình | M | BR-27 |
 | FR-15.5 | Xuất bảng lương ra Excel | S | — |
 
+### FR-16 Nhật ký thao tác (MANAGER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-16.1 | Hệ thống tự **ghi nhật ký** khi có người huỷ hoặc từ chối món, xác nhận tay chuyển khoản, đổi giá món. Mỗi dòng ghi người làm, lúc nào, đơn liên quan, món hoặc mã thanh toán, giá trị trước và sau, số tiền, lý do | M | BR-34 |
+| FR-16.2 | Quản lý **tra cứu nhật ký** theo khoảng ngày, lọc theo người, loại thao tác, đơn hoặc bàn | M | BR-34 |
+| FR-16.3 | Nhật ký **không sửa, không xoá được**, kể cả khi thao tác thẳng trong CSDL | M | BR-34 |
+
 ## 2.2 Yêu cầu phi chức năng
 
 | Mã | Yêu cầu | Cách kiểm tra |
