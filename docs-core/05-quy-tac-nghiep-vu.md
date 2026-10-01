@@ -54,6 +54,7 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 | BR-18 | Món và bàn **đã có trong đơn** thì không xoá được; món chỉ có thể báo hết. Danh mục còn món thì không xoá được | `MenuService`, `TableService`; khoá ngoại chặn lần cuối |
 | BR-19 | Tồn kho chỉ đổi qua **phiếu biến động** (nhập, xuất, kiểm kê), không sửa số tồn trực tiếp. **Xuất không vượt tồn**. Phiếu ghi người tạo | `InventoryService` |
 | BR-20 | Nguyên liệu **sắp hết** khi tồn ≤ mức tối thiểu | `InventoryItem.isLowStock()` |
+| BR-37 | Phiếu nhập có **một nhà cung cấp đang giao dịch** và 1 đến 50 dòng; mỗi dòng số lượng > 0, đơn giá ≥ 0 (VND cho một đơn vị của nguyên liệu). Lưu phiếu thì mỗi dòng thành một biến động **nhập** ghi số phiếu, và **giá vốn** của nguyên liệu tính lại: (tồn cũ × giá vốn cũ + số nhập × đơn giá) ÷ (tồn cũ + số nhập), làm tròn tới đồng; chưa có giá vốn thì lấy đơn giá. Nhập, xuất, kiểm kê bằng tay **không đổi giá vốn**. Phiếu đã lưu **không sửa, không xoá**. Tên nhà cung cấp duy nhất; nhà cung cấp chỉ ngừng giao dịch, không xoá | `GoodsReceiptService`, `InventoryItem.receive`, `CHECK` trên `receipt_line`, `inventory_item` |
 | BR-21 | Doanh thu tính theo **khoản thanh toán đã xác nhận**, theo **ngày xác nhận giờ Việt Nam**. Món bán chạy chỉ tính đơn đã thanh toán và bỏ món huỷ | `ReportService` |
 
 ## 5.6 Nhân sự

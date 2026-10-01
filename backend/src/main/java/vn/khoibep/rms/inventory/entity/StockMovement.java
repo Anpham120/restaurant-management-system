@@ -52,6 +52,11 @@ public class StockMovement {
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    /** The goods receipt this came from; null for a movement entered by hand (FR-09.6). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "goods_receipt_id")
+    private GoodsReceipt goodsReceipt;
+
     public StockMovement(InventoryItem item, MovementType type, BigDecimal quantityChange, String note,
                          Long createdBy) {
         this.item = item;
@@ -60,5 +65,14 @@ public class StockMovement {
         this.quantityAfter = item.getQuantity();
         this.note = note;
         this.createdBy = createdBy;
+    }
+
+    /** BR-37: the stock a receipt brought in, after the item has received it. */
+    public static StockMovement received(ReceiptLine line, Long createdBy) {
+        GoodsReceipt receipt = line.getReceipt();
+        StockMovement movement = new StockMovement(line.getItem(), MovementType.IN, line.getQuantity(),
+                "Phiếu nhập #" + receipt.getId() + " · " + receipt.getSupplier().getName(), createdBy);
+        movement.goodsReceipt = receipt;
+        return movement;
     }
 }

@@ -262,6 +262,41 @@ export interface InventoryItem {
   quantity: number
   minQuantity: number
   lowStock: boolean
+  /** VND for one unit, the weighted average of receipts; null before the first receipt (BR-37). */
+  unitCost: number | null
+}
+
+/** FR-09.5: never deleted; one that is not active cannot be picked for a new receipt. */
+export interface Supplier {
+  id: number
+  name: string
+  phone: string | null
+  address: string | null
+  taxCode: string | null
+  note: string | null
+  active: boolean
+}
+
+export interface ReceiptLine {
+  id: number
+  inventoryItemId: number
+  itemName: string
+  unit: string
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
+
+/** FR-09.6: saved once, never edited or deleted (BR-37). */
+export interface GoodsReceipt {
+  id: number
+  supplierId: number
+  supplierName: string
+  note: string | null
+  createdByName: string
+  createdAt: string
+  total: number
+  lines: ReceiptLine[]
 }
 
 export interface StockMovement {

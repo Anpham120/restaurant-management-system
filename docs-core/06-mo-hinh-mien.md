@@ -73,13 +73,35 @@ classDiagram
         String unit
         BigDecimal quantity
         BigDecimal minQuantity
+        Long unitCost
         isLowStock() boolean
+        receive(quantity, unitPrice)
     }
     class StockMovement {
         Long id
         MovementType type
         BigDecimal quantityChange
         String note
+    }
+    class Supplier {
+        Long id
+        String name
+        String phone
+        String address
+        String taxCode
+        boolean active
+    }
+    class GoodsReceipt {
+        Long id
+        String note
+        Instant createdAt
+        total() long
+    }
+    class ReceiptLine {
+        Long id
+        BigDecimal quantity
+        long unitPrice
+        lineTotal() long
     }
     class ServiceRequest {
         Long id
@@ -133,6 +155,10 @@ classDiagram
     Order "1" --> "0..*" Payment
     Payment "0..1" <-- "0..*" BankTransaction : khớp với
     InventoryItem "1" *-- "0..*" StockMovement
+    Supplier "1" --> "0..*" GoodsReceipt : giao
+    GoodsReceipt "1" *-- "1..*" ReceiptLine
+    ReceiptLine "0..*" --> "1" InventoryItem
+    GoodsReceipt "0..1" --> "0..*" StockMovement : tạo
     Employee "1" --> "0..*" Order : mở đơn
     Employee "0..1" --> "0..*" Payment : xác nhận
     Employee "1" --> "0..*" StockMovement : lập phiếu
@@ -241,7 +267,7 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Thu tiền, tạo VietQR, xác nhận tay, in phiếu thanh toán | ✅ | ✅ | | | ✅ |
 | Giảm giá, tặng món (trong hạn mức thì có hiệu lực ngay) | ✅ | ✅ | | | ✅ |
 | Duyệt giảm giá vượt hạn mức | ✅ | ✅ | | | |
-| Kho | ✅ | ✅ | | | |
+| Kho, nhà cung cấp, phiếu nhập có giá | ✅ | ✅ | | | |
 | Báo cáo | ✅ | ✅ | | | |
 | Xem nhật ký thao tác | ✅ | ✅ | | | |
 | Hồ sơ, mức lương, bảng lương | ✅ | | | | |
