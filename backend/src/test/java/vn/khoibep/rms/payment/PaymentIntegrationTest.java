@@ -42,17 +42,18 @@ class PaymentIntegrationTest extends IntegrationTest {
     void receiptOnlyOnceTheOrderIsPaid() throws Exception {
         long orderId = openOrder(newTable().id());
         addDish(orderId, newDish(30_000), 2);
-        String receipt = "/api/orders/" + orderId + "/payment";
+        String receipt = "/api/orders/" + orderId + "/payments";
         get(receipt, as("thungan")).andExpect(status().isNotFound());
 
         post("/api/orders/" + orderId + "/payments/cash", as("thungan"), Map.of("receivedAmount", 100_000))
                 .andExpect(status().isOk());
         get(receipt, as("thungan"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.method").value("CASH"))
-                .andExpect(jsonPath("$.amount").value(60_000))
-                .andExpect(jsonPath("$.receivedAmount").value(100_000))
-                .andExpect(jsonPath("$.change").value(40_000));
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].method").value("CASH"))
+                .andExpect(jsonPath("$[0].amount").value(60_000))
+                .andExpect(jsonPath("$[0].receivedAmount").value(100_000))
+                .andExpect(jsonPath("$[0].change").value(40_000));
         get(receipt, as("phucvu")).andExpect(status().isForbidden());
     }
 
@@ -101,10 +102,10 @@ class PaymentIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.success").value(true));
         get("/api/orders/" + orderId, as("thungan")).andExpect(jsonPath("$.status").value("PAID"));
         // US-28 AC2: the receipt of a transfer shows its code.
-        get("/api/orders/" + orderId + "/payment", as("thungan"))
-                .andExpect(jsonPath("$.method").value("BANK_TRANSFER"))
-                .andExpect(jsonPath("$.reference").value(reference))
-                .andExpect(jsonPath("$.confirmation").value("AUTO"));
+        get("/api/orders/" + orderId + "/payments", as("thungan"))
+                .andExpect(jsonPath("$[0].method").value("BANK_TRANSFER"))
+                .andExpect(jsonPath("$[0].reference").value(reference))
+                .andExpect(jsonPath("$[0].confirmation").value("AUTO"));
 
         // SePay retries: the same transaction is recorded once.
         sepay(SEPAY_KEY, txnId, content, 120_000, "in").andExpect(jsonPath("$.success").value(true));

@@ -9,20 +9,21 @@ const METHOD_LABEL: Record<PaymentMethod, string> = { CASH: 'Tiền mặt', BANK
 interface Props {
   order: Order
   settings: Settings | undefined
-  /** Given once the order is paid: the slip becomes a receipt. */
-  payment?: Payment
+  /** Given once the bill is covered: the slip becomes a receipt listing each payment (FR-08.13). */
+  payments?: Payment[]
   printedAt?: Date
 }
 
 /** FR-08.9, BR-33: a bill or a receipt laid out for an 80 mm receipt printer. */
-export default function BillSlip({ order, settings, payment, printedAt = new Date() }: Props) {
+export default function BillSlip({ order, settings, payments, printedAt = new Date() }: Props) {
   const lines = billLines(order.items)
+  const receipt = payments !== undefined
   return (
     <div className="slip">
       <div className="slip-center slip-strong">{settings?.name}</div>
       {settings?.address && <div className="slip-center">{settings.address}</div>}
       {settings?.phone && <div className="slip-center">ĐT {settings.phone}</div>}
-      <div className="slip-center slip-strong slip-title">{payment ? 'PHIẾU THANH TOÁN' : 'PHIẾU TẠM TÍNH'}</div>
+      <div className="slip-center slip-strong slip-title">{receipt ? 'PHIẾU THANH TOÁN' : 'PHIẾU TẠM TÍNH'}</div>
       <div>
         {orderTitle(order)} · Đơn #{order.id}
         {order.guestCount ? ` · ${order.guestCount} khách` : ''}
@@ -70,8 +71,21 @@ export default function BillSlip({ order, settings, payment, printedAt = new Dat
         <span>{money(order.total)}</span>
       </div>
       {order.pendingCount > 0 && <div>Còn {order.pendingCount} món khách gửi chờ xác nhận, chưa tính.</div>}
-      {payment && (
+      {/* FR-08.13: a bill being split shows what was taken and what is left. */}
+      {!receipt && order.paidAmount > 0 && (
         <>
+          <div className="slip-row">
+            <span>Đã thu</span>
+            <span>-{money(order.paidAmount)}</span>
+          </div>
+          <div className="slip-row slip-strong">
+            <span>CÒN PHẢI THU</span>
+            <span>{money(order.due)}</span>
+          </div>
+        </>
+      )}
+      {payments?.map((payment) => (
+        <div key={payment.id}>
           <div className="slip-row">
             <span>{METHOD_LABEL[payment.method]}</span>
             <span>{money(payment.amount)}</span>
@@ -90,12 +104,12 @@ export default function BillSlip({ order, settings, payment, printedAt = new Dat
           )}
           {payment.reference && <div>Mã chuyển khoản: {payment.reference}</div>}
           <div>Đã trả lúc {time(payment.paidAt)}</div>
-        </>
-      )}
+        </div>
+      ))}
       <hr />
       <div className="slip-center">Giá đã gồm VAT.</div>
       <div className="slip-center">Phiếu này không thay hoá đơn GTGT.</div>
-      {payment && <div className="slip-center">Cảm ơn quý khách!</div>}
+      {receipt && <div className="slip-center">Cảm ơn quý khách!</div>}
     </div>
   )
 }

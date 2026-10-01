@@ -43,6 +43,8 @@ const ORDER: Order = {
   subtotal: 459_000,
   discountTotal: 0,
   depositCredit: 0,
+  paidAmount: 0,
+  due: 0,
   total: 459_000,
   pendingCount: 1,
   unservedCount: 0,
@@ -95,7 +97,7 @@ describe('BillSlip', () => {
       <BillSlip
         order={PAID}
         settings={SETTINGS}
-        payment={payment('CASH', { receivedAmount: 500_000, change: 41_000 })}
+        payments={[payment('CASH', { receivedAmount: 500_000, change: 41_000 })]}
         printedAt={PRINTED_AT}
       />,
     )
@@ -136,7 +138,7 @@ describe('BillSlip', () => {
       <BillSlip
         order={PAID}
         settings={SETTINGS}
-        payment={payment('BANK_TRANSFER', { reference: 'KB7K3QX9MA', confirmation: 'AUTO' })}
+        payments={[payment('BANK_TRANSFER', { reference: 'KB7K3QX9MA', confirmation: 'AUTO' })]}
         printedAt={PRINTED_AT}
       />,
     )

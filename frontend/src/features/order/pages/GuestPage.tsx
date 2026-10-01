@@ -141,10 +141,17 @@ export default function GuestPage() {
           <Typography.Text>-{money(order.depositCredit)}</Typography.Text>
         </Flex>
       )}
+      {/* BR-43: parts of the bill already paid. */}
+      {order.paidAmount > 0 && (
+        <Flex justify="space-between">
+          <Typography.Text>Đã thanh toán</Typography.Text>
+          <Typography.Text>-{money(order.paidAmount)}</Typography.Text>
+        </Flex>
+      )}
       <Flex justify="space-between">
-        <Typography.Text>Tạm tính</Typography.Text>
+        <Typography.Text>{order.paidAmount > 0 ? 'Còn phải trả' : 'Tạm tính'}</Typography.Text>
         <Typography.Title level={4} style={{ margin: 0 }}>
-          {money(order.total)}
+          {money(order.due)}
         </Typography.Title>
       </Flex>
       {order.pendingCount > 0 && (

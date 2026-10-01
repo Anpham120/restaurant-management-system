@@ -50,6 +50,10 @@ public class AdjustmentService {
     public OrderDto create(Long orderId, AdjustmentRequest request) {
         Order order = orders.findByIdForUpdate(orderId).orElseThrow(() -> ApiException.notFound("Không tìm thấy đơn"));
         requireOpen(order);
+        // BR-43: part of the bill is already taken, so the bill can only grow.
+        if (order.paidAmount() > 0) {
+            throw ApiException.conflict("Đơn đã thu một phần, không giảm giá được nữa");
+        }
         String note = request.note() == null || request.note().isBlank() ? null : request.note().trim();
         if (request.reason() == AdjustmentReason.OTHER && note == null) {
             throw ApiException.badRequest("Lý do khác cần ghi chú");

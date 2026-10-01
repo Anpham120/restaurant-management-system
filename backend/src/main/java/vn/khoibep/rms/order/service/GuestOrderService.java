@@ -123,12 +123,12 @@ public class GuestOrderService {
             return new GuestTableDto(table.getName(), restaurantName, null, openRequests);
         }
         int pending = order.countItems(ItemStatus.PENDING);
-        long total = order.total();
-        // BR-13: not while dishes or a discount still wait for staff.
-        boolean canPay = pending == 0 && order.countPendingAdjustments() == 0 && total > 0;
+        long due = order.due();
+        // BR-13: not while dishes or a discount still wait for staff; the guest pays what is left (BR-43).
+        boolean canPay = pending == 0 && order.countPendingAdjustments() == 0 && due > 0;
         return new GuestTableDto(table.getName(), restaurantName, new GuestOrderDto(order.getId(),
                 order.getItems().stream().map(GuestItemDto::from).toList(), order.discountTotal(),
-                order.depositCredit(), total, pending, canPay), openRequests);
+                order.depositCredit(), order.total(), order.paidAmount(), due, pending, canPay), openRequests);
     }
 
     private DiningTable table(String token) {

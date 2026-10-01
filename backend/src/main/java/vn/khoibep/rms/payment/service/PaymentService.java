@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.khoibep.rms.audit.enums.AuditAction;
 import vn.khoibep.rms.audit.service.AuditService;
 import vn.khoibep.rms.common.exception.ApiException;
+import vn.khoibep.rms.common.util.Money;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
 import vn.khoibep.rms.order.entity.Order;
 import vn.khoibep.rms.order.enums.ItemStatus;
@@ -42,40 +43,47 @@ public class PaymentService {
     private final RealtimeEvents realtime;
 
     /**
-     * FR-08.2, BR-13: cash must cover the total; the order closes and the table becomes free.
+     * FR-08.2, BR-13: cash must cover what is taken; once the bill is covered the order closes and the table becomes
+     * free. FR-08.12, BR-43: amount is a part of the bill, the whole rest when null.
      * BR-39: the cash goes into the drawer of the open shift.
      */
     @Transactional
-    public PaymentDto payCash(Long orderId, long receivedAmount, Long cashierId) {
+    public PaymentDto payCash(Long orderId, Long amount, long receivedAmount, Long cashierId) {
         Order order = lockPayable(orderId);
-        long total = order.total();
-        if (receivedAmount < total) {
-            throw ApiException.badRequest("Tiền khách đưa nhỏ hơn tổng tiền");
+        long part = part(order, amount);
+        if (receivedAmount < part) {
+            throw ApiException.badRequest("Tiền khách đưa nhỏ hơn số tiền cần thu");
         }
         CashShift shift = cashShifts.lockOpen();
         cancelPendingTransfers(orderId);
-        Payment payment = payments.save(Payment.cash(order, total, receivedAmount, cashierId, shift));
-        close(order);
+        Payment payment = payments.save(Payment.cash(order, part, receivedAmount, cashierId, shift));
+        settle(order);
         return PaymentDto.from(payment);
     }
 
-    /**
-     * FR-08.3, BR-14: one pending transfer per order. Asking again returns the same code while the
-     * total is unchanged; otherwise the old code is cancelled and a new one is issued.
-     */
+    /** FR-08.5: the guest pays what is left. */
     @Transactional
     public PaymentInstruction requestTransfer(Long orderId) {
+        return requestTransfer(orderId, null);
+    }
+
+    /**
+     * FR-08.3, BR-14: one pending transfer per order. Asking again returns the same code while the amount is
+     * unchanged; otherwise the old code is cancelled and a new one is issued. BR-43: amount as for cash.
+     */
+    @Transactional
+    public PaymentInstruction requestTransfer(Long orderId, Long amount) {
         Order order = lockPayable(orderId);
-        long total = order.total();
-        if (total <= 0) {
-            throw ApiException.conflict("Đơn chưa có món tính tiền");
+        long part = part(order, amount);
+        if (part <= 0) {
+            throw ApiException.conflict("Đơn không còn gì phải trả");
         }
         RestaurantSettings bank = settings.current();
         if (!bank.hasBankAccount()) {
             throw ApiException.conflict("Nhà hàng chưa cấu hình tài khoản nhận chuyển khoản");
         }
         Payment pending = payments.findByOrderIdAndStatus(orderId, PaymentStatus.PENDING).orElse(null);
-        if (pending != null && pending.getAmount() == total) {
+        if (pending != null && pending.getAmount() == part) {
             return instruction(pending, bank);
         }
         if (pending != null) {
@@ -83,7 +91,7 @@ public class PaymentService {
             // Write the cancel before inserting the new one: only one PENDING row per order is allowed.
             payments.flush();
         }
-        Payment payment = payments.save(Payment.transfer(order, total, newReference()));
+        Payment payment = payments.save(Payment.transfer(order, part, newReference()));
         return instruction(payment, bank);
     }
 
@@ -104,15 +112,19 @@ public class PaymentService {
         // BR-34: money taken as received without the bank's word for it.
         audit.record(AuditAction.MANUAL_CONFIRMATION, order, payment.getReference(), null, null, payment.getAmount(),
                 null);
-        close(order);
+        settle(order);
         return PaymentDto.from(payment);
     }
 
-    /** FR-08.9, BR-33: the payment a receipt is printed from, once the order is paid. */
+    /** FR-08.9, FR-08.13, BR-33: every payment a receipt lists, once the bill is covered. */
     @Transactional(readOnly = true)
-    public PaymentDto paidPayment(Long orderId) {
-        return payments.findByOrderIdAndStatus(orderId, PaymentStatus.PAID).map(PaymentDto::from)
-                .orElseThrow(() -> ApiException.notFound("Đơn chưa thanh toán"));
+    public List<PaymentDto> paidPayments(Long orderId) {
+        Order order = orders.findById(orderId).orElseThrow(() -> ApiException.notFound("Không tìm thấy đơn"));
+        if (order.getStatus() != OrderStatus.PAID) {
+            throw ApiException.notFound("Đơn chưa thanh toán xong");
+        }
+        return payments.findByOrderIdAndStatusOrderByPaidAtAscIdAsc(orderId, PaymentStatus.PAID).stream()
+                .map(PaymentDto::from).toList();
     }
 
     @Transactional(readOnly = true)
@@ -130,7 +142,31 @@ public class PaymentService {
     /** Called by the webhook with the order row already locked. */
     void completeTransfer(Payment payment, Order order) {
         payment.markPaid(Confirmation.AUTO, null);
-        close(order);
+        settle(order);
+    }
+
+    /** BR-13, BR-43: the whole rest by default; a part is more than zero and no more than the rest. */
+    private static long part(Order order, Long amount) {
+        long due = order.due();
+        if (amount == null) {
+            return due;
+        }
+        if (amount > due) {
+            throw ApiException.badRequest("Số tiền thu lớn hơn số còn phải trả (" + Money.vnd(due) + ")");
+        }
+        if (amount <= 0 && due > 0) {
+            throw ApiException.badRequest("Số tiền thu phải lớn hơn 0");
+        }
+        return amount;
+    }
+
+    /** BR-43: the order closes once what was taken covers the bill; until then every screen shows what is left. */
+    private void settle(Order order) {
+        if (order.due() == 0) {
+            close(order);
+        } else {
+            realtime.orderChanged(order.getId(), order.tableId(), order.guestTokens());
+        }
     }
 
     private Order lockPayable(Long orderId) {

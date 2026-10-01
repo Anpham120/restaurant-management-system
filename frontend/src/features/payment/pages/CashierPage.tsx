@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Col, Empty, Flex, InputNumber, Modal, Popconfirm, Result, Row, Table, Tabs, Tag, Typography } from 'antd'
-import { PercentageOutlined, PrinterOutlined } from '@ant-design/icons'
+import { PercentageOutlined, PrinterOutlined, SplitCellsOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
 import type { BankTransaction, Order, Payment, PaymentInstruction, Settings, WebhookStatus } from '@/shared/api/types'
 import { useAuth } from '@/features/auth/context/AuthContext'
@@ -9,6 +9,7 @@ import StatusTag from '@/features/order/components/StatusTag'
 import AdjustmentModal from '../components/AdjustmentModal'
 import BillSlip from '../components/BillSlip'
 import CashShiftBar from '../components/CashShiftBar'
+import SplitPaymentModal from '../components/SplitPaymentModal'
 import TransferQr from '../components/TransferQr'
 import { useCashShift } from '../hooks/useCashShift'
 import { adjustmentLabel, adjustmentReason, adjustmentStatusColor, adjustmentStatusLabel, isOpen } from '../utils/adjustment'
@@ -25,6 +26,11 @@ export default function CashierPage() {
   const [cashOpen, setCashOpen] = useState(false)
   const [received, setReceived] = useState<number | null>(null)
   const [adjusting, setAdjusting] = useState(false)
+  // FR-08.12: the part of a split bill being taken; null takes the whole rest.
+  const [part, setPart] = useState<number | null>(null)
+  const [splitting, setSplitting] = useState(false)
+  // What was paid and left when the VietQR code was made, to tell a part that came in from a bill that changed.
+  const [askedWhen, setAskedWhen] = useState<{ paid: number; due: number } | null>(null)
   const { user } = useAuth()
 
   const orders = useQuery({ queryKey: ['orders', 'OPEN'], queryFn: () => api.get<Order[]>('/orders').then((r) => r.data) })
@@ -49,8 +55,8 @@ export default function CashierPage() {
   /** FR-08.9: a bill while the order is open, the receipt once it is paid. */
   const printSlip = async (o: Order) => {
     try {
-      const payment = o.status === 'PAID' ? (await api.get<Payment>(`/orders/${o.id}/payment`)).data : undefined
-      printer.print(<BillSlip order={o} settings={settings.data} payment={payment} />)
+      const payments = o.status === 'PAID' ? (await api.get<Payment[]>(`/orders/${o.id}/payments`)).data : undefined
+      printer.print(<BillSlip order={o} settings={settings.data} payments={payments} />)
     } catch (e) {
       onError(e)
     }
@@ -61,19 +67,26 @@ export default function CashierPage() {
   }
 
   const payCash = useMutation({
-    mutationFn: (amount: number) =>
-      api.post<Payment>(`/orders/${selectedId}/payments/cash`, { receivedAmount: amount }).then((r) => r.data),
+    mutationFn: ({ received, amount }: { received: number; amount: number | null }) =>
+      api
+        .post<Payment>(`/orders/${selectedId}/payments/cash`, { receivedAmount: received, amount: amount ?? undefined })
+        .then((r) => r.data),
     onSuccess: (payment) => {
       setCashOpen(false)
-      message.success(`Đã thu tiền. Tiền thối: ${money(payment.change ?? 0)}`)
+      setPart(null)
+      message.success(`Đã thu ${money(payment.amount)}. Tiền thối: ${money(payment.change ?? 0)}`)
       refresh()
       queryClient.invalidateQueries({ queryKey: ['cash-shift'] })
     },
     onError,
   })
   const requestTransfer = useMutation({
-    mutationFn: () => api.post<PaymentInstruction>(`/orders/${selectedId}/payments/transfer`).then((r) => r.data),
-    onSuccess: setInstruction,
+    mutationFn: (amount: number | undefined) =>
+      api.post<PaymentInstruction>(`/orders/${selectedId}/payments/transfer`, amount ? { amount } : undefined).then((r) => r.data),
+    onSuccess: (qr) => {
+      setInstruction(qr)
+      setAskedWhen(order.data ? { paid: order.data.paidAmount, due: order.data.due } : null)
+    },
     onError,
   })
   const confirmManually = useMutation({
@@ -104,7 +117,10 @@ export default function CashierPage() {
   const billItems = o?.items.filter((i) => i.status !== 'CANCELLED') ?? []
   const adjustments = o?.adjustments.filter((a) => a.status !== 'CANCELLED') ?? []
   // BR-14: a discount changes the total and voids the code shown; the cashier asks for a new one.
-  const qr = instruction && o && instruction.amount === o.total ? instruction : null
+  // BR-43: a part paid by transfer leaves the rest to take.
+  const partPaid = !!(instruction && o && askedWhen && o.paidAmount > askedWhen.paid)
+  const qr = instruction && o && askedWhen && o.paidAmount === askedWhen.paid && o.due === askedWhen.due ? instruction : null
+  const cashAmount = part ?? o?.due ?? 0
   const blocked = !o || o.pendingCount > 0 || o.pendingAdjustmentCount > 0
 
   const bill = !o ? (
@@ -190,6 +206,19 @@ export default function CashierPage() {
           {money(o.total)}
         </Typography.Title>
       </Flex>
+      {/* FR-08.13: a split bill shows what was taken and what is left. */}
+      {o.paidAmount > 0 && (
+        <>
+          <Flex justify="space-between">
+            <span>Đã thu</span>
+            <span>-{money(o.paidAmount)}</span>
+          </Flex>
+          <Flex justify="space-between">
+            <Typography.Text strong>Còn phải thu</Typography.Text>
+            <Typography.Text strong>{money(o.due)}</Typography.Text>
+          </Flex>
+        </>
+      )}
       {o.pendingCount > 0 && <Alert type="error" showIcon title="Còn món khách gửi qua QR chưa xác nhận. Nhờ phục vụ xử lý trước." />}
       {o.pendingAdjustmentCount > 0 && (
         <Alert type="warning" showIcon title="Có khoản giảm vượt hạn mức đang chờ quản lý duyệt, chưa thanh toán được." />
@@ -197,7 +226,10 @@ export default function CashierPage() {
       {o.pendingCount === 0 && o.unservedCount > 0 && (
         <Alert type="warning" showIcon title={`Còn ${o.unservedCount} món chưa ra, kiểm tra với khách trước khi thu`} />
       )}
-      {instruction && !qr && <Alert type="info" showIcon title="Tổng tiền đã đổi, mã chuyển khoản cũ không dùng được nữa. Tạo lại mã." />}
+      {partPaid && <Alert type="success" showIcon title="Đã nhận chuyển khoản phần vừa rồi" />}
+      {instruction && !qr && !partPaid && (
+        <Alert type="info" showIcon title="Tổng tiền đã đổi, mã chuyển khoản cũ không dùng được nữa. Tạo lại mã." />
+      )}
       {qr ? (
         <Card size="small">
           <TransferQr instruction={qr} />
@@ -214,9 +246,14 @@ export default function CashierPage() {
         </Card>
       ) : (
         <>
-          <Button icon={<PercentageOutlined />} disabled={o.subtotal <= 0} onClick={() => setAdjusting(true)}>
-            Giảm giá, tặng món
-          </Button>
+          <Flex gap={8} wrap>
+            <Button icon={<PercentageOutlined />} disabled={o.subtotal <= 0 || o.paidAmount > 0} onClick={() => setAdjusting(true)}>
+              Giảm giá, tặng món
+            </Button>
+            <Button icon={<SplitCellsOutlined />} disabled={blocked || o.due <= 0} onClick={() => setSplitting(true)}>
+              Tách bill
+            </Button>
+          </Flex>
           <Flex gap={8}>
             <Button
               size="large"
@@ -224,7 +261,8 @@ export default function CashierPage() {
               disabled={blocked || !cashShift.data}
               title={cashShift.data ? undefined : 'Chưa mở ca'}
               onClick={() => {
-                setReceived(o.total)
+                setPart(null)
+                setReceived(o.due)
                 setCashOpen(true)
               }}
             >
@@ -234,9 +272,9 @@ export default function CashierPage() {
               size="large"
               type="primary"
               style={{ flex: 1 }}
-              disabled={blocked || o.total <= 0}
+              disabled={blocked || o.due <= 0}
               loading={requestTransfer.isPending}
-              onClick={() => requestTransfer.mutate()}
+              onClick={() => requestTransfer.mutate(undefined)}
             >
               Chuyển khoản (VietQR)
             </Button>
@@ -331,16 +369,19 @@ export default function CashierPage() {
         title="Thu tiền mặt"
         open={cashOpen}
         okText="Xác nhận đã thu"
-        okButtonProps={{ disabled: !o || received === null || received < o.total }}
+        okButtonProps={{ disabled: !o || received === null || received < cashAmount }}
         confirmLoading={payCash.isPending}
-        onCancel={() => setCashOpen(false)}
-        onOk={() => received !== null && payCash.mutate(received)}
+        onCancel={() => {
+          setCashOpen(false)
+          setPart(null)
+        }}
+        onOk={() => received !== null && payCash.mutate({ received, amount: part })}
         destroyOnHidden
       >
         {o && (
           <Flex vertical gap={12}>
             <Typography.Text>
-              Tổng cần thu: <Typography.Text strong>{money(o.total)}</Typography.Text>
+              {part === null ? 'Cần thu' : 'Cần thu lần này'}: <Typography.Text strong>{money(cashAmount)}</Typography.Text>
             </Typography.Text>
             <InputNumber<number>
               size="large"
@@ -354,20 +395,36 @@ export default function CashierPage() {
               addonAfter="đ"
             />
             <Flex gap={8} wrap>
-              {cashSuggestions(o.total).map((v) => (
+              {cashSuggestions(cashAmount).map((v) => (
                 <Button key={v} onClick={() => setReceived(v)}>
                   {money(v)}
                 </Button>
               ))}
             </Flex>
-            {received !== null && received >= o.total && (
+            {received !== null && received >= cashAmount && (
               <Typography.Title level={4} style={{ margin: 0 }}>
-                Tiền thối: {money(received - o.total)}
+                Tiền thối: {money(received - cashAmount)}
               </Typography.Title>
             )}
           </Flex>
         )}
       </Modal>
+      {splitting && o && (
+        <SplitPaymentModal
+          order={o}
+          onClose={() => setSplitting(false)}
+          onCash={(amount) => {
+            setSplitting(false)
+            setPart(amount)
+            setReceived(amount)
+            setCashOpen(true)
+          }}
+          onTransfer={(amount) => {
+            setSplitting(false)
+            requestTransfer.mutate(amount)
+          }}
+        />
+      )}
       {adjusting && o && (
         <AdjustmentModal
           order={o}

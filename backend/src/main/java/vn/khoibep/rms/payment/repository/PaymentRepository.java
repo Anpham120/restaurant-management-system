@@ -37,6 +37,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findByOrderIdAndStatus(Long orderId, PaymentStatus status);
 
+    /** BR-43: an order may have several payments taken. */
+    List<Payment> findByOrderIdAndStatusOrderByPaidAtAscIdAsc(Long orderId, PaymentStatus status);
+
     @Query("select p.order.id from Payment p where p.reference = :reference")
     Optional<Long> findOrderIdByReference(@Param("reference") String reference);
 

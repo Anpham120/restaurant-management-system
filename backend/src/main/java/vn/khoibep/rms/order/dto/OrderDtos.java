@@ -96,8 +96,8 @@ public final class OrderDtos {
      */
     public record OrderDto(Long id, OrderType type, OrderStatus status, Long tableId, List<Long> tableIds,
                            String tableName, Integer guestCount, String note, Instant openedAt, Instant closedAt,
-                           long subtotal, long discountTotal, long depositCredit, long total, int pendingCount,
-                           int unservedCount,
+                           long subtotal, long discountTotal, long depositCredit, long total, long paidAmount,
+                           long due, int pendingCount, int unservedCount,
                            int pendingAdjustmentCount, List<OrderItemDto> items, List<AdjustmentDto> adjustments) {
         public static OrderDto from(Order o) {
             int unserved = o.countItems(ItemStatus.WAITING) + o.countItems(ItemStatus.COOKING)
@@ -106,6 +106,7 @@ public final class OrderDtos {
                     o.activeTables().stream().map(DiningTable::getId).toList(), o.tableLabel(), o.getGuestCount(),
                     o.getNote(),
                     o.getOpenedAt(), o.getClosedAt(), o.subtotal(), o.discountTotal(), o.depositCredit(), o.total(),
+                    o.paidAmount(), o.due(),
                     o.countItems(ItemStatus.PENDING), unserved, o.countPendingAdjustments(),
                     o.getItems().stream().map(OrderItemDto::from).toList(),
                     o.getAdjustments().stream().map(AdjustmentDto::from).toList());
@@ -132,9 +133,12 @@ public final class OrderDtos {
     }
 
     /** @param discountTotal what the discounts in effect take off; total is what is left to pay (FR-08.10) */
-    /** @param depositCredit the deposit of the booking taken off the bill (BR-42) */
+    /**
+     * @param depositCredit the deposit of the booking taken off the bill (BR-42)
+     * @param paidAmount    what the parts paid so far add up to (BR-43); due is what is left
+     */
     public record GuestOrderDto(Long orderId, List<GuestItemDto> items, long discountTotal, long depositCredit,
-                                long total, int pendingCount, boolean canPay) {
+                                long total, long paidAmount, long due, int pendingCount, boolean canPay) {
     }
 
     /**

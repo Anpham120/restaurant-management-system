@@ -69,6 +69,7 @@ public class Payment {
     @JoinColumn(name = "cash_shift_id")
     private CashShift cashShift;
 
+    /** Cash for the whole bill or a part of it (BR-43); the order sees it at once. */
     public static Payment cash(Order order, long amount, long receivedAmount, Long cashierId, CashShift shift) {
         Payment p = new Payment();
         p.order = order;
@@ -77,6 +78,7 @@ public class Payment {
         p.receivedAmount = receivedAmount;
         p.cashShift = shift;
         p.markPaid(Confirmation.MANUAL, cashierId);
+        order.getPayments().add(p);
         return p;
     }
 
@@ -87,6 +89,7 @@ public class Payment {
         p.status = PaymentStatus.PENDING;
         p.amount = amount;
         p.reference = reference;
+        order.getPayments().add(p);
         return p;
     }
 

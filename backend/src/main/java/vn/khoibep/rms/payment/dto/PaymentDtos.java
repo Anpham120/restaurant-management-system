@@ -19,7 +19,13 @@ public final class PaymentDtos {
     private PaymentDtos() {
     }
 
-    public record CashRequest(@NotNull @Min(0) @Max(1_000_000_000) Long receivedAmount) {
+    /** @param amount the part of the bill taken this time (BR-43); the whole rest when null */
+    public record CashRequest(@NotNull @Min(0) @Max(1_000_000_000) Long receivedAmount,
+                              @Min(0) @Max(1_000_000_000) Long amount) {
+    }
+
+    /** @param amount the part of the bill asked for (BR-43); the whole rest when null */
+    public record TransferRequest(@Min(1) @Max(1_000_000_000) Long amount) {
     }
 
     /** @param change cash to hand back; null for transfers */

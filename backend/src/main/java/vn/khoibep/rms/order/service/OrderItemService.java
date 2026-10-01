@@ -67,6 +67,10 @@ public class OrderItemService {
             throw ApiException.conflict("Đơn đã đóng, không huỷ món được");
         }
         OrderItem item = items.findById(itemId).orElseThrow();
+        // BR-43: part of the bill is already taken, so the bill can only grow.
+        if (item.getStatus().isBillable() && order.paidAmount() > 0) {
+            throw ApiException.conflict("Đơn đã thu một phần, không huỷ món được nữa");
+        }
         String why = reason == null || reason.isBlank() ? null : reason.trim();
         switch (item.getStatus()) {
             case PENDING -> {

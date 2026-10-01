@@ -34,6 +34,8 @@ const order = (subtotal: number, adjustments: Adjustment[] = []): Order => ({
   subtotal,
   discountTotal: 0,
   depositCredit: 0,
+  paidAmount: 0,
+  due: 0,
   total: subtotal,
   pendingCount: 0,
   unservedCount: 0,
