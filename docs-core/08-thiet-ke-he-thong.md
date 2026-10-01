@@ -73,7 +73,8 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `GET /goods-receipts?from=&to=`, `GET /goods-receipts/{id}`, `POST /goods-receipts` (không có sửa, xoá) | MANAGER | FR-09.6, FR-09.7 |
 | | `GET /recipes`, `PUT /menu-items/{id}/recipe` (gửi cả định lượng của món; danh sách rỗng là bỏ định lượng) | MANAGER | FR-09.8 |
 | | `GET /inventory-usage?from=&to=` | MANAGER | FR-09.10 |
-| Báo cáo | `GET /reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD` | MANAGER | FR-10 |
+| Báo cáo | `GET /reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD` | MANAGER | FR-10.1 → FR-10.3 |
+| | `GET /reports/gross-profit?from=&to=` (lãi gộp theo món), `GET /reports/exceptions?from=&to=` (ngoại lệ theo loại và theo người); tối đa 1 năm | MANAGER | FR-10.4, FR-10.5 |
 | Nhật ký | `GET /audit-entries?from=YYYY-MM-DD&to=YYYY-MM-DD` (mới nhất trước, tối đa 92 ngày). Không có API sửa, xoá | MANAGER | FR-16 |
 | Cài đặt | `GET /settings` (bếp đọc ngưỡng món chờ lâu ở đây) | NV | FR-11, FR-07.4 |
 | | `PUT /settings` | ADMIN | FR-11.1 → FR-11.3 |
@@ -121,7 +122,7 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 | `/admin/menu` | MANAGER | Danh mục và món; định lượng từng món | FR-03, FR-09.8 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
 | `/admin/inventory` | MANAGER | Nguyên liệu, giá vốn, giá trị tồn; nhập, xuất, kiểm kê, lịch sử; phiếu nhập có giá; nhà cung cấp; tiêu hao theo định lượng | FR-09 |
-| `/admin/reports` | MANAGER | Doanh thu, theo phương thức, top món | FR-10 |
+| `/admin/reports` | MANAGER | Doanh thu, biểu đồ theo ngày, theo phương thức, top món; lãi gộp theo món; ngoại lệ; xuất Excel | FR-10 |
 | `/admin/audit` | MANAGER | Nhật ký thao tác: chọn khoảng ngày, lọc theo người, loại thao tác, đơn hoặc bàn | FR-16 |
 | `/admin/cash-shifts` | MANAGER | Danh sách ca két theo ngày: quỹ đầu ca, tiền mặt thu, phiếu chi, dự kiến, thực đếm, chênh lệch và lý do | FR-17.4 |
 | `/admin/employees` | ADMIN | Nhân viên, hồ sơ và mức lương, cho nghỉ việc, khoá, đặt lại mật khẩu | FR-02, FR-12 |

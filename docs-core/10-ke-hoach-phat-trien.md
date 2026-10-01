@@ -72,6 +72,8 @@ P2-02 **đã làm xong** (issue #16), trước lịch: yêu cầu FR-09.8 → FR
 
 P2-01 **đã làm xong** (issue #15), trước lịch: yêu cầu FR-17.1 → FR-17.4, US-34, BR-39; CSDL là migration `V16` (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`). Thu tiền mặt giờ cần ca đang mở. Giao ca là chốt ca cũ rồi mở ca mới. Bản core chưa có giao ca xác nhận bằng PIN, ảnh chứng từ cho phiếu chi, đếm theo mệnh giá, quản lý ký chốt ca và báo cáo tự gửi kế toán (FR-SHF-02 → FR-SHF-06 bản mở rộng).
 
+P2-04 **đã làm xong** (issue #18), trước lịch: yêu cầu FR-10.4 → FR-10.7, US-35, BR-40; CSDL là migration `V17` (cột `stock_movement.unit_cost`, view `v_order_item_cost`). Excel xuất từ trình duyệt thành một bảng tính mở được bằng Excel, như bảng lương. Bản core chưa có báo cáo tuần, biến động giá nhà cung cấp, hoàn tiền và xuất toàn bộ dữ liệu (FR-RPT-06, FR-RPT-07, FR-INT-05 bản mở rộng).
+
 ### Giai đoạn 3 — Chất lượng, bảo mật, hiệu năng (sprint 6)
 
 | Mã | Việc | Công sức | Ưu tiên |

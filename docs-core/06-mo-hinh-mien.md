@@ -82,6 +82,7 @@ classDiagram
         Long id
         MovementType type
         BigDecimal quantityChange
+        Long unitCost
         String note
     }
     class Supplier {
@@ -232,6 +233,7 @@ Ghi chú thiết kế:
 - `OrderTable` nối đơn với từng bàn nó giữ. Dòng còn hiệu lực (`releasedAt` rỗng) là bàn đang giữ; dòng đã trả là lịch sử chuyển bàn. `Order` vẫn giữ một **bàn chính** để in, báo cáo và chặn hai đơn cùng mở một bàn lúc khách quét QR.
 - `AuditEntry` lưu giá trị **thô**: trạng thái món là mã (`COOKING`), giá là số. Màn hình tự đổi sang chữ và định dạng tiền, còn báo cáo sau này đọc được ngay.
 - Hoàn kho khi huỷ món đọc lại các biến động `SALE` đã ghi cho chính món đó (`StockMovement.orderItemId`), không tính lại theo định lượng hiện tại, nên sửa định lượng giữa chừng không làm lệch kho.
+- Biến động `SALE` ghi lại **giá vốn một đơn vị lúc trừ** (`unitCost`), nên lãi gộp của món đã bán không đổi khi giá vốn nguyên liệu đổi sau đó (BR-40).
 - `CashShift` chỉ ghi **tiền mặt dự kiến** lúc chốt, cạnh số đếm. Trong lúc ca mở, số dự kiến được tính từ quỹ đầu ca, các khoản tiền mặt gắn vào ca và phiếu chi, nên không bao giờ lệch với các khoản thật.
 
 ## 6.2 Trạng thái món

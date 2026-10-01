@@ -63,6 +63,15 @@ Là **quản lý**, tôi muốn xem doanh thu và món bán chạy để quyết
 - AC1: Doanh thu chỉ tính khoản đã xác nhận, theo ngày giờ Việt Nam.
 - AC2: Món bị huỷ không tính vào món bán chạy.
 
+### US-35 Lãi gộp và báo cáo ngoại lệ — FR-10.4 → FR-10.7
+Là **quản lý**, tôi muốn biết mỗi món lãi bao nhiêu, và ai huỷ món, giảm giá, xác nhận tay nhiều, để chỉnh giá và chặn thất thoát.
+- AC1: Phở bò bán 2 bát giá 65.000 đ, mỗi bát trừ 0,15 kg bắp bò lúc giá vốn 200.000 đ/kg: doanh thu 130.000 đ, giá vốn 60.000 đ, lãi gộp 70.000 đ (54%).
+- AC2: Giá vốn tính theo giá lúc món vào bếp: nhập hàng giá khác sau đó không đổi lãi gộp đã có.
+- AC3: Món chưa có định lượng, hoặc dùng nguyên liệu chưa có giá vốn, hiện giá vốn "chưa đủ" và không tính lãi gộp. Món huỷ và món của đơn chưa trả không tính.
+- AC4: Báo cáo ngoại lệ đếm số lần và cộng số tiền theo loại thao tác và theo người làm, trong khoảng ngày.
+- AC5: Doanh thu theo ngày hiện thành biểu đồ cột. Nút "Xuất Excel" tải về một file mở được bằng Excel, có đủ các bảng của khoảng ngày đang xem.
+- AC6: Chỉ quản lý và quản trị xem được.
+
 ### US-29 Xem nhật ký thao tác — FR-16.1 → FR-16.3
 Là **quản lý**, tôi muốn biết ai đã huỷ món, xác nhận tay hay đổi giá, để phát hiện sai sót và gian lận.
 - AC1: Khi quản lý huỷ một món đang làm kèm lý do thì nhật ký có một dòng ghi người huỷ, món và số lượng, trạng thái trước khi huỷ, số tiền của món, lý do.
