@@ -26,6 +26,7 @@ import { api, errorMessage } from '@/shared/api/client'
 import type { RealtimeMessage, Role } from '@/shared/api/types'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import ServiceRequestsButton from '@/features/order/components/ServiceRequestsButton'
+import ApprovalsButton from '@/features/payment/components/ApprovalsButton'
 import SoundButton from '@/features/order/components/SoundButton'
 import { useRealtime } from '@/shared/realtime/useRealtime'
 import { hasRole, roleLabel } from '@/shared/utils/format'
@@ -88,6 +89,9 @@ export default function StaffLayout() {
         case 'WEBHOOK_STATUS':
           refresh(['webhook-status'])
           break
+        case 'ADJUSTMENTS_CHANGED':
+          refresh(['adjustments'])
+          break
       }
       if (m.alert && soundOn && pageAlerts(location.pathname).includes(m.alert)) ring(m.alert)
     },
@@ -143,6 +147,7 @@ export default function StaffLayout() {
             <Button icon={<MenuOutlined />} onClick={() => setMenuOpen(true)} title="Menu" style={{ marginRight: 'auto' }} />
           )}
           {hasRole(user.role, 'WAITER') && <ServiceRequestsButton />}
+          {hasRole(user.role, 'MANAGER') && <ApprovalsButton />}
           {pageAlerts(location.pathname).length > 0 && (
             <SoundButton
               on={soundOn}

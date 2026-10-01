@@ -7,5 +7,7 @@ public enum AuditAction {
     /** A cashier confirmed a transfer by hand. */
     MANUAL_CONFIRMATION,
     /** The price of a dish on the menu changed. */
-    PRICE_CHANGED
+    PRICE_CHANGED,
+    /** A discount or a dish given free took effect (BR-35). */
+    DISCOUNT_GIVEN
 }

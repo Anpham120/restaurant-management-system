@@ -39,9 +39,13 @@ const ORDER: Order = {
   note: null,
   openedAt: new Date(2026, 9, 1, 18, 5).toISOString(),
   closedAt: null,
+  subtotal: 459_000,
+  discountTotal: 0,
   total: 459_000,
   pendingCount: 1,
   unservedCount: 0,
+  pendingAdjustmentCount: 0,
+  adjustments: [],
   items: [
     item(1, 'Lẩu riêu cua bắp bò', 329_000, 1, 'SERVED'),
     item(2, 'Nem rán', 65_000, 2, 'READY'),
@@ -100,6 +104,29 @@ describe('BillSlip', () => {
     expect(screen.getByText('Đã trả lúc 19:50 01/10')).toBeTruthy()
     expect(screen.getByText('Cảm ơn quý khách!')).toBeTruthy()
     expect(screen.queryByText(/chờ xác nhận/)).toBeNull()
+  })
+
+  it('shows the dishes, each discount in effect, then the total after them (FR-08.10)', () => {
+    const adjustment = { orderId: 128, tableName: 'B05', reason: 'WAIT', note: null, createdByName: 'Phạm Thị Ngân',
+      createdAt: '2026-10-01T12:00:00Z', decidedByName: null, decidedAt: null } as const
+    const discounted: Order = {
+      ...ORDER,
+      pendingCount: 0,
+      discountTotal: 180_000,
+      total: 279_000,
+      adjustments: [
+        { ...adjustment, id: 1, type: 'DISCOUNT', orderItemId: null, itemName: null, amount: 50_000, status: 'APPLIED' },
+        { ...adjustment, id: 2, type: 'COMP', orderItemId: 2, itemName: 'Nem rán x2', amount: 130_000, status: 'APPLIED' },
+        { ...adjustment, id: 3, type: 'DISCOUNT', orderItemId: null, itemName: null, amount: 9_000, status: 'REJECTED' },
+      ],
+    }
+    render(<BillSlip order={discounted} settings={SETTINGS} printedAt={PRINTED_AT} />)
+    expect(screen.getByText('Cộng tiền món')).toBeTruthy()
+    expect(screen.getByText('-50.000 đ')).toBeTruthy()
+    expect(screen.getByText('Tặng Nem rán x2')).toBeTruthy()
+    expect(screen.getByText('-130.000 đ')).toBeTruthy()
+    expect(screen.queryByText('-9.000 đ')).toBeNull()
+    expect(screen.getByText('279.000 đ')).toBeTruthy()
   })
 
   it('shows the transfer code on a transfer receipt (US-28 AC2)', () => {

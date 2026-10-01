@@ -94,10 +94,40 @@ export interface Order {
   note: string | null
   openedAt: string
   closedAt: string | null
+  /** BR-12: dishes billed, before discounts. */
+  subtotal: number
+  /** BR-35: what the adjustments in effect take off. */
+  discountTotal: number
+  /** What the guest pays: subtotal minus discounts. */
   total: number
   pendingCount: number
   unservedCount: number
+  /** BR-13: discounts waiting for a manager block payment. */
+  pendingAdjustmentCount: number
   items: OrderItem[]
+  adjustments: Adjustment[]
+}
+
+export type AdjustmentType = 'DISCOUNT' | 'COMP'
+export type AdjustmentReason = 'WAIT' | 'FOOD_QUALITY' | 'STAFF_ERROR' | 'PROMOTION' | 'OTHER'
+export type AdjustmentStatus = 'PENDING' | 'APPLIED' | 'REJECTED' | 'CANCELLED'
+
+/** FR-08.10: a discount on the bill, or a dish line given free (orderItemId, itemName). */
+export interface Adjustment {
+  id: number
+  orderId: number
+  tableName: string | null
+  type: AdjustmentType
+  orderItemId: number | null
+  itemName: string | null
+  amount: number
+  reason: AdjustmentReason
+  note: string | null
+  status: AdjustmentStatus
+  createdByName: string
+  createdAt: string
+  decidedByName: string | null
+  decidedAt: string | null
 }
 
 export interface KitchenItem {
@@ -157,7 +187,7 @@ export interface BankTransaction {
 }
 
 /** BR-34: the sensitive actions in the audit log. */
-export type AuditAction = 'ITEM_CANCELLED' | 'MANUAL_CONFIRMATION' | 'PRICE_CHANGED'
+export type AuditAction = 'ITEM_CANCELLED' | 'MANUAL_CONFIRMATION' | 'PRICE_CHANGED' | 'DISCOUNT_GIVEN'
 
 /** FR-16: one line of the audit log; before and after are raw, an item status code or a price in VND. */
 export interface AuditEntry {
@@ -199,6 +229,8 @@ export interface GuestTable {
   order: {
     orderId: number
     items: GuestItem[]
+    /** FR-08.10: what discounts take off; total is what is left to pay. */
+    discountTotal: number
     total: number
     pendingCount: number
     canPay: boolean
@@ -376,7 +408,7 @@ export interface MyPayslip {
 export type StaffAlert = 'NEW_DISHES' | 'GUEST_DISHES' | 'DISH_READY' | 'SERVICE_REQUEST'
 
 export interface RealtimeMessage {
-  type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION' | 'REQUESTS_CHANGED' | 'WEBHOOK_STATUS'
+  type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION' | 'REQUESTS_CHANGED' | 'WEBHOOK_STATUS' | 'ADJUSTMENTS_CHANGED'
   orderId: number | null
   tableId: number | null
   alert: StaffAlert | null

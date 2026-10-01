@@ -127,6 +127,13 @@ export default function GuestPage() {
           <StatusTag status={item.status} />
         </div>
       ))}
+      {/* FR-08.10: what the restaurant took off, already out of the amount below. */}
+      {order.discountTotal > 0 && (
+        <Flex justify="space-between">
+          <Typography.Text>Giảm giá</Typography.Text>
+          <Typography.Text>-{money(order.discountTotal)}</Typography.Text>
+        </Flex>
+      )}
       <Flex justify="space-between">
         <Typography.Text>Tạm tính</Typography.Text>
         <Typography.Title level={4} style={{ margin: 0 }}>

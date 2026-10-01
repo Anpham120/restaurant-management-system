@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Col, Empty, Flex, InputNumber, Modal, Popconfirm, Result, Row, Table, Tabs, Tag, Typography } from 'antd'
-import { PrinterOutlined } from '@ant-design/icons'
+import { PercentageOutlined, PrinterOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
 import type { BankTransaction, Order, Payment, PaymentInstruction, Settings, WebhookStatus } from '@/shared/api/types'
+import { useAuth } from '@/features/auth/context/AuthContext'
 import StatusTag from '@/features/order/components/StatusTag'
+import AdjustmentModal from '../components/AdjustmentModal'
 import BillSlip from '../components/BillSlip'
 import TransferQr from '../components/TransferQr'
+import { adjustmentLabel, adjustmentReason, adjustmentStatusColor, adjustmentStatusLabel, isOpen } from '../utils/adjustment'
 import { orderTitle } from '../utils/bill'
 import { usePrintSlip } from '@/shared/print/usePrintSlip'
-import { cashSuggestions, money, time } from '@/shared/utils/format'
+import { cashSuggestions, hasRole, money, time } from '@/shared/utils/format'
 
 /** FR-08: bills, cash, VietQR with automatic confirmation, manual confirmation, unmatched transfers, webhook warning. */
 export default function CashierPage() {
@@ -19,6 +22,8 @@ export default function CashierPage() {
   const [instruction, setInstruction] = useState<PaymentInstruction | null>(null)
   const [cashOpen, setCashOpen] = useState(false)
   const [received, setReceived] = useState<number | null>(null)
+  const [adjusting, setAdjusting] = useState(false)
+  const { user } = useAuth()
 
   const orders = useQuery({ queryKey: ['orders', 'OPEN'], queryFn: () => api.get<Order[]>('/orders').then((r) => r.data) })
   const order = useQuery({
@@ -75,6 +80,16 @@ export default function CashierPage() {
     },
     onError,
   })
+  /** FR-08.10: the bill changed, so the order list and the selected bill show the new total. */
+  const onAdjusted = (updated: Order) => {
+    queryClient.setQueryData(['order', updated.id], updated)
+    queryClient.invalidateQueries({ queryKey: ['orders'] })
+  }
+  const cancelAdjustment = useMutation({
+    mutationFn: (id: number) => api.post<Order>(`/adjustments/${id}/cancel`).then((r) => r.data),
+    onSuccess: onAdjusted,
+    onError,
+  })
 
   const select = (id: number) => {
     setSelectedId(id)
@@ -83,6 +98,10 @@ export default function CashierPage() {
 
   const o = order.data
   const billItems = o?.items.filter((i) => i.status !== 'CANCELLED') ?? []
+  const adjustments = o?.adjustments.filter((a) => a.status !== 'CANCELLED') ?? []
+  // BR-14: a discount changes the total and voids the code shown; the cashier asks for a new one.
+  const qr = instruction && o && instruction.amount === o.total ? instruction : null
+  const blocked = !o || o.pendingCount > 0 || o.pendingAdjustmentCount > 0
 
   const bill = !o ? (
     <Empty description="Chọn một đơn để tính tiền" />
@@ -107,6 +126,49 @@ export default function CashierPage() {
           { title: '', render: (_, i) => <StatusTag status={i.status} /> },
         ]}
       />
+      {adjustments.length > 0 && (
+        <Table
+          size="small"
+          rowKey="id"
+          pagination={false}
+          showHeader={false}
+          dataSource={adjustments}
+          columns={[
+            {
+              render: (_, a) => (
+                <>
+                  {adjustmentLabel(a)} <Typography.Text type="secondary">({adjustmentReason(a)})</Typography.Text>
+                </>
+              ),
+            },
+            { width: 110, render: (_, a) => `-${money(a.amount)}` },
+            { width: 110, render: (_, a) => <Tag color={adjustmentStatusColor[a.status]}>{adjustmentStatusLabel[a.status]}</Tag> },
+            {
+              width: 60,
+              render: (_, a) =>
+                isOpen(a) && (
+                  <Popconfirm title="Huỷ khoản giảm này?" onConfirm={() => cancelAdjustment.mutate(a.id)}>
+                    <Button size="small" type="link" danger>
+                      Huỷ
+                    </Button>
+                  </Popconfirm>
+                ),
+            },
+          ]}
+        />
+      )}
+      {o.discountTotal > 0 && (
+        <>
+          <Flex justify="space-between">
+            <span>Tiền món</span>
+            <span>{money(o.subtotal)}</span>
+          </Flex>
+          <Flex justify="space-between">
+            <span>Giảm</span>
+            <span>-{money(o.discountTotal)}</span>
+          </Flex>
+        </>
+      )}
       <Flex justify="space-between">
         <Typography.Title level={4} style={{ margin: 0 }}>
           Tổng cộng
@@ -116,47 +178,56 @@ export default function CashierPage() {
         </Typography.Title>
       </Flex>
       {o.pendingCount > 0 && <Alert type="error" showIcon title="Còn món khách gửi qua QR chưa xác nhận. Nhờ phục vụ xử lý trước." />}
+      {o.pendingAdjustmentCount > 0 && (
+        <Alert type="warning" showIcon title="Có khoản giảm vượt hạn mức đang chờ quản lý duyệt, chưa thanh toán được." />
+      )}
       {o.pendingCount === 0 && o.unservedCount > 0 && (
         <Alert type="warning" showIcon title={`Còn ${o.unservedCount} món chưa ra, kiểm tra với khách trước khi thu`} />
       )}
-      {instruction ? (
+      {instruction && !qr && <Alert type="info" showIcon title="Tổng tiền đã đổi, mã chuyển khoản cũ không dùng được nữa. Tạo lại mã." />}
+      {qr ? (
         <Card size="small">
-          <TransferQr instruction={instruction} />
+          <TransferQr instruction={qr} />
           <Flex justify="center" gap={8} style={{ marginTop: 12 }}>
             <Button onClick={() => setInstruction(null)}>Đổi cách trả</Button>
             <Popconfirm
               title="Đã thấy tiền về trong app ngân hàng?"
               description="Chỉ xác nhận tay khi đã kiểm tra đúng số tiền và nội dung."
-              onConfirm={() => confirmManually.mutate(instruction.paymentId)}
+              onConfirm={() => confirmManually.mutate(qr.paymentId)}
             >
               <Button>Xác nhận tay</Button>
             </Popconfirm>
           </Flex>
         </Card>
       ) : (
-        <Flex gap={8}>
-          <Button
-            size="large"
-            style={{ flex: 1 }}
-            disabled={o.pendingCount > 0}
-            onClick={() => {
-              setReceived(o.total)
-              setCashOpen(true)
-            }}
-          >
-            Tiền mặt
+        <>
+          <Button icon={<PercentageOutlined />} disabled={o.subtotal <= 0} onClick={() => setAdjusting(true)}>
+            Giảm giá, tặng món
           </Button>
-          <Button
-            size="large"
-            type="primary"
-            style={{ flex: 1 }}
-            disabled={o.pendingCount > 0 || o.total <= 0}
-            loading={requestTransfer.isPending}
-            onClick={() => requestTransfer.mutate()}
-          >
-            Chuyển khoản (VietQR)
-          </Button>
-        </Flex>
+          <Flex gap={8}>
+            <Button
+              size="large"
+              style={{ flex: 1 }}
+              disabled={blocked}
+              onClick={() => {
+                setReceived(o.total)
+                setCashOpen(true)
+              }}
+            >
+              Tiền mặt
+            </Button>
+            <Button
+              size="large"
+              type="primary"
+              style={{ flex: 1 }}
+              disabled={blocked || o.total <= 0}
+              loading={requestTransfer.isPending}
+              onClick={() => requestTransfer.mutate()}
+            >
+              Chuyển khoản (VietQR)
+            </Button>
+          </Flex>
+        </>
       )}
     </Flex>
   )
@@ -282,6 +353,14 @@ export default function CashierPage() {
           </Flex>
         )}
       </Modal>
+      {adjusting && o && (
+        <AdjustmentModal
+          order={o}
+          manager={hasRole(user?.role, 'MANAGER')}
+          onClose={() => setAdjusting(false)}
+          onSaved={onAdjusted}
+        />
+      )}
       {printer.area}
     </>
   )

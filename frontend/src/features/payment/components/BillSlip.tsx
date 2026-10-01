@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import type { Order, Payment, PaymentMethod, Settings } from '@/shared/api/types'
 import { money, time } from '@/shared/utils/format'
+import { adjustmentLabel } from '../utils/adjustment'
 import { billLines, orderTitle } from '../utils/bill'
 
 const METHOD_LABEL: Record<PaymentMethod, string> = { CASH: 'Tiền mặt', BANK_TRANSFER: 'Chuyển khoản' }
@@ -42,6 +43,22 @@ export default function BillSlip({ order, settings, payment, printedAt = new Dat
         </div>
       ))}
       <hr />
+      {order.discountTotal > 0 && (
+        <>
+          <div className="slip-row">
+            <span>Cộng tiền món</span>
+            <span>{money(order.subtotal)}</span>
+          </div>
+          {order.adjustments
+            .filter((a) => a.status === 'APPLIED')
+            .map((a) => (
+              <div key={`adjustment-${a.id}`} className="slip-row">
+                <span>{adjustmentLabel(a)}</span>
+                <span>-{money(a.amount)}</span>
+              </div>
+            ))}
+        </>
+      )}
       <div className="slip-row slip-strong">
         <span>TỔNG CỘNG</span>
         <span>{money(order.total)}</span>

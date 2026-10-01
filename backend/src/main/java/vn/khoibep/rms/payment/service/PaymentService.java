@@ -134,6 +134,9 @@ public class PaymentService {
         if (order.countItems(ItemStatus.PENDING) > 0) {
             throw ApiException.conflict("Còn món chờ xác nhận, hãy xác nhận hoặc từ chối trước khi thanh toán");
         }
+        if (order.countPendingAdjustments() > 0) {
+            throw ApiException.conflict("Còn khoản giảm giá chờ quản lý duyệt");
+        }
         if (!order.hasBillableItems()) {
             throw ApiException.conflict("Đơn chưa có món tính tiền");
         }

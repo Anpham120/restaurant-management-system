@@ -103,9 +103,11 @@ public class GuestOrderService {
         }
         int pending = order.countItems(ItemStatus.PENDING);
         long total = order.total();
-        boolean canPay = pending == 0 && total > 0;
+        // BR-13: not while dishes or a discount still wait for staff.
+        boolean canPay = pending == 0 && order.countPendingAdjustments() == 0 && total > 0;
         return new GuestTableDto(table.getName(), restaurantName, new GuestOrderDto(order.getId(),
-                order.getItems().stream().map(GuestItemDto::from).toList(), total, pending, canPay), openRequests);
+                order.getItems().stream().map(GuestItemDto::from).toList(), order.discountTotal(), total, pending,
+                canPay), openRequests);
     }
 
     private DiningTable table(String token) {
