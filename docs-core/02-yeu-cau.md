@@ -113,6 +113,10 @@
 | FR-10.1 | Theo khoảng ngày: doanh thu, số đơn, trung bình mỗi đơn | M | BR-21 |
 | FR-10.2 | Doanh thu theo ngày và theo phương thức (tiền mặt, chuyển khoản) | M | BR-21 |
 | FR-10.3 | Top 10 món bán chạy theo số lượng | S | BR-21 |
+| FR-10.4 | **Lãi gộp theo món**: số lượng, doanh thu, giá vốn theo định lượng, lãi gộp và tỷ lệ; tổng giảm giá, tặng món của kỳ | S | BR-40 |
+| FR-10.5 | **Báo cáo ngoại lệ**: số lần và số tiền huỷ món, giảm giá và tặng món, xác nhận tay chuyển khoản, theo loại và theo người làm | S | BR-34, 40 |
+| FR-10.6 | **Biểu đồ** doanh thu theo ngày | S | BR-21 |
+| FR-10.7 | **Xuất Excel** báo cáo của khoảng ngày đang xem | S | — |
 
 ### FR-11 Cài đặt (ADMIN)
 

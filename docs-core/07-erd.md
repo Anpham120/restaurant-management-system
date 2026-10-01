@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02), `V16` thêm ca và két (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`) (P2-01).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02), `V16` thêm ca và két (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`) (P2-01), `V17` thêm giá vốn lúc trừ kho (`stock_movement.unit_cost`) và view `v_order_item_cost` cho báo cáo lãi gộp (P2-04).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V17__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V18__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -149,6 +149,7 @@ erDiagram
         bigint created_by FK "null chỉ với tồn đầu kỳ"
         bigint goods_receipt_id FK "phiếu nhập tạo ra biến động; null khi nhập tay"
         bigint order_item_id FK "món vào bếp làm phát sinh; chỉ có với SALE"
+        bigint unit_cost "giá vốn một đơn vị lúc trừ, VND; chỉ có với SALE, null khi nguyên liệu chưa có giá vốn"
         timestamptz created_at
     }
     RESTAURANT_SETTINGS {
@@ -305,6 +306,12 @@ erDiagram
 | `payment(cash_shift_id) WHERE cash_shift_id IS NOT NULL` | Tiền mặt thu trong ca |
 | `stock_movement(order_item_id) WHERE order_item_id IS NOT NULL` | Hoàn kho khi huỷ món |
 | `adjustment(created_at) WHERE status = 'PENDING'` | Danh sách chờ duyệt của quản lý |
+
+View cho báo cáo (không phải bảng, nên `check-erd` không so):
+
+| View | Nội dung | Quy tắc |
+|---|---|---|
+| `v_order_item_cost` | Giá vốn của từng món trong đơn: cộng các biến động `SALE` của món đó, lượng × giá vốn lúc trừ, làm tròn tới đồng; cột `cost_complete` sai khi có nguyên liệu chưa có giá vốn | BR-40 |
 
 ## 7.4 Dữ liệu mẫu
 

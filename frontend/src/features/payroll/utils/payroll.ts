@@ -1,5 +1,6 @@
 import type { PayrollDetail, PayrollStatus } from '@/shared/api/types'
 import { payTypeLabel, roleLabel } from '@/shared/utils/format'
+import { toSheet } from '@/shared/utils/sheet'
 
 export const payrollStatusLabel: Record<PayrollStatus, string> = {
   DRAFT: 'Nháp',
@@ -31,18 +32,5 @@ export function payrollSheet(payroll: PayrollDetail): string {
     ]),
     ['Tổng', '', '', '', '', '', '', sum((s) => s.baseAmount), sum((s) => s.adjustmentAmount), sum((s) => s.netAmount)],
   ]
-  return rows.map((row) => row.map((cell) => String(cell).replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\r\n')
-}
-
-/** UTF-16LE with a byte-order mark: Excel opens it as a table whatever the Windows language. */
-export function utf16leWithBom(text: string): Uint8Array<ArrayBuffer> {
-  const bytes = new Uint8Array(2 + text.length * 2)
-  bytes[0] = 0xff
-  bytes[1] = 0xfe
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i)
-    bytes[2 + i * 2] = code & 0xff
-    bytes[3 + i * 2] = code >> 8
-  }
-  return bytes
+  return toSheet(rows)
 }

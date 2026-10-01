@@ -104,10 +104,20 @@ body {
   border-bottom: 1px solid #f0f0f0;
 }
 
-.bar {
-  height: 10px;
-  background: #b45309;
-  border-radius: 5px;
+/* FR-10.6 */
+.day-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.day-chart-bar {
+  fill: #b45309;
+}
+
+.day-chart-label {
+  fill: rgba(0, 0, 0, 0.45);
+  font-size: 14px;
 }
 
 /* FR-08.9: a slip prints alone, 72 mm wide, the printable width of an 80 mm receipt printer. */

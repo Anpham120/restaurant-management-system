@@ -7,7 +7,8 @@ import { api, errorMessage } from '@/shared/api/client'
 import type { PayrollDetail, PayrollStatus, PayrollSummary, Payslip } from '@/shared/api/types'
 import { money, moneyInputProps, payText, roleLabel } from '@/shared/utils/format'
 import { duration } from '@/features/attendance/utils/attendance'
-import { payrollSheet, payrollStatusLabel, periodLabel, utf16leWithBom } from '../utils/payroll'
+import { downloadSheet } from '@/shared/utils/sheet'
+import { payrollSheet, payrollStatusLabel, periodLabel } from '../utils/payroll'
 
 const statusTag = (status: PayrollStatus) => <Tag color={status === 'FINALIZED' ? 'green' : 'gold'}>{payrollStatusLabel[status]}</Tag>
 
@@ -18,15 +19,6 @@ function signedMoney(amount: number) {
       {money(amount)}
     </Typography.Text>
   )
-}
-
-function download(fileName: string, text: string) {
-  const url = URL.createObjectURL(new Blob([utf16leWithBom(text)], { type: 'text/csv' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  link.click()
-  URL.revokeObjectURL(url)
 }
 
 /** FR-15: monthly payroll from attendance and paid leave; finalizing locks the month (BR-26, BR-27). */
@@ -145,7 +137,7 @@ export default function PayrollPage() {
                       <Button type="primary" loading={finalize.isPending}>Chốt</Button>
                     </Popconfirm>
                   )}
-                  <Button icon={<DownloadOutlined />} onClick={() => download(`bang-luong-${p.period}.csv`, payrollSheet(p))}>
+                  <Button icon={<DownloadOutlined />} onClick={() => downloadSheet(`bang-luong-${p.period}.csv`, payrollSheet(p))}>
                     Xuất Excel
                   </Button>
                 </Space>
