@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Col, Empty, Flex, InputNumber, Modal, Popconfirm, Result, Row, Table, Tabs, Tag, Typography } from 'antd'
+import { PrinterOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
-import type { BankTransaction, Order, Payment, PaymentInstruction, WebhookStatus } from '@/shared/api/types'
+import type { BankTransaction, Order, Payment, PaymentInstruction, Settings, WebhookStatus } from '@/shared/api/types'
 import StatusTag from '@/features/order/components/StatusTag'
+import BillSlip from '../components/BillSlip'
 import TransferQr from '../components/TransferQr'
+import { orderTitle } from '../utils/bill'
+import { usePrintSlip } from '@/shared/print/usePrintSlip'
 import { cashSuggestions, money, time } from '@/shared/utils/format'
-
-function orderTitle(o: Order) {
-  return o.type === 'TAKEAWAY' ? `Mang về #${o.id}` : `Bàn ${o.tableName}`
-}
 
 /** FR-08: bills, cash, VietQR with automatic confirmation, manual confirmation, unmatched transfers, webhook warning. */
 export default function CashierPage() {
@@ -34,8 +34,19 @@ export default function CashierPage() {
     queryKey: ['webhook-status'],
     queryFn: () => api.get<WebhookStatus>('/bank-transactions/webhook-status').then((r) => r.data),
   })
+  const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<Settings>('/settings').then((r) => r.data) })
+  const printer = usePrintSlip()
 
   const onError = (e: unknown) => message.error(errorMessage(e))
+  /** FR-08.9: a bill while the order is open, the receipt once it is paid. */
+  const printSlip = async (o: Order) => {
+    try {
+      const payment = o.status === 'PAID' ? (await api.get<Payment>(`/orders/${o.id}/payment`)).data : undefined
+      printer.print(<BillSlip order={o} settings={settings.data} payment={payment} />)
+    } catch (e) {
+      onError(e)
+    }
+  }
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['orders'] })
     queryClient.invalidateQueries({ queryKey: ['order', selectedId] })
@@ -192,7 +203,18 @@ export default function CashierPage() {
                   />
                 </Col>
                 <Col xs={24} md={14}>
-                  <Card title={o ? orderTitle(o) : 'Hoá đơn'} size="small">
+                  <Card
+                    title={o ? orderTitle(o) : 'Hoá đơn'}
+                    size="small"
+                    extra={
+                      o &&
+                      o.status !== 'CANCELLED' && (
+                        <Button size="small" icon={<PrinterOutlined />} onClick={() => printSlip(o)}>
+                          {o.status === 'PAID' ? 'In phiếu thanh toán' : 'In tạm tính'}
+                        </Button>
+                      )
+                    }
+                  >
                     {bill}
                   </Card>
                 </Col>
@@ -260,6 +282,7 @@ export default function CashierPage() {
           </Flex>
         )}
       </Modal>
+      {printer.area}
     </>
   )
 }

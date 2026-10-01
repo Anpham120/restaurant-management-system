@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Col, Flex, Input, Modal, Popconfirm, Result, Row, Spin, Table, Tag, Typography } from 'antd'
-import { ArrowLeftOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PrinterOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
-import type { MenuItem, Order, OrderItem } from '@/shared/api/types'
+import type { MenuItem, Order, OrderItem, Settings } from '@/shared/api/types'
 import { useAuth } from '@/features/auth/context/AuthContext'
+import BillSlip from '@/features/payment/components/BillSlip'
+import { usePrintSlip } from '@/shared/print/usePrintSlip'
 import CartPanel from '../components/CartPanel'
 import MenuPicker, { toSections } from '../components/MenuPicker'
 import StatusTag from '../components/StatusTag'
@@ -28,6 +30,8 @@ export default function OrderPage() {
     queryFn: () => api.get<Order>(`/orders/${orderId}`).then((r) => r.data),
   })
   const menu = useQuery({ queryKey: ['menu-items'], queryFn: () => api.get<MenuItem[]>('/menu-items').then((r) => r.data) })
+  const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<Settings>('/settings').then((r) => r.data) })
+  const printer = usePrintSlip()
 
   const onOrder = (updated: Order) => queryClient.setQueryData(['order', orderId], updated)
   const onError = (e: unknown) => message.error(errorMessage(e))
@@ -97,9 +101,15 @@ export default function OrderPage() {
           <Typography.Title level={3}>{title}</Typography.Title>
           {o.guestCount && <Tag>{o.guestCount} khách</Tag>}
         </Flex>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {money(o.total)}
-        </Typography.Title>
+        <Flex align="center" gap={8}>
+          <Typography.Title level={4} style={{ margin: 0 }}>
+            {money(o.total)}
+          </Typography.Title>
+          {/* FR-08.9: the bill guests check before paying. */}
+          <Button icon={<PrinterOutlined />} onClick={() => printer.print(<BillSlip order={o} settings={settings.data} />)}>
+            In tạm tính
+          </Button>
+        </Flex>
       </div>
 
       {o.pendingCount > 0 && (
@@ -206,6 +216,7 @@ export default function OrderPage() {
           onChange={(e) => setReason(e.target.value)}
         />
       </Modal>
+      {printer.area}
     </>
   )
 }
