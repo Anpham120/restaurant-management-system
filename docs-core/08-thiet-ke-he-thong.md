@@ -69,6 +69,8 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `POST /inventory-items/{id}/movements`, `GET /inventory-items/{id}/movements` | MANAGER | FR-09.2, FR-09.3 |
 | | `GET /suppliers`, `POST /suppliers`, `PUT /suppliers/{id}` (không có xoá; `active` để ngừng giao dịch) | MANAGER | FR-09.5 |
 | | `GET /goods-receipts?from=&to=`, `GET /goods-receipts/{id}`, `POST /goods-receipts` (không có sửa, xoá) | MANAGER | FR-09.6, FR-09.7 |
+| | `GET /recipes`, `PUT /menu-items/{id}/recipe` (gửi cả định lượng của món; danh sách rỗng là bỏ định lượng) | MANAGER | FR-09.8 |
+| | `GET /inventory-usage?from=&to=` | MANAGER | FR-09.10 |
 | Báo cáo | `GET /reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD` | MANAGER | FR-10 |
 | Nhật ký | `GET /audit-entries?from=YYYY-MM-DD&to=YYYY-MM-DD` (mới nhất trước, tối đa 92 ngày). Không có API sửa, xoá | MANAGER | FR-16 |
 | Cài đặt | `GET /settings` (bếp đọc ngưỡng món chờ lâu ở đây) | NV | FR-11, FR-07.4 |
@@ -114,9 +116,9 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 | `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; chuyển, ghép bàn; in phiếu tạm tính; kêu như sơ đồ bàn | FR-04.5, FR-04.6, FR-05, FR-06.3, FR-07.5, FR-08.9 |
 | `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
 | `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; giảm giá, tặng món; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp | FR-08 |
-| `/admin/menu` | MANAGER | Danh mục và món | FR-03 |
+| `/admin/menu` | MANAGER | Danh mục và món; định lượng từng món | FR-03, FR-09.8 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
-| `/admin/inventory` | MANAGER | Nguyên liệu, giá vốn, giá trị tồn; nhập, xuất, kiểm kê, lịch sử; phiếu nhập có giá; nhà cung cấp | FR-09 |
+| `/admin/inventory` | MANAGER | Nguyên liệu, giá vốn, giá trị tồn; nhập, xuất, kiểm kê, lịch sử; phiếu nhập có giá; nhà cung cấp; tiêu hao theo định lượng | FR-09 |
 | `/admin/reports` | MANAGER | Doanh thu, theo phương thức, top món | FR-10 |
 | `/admin/audit` | MANAGER | Nhật ký thao tác: chọn khoảng ngày, lọc theo người, loại thao tác, đơn hoặc bàn | FR-16 |
 | `/admin/employees` | ADMIN | Nhân viên, hồ sơ và mức lương, cho nghỉ việc, khoá, đặt lại mật khẩu | FR-02, FR-12 |

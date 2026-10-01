@@ -102,6 +102,9 @@
 | FR-09.5 | **Nhà cung cấp**: tên, điện thoại, địa chỉ, mã số thuế, ghi chú. Ngừng giao dịch thì không chọn được khi lập phiếu, nhưng phiếu cũ vẫn giữ | S | BR-37 |
 | FR-09.6 | **Phiếu nhập có giá**: chọn nhà cung cấp, các dòng nguyên liệu với số lượng và đơn giá; tổng tiền phiếu tự tính. Lưu phiếu thì tồn tăng, lịch sử kho ghi số phiếu. Xem lại phiếu theo khoảng ngày | S | BR-19, 37 |
 | FR-09.7 | **Giá vốn nguyên liệu** tính lại theo bình quân gia quyền mỗi lần nhập theo phiếu. Màn hình kho hiện giá vốn và giá trị tồn | S | BR-37 |
+| FR-09.8 | **Định lượng món**: mỗi món ghi các nguyên liệu và lượng dùng cho một phần. Chỉ quản lý, quản trị xem và sửa | S | BR-38 |
+| FR-09.9 | **Trừ kho tự động** theo định lượng khi món vào bếp; huỷ món còn Chờ làm thì hoàn kho. Lịch sử kho ghi bàn, số đơn, tên món | S | BR-19, 38 |
+| FR-09.10 | **Tiêu hao theo định lượng** của từng nguyên liệu trong khoảng ngày, đặt cạnh lượng xuất tay và chênh lệch kiểm kê | S | BR-38 |
 
 ### FR-10 Báo cáo (MANAGER)
 

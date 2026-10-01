@@ -5,12 +5,12 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | # | Tài liệu | Tương ứng repo tham khảo | Nội dung |
 |---|---|---|---|
 | 1 | [Tầm nhìn dự án](01-tam-nhin-du-an.md) | 01-project-vision | Vấn đề, mục tiêu, người dùng, phạm vi, tiêu chí nghiệm thu |
-| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 81 yêu cầu chức năng (16 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 11 yêu cầu phi chức năng |
-| 3 | [User stories](03-user-stories.md) | 03-user-stories | 32 story theo vai trò (7 story nhân sự), kèm tiêu chí chấp nhận |
+| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 84 yêu cầu chức năng (16 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 11 yêu cầu phi chức năng |
+| 3 | [User stories](03-user-stories.md) | 03-user-stories | 33 story theo vai trò (7 story nhân sự), kèm tiêu chí chấp nhận |
 | 4 | [Quy trình nghiệp vụ](04-quy-trinh-nghiep-vu.md) | 04-business-workflow | Trước và sau; 5 quy trình P1 đến P5 |
-| 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 37 quy tắc (6 quy tắc nhân sự), ghi rõ nơi kiểm tra trong mã |
+| 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 38 quy tắc (6 quy tắc nhân sự), ghi rõ nơi kiểm tra trong mã |
 | 6 | [Mô hình miền](06-mo-hinh-mien.md) | 06-domain-model | Sơ đồ lớp, sơ đồ trạng thái, ma trận quyền |
-| 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 25 bảng (7 bảng nhân sự ở mục 7.5), ràng buộc, index (database-first) |
+| 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 26 bảng (7 bảng nhân sự ở mục 7.5), ràng buộc, index (database-first) |
 | 8 | [Thiết kế hệ thống](08-thiet-ke-he-thong.md) | 08-system-design | REST API, kênh realtime, màn hình, sơ đồ tuần tự |
 | 9 | [Kiến trúc và CI/CD](09-kien-truc-va-cicd.md) | 09-system-architecture | Kiến trúc, công nghệ, bảo mật, triển khai, pipeline, kiểm thử |
 | 10 | [Kế hoạch phát triển tiếp](10-ke-hoach-phat-trien.md) | — | Backlog theo giai đoạn, lịch 8 sprint, quy trình làm tính năng, rủi ro, phân công theo service |
@@ -31,7 +31,7 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-06 Khách gọi qua QR, gọi nhân viên | US-09, US-14, US-15, US-27 | BR-09, 10, 11, 29, 30 | `/api/public/*`, `/api/service-requests`, `/topic/guest/*`; `/q/:token`, nút chuông đầu trang | `GuestQrIntegrationTest`, `StompAuthInterceptorTest`, `ServiceRequestIntegrationTest`, `RateLimitIntegrationTest` |
 | FR-07 Màn hình bếp, âm báo | US-09, US-10, US-12 | BR-07, 10, 28 | `/api/kitchen/items`, `/topic/staff`; `/kitchen`, `/tables`, `/orders/:id` | `OrderFlowIntegrationTest`, `KitchenAlertIntegrationTest` |
 | FR-08 Thanh toán | US-16 → US-19, US-28, US-30 | BR-12 → BR-17, 32, 33, 35 | `/api/orders/{id}/payments/*`, `/api/orders/{id}/payment`, `/api/orders/{id}/adjustments`, `/api/adjustments/*`, `/api/bank-transactions/*`, `/api/webhooks/sepay`; `/cashier`, `/orders/:id` | `PaymentIntegrationTest`, `PaymentReferenceTest`, `WebhookAlertIntegrationTest`, `AdjustmentIntegrationTest`, `BillSlip.test.tsx`, `adjustment.test.ts` |
-| FR-09 Kho, nhà cung cấp, phiếu nhập | US-06, US-32 | BR-19, 20, 37 | `/api/inventory-items`, `/api/suppliers`, `/api/goods-receipts`; `/admin/inventory` | `InventoryIntegrationTest`, `PurchaseIntegrationTest` |
+| FR-09 Kho, nhà cung cấp, phiếu nhập, định lượng | US-06, US-32, US-33 | BR-19, 20, 37, 38 | `/api/inventory-items`, `/api/suppliers`, `/api/goods-receipts`, `/api/recipes`, `/api/inventory-usage`; `/admin/inventory`, `/admin/menu` | `InventoryIntegrationTest`, `PurchaseIntegrationTest`, `StockUsageIntegrationTest` |
 | FR-10 Báo cáo | US-07 | BR-21 | `/api/reports/summary`; `/admin/reports` | `ReportIntegrationTest` |
 | FR-11 Cài đặt | US-12 | BR-14, 28 | `/api/settings`; `/admin/settings` | `KitchenAlertIntegrationTest` (ngưỡng món chờ lâu), phần còn lại kiểm tra thủ công |
 | FR-12 Hồ sơ nhân viên | US-20 | BR-22 | `/api/employees/{id}/profile`, `/resign`; `/admin/employees` | `EmployeeProfileIntegrationTest` |
@@ -41,8 +41,8 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-16 Nhật ký thao tác | US-29 | BR-34 | `/api/audit-entries`; `/admin/audit` | `AuditIntegrationTest`, `audit.test.ts` |
 
 Kết quả lần chạy gần nhất:
-- Backend: 129 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
-- Frontend: 48 test (gồm test component), lint và kiểm tra kiểu sạch.
-- Độ phủ backend (JaCoCo): 87,6% số dòng (1648/1882), tối thiểu 70%.
-- `scripts/check-erd.mjs`, chạy trong CI: 14 migration, 25 bảng, 203 cột, 74 khoá, 0 lệch.
+- Backend: 136 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
+- Frontend: 51 test (gồm test component), lint và kiểm tra kiểu sạch.
+- Độ phủ backend (JaCoCo): 88,4% số dòng (1743/1972), tối thiểu 70%.
+- `scripts/check-erd.mjs`, chạy trong CI: 15 migration, 26 bảng, 208 cột, 78 khoá, 0 lệch.
 - E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 19,5 ms với 30 người dùng và 6 tháng dữ liệu.

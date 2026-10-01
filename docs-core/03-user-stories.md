@@ -48,6 +48,16 @@ Là **quản lý**, tôi muốn ghi phiếu nhập kèm nhà cung cấp và giá
 - AC4: Phiếu đã lưu không sửa, không xoá được. Nhập, xuất, kiểm kê bằng tay không đổi giá vốn.
 - AC5: Chỉ quản lý và quản trị xem, lập phiếu và sửa nhà cung cấp.
 
+### US-33 Định lượng và trừ kho tự động — FR-09.8 → FR-09.10
+Là **quản lý**, tôi muốn ghi định lượng cho món để kho tự trừ khi món vào bếp, và so tiêu hao theo định lượng với số kiểm kê.
+- AC1: Phở bò định lượng 0,15 kg bắp bò và 0,3 kg bánh phở; phục vụ gọi 2 bát thì bắp bò giảm 0,3 kg, bánh phở giảm 0,6 kg, lịch sử kho có dòng "Bán món" ghi bàn, số đơn và "Phở bò × 2".
+- AC2: Khách gọi qua QR thì kho chưa trừ; nhân viên xác nhận món thì mới trừ.
+- AC3: Huỷ món còn Chờ làm thì kho được hoàn đúng lượng đã trừ; huỷ món Đang làm thì không hoàn.
+- AC4: Tồn không đủ thì món vẫn vào bếp, tồn thành số âm và hiện "Sắp hết". Xuất tay vẫn không được vượt tồn.
+- AC5: Định lượng có nguyên liệu trùng hoặc lượng ≤ 0 thì bị từ chối. Sửa định lượng không đổi các lần trừ đã có.
+- AC6: Báo cáo tiêu hao trong khoảng ngày cho từng nguyên liệu: lượng trừ theo định lượng (đã bớt phần hoàn), lượng xuất tay, chênh lệch kiểm kê.
+- AC7: Chỉ quản lý và quản trị xem, sửa định lượng và xem tiêu hao.
+
 ### US-07 Xem báo cáo — FR-10.1 → FR-10.3
 Là **quản lý**, tôi muốn xem doanh thu và món bán chạy để quyết định nhập hàng và thực đơn.
 - AC1: Doanh thu chỉ tính khoản đã xác nhận, theo ngày giờ Việt Nam.

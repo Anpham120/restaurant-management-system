@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V15__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V16__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -32,6 +32,9 @@ erDiagram
     GOODS_RECEIPT ||--|{ RECEIPT_LINE : "gồm"
     INVENTORY_ITEM ||--o{ RECEIPT_LINE : "được nhập"
     GOODS_RECEIPT |o--o{ STOCK_MOVEMENT : "tạo"
+    MENU_ITEM ||--o{ RECIPE_LINE : "định lượng"
+    INVENTORY_ITEM ||--o{ RECIPE_LINE : "dùng trong"
+    ORDER_ITEM |o--o{ STOCK_MOVEMENT : "trừ kho"
     EMPLOYEE ||--o{ GOODS_RECEIPT : "lập"
     DINING_TABLE ||--o{ SERVICE_REQUEST : "khách gọi"
     EMPLOYEE |o--o{ SERVICE_REQUEST : "nhận"
@@ -127,19 +130,20 @@ erDiagram
         bigint id PK
         varchar name UK
         varchar unit
-        numeric quantity
+        numeric quantity "có thể âm khi trừ theo định lượng (BR-38)"
         numeric min_quantity
         bigint unit_cost "giá vốn một đơn vị, VND; null khi chưa nhập theo phiếu"
     }
     STOCK_MOVEMENT {
         bigint id PK
         bigint inventory_item_id FK
-        varchar type "IN, OUT, ADJUST"
+        varchar type "IN, OUT, ADJUST, SALE"
         numeric quantity_change "có dấu"
         numeric quantity_after
         varchar note
         bigint created_by FK "null chỉ với tồn đầu kỳ"
         bigint goods_receipt_id FK "phiếu nhập tạo ra biến động; null khi nhập tay"
+        bigint order_item_id FK "món vào bếp làm phát sinh; chỉ có với SALE"
         timestamptz created_at
     }
     RESTAURANT_SETTINGS {
@@ -196,6 +200,12 @@ erDiagram
         numeric quantity "lớn hơn 0"
         bigint unit_price "VND cho một đơn vị, không âm"
     }
+    RECIPE_LINE {
+        bigint id PK
+        bigint menu_item_id FK
+        bigint inventory_item_id FK
+        numeric quantity "lượng cho một phần, theo đơn vị nguyên liệu; lớn hơn 0"
+    }
     ORDER_TABLE {
         bigint id PK
         bigint order_id FK
@@ -231,9 +241,12 @@ erDiagram
 | Không thu tiền hai lần | `CREATE UNIQUE INDEX ux_payment_paid_order ON payment(order_id) WHERE status = 'PAID'` | BR-13 |
 | Mã thanh toán duy nhất | `UNIQUE (reference)` | BR-14 |
 | Giao dịch ngân hàng xử lý một lần | `UNIQUE (provider_txn_id)` | BR-16 |
-| Tồn không âm | `CHECK (quantity >= 0)` trên `inventory_item` | BR-19 |
+| Tồn chỉ âm do trừ theo định lượng | Từ `V15` không còn `CHECK (quantity >= 0)` trên `inventory_item`; xuất tay và kiểm kê vẫn không làm tồn âm (`InventoryService`) | BR-19, BR-38 |
 | Dòng phiếu nhập hợp lệ | `CHECK (quantity > 0)`, `CHECK (unit_price >= 0)` trên `receipt_line`; `CHECK (unit_cost >= 0)` trên `inventory_item` | BR-37 |
 | Tên nhà cung cấp duy nhất | `UNIQUE (name)` trên `supplier` | BR-37 |
+| Định lượng hợp lệ | `CHECK (quantity > 0)` và `CONSTRAINT ux_recipe_line_item UNIQUE (menu_item_id, inventory_item_id)` trên `recipe_line` | BR-38 |
+| Loại biến động hợp lệ | `CONSTRAINT ck_stock_movement_type CHECK (type IN ('IN','OUT','ADJUST','SALE'))` trên `stock_movement`, thay ràng buộc của `V1` | BR-19, BR-38 |
+| Xoá món thì xoá định lượng | `recipe_line.menu_item_id` có `ON DELETE CASCADE`; món chỉ xoá được khi chưa từng được gọi | BR-18, BR-38 |
 | Ngưỡng món chờ lâu hợp lệ | `CHECK (wait_alert_minutes BETWEEN 1 AND 120)` trên `restaurant_settings` | BR-28 |
 | Mỗi bàn một yêu cầu đang chờ cho mỗi loại | `CREATE UNIQUE INDEX ux_service_request_open ON service_request(table_id, type) WHERE handled_at IS NULL` | BR-29 |
 | Có người nhận thì có lúc nhận | `CHECK ((handled_by IS NULL) = (handled_at IS NULL))` trên `service_request` | BR-29 |
@@ -258,6 +271,8 @@ erDiagram
 | `order_table(order_id)` | Các bàn và lịch sử bàn của một đơn |
 | `goods_receipt(created_at DESC)` | Danh sách phiếu nhập theo ngày |
 | `receipt_line(receipt_id)` | Dòng của một phiếu nhập |
+| `stock_movement(created_at)` | Tiêu hao theo khoảng ngày |
+| `stock_movement(order_item_id) WHERE order_item_id IS NOT NULL` | Hoàn kho khi huỷ món |
 | `adjustment(created_at) WHERE status = 'PENDING'` | Danh sách chờ duyệt của quản lý |
 
 ## 7.4 Dữ liệu mẫu
