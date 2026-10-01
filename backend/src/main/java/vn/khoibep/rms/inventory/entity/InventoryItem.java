@@ -30,7 +30,7 @@ public class InventoryItem {
     @Column(nullable = false)
     private String unit;
 
-    /** Changed only through stock movements (BR-19). */
+    /** Changed only through stock movements (BR-19); below zero only when dishes used more than was recorded (BR-38). */
     @Column(nullable = false)
     private BigDecimal quantity = BigDecimal.ZERO;
 
@@ -47,13 +47,20 @@ public class InventoryItem {
 
     /**
      * BR-37: stock bought at {@code unitPrice} comes in, and the unit cost becomes the weighted average of the stock
-     * already costed and the new stock, rounded to the dong. Without a cost yet, the price is the cost.
+     * already costed and the new stock, rounded to the dong. Without a cost yet, or with no stock left to cost
+     * (dishes can take it below zero, BR-38), the price is the cost.
      */
     public void receive(BigDecimal received, long unitPrice) {
-        BigDecimal costedQuantity = unitCost == null ? BigDecimal.ZERO : quantity;
-        BigDecimal costedValue = unitCost == null ? BigDecimal.ZERO : quantity.multiply(BigDecimal.valueOf(unitCost));
+        boolean costed = unitCost != null && quantity.signum() > 0;
+        BigDecimal costedQuantity = costed ? quantity : BigDecimal.ZERO;
+        BigDecimal costedValue = costed ? quantity.multiply(BigDecimal.valueOf(unitCost)) : BigDecimal.ZERO;
         unitCost = costedValue.add(received.multiply(BigDecimal.valueOf(unitPrice)))
                 .divide(costedQuantity.add(received), 0, RoundingMode.HALF_UP).longValueExact();
         quantity = quantity.add(received);
+    }
+
+    /** BR-38: a dish sent to the kitchen takes its ingredients, even below zero; a negative amount gives some back. */
+    public void use(BigDecimal amount) {
+        quantity = quantity.subtract(amount);
     }
 }

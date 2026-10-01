@@ -68,6 +68,8 @@ P2-05 → P2-09 là phần **nhân sự**, thêm theo yêu cầu của môn. Yê
 
 P2-03 **đã làm xong** (issue #17), trước lịch: yêu cầu FR-09.5 → FR-09.7, US-32, BR-37; CSDL là migration `V14` (bảng `supplier`, `goods_receipt`, `receipt_line`, cột `inventory_item.unit_cost`, `stock_movement.goods_receipt_id`). Giá vốn tính theo bình quân gia quyền. Bản core chưa có giá thoả thuận theo nhà cung cấp và chưa ghi hoá đơn VAT đầu vào (FR-PUR-01 bản mở rộng).
 
+P2-02 **đã làm xong** (issue #16), trước lịch: yêu cầu FR-09.8 → FR-09.10, US-33, BR-38; CSDL là migration `V15` (bảng `recipe_line`, loại biến động `SALE`, cột `stock_movement.order_item_id`, bỏ ràng buộc tồn không âm). Kho trừ lúc món vào bếp và cho phép tồn âm để không chặn bếp. Bản core chưa có định lượng theo size và chưa giấu công thức chi tiết với người ngoài bếp trưởng, vì chưa có vai trò bếp trưởng (FR-INV-03 bản mở rộng): chỉ quản lý và quản trị xem định lượng.
+
 ### Giai đoạn 3 — Chất lượng, bảo mật, hiệu năng (sprint 6)
 
 | Mã | Việc | Công sức | Ưu tiên |

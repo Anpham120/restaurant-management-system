@@ -14,6 +14,7 @@ import vn.khoibep.rms.common.realtime.RealtimeEvent.Alert;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
 import vn.khoibep.rms.common.security.CurrentUser;
 import vn.khoibep.rms.employee.enums.Role;
+import vn.khoibep.rms.inventory.service.StockUsageService;
 import vn.khoibep.rms.order.dto.OrderDtos.KitchenItemDto;
 import vn.khoibep.rms.order.dto.OrderDtos.OrderItemDto;
 import vn.khoibep.rms.order.entity.Adjustment;
@@ -31,6 +32,7 @@ public class OrderItemService {
     private final OrderItemRepository items;
     private final OrderRepository orders;
     private final PaymentService payments;
+    private final StockUsageService stockUsage;
     private final AuditService audit;
     private final CurrentUser currentUser;
     private final RealtimeEvents realtime;
@@ -90,6 +92,11 @@ public class OrderItemService {
                 ItemStatus.CANCELLED.name(), item.getUnitPrice() * item.getQuantity(), why);
         // BR-35: a dish given free and then cancelled takes nothing off the bill any more.
         order.getAdjustments().stream().filter(a -> a.isOpen() && a.gives(item)).forEach(Adjustment::cancel);
+        // BR-38: a dish the kitchen had not started gives its ingredients back; one being cooked has used them.
+        if (before == ItemStatus.WAITING) {
+            stockUsage.giveBack(item.getId(), "Huỷ món, hoàn kho · " + OrderService.dishNote(order, item),
+                    currentUser.id());
+        }
         if (wasBillable) {
             payments.cancelPendingTransfers(orderId);
         }

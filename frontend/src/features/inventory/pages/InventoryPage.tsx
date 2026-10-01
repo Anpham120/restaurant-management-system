@@ -7,9 +7,10 @@ import type { InventoryItem, MovementType, StockMovement } from '@/shared/api/ty
 import { money, movementLabel, time } from '@/shared/utils/format'
 import ReceiptsTab from '../components/ReceiptsTab'
 import SuppliersTab from '../components/SuppliersTab'
+import UsageTab from '../components/UsageTab'
 import { stockValue } from '../utils/receipt'
 
-/** FR-09: ingredients, stock movements and low-stock warnings; receipts with prices and suppliers (FR-09.5 → FR-09.7). */
+/** FR-09: ingredients, stock movements and low-stock warnings; receipts, suppliers (FR-09.5 → FR-09.7); usage (FR-09.10). */
 export default function InventoryPage() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
@@ -80,7 +81,11 @@ export default function InventoryPage() {
                   scroll={{ x: 960 }}
                   columns={[
                     { title: 'Nguyên liệu', dataIndex: 'name' },
-                    { title: 'Tồn', render: (_, i) => `${i.quantity} ${i.unit}` },
+                    {
+                      title: 'Tồn',
+                      // BR-38: dishes can take stock below zero; it needs a stock count.
+                      render: (_, i) => <Typography.Text type={i.quantity < 0 ? 'danger' : undefined}>{`${i.quantity} ${i.unit}`}</Typography.Text>,
+                    },
                     { title: 'Tối thiểu', render: (_, i) => `${i.minQuantity} ${i.unit}` },
                     { title: 'Giá vốn', render: (_, i) => (i.unitCost === null ? '' : `${money(i.unitCost)}/${i.unit}`) },
                     {
@@ -110,6 +115,7 @@ export default function InventoryPage() {
           },
           { key: 'receipts', label: 'Phiếu nhập', children: <ReceiptsTab items={items.data ?? []} /> },
           { key: 'suppliers', label: 'Nhà cung cấp', children: <SuppliersTab /> },
+          { key: 'usage', label: 'Tiêu hao', children: <UsageTab /> },
         ]}
       />
 

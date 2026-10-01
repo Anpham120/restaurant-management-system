@@ -76,6 +76,7 @@ classDiagram
         Long unitCost
         isLowStock() boolean
         receive(quantity, unitPrice)
+        use(quantity)
     }
     class StockMovement {
         Long id
@@ -102,6 +103,10 @@ classDiagram
         BigDecimal quantity
         long unitPrice
         lineTotal() long
+    }
+    class RecipeLine {
+        Long id
+        BigDecimal quantity
     }
     class ServiceRequest {
         Long id
@@ -159,6 +164,9 @@ classDiagram
     GoodsReceipt "1" *-- "1..*" ReceiptLine
     ReceiptLine "0..*" --> "1" InventoryItem
     GoodsReceipt "0..1" --> "0..*" StockMovement : tạo
+    MenuItem "1" *-- "0..*" RecipeLine : định lượng
+    RecipeLine "0..*" --> "1" InventoryItem
+    OrderItem "0..1" --> "0..*" StockMovement : trừ kho
     Employee "1" --> "0..*" Order : mở đơn
     Employee "0..1" --> "0..*" Payment : xác nhận
     Employee "1" --> "0..*" StockMovement : lập phiếu
@@ -185,7 +193,7 @@ Các kiểu liệt kê:
 | `PaymentStatus` | `PENDING`, `PAID`, `CANCELLED` |
 | `Confirmation` | `AUTO` (webhook), `MANUAL` (xác nhận tay) |
 | `MatchStatus` | `MATCHED`, `UNMATCHED`, `IGNORED` (tiền ra) |
-| `MovementType` | `IN` (nhập), `OUT` (xuất), `ADJUST` (kiểm kê) |
+| `MovementType` | `IN` (nhập), `OUT` (xuất), `ADJUST` (kiểm kê), `SALE` (bán món: trừ theo định lượng khi món vào bếp, hoàn khi huỷ món Chờ làm) |
 | `ServiceRequestType` | `CALL_STAFF` (gọi nhân viên), `BILL` (xin tính tiền) |
 | `AuditAction` | `ITEM_CANCELLED` (huỷ hoặc từ chối món), `MANUAL_CONFIRMATION` (xác nhận tay chuyển khoản), `PRICE_CHANGED` (đổi giá món), `DISCOUNT_GIVEN` (giảm giá, tặng món có hiệu lực) |
 | `AdjustmentType` | `DISCOUNT` (giảm một số tiền trên cả bill), `COMP` (tặng nguyên một dòng món) |
@@ -202,6 +210,7 @@ Ghi chú thiết kế:
 - Trạng thái bàn **không lưu** mà tính từ đơn đang mở (BR-04), nên không bao giờ lệch.
 - `OrderTable` nối đơn với từng bàn nó giữ. Dòng còn hiệu lực (`releasedAt` rỗng) là bàn đang giữ; dòng đã trả là lịch sử chuyển bàn. `Order` vẫn giữ một **bàn chính** để in, báo cáo và chặn hai đơn cùng mở một bàn lúc khách quét QR.
 - `AuditEntry` lưu giá trị **thô**: trạng thái món là mã (`COOKING`), giá là số. Màn hình tự đổi sang chữ và định dạng tiền, còn báo cáo sau này đọc được ngay.
+- Hoàn kho khi huỷ món đọc lại các biến động `SALE` đã ghi cho chính món đó (`StockMovement.orderItemId`), không tính lại theo định lượng hiện tại, nên sửa định lượng giữa chừng không làm lệch kho.
 
 ## 6.2 Trạng thái món
 
@@ -267,7 +276,7 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Thu tiền, tạo VietQR, xác nhận tay, in phiếu thanh toán | ✅ | ✅ | | | ✅ |
 | Giảm giá, tặng món (trong hạn mức thì có hiệu lực ngay) | ✅ | ✅ | | | ✅ |
 | Duyệt giảm giá vượt hạn mức | ✅ | ✅ | | | |
-| Kho, nhà cung cấp, phiếu nhập có giá | ✅ | ✅ | | | |
+| Kho, nhà cung cấp, phiếu nhập có giá, định lượng món, tiêu hao | ✅ | ✅ | | | |
 | Báo cáo | ✅ | ✅ | | | |
 | Xem nhật ký thao tác | ✅ | ✅ | | | |
 | Hồ sơ, mức lương, bảng lương | ✅ | | | | |

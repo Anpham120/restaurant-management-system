@@ -5,7 +5,7 @@ export type OrderType = 'DINE_IN' | 'TAKEAWAY'
 export type OrderStatus = 'OPEN' | 'PAID' | 'CANCELLED'
 export type ItemStatus = 'PENDING' | 'WAITING' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED'
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
-export type MovementType = 'IN' | 'OUT' | 'ADJUST'
+export type MovementType = 'IN' | 'OUT' | 'ADJUST' | 'SALE'
 export type PayType = 'HOURLY' | 'MONTHLY'
 export type LeaveType = 'PAID' | 'UNPAID'
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
@@ -297,6 +297,29 @@ export interface GoodsReceipt {
   createdAt: string
   total: number
   lines: ReceiptLine[]
+}
+
+/** FR-09.8: how much of an ingredient one portion of a dish takes, in the ingredient's unit (BR-38). */
+export interface RecipeLine {
+  inventoryItemId: number
+  itemName: string
+  unit: string
+  quantity: number
+}
+
+export interface Recipe {
+  menuItemId: number
+  lines: RecipeLine[]
+}
+
+/** FR-09.10, in the ingredient's unit: used and removed left the stock; adjusted is negative when a count found less. */
+export interface StockUsage {
+  inventoryItemId: number
+  name: string
+  unit: string
+  used: number
+  removed: number
+  adjusted: number
 }
 
 export interface StockMovement {

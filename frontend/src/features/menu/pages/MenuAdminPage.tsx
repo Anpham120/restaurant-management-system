@@ -3,20 +3,28 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
-import type { Category, MenuItem } from '@/shared/api/types'
+import type { Category, MenuItem, Recipe } from '@/shared/api/types'
 import { money } from '@/shared/utils/format'
+import RecipeModal from '../components/RecipeModal'
 
 type Editing<T> = { record: T | null } | null
 
-/** FR-03: categories and dishes. Ordered dishes can only be marked sold out (BR-18). */
+/** FR-03: categories and dishes. Ordered dishes can only be marked sold out (BR-18). FR-09.8: dish recipes. */
 export default function MenuAdminPage() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
   const [categoryEdit, setCategoryEdit] = useState<Editing<Category>>(null)
   const [itemEdit, setItemEdit] = useState<Editing<MenuItem>>(null)
+  const [recipeOf, setRecipeOf] = useState<MenuItem | null>(null)
 
   const categories = useQuery({ queryKey: ['categories'], queryFn: () => api.get<Category[]>('/categories').then((r) => r.data) })
   const items = useQuery({ queryKey: ['menu-items'], queryFn: () => api.get<MenuItem[]>('/menu-items').then((r) => r.data) })
+  const recipes = useQuery({ queryKey: ['recipes'], queryFn: () => api.get<Recipe[]>('/recipes').then((r) => r.data) })
+  const recipeFor = (id: number) => recipes.data?.find((r) => r.menuItemId === id)
+  const recipeLabel = (id: number) => {
+    const count = recipeFor(id)?.lines.length
+    return count ? `Định lượng (${count})` : 'Định lượng'
+  }
 
   const done = (text: string) => () => {
     message.success(text)
@@ -68,6 +76,7 @@ export default function MenuAdminPage() {
               rowKey="id"
               pagination={false}
               dataSource={categories.data ?? []}
+              scroll={{ x: 'max-content' }}
               columns={[
                 { title: 'Tên', dataIndex: 'name' },
                 { title: 'Thứ tự', dataIndex: 'sortOrder', width: 70 },
@@ -92,6 +101,7 @@ export default function MenuAdminPage() {
               size="small"
               rowKey="id"
               dataSource={items.data ?? []}
+              scroll={{ x: 'max-content' }}
               columns={[
                 { title: 'Món', dataIndex: 'name' },
                 { title: 'Danh mục', dataIndex: 'categoryName' },
@@ -106,6 +116,7 @@ export default function MenuAdminPage() {
                   title: '',
                   render: (_, m) => (
                     <Space>
+                      <Button size="small" onClick={() => setRecipeOf(m)}>{recipeLabel(m.id)}</Button>
                       <Button size="small" onClick={() => setItemEdit({ record: m })}>Sửa</Button>
                       <Popconfirm title="Xoá món?" onConfirm={() => deleteItem.mutate(m.id)}>
                         <Button size="small" danger>Xoá</Button>
@@ -167,6 +178,8 @@ export default function MenuAdminPage() {
           <Button type="primary" htmlType="submit" block loading={saveItem.isPending}>Lưu</Button>
         </Form>
       </Modal>
+
+      <RecipeModal dish={recipeOf} recipe={recipeOf ? recipeFor(recipeOf.id) : undefined} onClose={() => setRecipeOf(null)} />
     </>
   )
 }

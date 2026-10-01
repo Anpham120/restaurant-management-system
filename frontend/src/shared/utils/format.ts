@@ -53,6 +53,7 @@ export const movementLabel: Record<MovementType, string> = {
   IN: 'Nhập kho',
   OUT: 'Xuất kho',
   ADJUST: 'Kiểm kê',
+  SALE: 'Bán món',
 }
 
 export const requestTypeLabel: Record<ServiceRequestType, string> = {

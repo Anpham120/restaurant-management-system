@@ -1,5 +1,6 @@
 package vn.khoibep.rms.inventory.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +15,8 @@ import vn.khoibep.rms.inventory.entity.InventoryItem;
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, Long> {
 
     List<InventoryItem> findAllByOrderByNameAsc();
+
+    List<InventoryItem> findByIdInOrderByNameAsc(Collection<Long> ids);
 
     boolean existsByNameIgnoreCase(String name);
 
