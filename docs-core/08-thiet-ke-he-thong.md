@@ -51,6 +51,7 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `POST /orders/{id}/payments/transfer` | CASHIER, MANAGER | FR-08.3 |
 | | `POST /payments/{id}/confirm` | CASHIER, MANAGER | FR-08.6 |
 | | `GET /bank-transactions?status=UNMATCHED` | CASHIER, MANAGER | FR-08.7 |
+| | `GET /bank-transactions/webhook-status` (webhook SePay có đang lỗi liên tiếp không) | CASHIER, MANAGER | FR-08.8 |
 | | `POST /webhooks/sepay` | SePay (header API key) | FR-08.4 |
 | Khách | `GET /public/tables/{qrToken}` | Công khai | FR-06.1, FR-06.4 |
 | | `GET /public/menu` | Công khai | FR-06.1 |
@@ -72,12 +73,14 @@ Giới hạn tần suất (FR-01.5, FR-06.8):
 
 Tài liệu API chạy được (Swagger UI) nằm ở `/swagger-ui.html` khi chạy backend.
 
+Ngoài `/api`, backend có `/actuator/health` (công khai, pipeline gọi để kiểm tra bản mới) và `/actuator/metrics` (chỉ ADMIN, NFR-11, xem [tài liệu 09 mục 9.5](09-kien-truc-va-cicd.md#95-triển-khai)).
+
 ## 8.2 Realtime (WebSocket STOMP)
 
 | Kênh | Ai nghe | Xác thực | Sự kiện |
 |---|---|---|---|
 | Điểm kết nối `/ws` | — | JWT trong header `Authorization` của khung `CONNECT`. Khách kết nối không cần token | — |
-| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp), `REQUESTS_CHANGED` (khách gọi, hoặc có người nhận) |
+| `/topic/staff` | Phục vụ, bếp, thu ngân, quản lý | Bắt buộc JWT | `ORDER_CHANGED`, `PAYMENT_PAID`, `MENU_CHANGED`, `TABLES_CHANGED`, `BANK_TRANSACTION` (có giao dịch không khớp), `REQUESTS_CHANGED` (khách gọi, hoặc có người nhận), `WEBHOOK_STATUS` (webhook SePay bắt đầu lỗi liên tiếp, hoặc chạy lại) |
 | `/topic/guest/{qrToken}` | Điện thoại khách ở bàn đó | Không cần | `ORDER_CHANGED`, `PAYMENT_PAID`, `REQUESTS_CHANGED` |
 | `/topic/menu` | Điện thoại khách | Không cần | `MENU_CHANGED` (có món vừa hết hoặc bán lại) |
 
@@ -102,7 +105,7 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 | `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nút mở đơn và mang về; kêu khi có món xong, món QR mới | FR-04.4, FR-05.1, FR-07.5 |
 | `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; kêu như sơ đồ bàn | FR-05, FR-06.3, FR-07.5 |
 | `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
-| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp | FR-08 |
+| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; cảnh báo khi webhook SePay lỗi liên tiếp | FR-08 |
 | `/admin/menu` | MANAGER | Danh mục và món | FR-03 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
 | `/admin/inventory` | MANAGER | Nguyên liệu, nhập, xuất, kiểm kê, lịch sử | FR-09 |

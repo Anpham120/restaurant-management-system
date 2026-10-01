@@ -85,6 +85,7 @@ Nối SePay thật:
 1. Trên my.sepay.vn, tạo webhook trỏ tới `https://<tên-miền>/api/webhooks/sepay`, sự kiện "Có tiền vào", xác thực **API Key**.
 2. Đặt cùng khoá đó vào biến `SEPAY_API_KEY`.
 3. Nhập tài khoản nhận tiền ở màn hình **Cài đặt**.
+4. Ở bước **Cảnh báo** khi tạo webhook, bật thông báo khi webhook lỗi. Máy chủ chỉ tự báo được khi SePay gọi tới mà bị lỗi; còn khi SePay không gọi tới được (sai tên miền, chứng chỉ hết hạn) thì chỉ SePay biết.
 
 ## Kiểm thử
 
@@ -198,3 +199,25 @@ sh restore.sh backups/rms-2026-10-05-0300.dump
 ```
 
 Nên chép thư mục `backups/` ra ngoài máy chủ định kỳ (ổ khác, Google Drive...): mất máy chủ là mất luôn bản sao lưu nằm trên đó.
+
+## Log, số liệu và cảnh báo
+
+Trên máy chủ, backend ghi log dạng JSON, mỗi dòng một đối tượng theo chuẩn ECS. Số liệu của Spring Boot Actuator chỉ ADMIN xem được, và Nginx không mở chúng ra ngoài, nên phải hỏi từ trong mạng Docker. Chạy trong `~/bnn-rms` (hoặc `~/bnn-rms-staging`):
+
+```bash
+# Chỉ xem các dòng lỗi
+docker compose -f docker-compose.prod.yml logs backend | grep '"level":"ERROR"'
+
+# Lấy token của một tài khoản ADMIN (cần jq)
+read -r -p "Tài khoản: " U; read -rs -p "Mật khẩu: " P; echo
+TOKEN=$(jq -n --arg u "$U" --arg p "$P" '{username: $u, password: $p}' \
+  | curl -s -H "Content-Type: application/json" -d @- https://<tên-miền>/api/auth/login | jq -r .token)
+
+# Số lần webhook SePay bị từ chối vì sai khoá API. Bỏ phần sau /actuator/metrics để xem danh sách số liệu
+docker compose -f docker-compose.prod.yml exec frontend wget -qO- --header "Authorization: Bearer $TOKEN" \
+  "http://backend:8080/actuator/metrics/http.server.requests?tag=uri:/api/webhooks/sepay&tag=status:401"
+```
+
+Ở máy dev, backend mở cổng 8081 nên hỏi thẳng được: `curl -H "Authorization: Bearer $TOKEN" http://localhost:8081/actuator/metrics`.
+
+Webhook SePay lỗi 3 lần liên tiếp thì màn hình thu ngân hiện cảnh báo, và log có một dòng `ERROR`. Một webhook hợp lệ tới thì cảnh báo tự tắt.

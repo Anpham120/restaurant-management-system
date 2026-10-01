@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Col, Empty, Flex, InputNumber, Modal, Popconfirm, Result, Row, Table, Tabs, Tag, Typography } from 'antd'
 import { api, errorMessage } from '@/shared/api/client'
-import type { BankTransaction, Order, Payment, PaymentInstruction } from '@/shared/api/types'
+import type { BankTransaction, Order, Payment, PaymentInstruction, WebhookStatus } from '@/shared/api/types'
 import StatusTag from '@/features/order/components/StatusTag'
 import TransferQr from '../components/TransferQr'
 import { cashSuggestions, money, time } from '@/shared/utils/format'
@@ -11,7 +11,7 @@ function orderTitle(o: Order) {
   return o.type === 'TAKEAWAY' ? `Mang về #${o.id}` : `Bàn ${o.tableName}`
 }
 
-/** FR-08: bills, cash, VietQR with automatic confirmation, manual confirmation, unmatched transfers. */
+/** FR-08: bills, cash, VietQR with automatic confirmation, manual confirmation, unmatched transfers, webhook warning. */
 export default function CashierPage() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
@@ -29,6 +29,10 @@ export default function CashierPage() {
   const unmatched = useQuery({
     queryKey: ['bank-transactions'],
     queryFn: () => api.get<BankTransaction[]>('/bank-transactions').then((r) => r.data),
+  })
+  const webhook = useQuery({
+    queryKey: ['webhook-status'],
+    queryFn: () => api.get<WebhookStatus>('/bank-transactions/webhook-status').then((r) => r.data),
   })
 
   const onError = (e: unknown) => message.error(errorMessage(e))
@@ -151,6 +155,16 @@ export default function CashierPage() {
       <div className="page-title">
         <Typography.Title level={3}>Thu ngân</Typography.Title>
       </div>
+      {/* FR-08.8: SePay keeps failing, so transfers are not confirmed by themselves. */}
+      {webhook.data?.failing && (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title="Chuyển khoản đang không tự xác nhận"
+          description={`Khách báo đã chuyển khoản thì kiểm tra tiền về trong app ngân hàng rồi bấm Xác nhận tay, và báo quản lý. Chi tiết: webhook SePay lỗi ${webhook.data.failures} lần liên tiếp từ ${time(webhook.data.since)}, lần gần nhất: ${webhook.data.lastError}.`}
+        />
+      )}
       <Tabs
         items={[
           {

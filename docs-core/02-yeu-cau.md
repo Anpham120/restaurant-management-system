@@ -84,6 +84,7 @@
 | FR-08.5 | **Khách tự thanh toán** trên trang QR: bấm "Thanh toán" → hiện VietQR → tự xác nhận | M | BR-13, 14 |
 | FR-08.6 | Thu ngân **xác nhận tay** khi webhook không tới. Hệ thống ghi người xác nhận | M | BR-17 |
 | FR-08.7 | Xem danh sách giao dịch ngân hàng **không khớp** để kiểm tra | S | BR-16 |
+| FR-08.8 | **Cảnh báo webhook lỗi**: webhook SePay bị từ chối hoặc xử lý lỗi **3 lần liên tiếp** thì màn hình thu ngân hiện cảnh báo trong ≤ 2 giây, kèm lý do và lúc bắt đầu lỗi, để thu ngân kiểm tra app ngân hàng rồi xác nhận tay. Nhận được một webhook hợp lệ thì cảnh báo tự tắt | C | BR-32 |
 
 ### FR-09 Kho nguyên liệu (MANAGER)
 
@@ -164,3 +165,4 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | NFR-08 | Tiền là số nguyên VND. Giờ theo múi giờ Việt Nam (`Asia/Ho_Chi_Minh`) | Test báo cáo |
 | NFR-09 | Test tích hợp chạy với **PostgreSQL thật** (Testcontainers). CI chạy test mỗi lần push | Xem pipeline |
 | NFR-10 | Triển khai bằng **Docker Compose**. Quay về phiên bản trước bằng tag image | Làm thử một lần |
+| NFR-11 | Trên staging và production, backend ghi **log dạng JSON** (chuẩn ECS). Số liệu vận hành xem ở `/actuator/metrics`, **chỉ ADMIN**, và Nginx không mở đường dẫn này ra ngoài | Xem `docker compose logs backend`; test tích hợp phân quyền |

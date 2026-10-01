@@ -110,6 +110,7 @@ frontend/src/
 - Mật khẩu băm **BCrypt**. Đăng nhập trả **JWT HS256** có hạn 12 giờ. Khoá bí mật lấy từ biến môi trường `APP_JWT_SECRET`.
 - Mỗi request kiểm tra nhân viên **còn hoạt động** (BR-03).
 - API công khai chỉ gồm `/api/public/**`, `/api/auth/login`, `/api/webhooks/sepay`, `/ws`, `/actuator/health`.
+- Actuator chỉ mở `health` (công khai), `info` và `metrics` (chỉ ADMIN). Nginx chỉ chuyển tiếp `/actuator/health`, nên từ Internet không gọi được các endpoint còn lại.
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
 - Giới hạn tần suất (Bucket4j, lưu trong bộ nhớ của server): mỗi tên đăng nhập thử tối đa 10 lần mỗi phút (BR-31); trang QR của mỗi bàn gửi tối đa 10 lần mỗi phút và giữ tối đa 30 món chờ xác nhận (BR-30). Quá giới hạn thì trả 429 kèm `Retry-After`. Không giới hạn theo IP: sau Nginx, IP đầu tiên trong `X-Forwarded-For` do client tự gửi được, còn khách trong quán lại dùng chung một IP Wi-Fi.
 - Khi triển khai thật phải có **HTTPS** vì SePay chỉ gọi được địa chỉ công khai. Có thể đặt Caddy hoặc Cloudflare Tunnel trước Nginx.
@@ -133,6 +134,12 @@ Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. 
 - `restore.sh --check` khôi phục thử vào một CSDL tạm, in số dòng từng bảng rồi xoá CSDL tạm, không đụng dữ liệu thật.
 - `restore.sh` không có `--check` thì khôi phục thật, có hỏi xác nhận trước.
 - Thỉnh thoảng nên chép thư mục `backups/` ra ngoài máy chủ: mất máy chủ là mất luôn bản sao lưu nằm trên đó.
+
+**Log, số liệu và cảnh báo (P3-05, NFR-11).**
+- Trên staging và production, backend ghi log dạng JSON theo chuẩn ECS (Elastic Common Schema), bật bằng biến `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs` trong `deploy/docker-compose.prod.yml`. Mỗi dòng là một đối tượng JSON có `@timestamp`, `log.level`, `log.logger`, `message`, nên lọc được bằng `jq` hoặc đưa thẳng vào công cụ gom log. Máy dev giữ log dạng chữ cho dễ đọc.
+- `/actuator/metrics` cho các số liệu Spring Boot tự đo: `http.server.requests` (số request và thời gian trả lời theo đường dẫn và mã trả về), `jvm.memory.used`, `hikaricp.connections.active`... Chỉ ADMIN gọi được và Nginx không chuyển tiếp, nên phải hỏi từ trong mạng Docker của máy chủ. Lệnh mẫu ở README.
+- Cảnh báo webhook (BR-32): SePay gửi lại một webhook lỗi sau 1, 2, 4, 7, 12, 20 và 33 phút kể từ lần đầu. Với ngưỡng 3 lần liên tiếp, webhook hỏng thì khoảng 2 phút sau màn hình thu ngân hiện cảnh báo; một lần lỗi thoáng qua mà lần gửi lại thành công thì không báo. Lúc bắt đầu đợt lỗi, backend ghi thêm một dòng log `ERROR`.
+- Server không thấy được lỗi kết nối (SePay không gọi tới nơi), nên khi tạo webhook trên my.sepay.vn nên bật cả bước **Cảnh báo** của SePay. SePay báo khi cả 8 lần gửi đều lỗi, tức sau khoảng 33 phút.
 
 ## 9.6 Nhánh và pipeline CI/CD
 
@@ -169,7 +176,7 @@ flowchart LR
 | Mức | Công cụ | Nội dung chính |
 |---|---|---|
 | Đơn vị | JUnit 5 | Chuyển trạng thái món (BR-07), dò mã thanh toán trong nội dung chuyển khoản (BR-15), công thức lương (BR-26) |
-| Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, phân quyền, kho, xếp ca, chấm công, nghỉ phép, bảng lương. Test chấm công đặt giờ bằng một `Clock` giả |
+| Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, cảnh báo webhook lỗi liên tiếp, phân quyền (cả quyền xem số liệu Actuator), kho, xếp ca, chấm công, nghỉ phép, bảng lương. Test chấm công đặt giờ bằng một `Clock` giả |
 | Frontend | Vitest | Định dạng tiền, nhãn trạng thái, giờ công, bảng lương xuất Excel |
 | Component | Vitest + Testing Library, trình duyệt giả lập jsdom | Chọn món vào giỏ (tổng tiền, bớt món, ghi chú, món hết, đổi nhóm), giỏ tối đa 50 phần mỗi món (BR-06), mã VietQR, nhãn trạng thái món |
 | Độ phủ | JaCoCo | Backend phải chạy tới ≥ 70% số dòng, thấp hơn thì CI đỏ. Con số in ở trang kết quả của lần chạy CI, báo cáo HTML ở artifact `backend-coverage` |

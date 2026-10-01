@@ -14,6 +14,8 @@ public record RealtimeEvent(String type, Long orderId, Long tableId, String gues
     public static final String TABLES_CHANGED = "TABLES_CHANGED";
     public static final String BANK_TRANSACTION = "BANK_TRANSACTION";
     public static final String REQUESTS_CHANGED = "REQUESTS_CHANGED";
+    /** The SePay webhook started failing in a row, or works again (BR-32). */
+    public static final String WEBHOOK_STATUS = "WEBHOOK_STATUS";
 
     /** Why staff screens ring. Each screen decides which alerts it rings for. */
     public enum Alert {

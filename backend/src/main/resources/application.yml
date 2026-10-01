@@ -20,7 +20,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # health is public; the others are for ADMIN only (SecurityConfig) and Nginx does not forward them (NFR-11).
+        include: health,info,metrics
 
 springdoc:
   swagger-ui:

@@ -156,6 +156,14 @@ export interface BankTransaction {
   receivedAt: string
 }
 
+/** BR-32: failing once SePay deliveries failed 3 times in a row; since is when that run of failures began. */
+export interface WebhookStatus {
+  failing: boolean
+  failures: number
+  since: string | null
+  lastError: string | null
+}
+
 export interface GuestItem {
   id: number
   itemName: string
@@ -349,7 +357,7 @@ export interface MyPayslip {
 export type StaffAlert = 'NEW_DISHES' | 'GUEST_DISHES' | 'DISH_READY' | 'SERVICE_REQUEST'
 
 export interface RealtimeMessage {
-  type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION' | 'REQUESTS_CHANGED'
+  type: 'ORDER_CHANGED' | 'PAYMENT_PAID' | 'MENU_CHANGED' | 'TABLES_CHANGED' | 'BANK_TRANSACTION' | 'REQUESTS_CHANGED' | 'WEBHOOK_STATUS'
   orderId: number | null
   tableId: number | null
   alert: StaffAlert | null

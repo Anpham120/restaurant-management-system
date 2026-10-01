@@ -83,6 +83,9 @@ export default function StaffLayout() {
         case 'REQUESTS_CHANGED':
           refresh(['service-requests'])
           break
+        case 'WEBHOOK_STATUS':
+          refresh(['webhook-status'])
+          break
       }
       if (m.alert && soundOn && pageAlerts(location.pathname).includes(m.alert)) ring(m.alert)
     },
