@@ -22,6 +22,13 @@ Là **quản trị**, tôi muốn khoá tài khoản người đã nghỉ để 
 - AC1: Khi khoá tài khoản đang đăng nhập thì yêu cầu kế tiếp của người đó bị từ chối (401).
 - AC2: Nhân viên không có nút xoá, chỉ có khoá và mở khoá.
 
+### US-36 Thu hồi phiên đăng nhập — FR-01.6, FR-01.7
+Là **nhân viên**, tôi muốn đổi mật khẩu hoặc đăng xuất mọi thiết bị, để không ai dùng được phiên cũ, ví dụ khi mất điện thoại.
+- AC1: Đổi mật khẩu ở máy A thì máy B đang đăng nhập bị từ chối (401) ở yêu cầu kế tiếp và về trang đăng nhập; máy A vẫn dùng tiếp.
+- AC2: Quản trị đặt lại mật khẩu thì mọi phiên của nhân viên đó hết hiệu lực.
+- AC3: Bấm "Đăng xuất mọi thiết bị" thì mọi phiên, kể cả máy đang dùng, hết hiệu lực; đăng nhập lại thì dùng bình thường.
+- AC4: Token đã thu hồi cũng không kết nối realtime được.
+
 ## Quản lý (MANAGER)
 
 ### US-04 Quản lý thực đơn — FR-03.1, FR-03.2
