@@ -40,7 +40,9 @@ public class SepayWebhookService {
             log.info("SePay transaction {} already processed", request.id());
             return;
         }
-        BankTransaction tx = BankTransaction.from(request);
+        BankTransaction tx = BankTransaction.received(String.valueOf(request.id()), request.gateway(),
+                request.accountNumber(), request.transferAmount() == null ? 0 : request.transferAmount(),
+                request.content(), request.code(), request.transferType());
         if (!"in".equals(tx.getTransferType())) {
             tx.resolve(MatchStatus.IGNORED, null, "Tiền ra");
             bankTransactions.save(tx);

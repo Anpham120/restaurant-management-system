@@ -53,7 +53,7 @@ flowchart LR
 │       ├── leave/  payroll/         nghỉ phép, bảng lương
 │       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên)
 ├── frontend/                        React + Vite
-│   └── src/ api/ auth/ realtime/ layouts/ pages/ utils/
+│   └── src/ app/ (định tuyến, khung trang), shared/ (API, realtime, định dạng), features/<module>/
 ├── scripts/check-erd.mjs            so ERD với migration (database-first)
 ├── perf/                            kiểm thử tải k6, dữ liệu bán hàng 6 tháng để thử
 ├── docker-compose.yml               chạy toàn bộ ở máy dev
@@ -80,6 +80,30 @@ order/
 - Module nào có thành phần chạy lúc khởi động thì thêm **config/**, ví dụ `employee/config/DemoAccountsInitializer`.
 
 Module không có bảng riêng thì bỏ các thư mục không dùng: `auth` và `report` chỉ có `controller/`, `service/`, `dto/`. Test tích hợp đặt ở gốc module (`order/OrderFlowIntegrationTest`); test đơn vị đặt cạnh class nó kiểm tra (`order/enums/ItemStatusTest`).
+
+`ArchitectureTest` (ArchUnit) giữ cấu trúc này khi cả nhóm cùng viết code; đặt sai chỗ thì CI đỏ, kèm tên class sai:
+- Controller, service, repository, entity, enum, DTO phải nằm đúng thư mục con của lớp mình.
+- Chỉ gọi xuống: controller không dùng thẳng repository, không ai gọi controller, repository và entity không gọi service.
+- Entity và enum không dùng DTO, vì dữ liệu không nên phụ thuộc vào cách API định dạng yêu cầu và trả lời.
+
+Frontend chia theo cùng các module đó, để phần việc của mỗi người (CSDL, backend, frontend) mang cùng một tên:
+
+```text
+frontend/src/
+├── main.tsx, index.css
+├── app/          App.tsx (định tuyến), StaffLayout.tsx (khung trang nhân viên)
+├── shared/       api/ (client, types), realtime/useRealtime, utils/format
+├── test/         setup.ts
+└── features/
+    ├── order/    pages/ (OrderPage, KitchenPage, GuestPage), components/, hooks/useCart, utils/sound
+    ├── payment/  pages/CashierPage, components/TransferQr
+    ├── payroll/  pages/PayrollPage, utils/payroll
+    └── ...       auth, table, settings, menu, inventory, report, employee, schedule, attendance, leave
+```
+
+- Mỗi feature chỉ có các thư mục nó cần: `pages/`, `components/`, `hooks/`, `utils/`, `context/`.
+- Import trong cùng feature dùng đường dẫn tương đối (`../utils/payroll`); import sang chỗ khác dùng alias `@/` trỏ vào `src/` (`@/shared/api/client`, `@/features/attendance/utils/attendance`).
+- Test đặt cạnh file nó kiểm tra (`features/payroll/utils/payroll.test.ts`).
 
 ## 9.4 Bảo mật
 
@@ -149,6 +173,7 @@ flowchart LR
 | Frontend | Vitest | Định dạng tiền, nhãn trạng thái, giờ công, bảng lương xuất Excel |
 | Component | Vitest + Testing Library, trình duyệt giả lập jsdom | Chọn món vào giỏ (tổng tiền, bớt món, ghi chú, món hết, đổi nhóm), giỏ tối đa 50 phần mỗi món (BR-06), mã VietQR, nhãn trạng thái món |
 | Độ phủ | JaCoCo | Backend phải chạy tới ≥ 70% số dòng, thấp hơn thì CI đỏ. Con số in ở trang kết quả của lần chạy CI, báo cáo HTML ở artifact `backend-coverage` |
+| Kiến trúc | ArchUnit (`ArchitectureTest`) | Mỗi class nằm đúng thư mục con của lớp mình, và chỉ gọi xuống các lớp dưới (mục 9.3) |
 | E2E | Playwright, chạy trong CI | Kịch bản nghiệm thu ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu): khách QR, phục vụ, bếp, chuyển khoản, bàn trống; phân quyền; trang "Của tôi" |
 | Tải | k6 (`perf/load-test.js`), workflow `load-test.yml` chạy tay ở tab Actions | NFR-02: 30 người trong 2 phút (14 khách gọi món QR, 10 phục vụ, 3 bếp, 2 thu ngân, 1 quản lý xem báo cáo 30 ngày), sau khi nạp 6 tháng bán hàng. Đạt khi p95 < 500 ms và dưới 1% request lỗi |
 | Nghiệm thu | 2 trình duyệt + 1 điện thoại | Kịch bản ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu), làm tay khi demo |
