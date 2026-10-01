@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V11__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V12__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -28,6 +28,8 @@ erDiagram
     INVENTORY_ITEM ||--o{ STOCK_MOVEMENT : "biến động"
     DINING_TABLE ||--o{ SERVICE_REQUEST : "khách gọi"
     EMPLOYEE |o--o{ SERVICE_REQUEST : "nhận"
+    EMPLOYEE ||--o{ AUDIT_ENTRY : "thực hiện"
+    ORDERS |o--o{ AUDIT_ENTRY : "liên quan"
     EMPLOYEE {
         bigint id PK
         varchar full_name
@@ -146,6 +148,18 @@ erDiagram
         bigint handled_by FK "null khi chưa ai nhận"
         timestamptz handled_at "null khi chưa ai nhận"
     }
+    AUDIT_ENTRY {
+        bigint id PK
+        varchar action "ITEM_CANCELLED, MANUAL_CONFIRMATION, PRICE_CHANGED"
+        bigint employee_id FK "người làm"
+        bigint order_id FK "null khi đổi giá món"
+        varchar subject "món và số lượng, mã thanh toán, hoặc tên món"
+        varchar before_value "mã trạng thái món hoặc giá cũ"
+        varchar after_value "mã trạng thái mới hoặc giá mới"
+        bigint amount "số tiền liên quan, VND"
+        varchar reason
+        timestamptz created_at
+    }
 ```
 
 ## 7.2 Ràng buộc quan trọng
@@ -164,6 +178,8 @@ erDiagram
 | Mỗi bàn một yêu cầu đang chờ cho mỗi loại | `CREATE UNIQUE INDEX ux_service_request_open ON service_request(table_id, type) WHERE handled_at IS NULL` | BR-29 |
 | Có người nhận thì có lúc nhận | `CHECK ((handled_by IS NULL) = (handled_at IS NULL))` trên `service_request` | BR-29 |
 | Không xoá dữ liệu đã dùng | Khoá ngoại **không** `ON DELETE CASCADE` từ `order_item` tới `menu_item`, từ `orders` tới `dining_table` | BR-18 |
+| Nhật ký chỉ thêm | Trigger `tr_audit_entry_append_only` (`BEFORE UPDATE OR DELETE`, từng dòng) và `tr_audit_entry_no_truncate` (`BEFORE TRUNCATE`) báo lỗi | BR-34 |
+| Loại thao tác hợp lệ | `CONSTRAINT ck_audit_entry_action CHECK (action IN (...))` trên `audit_entry`; thêm loại mới thì thay ràng buộc này trong migration mới | BR-34 |
 
 ## 7.3 Index cho màn hình
 
@@ -174,6 +190,7 @@ erDiagram
 | `payment(paid_at) WHERE status = 'PAID'` | Báo cáo doanh thu |
 | `stock_movement(inventory_item_id, created_at DESC)` | Lịch sử kho |
 | `bank_transaction(match_status)` | Danh sách không khớp |
+| `audit_entry(created_at DESC)` | Tra cứu nhật ký theo ngày |
 
 ## 7.4 Dữ liệu mẫu
 

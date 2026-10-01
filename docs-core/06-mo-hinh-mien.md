@@ -97,6 +97,16 @@ classDiagram
         String bankAccountName
         int waitAlertMinutes
     }
+    class AuditEntry {
+        Long id
+        AuditAction action
+        String subject
+        String beforeValue
+        String afterValue
+        Long amount
+        String reason
+        Instant createdAt
+    }
     Category "1" --> "0..*" MenuItem
     DiningTable "1" --> "0..*" Order : tối đa 1 đơn mở
     Order "1" *-- "1..*" OrderItem
@@ -109,6 +119,8 @@ classDiagram
     Employee "1" --> "0..*" StockMovement : lập phiếu
     DiningTable "1" --> "0..*" ServiceRequest : khách gọi
     Employee "0..1" --> "0..*" ServiceRequest : nhận
+    Employee "1" --> "0..*" AuditEntry : thực hiện
+    Order "0..1" --> "0..*" AuditEntry : liên quan
 ```
 
 Các kiểu liệt kê:
@@ -126,6 +138,7 @@ Các kiểu liệt kê:
 | `MatchStatus` | `MATCHED`, `UNMATCHED`, `IGNORED` (tiền ra) |
 | `MovementType` | `IN` (nhập), `OUT` (xuất), `ADJUST` (kiểm kê) |
 | `ServiceRequestType` | `CALL_STAFF` (gọi nhân viên), `BILL` (xin tính tiền) |
+| `AuditAction` | `ITEM_CANCELLED` (huỷ hoặc từ chối món), `MANUAL_CONFIRMATION` (xác nhận tay chuyển khoản), `PRICE_CHANGED` (đổi giá món) |
 | `PayType` (nhân sự) | `HOURLY` (theo giờ), `MONTHLY` (theo tháng) |
 | `LeaveType` (nhân sự) | `PAID` (có lương), `UNPAID` (không lương) |
 | `LeaveStatus` (nhân sự) | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
@@ -135,6 +148,7 @@ Ghi chú thiết kế:
 - **Trạng thái đặt ở từng món**, không đặt ở cả đơn, vì một bàn gọi nhiều lượt và mỗi món xong vào lúc khác nhau. Repo tham khảo đặt trạng thái ở cả đơn.
 - `OrderItem` lưu **tên và đơn giá lúc gọi** (BR-05), nên báo cáo và bill không đổi khi thực đơn đổi.
 - Trạng thái bàn **không lưu** mà tính từ đơn đang mở (BR-04), nên không bao giờ lệch.
+- `AuditEntry` lưu giá trị **thô**: trạng thái món là mã (`COOKING`), giá là số. Màn hình tự đổi sang chữ và định dạng tiền, còn báo cáo sau này đọc được ngay.
 
 ## 6.2 Trạng thái món
 
@@ -199,6 +213,7 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Thu tiền, tạo VietQR, xác nhận tay, in phiếu thanh toán | ✅ | ✅ | | | ✅ |
 | Kho | ✅ | ✅ | | | |
 | Báo cáo | ✅ | ✅ | | | |
+| Xem nhật ký thao tác | ✅ | ✅ | | | |
 | Hồ sơ, mức lương, bảng lương | ✅ | | | | |
 | Xem số liệu vận hành (Actuator) | ✅ | | | | |
 | Ca mẫu, xếp ca, duyệt nghỉ, sửa chấm công | ✅ | ✅ | | | |

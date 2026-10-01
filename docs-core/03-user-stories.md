@@ -45,6 +45,15 @@ Là **quản lý**, tôi muốn xem doanh thu và món bán chạy để quyết
 - AC1: Doanh thu chỉ tính khoản đã xác nhận, theo ngày giờ Việt Nam.
 - AC2: Món bị huỷ không tính vào món bán chạy.
 
+### US-29 Xem nhật ký thao tác — FR-16.1 → FR-16.3
+Là **quản lý**, tôi muốn biết ai đã huỷ món, xác nhận tay hay đổi giá, để phát hiện sai sót và gian lận.
+- AC1: Khi quản lý huỷ một món đang làm kèm lý do thì nhật ký có một dòng ghi người huỷ, món và số lượng, trạng thái trước khi huỷ, số tiền của món, lý do.
+- AC2: Khi thu ngân xác nhận tay một khoản chuyển khoản thì nhật ký ghi người xác nhận, mã thanh toán và số tiền.
+- AC3: Khi quản lý đổi giá món thì nhật ký ghi giá cũ và giá mới. Sửa món mà giá không đổi thì không ghi.
+- AC4: Thao tác bị từ chối (sai quyền, thiếu lý do) thì không có dòng nhật ký.
+- AC5: Không ai sửa hay xoá được nhật ký: API không có chức năng đó, và CSDL chặn lệnh sửa, xoá.
+- AC6: Phục vụ, bếp, thu ngân không xem được nhật ký (403).
+
 ## Phục vụ (WAITER)
 
 ### US-08 Mở đơn và gọi món — FR-05.1 → FR-05.3

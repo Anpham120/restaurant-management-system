@@ -64,3 +64,9 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 | BR-25 | Mỗi người **tối đa một lượt chấm công đang mở**; mỗi ca đã xếp chỉ chấm một lần. Chỉ vào ca khi hôm nay có ca, từ 15 phút trước giờ bắt đầu đến giờ kết thúc. Đi muộn = giờ vào − giờ bắt đầu ca; về sớm = giờ kết thúc ca − giờ ra; không âm. Số phút làm = giờ ra − giờ vào. Giờ tính theo giờ Việt Nam | Unique index `ux_attendance_open`, `ux_attendance_assignment`; `AttendanceService`, `Attendance.recompute` |
 | BR-26 | Lương theo giờ = số giờ làm × đơn giá giờ. Lương theo tháng = mức lương ÷ số ngày công chuẩn (mặc định 26) × (số ngày có chấm công + số ngày nghỉ có lương). Làm tròn xuống tới đồng. Thực nhận = lương theo công + thưởng − phạt, không âm. Phiếu lương **chốt hình thức và mức lương lúc tính**: sửa mức lương sau đó không đổi phiếu cũ | `PayCalculator`, `PayrollService`, `CHECK ck_payslip_net` |
 | BR-27 | Chỉ chốt bảng lương khi tháng đã kết thúc và không còn ai chưa ra ca. Bảng lương **đã chốt** thì không tính lại, không sửa thưởng phạt, và **chấm công, nghỉ phép của tháng đó bị khoá**. Sửa chấm công phải có lý do; hệ thống ghi người sửa và thời điểm. Nhân viên chỉ xem **phiếu đã chốt của chính mình** | `PayrollLock`, `PayrollService`, `AttendanceService` |
+
+## 5.7 Nhật ký thao tác
+
+| Mã | Quy tắc | Kiểm tra ở |
+|---|---|---|
+| BR-34 | Ghi nhật ký khi **huỷ hoặc từ chối món**, **xác nhận tay** chuyển khoản, **đổi giá món**. Dòng nhật ký ghi **cùng giao dịch** với thao tác: thao tác không thành thì không có dòng nào, ghi nhật ký lỗi thì thao tác cũng không thành. Người làm lấy từ token đăng nhập, không lấy từ dữ liệu gửi lên. Nhật ký **chỉ thêm**: không có API sửa, xoá; CSDL có trigger chặn `UPDATE`, `DELETE`, `TRUNCATE` | `AuditService`, `OrderItemService.cancel`, `PaymentService.confirmManually`, `MenuService.updateItem`; trigger trên `audit_entry` |
