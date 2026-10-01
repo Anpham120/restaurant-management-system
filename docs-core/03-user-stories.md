@@ -185,6 +185,15 @@ Là **thu ngân**, tôi muốn giảm giá hoặc tặng món cho khách khi có
 - AC5: Không có lý do, hoặc lý do "khác" mà không ghi chú, thì bị từ chối. Phục vụ không giảm giá được (403).
 - AC6: Khoản giảm có hiệu lực được ghi vào nhật ký thao tác.
 
+### US-34 Ca và két — FR-17.1 → FR-17.4
+Là **thu ngân**, tôi muốn mở ca, ghi phiếu chi và chốt ca bằng số đếm thực tế, để két khớp và mọi chênh lệch có lý do.
+- AC1: Chưa mở ca thì thu tiền mặt bị từ chối. Mở ca với quỹ đầu ca 1.000.000 đ; đang có ca mở thì không mở thêm được.
+- AC2: Thu tiền mặt bill 350.000 đ, khách đưa 500.000 đ: tiền mặt dự kiến tăng 350.000 đ. Chuyển khoản không đổi tiền mặt dự kiến.
+- AC3: Phiếu chi 120.000 đ "Mua đá": tiền mặt dự kiến giảm 120.000 đ. Phiếu chi trên 300.000 đ thì thu ngân bị từ chối, quản lý lập được. Không chi quá tiền mặt dự kiến.
+- AC4: Chốt ca với số đếm khác dự kiến mà không ghi lý do thì bị từ chối. Ca đã chốt không thêm phiếu chi được; muốn thu tiền mặt tiếp thì mở ca mới.
+- AC5: Quản lý xem danh sách ca theo ngày với quỹ đầu ca, tiền mặt thu, phiếu chi, dự kiến, thực đếm, chênh lệch và lý do.
+- AC6: Phục vụ và bếp không mở ca, không chi, không chốt ca được; chỉ quản lý và quản trị xem danh sách ca.
+
 ## Nhân sự
 
 Phần thêm theo yêu cầu của môn sau bản core (P2-05 → P2-09 trong [kế hoạch](10-ke-hoach-phat-trien.md)).
