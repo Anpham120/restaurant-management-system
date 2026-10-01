@@ -210,6 +210,14 @@ Là **thu ngân**, tôi muốn giảm giá hoặc tặng món cho khách khi có
 - AC5: Không có lý do, hoặc lý do "khác" mà không ghi chú, thì bị từ chối. Phục vụ không giảm giá được (403).
 - AC6: Khoản giảm có hiệu lực được ghi vào nhật ký thao tác.
 
+### US-38 Tách bill — FR-08.12, FR-08.13
+Là **thu ngân**, tôi muốn thu tiền một bàn thành nhiều lần khi khách muốn trả riêng, để mỗi người trả phần của mình mà tổng vẫn khớp bill.
+- AC1: Bill 1.000.001 đ chia đều 3 người: các phần 333.334 đ, 333.334 đ, 333.333 đ. Thu đủ 3 phần thì đơn đóng, bàn trống.
+- AC2: Thu một phần bằng tiền mặt, phần còn lại bằng VietQR: bill hiện đã thu và còn phải thu; webhook xác nhận phần chuyển khoản; đơn chỉ đóng khi thu đủ.
+- AC3: Theo món: tiền món 600.000 đ, giảm 60.000 đ; khách chọn các món 200.000 đ thì trả 180.000 đ.
+- AC4: Khoản thu lớn hơn số còn phải thu, hoặc bằng 0 khi bill chưa hết, thì bị từ chối. Đơn đã thu một phần thì không huỷ món, không giảm giá được nữa.
+- AC5: Phiếu thanh toán liệt kê từng khoản: phương thức, số tiền, tiền khách đưa và tiền thối, hoặc mã chuyển khoản. Báo cáo đếm một đơn dù thu nhiều khoản.
+
 ### US-34 Ca và két — FR-17.1 → FR-17.4
 Là **thu ngân**, tôi muốn mở ca, ghi phiếu chi và chốt ca bằng số đếm thực tế, để két khớp và mọi chênh lệch có lý do.
 - AC1: Chưa mở ca thì thu tiền mặt bị từ chối. Mở ca với quỹ đầu ca 1.000.000 đ; đang có ca mở thì không mở thêm được.
