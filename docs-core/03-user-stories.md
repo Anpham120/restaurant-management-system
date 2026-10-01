@@ -4,11 +4,12 @@ Mẫu: *Là [vai trò], tôi muốn [việc] để [lợi ích]*. Tiêu chí ch�
 
 ## Quản trị (ADMIN)
 
-### US-01 Đăng nhập — FR-01.1, FR-01.3
+### US-01 Đăng nhập — FR-01.1, FR-01.3, FR-01.5
 Là **nhân viên**, tôi muốn đăng nhập bằng tài khoản riêng để dùng đúng chức năng của vai trò mình.
 - AC1: Khi nhập đúng tên và mật khẩu thì vào màn hình theo vai trò: phục vụ → sơ đồ bàn; bếp → màn hình bếp; thu ngân → quầy thu ngân; quản lý và quản trị → báo cáo.
 - AC2: Khi sai mật khẩu thì báo "Sai tên đăng nhập hoặc mật khẩu", không nói rõ sai phần nào.
 - AC3: Khi tài khoản bị khoá thì không đăng nhập được.
+- AC4: Khi một tên đăng nhập bị thử quá 10 lần trong một phút thì lần tiếp theo bị chặn, kèm thời gian phải chờ.
 
 ### US-02 Quản lý tài khoản nhân viên — FR-02.1, FR-02.3
 Là **quản trị**, tôi muốn tạo tài khoản và gán vai trò để mỗi người chỉ làm việc của mình.
@@ -86,11 +87,13 @@ Là **bếp**, tôi muốn báo hết món để phục vụ và khách không g
 
 ## Khách (không đăng nhập)
 
-### US-14 Gọi món bằng QR — FR-06.1, FR-06.2, FR-06.5
+### US-14 Gọi món bằng QR — FR-06.1, FR-06.2, FR-06.5, FR-06.8
 Là **khách**, tôi muốn quét QR trên bàn để tự xem thực đơn và gọi món, không phải chờ nhân viên.
 - AC1: Quét QR mở trang có tên bàn, không cần đăng nhập hay cài app.
 - AC2: Khi gửi món thì các món hiện "Chờ xác nhận".
 - AC3: Khi bàn đang có đơn thì món mới được thêm vào đơn đó.
+- AC4: Khi bàn đã có 30 món chờ xác nhận thì khách được báo chờ nhân viên xác nhận rồi mới gọi thêm.
+- AC5: Khi một bàn gửi quá 10 lần trong một phút thì lần tiếp theo bị chặn, kèm thời gian phải chờ. Bàn khác không bị ảnh hưởng.
 
 ### US-15 Theo dõi món — FR-06.4
 Là **khách**, tôi muốn biết món của mình đang ở đâu để khỏi phải hỏi nhân viên.

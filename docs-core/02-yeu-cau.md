@@ -12,6 +12,7 @@
 | FR-01.2 | Mỗi API kiểm tra vai trò. Sai quyền trả 403 | M | BR-02 |
 | FR-01.3 | Tài khoản bị khoá không đăng nhập được, token cũ mất hiệu lực ngay | M | BR-03 |
 | FR-01.4 | Nhân viên tự đổi mật khẩu | S | BR-01 |
+| FR-01.5 | **Chống dò mật khẩu**: đăng nhập quá 10 lần trong một phút với cùng tên đăng nhập thì bị chặn tạm thời | M | BR-31 |
 
 ### FR-02 Quản lý nhân viên (ADMIN)
 
@@ -60,6 +61,7 @@
 | FR-06.5 | Khách gọi thêm nhiều lần khi bàn đang mở | M | BR-10 |
 | FR-06.6 | Khách bấm **Gọi nhân viên** hoặc **Yêu cầu tính tiền** trên trang QR. Máy phục vụ **kêu** và hiện yêu cầu, kèm số phút đã chờ | S | BR-29 |
 | FR-06.7 | Phục vụ bấm **Đã nhận** thì yêu cầu đóng, trang khách báo "Nhân viên đang tới". Hệ thống ghi người nhận và lúc nhận để đo thời gian phản hồi | S | BR-29 |
+| FR-06.8 | **Chống spam đơn QR**: mỗi bàn gửi tối đa 10 lần mỗi phút (gửi món, gọi nhân viên, thanh toán) và có tối đa 30 món chờ xác nhận | M | BR-30 |
 
 ### FR-07 Màn hình bếp
 

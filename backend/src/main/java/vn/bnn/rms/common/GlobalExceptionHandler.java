@@ -3,8 +3,10 @@ package vn.bnn.rms.common;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -19,6 +21,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApiException.class)
     ProblemDetail handleApi(ApiException ex) {
         return ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
+    }
+
+    /** BR-30, BR-31: also says in Retry-After when to try again. */
+    @ExceptionHandler(TooManyRequestsException.class)
+    ResponseEntity<ProblemDetail> handleTooManyRequests(TooManyRequestsException ex) {
+        return ResponseEntity.status(ex.getStatus())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

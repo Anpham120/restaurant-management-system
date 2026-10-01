@@ -65,6 +65,11 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | Cài đặt | `GET /settings` (bếp đọc ngưỡng món chờ lâu ở đây) | NV | FR-11, FR-07.4 |
 | | `PUT /settings` | ADMIN | FR-11.1 → FR-11.3 |
 
+Giới hạn tần suất (FR-01.5, FR-06.8):
+- `POST /auth/login`: 10 lần mỗi phút cho mỗi tên đăng nhập (BR-31).
+- Các `POST /public/tables/{qrToken}/...` (gửi món, gọi nhân viên, thanh toán): tính chung 10 lần mỗi phút cho mỗi bàn (BR-30).
+- Quá giới hạn thì trả `429 Too Many Requests` kèm header `Retry-After` (số giây phải chờ). Lỗi có câu báo tiếng Việt trong `detail`, như mọi lỗi khác.
+
 Tài liệu API chạy được (Swagger UI) nằm ở `/swagger-ui.html` khi chạy backend.
 
 ## 8.2 Realtime (WebSocket STOMP)
