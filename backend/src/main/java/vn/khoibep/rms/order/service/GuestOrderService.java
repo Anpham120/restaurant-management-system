@@ -49,7 +49,7 @@ public class GuestOrderService {
     @Transactional(readOnly = true)
     public GuestTableDto view(String token) {
         DiningTable table = table(token);
-        Order open = orders.findByTableIdAndStatus(table.getId(), OrderStatus.OPEN).orElse(null);
+        Order open = orders.findOpenByTableId(table.getId()).orElse(null);
         return toDto(table, open);
     }
 
@@ -60,8 +60,7 @@ public class GuestOrderService {
     @Transactional
     public GuestTableDto addItems(String token, AddItemsRequest request) {
         DiningTable table = tableSending(token);
-        orders.insertOpenOrderIfAbsent(table.getId());
-        Order order = orders.findByTableIdAndStatusForUpdate(table.getId(), OrderStatus.OPEN).orElseThrow();
+        Order order = openOrderForUpdate(table);
         if (order.countItems(ItemStatus.PENDING) + request.items().size() > MAX_PENDING_DISHES) {
             throw ApiException.conflict(
                     "Bàn đang có nhiều món chờ nhân viên xác nhận. Vui lòng chờ nhân viên xác nhận rồi gọi thêm");
@@ -69,23 +68,45 @@ public class GuestOrderService {
         orderService.buildItems(request.items(), ItemSource.GUEST).forEach(order::addItem);
         payments.cancelPendingTransfers(order.getId());
         orders.flush();
-        realtime.orderChanged(order.getId(), table.getId(), table.getQrToken(), Alert.GUEST_DISHES);
+        realtime.orderChanged(order.getId(), order.tableId(), order.guestTokens(), Alert.GUEST_DISHES);
         return toDto(table, order);
     }
 
     @Transactional
     public PaymentInstruction requestPayment(String token) {
         DiningTable table = tableSending(token);
-        Order order = orders.findByTableIdAndStatus(table.getId(), OrderStatus.OPEN)
+        Long orderId = orders.findOpenOrderIdByTableId(table.getId())
                 .orElseThrow(() -> ApiException.conflict("Bàn chưa có món để thanh toán"));
-        return payments.requestTransfer(order.getId());
+        return payments.requestTransfer(orderId);
+    }
+
+    /**
+     * BR-04: the open order holding the table, locked, or a new one opened at it. A guest at a table put together
+     * with another orders into their shared order (BR-36). Two phones sending at once still get one order: the
+     * insert gives way on ux_orders_open_table, and the order is locked and read fresh before it changes.
+     */
+    private Order openOrderForUpdate(DiningTable table) {
+        Long heldBy = orders.findOpenOrderIdByTableId(table.getId()).orElse(null);
+        if (heldBy != null) {
+            Order order = orders.findByIdForUpdate(heldBy).orElseThrow();
+            // The order may have closed or left the table between the two reads.
+            if (order.isOpen() && order.activeTables().stream().anyMatch(t -> t.getId().equals(table.getId()))) {
+                return order;
+            }
+        }
+        orders.insertOpenOrderIfAbsent(table.getId());
+        Order order = orders.findByTableIdAndStatusForUpdate(table.getId(), OrderStatus.OPEN).orElseThrow();
+        if (order.activeTables().isEmpty()) {
+            order.hold(table);
+        }
+        return order;
     }
 
     /** FR-06.6, BR-29: waiters' screens ring only for a new call, and the bill needs an order. */
     @Transactional
     public GuestTableDto call(String token, ServiceRequestType type) {
         DiningTable table = tableSending(token);
-        Order open = orders.findByTableIdAndStatus(table.getId(), OrderStatus.OPEN).orElse(null);
+        Order open = orders.findOpenByTableId(table.getId()).orElse(null);
         if (type == ServiceRequestType.BILL && open == null) {
             throw ApiException.conflict("Bàn chưa gọi món nên chưa tính tiền được");
         }

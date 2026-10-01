@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V13__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V14__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -20,7 +20,9 @@ erDiagram
     EMPLOYEE |o--o{ PAYMENT : "xác nhận"
     EMPLOYEE |o--o{ STOCK_MOVEMENT : "lập phiếu"
     CATEGORY ||--o{ MENU_ITEM : "gồm"
-    DINING_TABLE |o--o{ ORDERS : "phục vụ"
+    DINING_TABLE |o--o{ ORDERS : "bàn chính"
+    ORDERS ||--o{ ORDER_TABLE : "giữ bàn"
+    DINING_TABLE ||--o{ ORDER_TABLE : "được giữ"
     ORDERS ||--o{ ORDER_ITEM : "gồm"
     MENU_ITEM ||--o{ ORDER_ITEM : "được gọi"
     ORDERS ||--o{ PAYMENT : "thanh toán"
@@ -67,7 +69,7 @@ erDiagram
         bigint id PK
         varchar type "DINE_IN, TAKEAWAY"
         varchar status "OPEN, PAID, CANCELLED"
-        bigint table_id FK "null nếu mang về"
+        bigint table_id FK "bàn chính; null nếu mang về"
         int guest_count
         varchar note
         bigint created_by FK "null nếu khách mở qua QR"
@@ -164,6 +166,13 @@ erDiagram
         varchar reason
         timestamptz created_at
     }
+    ORDER_TABLE {
+        bigint id PK
+        bigint order_id FK
+        bigint table_id FK
+        timestamptz created_at "lúc bắt đầu giữ bàn"
+        timestamptz released_at "lúc trả bàn; null khi đang giữ"
+    }
     ADJUSTMENT {
         bigint id PK
         bigint order_id FK
@@ -184,7 +193,8 @@ erDiagram
 
 | Ràng buộc | Định nghĩa | Quy tắc |
 |---|---|---|
-| Một bàn một đơn mở | `CREATE UNIQUE INDEX ux_orders_open_table ON orders(table_id) WHERE status = 'OPEN'` | BR-04 |
+| Một bàn thuộc tối đa một đơn mở | `CREATE UNIQUE INDEX ux_order_table_active ON order_table(table_id) WHERE released_at IS NULL` | BR-04, BR-36 |
+| Một bàn chính một đơn mở | `CREATE UNIQUE INDEX ux_orders_open_table ON orders(table_id) WHERE status = 'OPEN'`; câu lệnh mở đơn khi khách quét QR dựa vào index này để hai điện thoại cùng bấm vẫn chỉ ra một đơn | BR-04 |
 | Đơn tại bàn phải có bàn | `CHECK (type = 'TAKEAWAY' OR table_id IS NOT NULL)` | BR-04 |
 | Số lượng hợp lệ | `CHECK (quantity BETWEEN 1 AND 50)` trên `order_item` | BR-06 |
 | Một yêu cầu chuyển khoản đang chờ mỗi đơn | `CREATE UNIQUE INDEX ux_payment_pending_order ON payment(order_id) WHERE status = 'PENDING'` | BR-14 |
@@ -213,6 +223,7 @@ erDiagram
 | `bank_transaction(match_status)` | Danh sách không khớp |
 | `audit_entry(created_at DESC)` | Tra cứu nhật ký theo ngày |
 | `adjustment(order_id)` | Bill, tổng tiền |
+| `order_table(order_id)` | Các bàn và lịch sử bàn của một đơn |
 | `adjustment(created_at) WHERE status = 'PENDING'` | Danh sách chờ duyệt của quản lý |
 
 ## 7.4 Dữ liệu mẫu

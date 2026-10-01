@@ -81,6 +81,15 @@ Là **phục vụ**, tôi muốn huỷ món khách đổi ý khi bếp chưa là
 - AC2: Món Đang làm hoặc Xong: chỉ quản lý huỷ được và phải nhập lý do.
 - AC3: Món đã ra thì không huỷ được.
 
+### US-31 Chuyển bàn và ghép bàn — FR-04.5, FR-04.6
+Là **phục vụ**, tôi muốn ghép thêm bàn khi nhóm khách đông, và chuyển bàn khi khách đổi chỗ, mà không phải lập đơn mới.
+- AC1: Đơn ở B05, ghép thêm B06: cả hai bàn hiện "có khách" trên sơ đồ, cùng một đơn và ghi nhóm "B05 + B06"; khách quét QR ở B06 gọi món vào đơn đó.
+- AC2: Chuyển đơn từ B05 + B06 sang S01: B05, B06 trở lại trống, S01 có khách. Bill giữ nguyên: món, tổng, khoản giảm, mã chuyển khoản đang chờ.
+- AC3: Không ghép hay chuyển vào bàn đang có đơn khác (409), và đơn mang về không gắn bàn được.
+- AC4: Màn hình bếp, trang đơn và thu ngân thấy tên bàn mới.
+- AC5: Thanh toán xong thì mọi bàn của đơn trở lại trống.
+- AC6: Lịch sử bàn của đơn được lưu: bàn nào, từ lúc nào tới lúc nào. Bếp không chuyển bàn được (403).
+
 ## Bếp (CHEF)
 
 ### US-12 Màn hình bếp — FR-07.1 → FR-07.5

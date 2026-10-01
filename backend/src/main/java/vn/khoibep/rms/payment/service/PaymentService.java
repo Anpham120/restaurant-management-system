@@ -144,8 +144,10 @@ public class PaymentService {
     }
 
     private void close(Order order) {
+        // Read before closing: closing gives the tables back (BR-36), and their guest pages are told after.
+        List<String> tokens = order.guestTokens();
         order.close(OrderStatus.PAID);
-        realtime.paymentPaid(order.getId(), order.tableId(), order.guestToken());
+        realtime.paymentPaid(order.getId(), order.tableId(), tokens);
     }
 
     private PaymentInstruction instruction(Payment p, RestaurantSettings bank) {

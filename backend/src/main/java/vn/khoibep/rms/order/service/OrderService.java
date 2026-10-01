@@ -5,12 +5,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import vn.khoibep.rms.common.exception.ApiException;
+import vn.khoibep.rms.common.realtime.RealtimeEvent;
 import vn.khoibep.rms.common.realtime.RealtimeEvent.Alert;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
 import vn.khoibep.rms.menu.entity.MenuItem;
@@ -66,14 +68,40 @@ public class OrderService {
             }
             DiningTable table = tables.findById(request.tableId())
                     .orElseThrow(() -> ApiException.notFound("Không tìm thấy bàn"));
-            if (orders.findByTableIdAndStatus(table.getId(), OrderStatus.OPEN).isPresent()) {
+            if (orders.findOpenOrderIdByTableId(table.getId()).isPresent()) {
                 throw ApiException.conflict("Bàn đã có đơn đang mở");
             }
-            order.setTable(table);
+            order.hold(table);
         }
-        // Flush now so a concurrent open of the same table fails on ux_orders_open_table here.
+        // Flush now so a concurrent open of the same table fails on ux_order_table_active here.
         orders.saveAndFlush(order);
         publish(order);
+        return OrderDto.from(order);
+    }
+
+    /** FR-04.5, FR-04.6, BR-36: the order now holds these tables, the first being the main one; the bill stays. */
+    @Transactional
+    public OrderDto moveTables(Long orderId, List<Long> tableIds) {
+        Order order = lockOpen(orderId);
+        if (order.getType() != OrderType.DINE_IN) {
+            throw ApiException.conflict("Đơn mang về không gắn bàn");
+        }
+        List<DiningTable> wanted = tableIds.stream().distinct()
+                .map(id -> tables.findById(id).orElseThrow(() -> ApiException.notFound("Không tìm thấy bàn")))
+                .toList();
+        for (DiningTable table : wanted) {
+            if (orders.findOpenOrderIdByTableId(table.getId()).filter(holder -> !holder.equals(orderId)).isPresent()) {
+                throw ApiException.conflict("Bàn " + table.getName() + " đang có đơn khác");
+            }
+        }
+        List<String> before = order.guestTokens();
+        order.moveTo(wanted);
+        // Flush now so a table taken at the same moment fails on ux_order_table_active here.
+        orders.flush();
+        // Guests at the tables given back see the order leave; guests at the new ones see it arrive.
+        List<String> tokens = Stream.concat(before.stream(), order.guestTokens().stream()).distinct().toList();
+        realtime.orderChanged(order.getId(), order.tableId(), tokens);
+        realtime.staffNotice(RealtimeEvent.TABLES_CHANGED);
         return OrderDto.from(order);
     }
 
@@ -112,8 +140,10 @@ public class OrderService {
         payments.cancelPendingTransfers(orderId);
         // BR-35: nothing is left for a manager to decide on a cancelled order.
         order.getAdjustments().stream().filter(Adjustment::isOpen).forEach(Adjustment::cancel);
+        // Read before closing: closing gives the tables back (BR-36), and their guest pages are told after.
+        List<String> tokens = order.guestTokens();
         order.close(OrderStatus.CANCELLED);
-        publish(order);
+        realtime.orderChanged(order.getId(), order.tableId(), tokens);
         return OrderDto.from(order);
     }
 
@@ -150,6 +180,6 @@ public class OrderService {
     }
 
     private void publish(Order order, Alert alert) {
-        realtime.orderChanged(order.getId(), order.tableId(), order.guestToken(), alert);
+        realtime.orderChanged(order.getId(), order.tableId(), order.guestTokens(), alert);
     }
 }

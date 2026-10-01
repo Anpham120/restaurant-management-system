@@ -22,9 +22,17 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("select o from Order o left join fetch o.table left join fetch o.items where o.id = :id")
     Optional<Order> findWithItemsById(@Param("id") Long id);
 
-    Optional<Order> findByTableIdAndStatus(Long tableId, OrderStatus status);
+    /** BR-04: the open order holding the table, whether as its main table or one put together with it. */
+    @Query("select l.order from OrderTable l where l.table.id = :tableId and l.releasedAt is null")
+    Optional<Order> findOpenByTableId(@Param("tableId") Long tableId);
 
-    boolean existsByTableId(Long tableId);
+    /** The same, by id only, so that a lock taken next reads the order fresh. */
+    @Query("select l.order.id from OrderTable l where l.table.id = :tableId and l.releasedAt is null")
+    Optional<Long> findOpenOrderIdByTableId(@Param("tableId") Long tableId);
+
+    /** BR-18: whether any order, open or closed, ever held the table. */
+    @Query("select count(l) > 0 from OrderTable l where l.table.id = :tableId")
+    boolean tableEverHeld(@Param("tableId") Long tableId);
 
     /** Row lock that serialises changes to one order: adding dishes, cancelling, paying. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

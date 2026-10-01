@@ -55,7 +55,7 @@ public class GlobalExceptionHandler {
     ProblemDetail handleIntegrity(DataIntegrityViolationException ex) {
         String message = String.valueOf(ex.getMostSpecificCause().getMessage());
         String detail;
-        if (message.contains("ux_orders_open_table")) {
+        if (message.contains("ux_orders_open_table") || message.contains("ux_order_table_active")) {
             detail = "Bàn đã có đơn đang mở";
         } else if (message.contains("ux_payment_paid_order")) {
             detail = "Đơn đã được thanh toán";

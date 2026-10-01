@@ -97,6 +97,12 @@ classDiagram
         String bankAccountName
         int waitAlertMinutes
     }
+    class OrderTable {
+        Long id
+        Instant createdAt
+        Instant releasedAt
+        isActive() boolean
+    }
     class Adjustment {
         Long id
         AdjustmentType type
@@ -119,7 +125,9 @@ classDiagram
         Instant createdAt
     }
     Category "1" --> "0..*" MenuItem
-    DiningTable "1" --> "0..*" Order : tối đa 1 đơn mở
+    DiningTable "1" --> "0..*" Order : bàn chính
+    Order "1" *-- "0..*" OrderTable : giữ bàn
+    DiningTable "1" --> "0..*" OrderTable : tối đa 1 đơn mở
     Order "1" *-- "1..*" OrderItem
     OrderItem "0..*" --> "1" MenuItem
     Order "1" --> "0..*" Payment
@@ -166,6 +174,7 @@ Ghi chú thiết kế:
 - **Trạng thái đặt ở từng món**, không đặt ở cả đơn, vì một bàn gọi nhiều lượt và mỗi món xong vào lúc khác nhau. Repo tham khảo đặt trạng thái ở cả đơn.
 - `OrderItem` lưu **tên và đơn giá lúc gọi** (BR-05), nên báo cáo và bill không đổi khi thực đơn đổi.
 - Trạng thái bàn **không lưu** mà tính từ đơn đang mở (BR-04), nên không bao giờ lệch.
+- `OrderTable` nối đơn với từng bàn nó giữ. Dòng còn hiệu lực (`releasedAt` rỗng) là bàn đang giữ; dòng đã trả là lịch sử chuyển bàn. `Order` vẫn giữ một **bàn chính** để in, báo cáo và chặn hai đơn cùng mở một bàn lúc khách quét QR.
 - `AuditEntry` lưu giá trị **thô**: trạng thái món là mã (`COOKING`), giá là số. Màn hình tự đổi sang chữ và định dạng tiền, còn báo cáo sau này đọc được ngay.
 
 ## 6.2 Trạng thái món
@@ -221,6 +230,7 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Sửa thực đơn, bàn, tạo lại QR | ✅ | ✅ | | | |
 | Báo hết món | ✅ | ✅ | | ✅ | |
 | Xem sơ đồ bàn, mở đơn, gọi món | ✅ | ✅ | ✅ | | |
+| Chuyển bàn, ghép bàn | ✅ | ✅ | ✅ | | |
 | Xác nhận hoặc từ chối món QR | ✅ | ✅ | ✅ | | |
 | Nhận yêu cầu khách gọi | ✅ | ✅ | ✅ | | |
 | Màn hình bếp: Đang làm, Xong | ✅ | ✅ | | ✅ | |

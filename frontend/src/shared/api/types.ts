@@ -67,6 +67,8 @@ export interface DiningTable {
   guestCount: number | null
   pendingCount: number
   readyCount: number
+  /** FR-04.5: the tables of the open order, "B05 + B06", when it holds more than this one. */
+  groupLabel: string | null
 }
 
 export interface OrderItem {
@@ -88,7 +90,11 @@ export interface Order {
   id: number
   type: OrderType
   status: OrderStatus
+  /** The main table; null for takeaway. */
   tableId: number | null
+  /** BR-36: every table the order holds, the main one first. */
+  tableIds: number[]
+  /** "B05 + B06" when tables are put together. */
   tableName: string | null
   guestCount: number | null
   note: string | null

@@ -18,8 +18,10 @@ public final class TableDtos {
      * @param pendingCount guest dishes waiting for staff confirmation
      * @param readyCount   dishes cooked and waiting to be served
      */
+    /** @param groupLabel the tables of the open order, "B05 + B06", when it holds more than this one (FR-04.5) */
     public record TableDto(Long id, String name, String area, int seats, String qrToken, String qrUrl,
-                           String status, Long openOrderId, Integer guestCount, int pendingCount, int readyCount) {
+                           String status, Long openOrderId, Integer guestCount, int pendingCount, int readyCount,
+                           String groupLabel) {
     }
 
     public record TableRequest(@NotBlank @Size(max = 50) String name,

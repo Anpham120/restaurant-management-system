@@ -16,8 +16,7 @@ public final class AuditDtos {
                                 String reason, Instant createdAt) {
         public static AuditEntryDto from(AuditEntry a) {
             Long orderId = a.getOrder() == null ? null : a.getOrder().getId();
-            String tableName = a.getOrder() == null || a.getOrder().getTable() == null
-                    ? null : a.getOrder().getTable().getName();
+            String tableName = a.getOrder() == null ? null : a.getOrder().tableLabel();
             return new AuditEntryDto(a.getId(), a.getAction(), a.getEmployee().getId(), a.getEmployee().getFullName(),
                     orderId, tableName, a.getSubject(), a.getBeforeValue(), a.getAfterValue(), a.getAmount(),
                     a.getReason(), a.getCreatedAt());

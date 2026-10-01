@@ -180,7 +180,7 @@ public class AdjustmentService {
     }
 
     private void publish(Order order) {
-        realtime.orderChanged(order.getId(), order.tableId(), order.guestToken());
+        realtime.orderChanged(order.getId(), order.tableId(), order.guestTokens());
         realtime.staffNotice(RealtimeEvent.ADJUSTMENTS_CHANGED);
     }
 }

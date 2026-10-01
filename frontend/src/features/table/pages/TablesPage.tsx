@@ -74,6 +74,8 @@ export default function TablesPage() {
                     {t.seats} ghế
                   </Typography.Text>
                   <Flex vertical gap={4} style={{ marginTop: 6 }}>
+                    {/* FR-04.5: tables put together for one group. */}
+                    {t.groupLabel && <Tag color="blue">Ghép: {t.groupLabel}</Tag>}
                     {t.pendingCount > 0 && <Tag color="gold">{t.pendingCount} món QR chờ xác nhận</Tag>}
                     {t.readyCount > 0 && <Tag color="green">{t.readyCount} món xong, mang ra</Tag>}
                   </Flex>
