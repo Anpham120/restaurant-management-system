@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios'
 
-const TOKEN_KEY = 'bnn.token'
+const TOKEN_KEY = 'khoibep.token'
 
 export function getToken(): string | null {
   try {

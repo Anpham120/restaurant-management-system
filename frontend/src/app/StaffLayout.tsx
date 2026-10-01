@@ -109,7 +109,7 @@ export default function StaffLayout() {
     }
   }
 
-  const brand = 'Bếp Nhà & Nướng'
+  const brand = 'Khói Bếp'
   const menu = (
     <Menu
       mode="inline"

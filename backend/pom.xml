@@ -8,7 +8,7 @@
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>vn.bnn</groupId>
+	<groupId>vn.khoibep</groupId>
 	<artifactId>rms</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>rms</name>

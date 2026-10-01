@@ -207,7 +207,7 @@ jobs:
       contents: read
       packages: read
     env:
-      APP_DIR: ${{ github.ref_name == 'main' && 'bnn-rms' || 'bnn-rms-staging' }}
+      APP_DIR: ${{ github.ref_name == 'main' && 'khoibep-rms' || 'khoibep-rms-staging' }}
     steps:
       - uses: actions/checkout@v7
       - name: GHCR needs a lowercase owner

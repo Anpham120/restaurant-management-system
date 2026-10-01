@@ -13,7 +13,7 @@ export function pageAlerts(pathname: string): StaffAlert[] {
   return []
 }
 
-const SOUND_KEY = 'bnn.sound'
+const SOUND_KEY = 'khoibep.sound'
 
 /** Sound is on unless someone turned it off on this device. */
 export function soundWanted(): boolean {
