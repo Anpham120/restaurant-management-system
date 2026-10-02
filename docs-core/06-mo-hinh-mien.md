@@ -24,6 +24,7 @@ classDiagram
         long price
         String description
         boolean available
+        Map~Channel,Long~ appPrices
     }
     class DiningTable {
         Long id
@@ -36,6 +37,8 @@ classDiagram
         Long id
         OrderType type
         OrderStatus status
+        Channel channel
+        String appOrderCode
         Integer guestCount
         Instant openedAt
         Instant closedAt
@@ -280,7 +283,8 @@ Các kiểu liệt kê:
 | `OrderStatus` | `OPEN`, `PAID`, `CANCELLED` |
 | `ItemStatus` | `PENDING` (chờ xác nhận), `WAITING` (chờ làm), `COOKING` (đang làm), `READY` (xong), `SERVED` (đã ra), `CANCELLED` |
 | `ItemSource` | `STAFF` (phục vụ gọi), `GUEST` (khách gọi qua QR) |
-| `PaymentMethod` | `CASH`, `BANK_TRANSFER` |
+| `PaymentMethod` | `CASH`, `BANK_TRANSFER`, `GRABFOOD`, `SHOPEEFOOD` (app thu tiền của đơn app, BR-47) |
+| `Channel` | `GRABFOOD`, `SHOPEEFOOD`: kênh của đơn app giao hàng; đơn tại quán và mang về thường không có kênh |
 | `PaymentStatus` | `PENDING`, `PAID`, `CANCELLED` |
 | `Confirmation` | `AUTO` (webhook), `MANUAL` (xác nhận tay) |
 | `MatchStatus` | `MATCHED`, `UNMATCHED`, `IGNORED` (tiền ra) |
@@ -313,6 +317,7 @@ Ghi chú thiết kế:
 - Khách **được nhận tin** khi đã đồng ý và chưa từ chối từ đó. Đồng ý lại thì xoá thời điểm từ chối; `mayContact()` không so `consentAt` với `optedOutAt`, vì đồng hồ máy chủ có thể bị chỉnh lùi giữa hai lần ghi (BR-44).
 - **Hoá đơn điện tử tách khỏi đơn** (`EInvoice`), vì vòng đời và quyền khác nhau: đơn đóng khi thu đủ, còn hoá đơn chờ xuất, rồi có số khi kế toán phát hành trên MISA. Dữ liệu được **chụp lại** lúc thanh toán (tên, giá, thuế suất), nên sửa thực đơn hay thuế suất sau đó không đổi hoá đơn đã lập (BR-46).
 - Thuế suất có **ngày hiệu lực** (`TaxRate.effectiveFrom`), nên đổi thuế (ví dụ hết đợt giảm thuế GTGT) là thêm một thuế suất từ ngày đó, không sửa phần mềm. Giá món đã gồm thuế, nên tiền thuế được tách ngược từ giá (BR-45, BR-46).
+- **Đơn app** là đơn mang đi có kênh và mã đơn app. App thu tiền của khách, nên lúc giao shipper đơn được ghi một khoản thu của kênh đó: báo cáo doanh thu theo phương thức có sẵn dòng GrabFood, ShopeeFood, còn két chỉ đếm tiền mặt (BR-47).
 - Một đơn có thể có **nhiều khoản đã thu** (tách bill, BR-43). Số đã thu tính từ chính các khoản `PAID` của đơn (`Order.paidAmount`), không lưu riêng, nên không thể lệch với các khoản thật.
 - Cọc của booking **không phải** khoản thanh toán: tiền cọc nằm ở `Reservation`, bill chỉ **trừ** nó (`Order.total`), và lúc thanh toán mới ghi phần đã trừ (`depositApplied`). Vì vậy két (BR-39) chỉ đếm tiền mặt thật, còn báo cáo cộng phần cọc đã trừ vào doanh thu (BR-21).
 
@@ -378,6 +383,7 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Huỷ món Đang làm hoặc Xong | ✅ | ✅ | | | |
 | Xem bill, in phiếu tạm tính | ✅ | ✅ | ✅ | | ✅ |
 | Thu tiền, tạo VietQR, xác nhận tay, in phiếu thanh toán | ✅ | ✅ | | | ✅ |
+| Nhập đơn app, giao shipper | ✅ | ✅ | ✅ | | |
 | Mở ca, phiếu chi đến 300.000 đ, chốt ca | ✅ | ✅ | | | ✅ |
 | Phiếu chi trên 300.000 đ, xem danh sách ca | ✅ | ✅ | | | |
 | Đặt bàn, tin xác nhận, mã cọc VietQR, nhận khách, huỷ | ✅ | ✅ | ✅ | | |

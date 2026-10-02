@@ -215,6 +215,14 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | FR-20.3 | **Người mua** mặc định là khách lẻ; thu ngân hoặc quản lý ghi tên, mã số thuế, địa chỉ, email khi hoá đơn chưa có số | C | BR-46 |
 | FR-20.4 | Quản lý xem hàng chờ theo ngày, **xuất file Excel** các hoá đơn chưa có số để nhập vào MISA meInvoice, rồi **ghi ký hiệu và số hoá đơn** đã phát hành để đối chiếu | C | BR-46 |
 
+### FR-21 Đơn app giao hàng (WAITER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-21.1 | **Giá app** của món: mỗi món có giá riêng trên GrabFood và ShopeeFood, đã gồm VAT; bỏ trống là không bán trên app đó | C | BR-47 |
+| FR-21.2 | **Nhập đơn app**: chọn kênh, nhập **mã đơn app** (bắt buộc; trùng thì báo và không tạo đơn), chọn món theo giá app, gửi bếp như đơn thường | C | BR-47 |
+| FR-21.3 | **Giao shipper**: mọi món đã xong thì phục vụ bấm Giao shipper; đơn đóng, doanh thu ghi theo kênh. Đơn app không thu tiền tại quầy | C | BR-47 |
+
 ## 2.2 Yêu cầu phi chức năng
 
 | Mã | Yêu cầu | Cách kiểm tra |
