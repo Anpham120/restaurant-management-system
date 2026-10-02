@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, Card, Col, Empty, Flex, Row, Switch, Tag, Typography } from 'antd'
 import { api, errorMessage } from '@/shared/api/client'
 import type { ItemStatus, KitchenItem, MenuItem, Settings } from '@/shared/api/types'
-import { minutesSince } from '@/shared/utils/format'
+import { channelLabel, minutesSince } from '@/shared/utils/format'
 
 const COLUMNS: { status: ItemStatus; title: string; next?: ItemStatus; action?: string }[] = [
   { status: 'WAITING', title: 'Chờ làm', next: 'COOKING', action: 'Bắt đầu' },
@@ -60,7 +60,11 @@ export default function KitchenPage() {
                     return (
                       <Card key={item.id} size="small" className={late ? 'late' : undefined}>
                         <Flex justify="space-between" align="center">
-                          <Typography.Text strong>{item.tableName ?? `Mang về #${item.orderId}`}</Typography.Text>
+                          <Typography.Text strong>
+                            {item.channel
+                              ? `${channelLabel[item.channel]} ${item.appOrderCode}`
+                              : (item.tableName ?? `Mang về #${item.orderId}`)}
+                          </Typography.Text>
                           <Tag color={late ? 'red' : 'default'}>{waited} phút</Tag>
                         </Flex>
                         <Typography.Title level={5} style={{ margin: '4px 0' }}>

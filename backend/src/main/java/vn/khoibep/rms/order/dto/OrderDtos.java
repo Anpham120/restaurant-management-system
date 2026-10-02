@@ -18,6 +18,7 @@ import vn.khoibep.rms.order.entity.ServiceRequest;
 import vn.khoibep.rms.order.enums.AdjustmentReason;
 import vn.khoibep.rms.order.enums.AdjustmentStatus;
 import vn.khoibep.rms.order.enums.AdjustmentType;
+import vn.khoibep.rms.order.enums.Channel;
 import vn.khoibep.rms.order.enums.ItemSource;
 import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
@@ -30,10 +31,13 @@ public final class OrderDtos {
     private OrderDtos() {
     }
 
+    /** @param channel an app order (BR-47), with the code the app gave it */
     public record CreateOrderRequest(@NotNull OrderType type,
                                      Long tableId,
                                      @Min(1) @Max(100) Integer guestCount,
-                                     @Size(max = 500) String note) {
+                                     @Size(max = 500) String note,
+                                     Channel channel,
+                                     @Size(max = 40) String appOrderCode) {
     }
 
     /** BR-06: 1 to 50 per line. */
@@ -97,7 +101,8 @@ public final class OrderDtos {
      * @param unservedCount dishes still in the kitchen or waiting to be served
      */
     public record OrderDto(Long id, OrderType type, OrderStatus status, Long tableId, List<Long> tableIds,
-                           String tableName, Integer guestCount, String note, Long customerId,
+                           String tableName, Integer guestCount, String note, Channel channel,
+                           String appOrderCode, Long customerId,
                            String customerName, String customerPhone, Instant openedAt, Instant closedAt,
                            long subtotal, long discountTotal, long depositCredit, long total, long paidAmount,
                            long due, int pendingCount, int unservedCount,
@@ -108,7 +113,8 @@ public final class OrderDtos {
             Customer c = o.getCustomer();
             return new OrderDto(o.getId(), o.getType(), o.getStatus(), o.tableId(),
                     o.activeTables().stream().map(DiningTable::getId).toList(), o.tableLabel(), o.getGuestCount(),
-                    o.getNote(), c == null ? null : c.getId(), c == null ? null : c.getName(),
+                    o.getNote(), o.getChannel(), o.getAppOrderCode(), c == null ? null : c.getId(),
+                    c == null ? null : c.getName(),
                     c == null ? null : c.getPhone(), o.getOpenedAt(), o.getClosedAt(), o.subtotal(), o.discountTotal(), o.depositCredit(), o.total(),
                     o.paidAmount(), o.due(),
                     o.countItems(ItemStatus.PENDING), unserved, o.countPendingAdjustments(),
@@ -117,11 +123,13 @@ public final class OrderDtos {
         }
     }
 
-    public record KitchenItemDto(Long id, Long orderId, OrderType orderType, String tableName, String itemName,
-                                 int quantity, String note, ItemStatus status, Instant sentAt, Instant updatedAt) {
+    /** @param channel the app of an app order, shown with its code instead of a table (BR-47) */
+    public record KitchenItemDto(Long id, Long orderId, OrderType orderType, Channel channel, String appOrderCode,
+                                 String tableName, String itemName, int quantity, String note, ItemStatus status,
+                                 Instant sentAt, Instant updatedAt) {
         public static KitchenItemDto from(OrderItem i) {
             Order o = i.getOrder();
-            return new KitchenItemDto(i.getId(), o.getId(), o.getType(),
+            return new KitchenItemDto(i.getId(), o.getId(), o.getType(), o.getChannel(), o.getAppOrderCode(),
                     o.tableLabel(), i.getItemName(), i.getQuantity(),
                     i.getNote(), i.getStatus(), i.getSentAt(), i.getUpdatedAt());
         }

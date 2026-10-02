@@ -6,6 +6,7 @@ import { api, errorMessage } from '@/shared/api/client'
 import type { BankTransaction, Order, Payment, PaymentInstruction, Settings, WebhookStatus } from '@/shared/api/types'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import AttachCustomerModal from '@/features/customer/components/AttachCustomerModal'
+import BuyerModal from '@/features/einvoice/components/BuyerModal'
 import StatusTag from '@/features/order/components/StatusTag'
 import AdjustmentModal from '../components/AdjustmentModal'
 import BillSlip from '../components/BillSlip'
@@ -16,7 +17,7 @@ import { useCashShift } from '../hooks/useCashShift'
 import { adjustmentLabel, adjustmentReason, adjustmentStatusColor, adjustmentStatusLabel, isOpen } from '../utils/adjustment'
 import { orderTitle } from '../utils/bill'
 import { usePrintSlip } from '@/shared/print/usePrintSlip'
-import { cashSuggestions, hasRole, money, time } from '@/shared/utils/format'
+import { cashSuggestions, channelLabel, hasRole, money, time } from '@/shared/utils/format'
 
 /** FR-08: bills, cash, VietQR with automatic confirmation, manual confirmation, unmatched transfers, webhook warning. FR-17: the drawer shift. */
 export default function CashierPage() {
@@ -31,6 +32,7 @@ export default function CashierPage() {
   const [part, setPart] = useState<number | null>(null)
   const [splitting, setSplitting] = useState(false)
   const [attaching, setAttaching] = useState(false)
+  const [buyerOpen, setBuyerOpen] = useState(false)
   // What was paid and left when the VietQR code was made, to tell a part that came in from a bill that changed.
   const [askedWhen, setAskedWhen] = useState<{ paid: number; due: number } | null>(null)
   const { user } = useAuth()
@@ -123,7 +125,8 @@ export default function CashierPage() {
   const partPaid = !!(instruction && o && askedWhen && o.paidAmount > askedWhen.paid)
   const qr = instruction && o && askedWhen && o.paidAmount === askedWhen.paid && o.due === askedWhen.due ? instruction : null
   const cashAmount = part ?? o?.due ?? 0
-  const blocked = !o || o.pendingCount > 0 || o.pendingAdjustmentCount > 0
+  // BR-47: the app takes the money of an app order, not the counter.
+  const blocked = !o || o.pendingCount > 0 || o.pendingAdjustmentCount > 0 || o.channel !== null
 
   const bill = !o ? (
     <Empty description="Chọn một đơn để tính tiền" />
@@ -131,7 +134,15 @@ export default function CashierPage() {
     <Result
       status="success"
       title={`${orderTitle(o)}: đã nhận đủ ${money(o.total)}`}
-      extra={<Button onClick={() => setSelectedId(null)}>Xong</Button>}
+      extra={[
+        // FR-20.3: a company asks for its own e-invoice.
+        <Button key="buyer" onClick={() => setBuyerOpen(true)}>
+          Hoá đơn công ty
+        </Button>,
+        <Button key="done" onClick={() => setSelectedId(null)}>
+          Xong
+        </Button>,
+      ]}
     />
   ) : (
     <Flex vertical gap={12}>
@@ -229,6 +240,9 @@ export default function CashierPage() {
             <Typography.Text strong>{money(o.due)}</Typography.Text>
           </Flex>
         </>
+      )}
+      {o.channel && (
+        <Alert type="info" showIcon title={`Đơn ${channelLabel[o.channel]}: app thu tiền. Phục vụ bấm Giao shipper ở trang đơn khi giao hàng.`} />
       )}
       {o.pendingCount > 0 && <Alert type="error" showIcon title="Còn món khách gửi qua QR chưa xác nhận. Nhờ phục vụ xử lý trước." />}
       {o.pendingAdjustmentCount > 0 && (
@@ -437,6 +451,7 @@ export default function CashierPage() {
         />
       )}
       {attaching && o && <AttachCustomerModal order={o} onClose={() => setAttaching(false)} />}
+      {buyerOpen && o && <BuyerModal orderId={o.id} onClose={() => setBuyerOpen(false)} />}
       {adjusting && o && (
         <AdjustmentModal
           order={o}

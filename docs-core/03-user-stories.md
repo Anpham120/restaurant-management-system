@@ -11,11 +11,12 @@ Là **nhân viên**, tôi muốn đăng nhập bằng tài khoản riêng để 
 - AC3: Khi tài khoản bị khoá thì không đăng nhập được.
 - AC4: Khi một tên đăng nhập bị thử quá 10 lần trong một phút thì lần tiếp theo bị chặn, kèm thời gian phải chờ.
 
-### US-02 Quản lý tài khoản nhân viên — FR-02.1, FR-02.3
+### US-02 Quản lý tài khoản nhân viên — FR-02.1, FR-02.3, FR-02.4
 Là **quản trị**, tôi muốn tạo tài khoản và gán vai trò để mỗi người chỉ làm việc của mình.
 - AC1: Khi tạo tài khoản trùng tên đăng nhập thì báo lỗi.
 - AC2: Khi đặt lại mật khẩu thì nhân viên đăng nhập được bằng mật khẩu mới.
 - AC3: Khi phục vụ gọi API tạo nhân viên thì nhận 403.
+- AC4: CSDL mới, không bật tài khoản demo, khởi động với `APP_INITIAL_ADMIN_PASSWORD` đủ 12 ký tự thì có tài khoản quản trị `admin`. Mật khẩu ngắn hơn thì ứng dụng không khởi động. Đã có nhân viên thì biến này bị bỏ qua.
 
 ### US-03 Khoá tài khoản — FR-02.2, FR-01.3
 Là **quản trị**, tôi muốn khoá tài khoản người đã nghỉ để họ không vào hệ thống được nữa.
@@ -234,6 +235,22 @@ Là **thu ngân**, tôi muốn ghi khách quen theo số điện thoại, để 
 - AC3: Ghi đồng ý nhận tin qua Zalo, cách thu thập "hỏi tại quầy": khách được nhận tin. Ghi từ chối thì không còn được nhận tin, cho tới khi đồng ý lại.
 - AC4: Số điện thoại không đủ 10 số thì bị từ chối.
 - AC5: Phục vụ và bếp không xem được danh sách khách; bếp không gắn khách được.
+
+### US-40 Hoá đơn điện tử — FR-20.1 → FR-20.4
+Là **quản lý**, tôi muốn mỗi bill đã thanh toán có sẵn dữ liệu hoá đơn điện tử, để nhập vào MISA meInvoice mà không gõ lại.
+- AC1: Bill có lẩu 329.000 đ (loại "Ăn uống", 8%) và 2 bia 22.000 đ (loại "Rượu, bia", 10%), giá đã gồm thuế. Thanh toán xong thì hàng chờ có 1 hoá đơn: thuế suất 8% có tiền chưa thuế 304.630 đ, tiền thuế 24.370 đ; thuế suất 10% có 40.000 đ và 4.000 đ; tổng 373.000 đ.
+- AC2: "Ăn uống" đang 8% và được đặt 10% từ 01/01/2027. Bill thanh toán lúc 23:50 ngày 31/12/2026 dùng 8%; bill thanh toán lúc 00:10 ngày 01/01/2027 (giờ Việt Nam) dùng 10%.
+- AC3: Bill có tặng món và giảm giá: hoá đơn có dòng chiết khấu theo thuế suất của món, tổng hoá đơn bằng tiền món trừ giảm giá; cọc đã trừ vẫn tính là đã trả.
+- AC4: Thu ngân ghi người mua công ty: tên, mã số thuế 0101234567, địa chỉ, email. Mã số thuế sai dạng thì bị từ chối; hoá đơn đã có số thì không sửa được người mua.
+- AC5: Quản lý xuất file các hoá đơn chưa có số trong ngày, rồi ghi ký hiệu 1C26MKB, số 123: hoá đơn chuyển sang "Đã có số", và ký hiệu, số đó không ghi được cho hoá đơn khác. Phục vụ và bếp không xem được hàng chờ; thu ngân chỉ ghi người mua.
+
+### US-41 Đơn app giao hàng — FR-21.1 → FR-21.3
+Là **phục vụ quầy**, tôi muốn nhập đơn GrabFood, ShopeeFood vào hệ thống, để bếp làm như đơn thường và doanh thu app không bị sót hay nhập trùng.
+- AC1: Nhập đơn GrabFood mã "gf-8812" gồm 2 phần nem rán giá app 79.000 đ: đơn lưu mã "GF-8812", tiền 158.000 đ, món vào bếp.
+- AC2: Nhập lại mã "GF-8812" cho GrabFood thì bị báo trùng và không tạo đơn; cùng mã cho ShopeeFood thì được; đơn GrabFood đó đã huỷ thì nhập lại được.
+- AC3: Món chưa có giá ShopeeFood thì không gọi được trong đơn ShopeeFood.
+- AC4: Còn món chưa xong thì chưa giao shipper được. Mọi món xong, bấm Giao shipper: đơn đóng, doanh thu có 158.000 đ ở dòng GrabFood, tiền mặt trong két không đổi.
+- AC5: Đơn app không thu tiền mặt hay VietQR được; bếp không tạo được đơn app.
 
 ## Nhân sự
 

@@ -16,6 +16,16 @@ export function utf16leWithBom(text: string): Uint8Array<ArrayBuffer> {
   return bytes
 }
 
+/** Saves a file the server made, such as an .xlsx export. */
+export function downloadBlob(fileName: string, blob: Blob) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 /** Saves a sheet as a file Excel opens straight away. */
 export function downloadSheet(fileName: string, text: string) {
   const url = URL.createObjectURL(new Blob([utf16leWithBom(text)], { type: 'text/csv' }))

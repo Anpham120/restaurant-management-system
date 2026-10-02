@@ -1,0 +1,15 @@
+# P0-02: HTTPS in front of production and staging on one server (doc 11). Caddy obtains and renews the
+# Let's Encrypt certificates by itself: both names must point to this server and ports 80 and 443 be open.
+# The web containers listen on 127.0.0.1 only (HTTP_BIND, HTTP_PORT in their .env); WebSockets pass through.
+
+{$DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy 127.0.0.1:{$PRODUCTION_PORT:8081}
+}
+
+{$STAGING_DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy 127.0.0.1:{$STAGING_PORT:8080}
+}

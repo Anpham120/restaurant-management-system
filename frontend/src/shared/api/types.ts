@@ -4,10 +4,15 @@ export type Role = 'ADMIN' | 'MANAGER' | 'WAITER' | 'CHEF' | 'CASHIER'
 export type OrderType = 'DINE_IN' | 'TAKEAWAY'
 export type OrderStatus = 'OPEN' | 'PAID' | 'CANCELLED'
 export type ItemStatus = 'PENDING' | 'WAITING' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED'
-export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
+/** BR-47: the delivery app of an app order. */
+export type Channel = 'GRABFOOD' | 'SHOPEEFOOD'
+/** The delivery apps take the money of their orders (BR-47). */
+export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | Channel
 export type RevenueMethod = PaymentMethod | 'DEPOSIT'
 export type ReservationStatus = 'BOOKED' | 'SEATED' | 'CANCELLED' | 'NO_SHOW'
 export type ConsentChannel = 'ZALO' | 'SMS'
+export type EInvoiceStatus = 'PENDING' | 'EXPORTED' | 'ISSUED'
+export type LineKind = 'GOODS' | 'DISCOUNT'
 export type MovementType = 'IN' | 'OUT' | 'ADJUST' | 'SALE'
 export type PayType = 'HOURLY' | 'MONTHLY'
 export type LeaveType = 'PAID' | 'UNPAID'
@@ -50,6 +55,11 @@ export interface MenuItem {
   price: number
   description: string | null
   available: boolean
+  /** BR-45: what share of the price is VAT. */
+  taxCategoryId: number
+  taxCategoryName: string
+  /** BR-47: the price on each delivery app; an app left out does not sell the dish. */
+  appPrices: Partial<Record<Channel, number>>
 }
 
 export interface MenuSection {
@@ -101,6 +111,9 @@ export interface Order {
   tableName: string | null
   guestCount: number | null
   note: string | null
+  /** BR-47: the delivery app of an app order, with the code the app gave it; null for any other. */
+  channel: Channel | null
+  appOrderCode: string | null
   /** BR-44: the guest known by phone number, or none. */
   customerId: number | null
   customerName: string | null
@@ -152,6 +165,9 @@ export interface KitchenItem {
   id: number
   orderId: number
   orderType: OrderType
+  /** An app order shows its app and code instead of a table (BR-47). */
+  channel: Channel | null
+  appOrderCode: string | null
   tableName: string | null
   itemName: string
   quantity: number
@@ -377,6 +393,60 @@ export interface CustomerDetail {
   customer: Customer
   visits: CustomerVisit[]
   bookings: CustomerBooking[]
+}
+
+/** FR-20.1, BR-45: a tax category of dishes and its VAT rates by day, in percent. */
+export interface TaxCategory {
+  id: number
+  name: string
+  /** The rate in force today. */
+  currentRate: number
+  /** From the first one; the last ones may start after today. */
+  rates: { rate: number; effectiveFrom: string }[]
+}
+
+/** FR-20.2, BR-46: the e-invoice data of a bill paid in full. VAT included: total = beforeTax + taxAmount. */
+export interface EInvoice {
+  id: number
+  orderId: number
+  invoiceDate: string
+  /** TM, CK or TM/CK, as MISA writes them. */
+  paymentMethod: string
+  /** Null for a walk-in guest, as are the other details of the buyer. */
+  buyerName: string | null
+  buyerTaxCode: string | null
+  buyerAddress: string | null
+  buyerEmail: string | null
+  beforeTax: number
+  taxAmount: number
+  total: number
+  status: EInvoiceStatus
+  exportedAt: string | null
+  invoiceSymbol: string | null
+  invoiceNo: string | null
+  issuedByName: string | null
+  issuedAt: string | null
+}
+
+export interface EInvoiceLine {
+  lineNo: number
+  kind: LineKind
+  itemName: string
+  /** Null on a discount line, as are the quantity and the unit price. */
+  unit: string | null
+  quantity: number | null
+  unitPrice: number | null
+  taxRate: number
+  amount: number
+  beforeTax: number
+  taxAmount: number
+}
+
+export interface EInvoiceDetail {
+  invoice: EInvoice
+  lines: EInvoiceLine[]
+  /** By rate, the lowest first, the discounts taken off. */
+  taxes: { taxRate: number; beforeTax: number; taxAmount: number }[]
 }
 
 export interface ReservationDay {

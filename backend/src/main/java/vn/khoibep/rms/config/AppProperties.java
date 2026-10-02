@@ -13,7 +13,8 @@ public record AppProperties(
         Sepay sepay,
         String publicBaseUrl,
         List<String> corsAllowedOrigins,
-        DemoAccounts demoAccounts) {
+        DemoAccounts demoAccounts,
+        InitialAdmin initialAdmin) {
 
     public record Jwt(String secret, Duration ttl) {
     }
@@ -22,6 +23,10 @@ public record AppProperties(
     }
 
     public record DemoAccounts(boolean enabled, String password) {
+    }
+
+    /** BR-48: the first admin of a new database without demo accounts; the password empty means none. */
+    public record InitialAdmin(String username, String password) {
     }
 
     public ZoneId zoneId() {

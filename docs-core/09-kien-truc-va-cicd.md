@@ -52,7 +52,7 @@ flowchart LR
 │       ├── schedule/  attendance/   xếp ca, chấm công
 │       ├── leave/  payroll/         nghỉ phép, bảng lương
 │       ├── audit/                   nhật ký thao tác (chỉ thêm)
-│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên), V10 (đổi tên quán), V11 (nhật ký thao tác), V12 (giảm giá, tặng món), V13 (chuyển, ghép bàn), V14 (nhà cung cấp, phiếu nhập), V15 (định lượng, trừ kho tự động), V16 (ca và két), V17 (giá vốn lúc trừ kho, view báo cáo), V18 (thu hồi token), V19 (đặt bàn và cọc), V20 (tách bill), V21 (khách hàng)
+│       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên), V10 (đổi tên quán), V11 (nhật ký thao tác), V12 (giảm giá, tặng món), V13 (chuyển, ghép bàn), V14 (nhà cung cấp, phiếu nhập), V15 (định lượng, trừ kho tự động), V16 (ca và két), V17 (giá vốn lúc trừ kho, view báo cáo), V18 (thu hồi token), V19 (đặt bàn và cọc), V20 (tách bill), V21 (khách hàng), V22 (hoá đơn điện tử), V23 (đơn app giao hàng)
 ├── frontend/                        React + Vite
 │   └── src/ app/ (định tuyến, khung trang), shared/ (API, realtime, định dạng), features/<module>/
 ├── scripts/check-erd.mjs            so ERD với migration (database-first)
@@ -114,7 +114,7 @@ frontend/src/
 - Actuator chỉ mở `health` (công khai), `info` và `metrics` (chỉ ADMIN). Nginx chỉ chuyển tiếp `/actuator/health`, nên từ Internet không gọi được các endpoint còn lại.
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
 - Giới hạn tần suất (Bucket4j, lưu trong bộ nhớ của server): mỗi tên đăng nhập thử tối đa 10 lần mỗi phút (BR-31); trang QR của mỗi bàn gửi tối đa 10 lần mỗi phút và giữ tối đa 30 món chờ xác nhận (BR-30). Quá giới hạn thì trả 429 kèm `Retry-After`. Không giới hạn theo IP: sau Nginx, IP đầu tiên trong `X-Forwarded-For` do client tự gửi được, còn khách trong quán lại dùng chung một IP Wi-Fi.
-- Khi triển khai thật phải có **HTTPS** vì SePay chỉ gọi được địa chỉ công khai. Có thể đặt Caddy hoặc Cloudflare Tunnel trước Nginx.
+- Khi triển khai thật phải có **HTTPS**, vì SePay chỉ gọi địa chỉ HTTPS công khai. Một Caddy trên máy chủ (`deploy/caddy/`) nhận cổng 80, 443 cho cả production và staging, tự lấy và gia hạn chứng chỉ Let's Encrypt. Hai container web chỉ mở cổng trên `127.0.0.1`, nên từ Internet chỉ vào được qua Caddy.
 - Quét lỗ hổng tự động, kết quả ở tab **Security** của GitHub:
   - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`.
   - CodeQL phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
@@ -128,7 +128,7 @@ frontend/src/
 | Staging | `develop` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms-staging`, image tag theo commit | Tự deploy, có thể bật tài khoản demo để cả nhóm thử |
 | Production | `main` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms` | Deploy sau khi có người duyệt |
 
-Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. Biến chính: `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `SEPAY_API_KEY`, `APP_PUBLIC_BASE_URL` (địa chỉ in trong QR bàn), `HTTP_PORT`, `APP_DEMO_ACCOUNTS_ENABLED`.
+Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. Biến chính: `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `SEPAY_API_KEY`, `APP_PUBLIC_BASE_URL` (địa chỉ in trong QR bàn), `HTTP_PORT` (cổng trên `127.0.0.1` mà Caddy chuyển tới: production 8081, staging 8080), `APP_DEMO_ACCOUNTS_ENABLED`, `APP_INITIAL_ADMIN_PASSWORD` (tài khoản quản trị đầu tiên, BR-48). Các bước dựng máy chủ ở [tài liệu 11](11-trien-khai-van-hanh.md).
 
 **Sao lưu (P0-04).** Dịch vụ `backup` trong `deploy/docker-compose.prod.yml` chạy `pg_dump` mỗi đêm lúc `BACKUP_HOUR` giờ Việt Nam (mặc định 3 giờ):
 - Bản sao lưu nằm trong thư mục `backups/` cạnh file compose, giữ `BACKUP_KEEP` bản mới nhất (mặc định 7).
@@ -177,7 +177,7 @@ flowchart LR
 | Mức | Công cụ | Nội dung chính |
 |---|---|---|
 | Đơn vị | JUnit 5 | Chuyển trạng thái món (BR-07), dò mã thanh toán trong nội dung chuyển khoản (BR-15), công thức lương (BR-26) |
-| Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, cảnh báo webhook lỗi liên tiếp, giảm giá và duyệt vượt hạn mức, chuyển và ghép bàn, phân quyền (cả quyền xem số liệu Actuator), nhật ký thao tác (kể cả CSDL chặn sửa, xoá), kho, phiếu nhập và giá vốn, định lượng và trừ kho tự động, ca và két, báo cáo lãi gộp và ngoại lệ, đặt bàn và cọc, tách bill, khách hàng, xếp ca, chấm công, nghỉ phép, bảng lương. Test chấm công đặt giờ bằng một `Clock` giả |
+| Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, cảnh báo webhook lỗi liên tiếp, giảm giá và duyệt vượt hạn mức, chuyển và ghép bàn, phân quyền (cả quyền xem số liệu Actuator), nhật ký thao tác (kể cả CSDL chặn sửa, xoá), kho, phiếu nhập và giá vốn, định lượng và trừ kho tự động, ca và két, báo cáo lãi gộp và ngoại lệ, đặt bàn và cọc, tách bill, khách hàng, hoá đơn điện tử và thuế suất theo ngày, đơn app giao hàng, xếp ca, chấm công, nghỉ phép, bảng lương. Test chấm công đặt giờ bằng một `Clock` giả |
 | Frontend | Vitest | Định dạng tiền, nhãn trạng thái, giờ công, bảng lương xuất Excel |
 | Component | Vitest + Testing Library, trình duyệt giả lập jsdom | Chọn món vào giỏ (tổng tiền, bớt món, ghi chú, món hết, đổi nhóm), giỏ tối đa 50 phần mỗi món (BR-06), mã VietQR, nhãn trạng thái món, phiếu in 80 mm (BR-33) |
 | Độ phủ | JaCoCo | Backend phải chạy tới ≥ 70% số dòng, thấp hơn thì CI đỏ. Con số in ở trang kết quả của lần chạy CI, báo cáo HTML ở artifact `backend-coverage` |

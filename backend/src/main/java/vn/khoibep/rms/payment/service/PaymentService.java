@@ -11,7 +11,9 @@ import vn.khoibep.rms.audit.service.AuditService;
 import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.util.Money;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
+import vn.khoibep.rms.einvoice.service.EInvoiceService;
 import vn.khoibep.rms.order.entity.Order;
+import vn.khoibep.rms.order.enums.Channel;
 import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
 import vn.khoibep.rms.order.repository.OrderRepository;
@@ -22,6 +24,7 @@ import vn.khoibep.rms.payment.entity.CashShift;
 import vn.khoibep.rms.payment.entity.Payment;
 import vn.khoibep.rms.payment.enums.Confirmation;
 import vn.khoibep.rms.payment.enums.MatchStatus;
+import vn.khoibep.rms.payment.enums.PaymentMethod;
 import vn.khoibep.rms.payment.enums.PaymentStatus;
 import vn.khoibep.rms.payment.repository.BankTransactionRepository;
 import vn.khoibep.rms.payment.repository.PaymentRepository;
@@ -41,6 +44,7 @@ public class PaymentService {
     private final SettingsService settings;
     private final AuditService audit;
     private final RealtimeEvents realtime;
+    private final EInvoiceService einvoices;
 
     /**
      * FR-08.2, BR-13: cash must cover what is taken; once the bill is covered the order closes and the table becomes
@@ -50,6 +54,7 @@ public class PaymentService {
     @Transactional
     public PaymentDto payCash(Long orderId, Long amount, long receivedAmount, Long cashierId) {
         Order order = lockPayable(orderId);
+        requireCounter(order);
         long part = part(order, amount);
         if (receivedAmount < part) {
             throw ApiException.badRequest("Tiền khách đưa nhỏ hơn số tiền cần thu");
@@ -74,6 +79,7 @@ public class PaymentService {
     @Transactional
     public PaymentInstruction requestTransfer(Long orderId, Long amount) {
         Order order = lockPayable(orderId);
+        requireCounter(order);
         long part = part(order, amount);
         if (part <= 0) {
             throw ApiException.conflict("Đơn không còn gì phải trả");
@@ -160,6 +166,40 @@ public class PaymentService {
         return amount;
     }
 
+    /**
+     * FR-21.3, BR-47: the shipper picks up an app order once every dish is done. The app has the guest's money, so the
+     * order closes with a payment of its channel, which no drawer counts.
+     */
+    @Transactional
+    public PaymentDto handOver(Long orderId, Long employeeId) {
+        Order order = lockPayable(orderId);
+        if (order.getChannel() == null) {
+            throw ApiException.conflict("Chỉ đơn app mới giao shipper");
+        }
+        if (!order.itemsWith(ItemStatus.WAITING).isEmpty() || !order.itemsWith(ItemStatus.COOKING).isEmpty()) {
+            throw ApiException.conflict("Còn món chưa xong, chưa giao shipper được");
+        }
+        order.itemsWith(ItemStatus.READY).forEach(item -> item.moveTo(ItemStatus.SERVED));
+        Payment payment = payments.save(Payment.app(order, appMethod(order.getChannel()), order.due(), employeeId));
+        settle(order);
+        return PaymentDto.from(payment);
+    }
+
+    /** BR-47: the app takes the money of its orders, not the counter. */
+    private static void requireCounter(Order order) {
+        if (order.getChannel() != null) {
+            throw ApiException.conflict("Đơn " + order.getChannel().label() + " do app thu tiền, bấm Giao shipper khi"
+                    + " giao hàng");
+        }
+    }
+
+    private static PaymentMethod appMethod(Channel channel) {
+        return switch (channel) {
+            case GRABFOOD -> PaymentMethod.GRABFOOD;
+            case SHOPEEFOOD -> PaymentMethod.SHOPEEFOOD;
+        };
+    }
+
     /** BR-43: the order closes once what was taken covers the bill; until then every screen shows what is left. */
     private void settle(Order order) {
         if (order.due() == 0) {
@@ -192,6 +232,8 @@ public class PaymentService {
         List<String> tokens = order.guestTokens();
         order.applyDeposit();
         order.close(OrderStatus.PAID);
+        // BR-46: the e-invoice data, as the bill stands now.
+        einvoices.queue(order);
         realtime.paymentPaid(order.getId(), order.tableId(), tokens);
     }
 

@@ -23,6 +23,7 @@ import vn.khoibep.rms.menu.entity.Category;
 import vn.khoibep.rms.menu.entity.MenuItem;
 import vn.khoibep.rms.menu.repository.CategoryRepository;
 import vn.khoibep.rms.menu.repository.MenuItemRepository;
+import vn.khoibep.rms.menu.repository.TaxCategoryRepository;
 import vn.khoibep.rms.order.repository.OrderItemRepository;
 
 @Service
@@ -31,6 +32,7 @@ public class MenuService {
 
     private final CategoryRepository categories;
     private final MenuItemRepository menuItems;
+    private final TaxCategoryRepository taxCategories;
     private final OrderItemRepository orderItems;
     private final AuditService audit;
     private final RealtimeEvents realtime;
@@ -147,6 +149,23 @@ public class MenuService {
         item.setDescription(request.description());
         if (request.available() != null) {
             item.setAvailable(request.available());
+        }
+        if (request.taxCategoryId() != null) {
+            item.setTaxCategory(taxCategories.findById(request.taxCategoryId())
+                    .orElseThrow(() -> ApiException.notFound("Không tìm thấy loại thuế")));
+        } else if (item.getTaxCategory() == null) {
+            // BR-45: a new dish without a tax category takes the first one.
+            item.setTaxCategory(taxCategories.findFirstByOrderByIdAsc()
+                    .orElseThrow(() -> new IllegalStateException("No tax category")));
+        }
+        if (request.appPrices() != null) {
+            // BR-47: the prices sent replace the old ones; an app left out does not sell the dish.
+            item.getAppPrices().clear();
+            request.appPrices().forEach((channel, price) -> {
+                if (price != null) {
+                    item.getAppPrices().put(channel, price);
+                }
+            });
         }
     }
 

@@ -42,3 +42,7 @@ app:
   demo-accounts:
     enabled: ${APP_DEMO_ACCOUNTS_ENABLED:false}
     password: ${APP_DEMO_ACCOUNTS_PASSWORD:123456}
+  # BR-48: the first admin of a new database when demo accounts are off (production); ignored once anyone exists.
+  initial-admin:
+    username: ${APP_INITIAL_ADMIN_USERNAME:admin}
+    password: ${APP_INITIAL_ADMIN_PASSWORD:}

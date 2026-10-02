@@ -18,6 +18,7 @@ const MenuAdminPage = lazy(() => import('@/features/menu/pages/MenuAdminPage'))
 const TablesAdminPage = lazy(() => import('@/features/table/pages/TablesAdminPage'))
 const InventoryPage = lazy(() => import('@/features/inventory/pages/InventoryPage'))
 const CustomersPage = lazy(() => import('@/features/customer/pages/CustomersPage'))
+const EInvoicesPage = lazy(() => import('@/features/einvoice/pages/EInvoicesPage'))
 const ReportsPage = lazy(() => import('@/features/report/pages/ReportsPage'))
 const AuditPage = lazy(() => import('@/features/audit/pages/AuditPage'))
 const CashShiftsPage = lazy(() => import('@/features/payment/pages/CashShiftsPage'))
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/admin/tables" element={<RequireRole roles={['MANAGER']}><TablesAdminPage /></RequireRole>} />
           <Route path="/admin/inventory" element={<RequireRole roles={['MANAGER']}><InventoryPage /></RequireRole>} />
           <Route path="/admin/customers" element={<RequireRole roles={['MANAGER']}><CustomersPage /></RequireRole>} />
+          <Route path="/admin/einvoices" element={<RequireRole roles={['MANAGER']}><EInvoicesPage /></RequireRole>} />
           <Route path="/admin/reports" element={<RequireRole roles={['MANAGER']}><ReportsPage /></RequireRole>} />
           <Route path="/admin/audit" element={<RequireRole roles={['MANAGER']}><AuditPage /></RequireRole>} />
           <Route path="/admin/cash-shifts" element={<RequireRole roles={['MANAGER']}><CashShiftsPage /></RequireRole>} />

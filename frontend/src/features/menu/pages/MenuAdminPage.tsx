@@ -1,15 +1,21 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Typography } from 'antd'
+import { App, Button, Card, Col, Flex, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
-import type { Category, MenuItem, Recipe } from '@/shared/api/types'
-import { money } from '@/shared/utils/format'
+import type { Category, Channel, MenuItem, Recipe, TaxCategory } from '@/shared/api/types'
+import { channelLabel, money, moneyInputProps } from '@/shared/utils/format'
 import RecipeModal from '../components/RecipeModal'
+import TaxCard from '../components/TaxCard'
 
 type Editing<T> = { record: T | null } | null
 
-/** FR-03: categories and dishes. Ordered dishes can only be marked sold out (BR-18). FR-09.8: dish recipes. */
+const CHANNELS: Channel[] = ['GRABFOOD', 'SHOPEEFOOD']
+
+/**
+ * FR-03: categories and dishes. Ordered dishes can only be marked sold out (BR-18). FR-09.8: dish recipes. FR-20.1: the
+ * tax category of each dish and the rates of the categories.
+ */
 export default function MenuAdminPage() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
@@ -20,6 +26,7 @@ export default function MenuAdminPage() {
   const categories = useQuery({ queryKey: ['categories'], queryFn: () => api.get<Category[]>('/categories').then((r) => r.data) })
   const items = useQuery({ queryKey: ['menu-items'], queryFn: () => api.get<MenuItem[]>('/menu-items').then((r) => r.data) })
   const recipes = useQuery({ queryKey: ['recipes'], queryFn: () => api.get<Recipe[]>('/recipes').then((r) => r.data) })
+  const taxes = useQuery({ queryKey: ['tax-categories'], queryFn: () => api.get<TaxCategory[]>('/tax-categories').then((r) => r.data) })
   const recipeFor = (id: number) => recipes.data?.find((r) => r.menuItemId === id)
   const recipeLabel = (id: number) => {
     const count = recipeFor(id)?.lines.length
@@ -94,6 +101,7 @@ export default function MenuAdminPage() {
               ]}
             />
           </Card>
+          <TaxCard />
         </Col>
         <Col xs={24} lg={16}>
           <Card title="Món" size="small" extra={<Button icon={<PlusOutlined />} onClick={() => setItemEdit({ record: null })}>Thêm món</Button>}>
@@ -106,6 +114,14 @@ export default function MenuAdminPage() {
                 { title: 'Món', dataIndex: 'name' },
                 { title: 'Danh mục', dataIndex: 'categoryName' },
                 { title: 'Giá', render: (_, m) => money(m.price) },
+                { title: 'Thuế', dataIndex: 'taxCategoryName' },
+                {
+                  title: 'Giá app',
+                  render: (_, m) =>
+                    CHANNELS.filter((c) => m.appPrices[c] !== undefined)
+                      .map((c) => `${channelLabel[c]} ${money(m.appPrices[c] ?? 0)}`)
+                      .join(', '),
+                },
                 {
                   title: 'Còn bán',
                   render: (_, m) => (
@@ -153,7 +169,7 @@ export default function MenuAdminPage() {
       </Modal>
 
       <Modal title={itemEdit?.record ? 'Sửa món' : 'Thêm món'} open={itemEdit !== null} onCancel={() => setItemEdit(null)} footer={null} destroyOnHidden>
-        <Form layout="vertical" initialValues={itemEdit?.record ?? { available: true }} onFinish={(v) => saveItem.mutate(v)}>
+        <Form layout="vertical" initialValues={itemEdit?.record ?? { available: true, taxCategoryId: taxes.data?.[0]?.id }} onFinish={(v) => saveItem.mutate(v)}>
           <Form.Item name="categoryId" label="Danh mục" rules={[{ required: true }]}>
             <Select options={(categories.data ?? []).map((c) => ({ label: c.name, value: c.id }))} />
           </Form.Item>
@@ -168,6 +184,17 @@ export default function MenuAdminPage() {
               formatter={(v) => `${v ?? ''}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
               parser={(v) => Number((v ?? '').replace(/\./g, ''))}
             />
+          </Form.Item>
+          {/* FR-21.1, BR-47: left empty, the dish is not sold on that app. */}
+          <Flex gap={12}>
+            {CHANNELS.map((c) => (
+              <Form.Item key={c} name={['appPrices', c]} label={`Giá ${channelLabel[c]}`} style={{ flex: 1 }}>
+                <InputNumber<number> min={0} step={1000} style={{ width: '100%' }} placeholder="Không bán" {...moneyInputProps} />
+              </Form.Item>
+            ))}
+          </Flex>
+          <Form.Item name="taxCategoryId" label="Loại thuế" rules={[{ required: true }]}>
+            <Select options={(taxes.data ?? []).map((t) => ({ label: `${t.name} (${t.currentRate}%)`, value: t.id }))} />
           </Form.Item>
           <Form.Item name="description" label="Mô tả" rules={[{ max: 500 }]}>
             <Input.TextArea rows={2} />

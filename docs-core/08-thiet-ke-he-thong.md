@@ -35,17 +35,18 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `POST /payrolls/{id}/finalize` | ADMIN | FR-15.3 |
 | | `GET /me/payslips`, `GET /me/payslips/{id}` | NV, phiếu đã chốt của mình | FR-15.4 |
 | Thực đơn | `GET /categories`, `GET /menu-items` | NV | FR-03 |
-| | `POST`, `PUT /{id}`, `DELETE /{id}` trên `/categories` và `/menu-items` | MANAGER | FR-03.1, FR-03.2 |
+| | `POST`, `PUT /{id}`, `DELETE /{id}` trên `/categories` và `/menu-items` (món có `taxCategoryId`, bỏ trống khi tạo thì lấy loại thuế đầu tiên; `appPrices` là giá theo kênh app) | MANAGER | FR-03.1, FR-03.2, FR-20.1, FR-21.1 |
 | | `PATCH /menu-items/{id}/availability` | MANAGER, CHEF | FR-03.3 |
 | Bàn | `GET /tables` (kèm trạng thái) | WAITER, MANAGER, CASHIER | FR-04.4 |
 | | `POST /tables`, `PUT /tables/{id}`, `DELETE /tables/{id}` | MANAGER | FR-04.1 |
 | | `POST /tables/{id}/qr-token` (tạo lại mã) | MANAGER | FR-04.3 |
 | Đơn | `GET /orders?status=OPEN`, `GET /orders/{id}` | WAITER, MANAGER, CASHIER | FR-05, FR-08.1 |
-| | `POST /orders` | WAITER, MANAGER | FR-05.1 |
+| | `POST /orders` (đơn app: `type` là `TAKEAWAY`, có `channel` và `appOrderCode`) | WAITER, MANAGER | FR-05.1, FR-21.2 |
 | | `POST /orders/{id}/items` | WAITER, MANAGER | FR-05.2, FR-05.3 |
 | | `POST /orders/{id}/confirm-pending` | WAITER, MANAGER | FR-06.3 |
 | | `POST /orders/{id}/tables` (`tableIds`: 1 đến 10 bàn; đặt lại bàn của đơn: thêm là ghép, thay là chuyển) | WAITER, MANAGER | FR-04.5, FR-04.6 |
 | | `POST /orders/{id}/cancel` | WAITER, MANAGER | FR-05.6 |
+| | `POST /orders/{id}/handover` (giao shipper: đơn app đóng với khoản thu của kênh) | WAITER, MANAGER | FR-21.3 |
 | | `PATCH /order-items/{id}/status` | CHEF (COOKING, READY), WAITER (SERVED), MANAGER | FR-07.2, FR-05.5 |
 | | `POST /order-items/{id}/cancel` | WAITER, MANAGER (theo BR-08) | FR-05.4, FR-06.3 |
 | Bếp | `GET /kitchen/items` | CHEF, MANAGER | FR-07.1 |
@@ -68,6 +69,9 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `POST /reservations/{id}/seat` (nhận khách, mở đơn; chọn bàn khác được), `POST /reservations/{id}/cancel`, `POST /reservations/{id}/no-show` | WAITER, MANAGER | FR-18.4, FR-18.5 |
 | Khách hàng | `GET /customers?q=` (theo số điện thoại hoặc tên), `GET /customers/{id}` (kèm lịch sử ghé), `PUT /customers/{id}` | MANAGER | FR-19.1, FR-19.3 |
 | | `POST /orders/{id}/customer` (gắn khách theo số điện thoại; chưa có thì tạo), `POST /customers/{id}/consent`, `POST /customers/{id}/opt-out` | CASHIER, MANAGER | FR-19.2, FR-19.4 |
+| Thuế | `GET /tax-categories` (kèm các thuế suất theo ngày), `POST /tax-categories` (tên và thuế suất từ hôm nay), `PUT /tax-categories/{id}/rates/{date}` (thuế suất từ ngày đó, không trước hôm nay) | MANAGER | FR-20.1 |
+| Hoá đơn điện tử | `GET /einvoices?from=&to=&status=` (tối đa 31 ngày), `GET /einvoices/{id}` (kèm dòng và thuế theo từng thuế suất), `POST /einvoices/export` (file Excel các hoá đơn chưa có số trong khoảng ngày), `PUT /einvoices/{id}/number` | MANAGER | FR-20.2, FR-20.4 |
+| | `GET /orders/{id}/einvoice`, `PUT /einvoices/{id}/buyer` | CASHIER, MANAGER | FR-20.3 |
 | Khách | `GET /public/tables/{qrToken}` | Công khai | FR-06.1, FR-06.4 |
 | | `GET /public/menu` | Công khai | FR-06.1 |
 | | `POST /public/tables/{qrToken}/items` | Công khai | FR-06.2, FR-06.5 |
@@ -123,17 +127,18 @@ Tiếng được tạo bằng Web Audio trên trình duyệt, không cần file 
 | Đường dẫn | Vai trò | Nội dung | Yêu cầu |
 |---|---|---|---|
 | `/login` | Mọi nhân viên | Đăng nhập | FR-01.1 |
-| `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nhóm bàn của đơn ghép; nút mở đơn và mang về; kêu khi có món xong, món QR mới | FR-04.4, FR-04.5, FR-05.1, FR-07.5 |
+| `/tables` | WAITER, MANAGER | Sơ đồ bàn theo khu, màu theo trạng thái, nhóm bàn của đơn ghép; nút mở đơn, mang về và đơn app (kênh, mã đơn); kêu khi có món xong, món QR mới | FR-04.4, FR-04.5, FR-05.1, FR-07.5, FR-21.2 |
 | `/reservations` | WAITER, MANAGER | Đặt bàn theo ngày: thêm, sửa, tin xác nhận, mã cọc VietQR, xác nhận cọc tay, nhận khách, huỷ, không tới; tổng cọc đang giữ | FR-18 |
-| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; chuyển, ghép bàn; in phiếu tạm tính; kêu như sơ đồ bàn | FR-04.5, FR-04.6, FR-05, FR-06.3, FR-07.5, FR-08.9 |
-| `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món | FR-07, FR-03.3 |
-| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; giảm giá, tặng món; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp; ca két: mở ca, phiếu chi, chốt ca; bill trừ cọc của booking; tách bill; gắn khách theo số điện thoại | FR-08, FR-17.1 → FR-17.3, FR-18.4, FR-19.2 |
-| `/admin/menu` | MANAGER | Danh mục và món; định lượng từng món | FR-03, FR-09.8 |
+| `/orders/:id` | WAITER, MANAGER | Chọn món, giỏ, gửi bếp; danh sách món và trạng thái; xác nhận món QR; ra món; huỷ; chuyển, ghép bàn; in phiếu tạm tính; kêu như sơ đồ bàn; đơn app chọn món theo giá app và giao shipper | FR-04.5, FR-04.6, FR-05, FR-06.3, FR-07.5, FR-08.9, FR-21 |
+| `/kitchen` | CHEF, MANAGER | 3 cột Chờ làm, Đang làm, Xong; món chờ lâu tô đỏ; kêu khi có món mới; báo hết món; đơn app hiện kênh và mã đơn | FR-07, FR-03.3 |
+| `/cashier` | CASHIER, MANAGER | Đơn đang mở, bill, tiền mặt, VietQR, xác nhận tay, giao dịch không khớp; giảm giá, tặng món; in phiếu tạm tính và phiếu thanh toán; cảnh báo khi webhook SePay lỗi liên tiếp; ca két: mở ca, phiếu chi, chốt ca; bill trừ cọc của booking; tách bill; gắn khách theo số điện thoại; người mua của hoá đơn điện tử | FR-08, FR-17.1 → FR-17.3, FR-18.4, FR-19.2, FR-20.3 |
+| `/admin/menu` | MANAGER | Danh mục và món, loại thuế của món; định lượng từng món; loại thuế và thuế suất theo ngày | FR-03, FR-09.8, FR-20.1 |
 | `/admin/tables` | MANAGER | Bàn, xem và in QR, tạo lại mã | FR-04.1 → FR-04.3 |
 | `/admin/inventory` | MANAGER | Nguyên liệu, giá vốn, giá trị tồn; nhập, xuất, kiểm kê, lịch sử; phiếu nhập có giá; nhà cung cấp; tiêu hao theo định lượng | FR-09 |
 | `/admin/reports` | MANAGER | Doanh thu, biểu đồ theo ngày, theo phương thức, top món; lãi gộp theo món; ngoại lệ; xuất Excel | FR-10 |
 | `/admin/audit` | MANAGER | Nhật ký thao tác: chọn khoảng ngày, lọc theo người, loại thao tác, đơn hoặc bàn | FR-16 |
 | `/admin/customers` | MANAGER | Khách hàng: tìm theo số hoặc tên, lịch sử ghé, tổng chi, đồng ý hoặc từ chối nhận tin | FR-19 |
+| `/admin/einvoices` | MANAGER | Hoá đơn điện tử: hàng chờ theo ngày, dòng hàng và thuế theo từng thuế suất, người mua, xuất file Excel cho MISA meInvoice, ghi ký hiệu và số | FR-20.2 → FR-20.4 |
 | `/admin/cash-shifts` | MANAGER | Danh sách ca két theo ngày: quỹ đầu ca, tiền mặt thu, phiếu chi, dự kiến, thực đếm, chênh lệch và lý do | FR-17.4 |
 | `/admin/employees` | ADMIN | Nhân viên, hồ sơ và mức lương, cho nghỉ việc, khoá, đặt lại mật khẩu | FR-02, FR-12 |
 | `/admin/schedule` | MANAGER | Lịch tuần theo người, xếp và gỡ ca, chép lịch tuần trước, ca mẫu | FR-13.1 → FR-13.3 |
