@@ -235,6 +235,14 @@ Là **thu ngân**, tôi muốn ghi khách quen theo số điện thoại, để 
 - AC4: Số điện thoại không đủ 10 số thì bị từ chối.
 - AC5: Phục vụ và bếp không xem được danh sách khách; bếp không gắn khách được.
 
+### US-40 Hoá đơn điện tử — FR-20.1 → FR-20.4
+Là **quản lý**, tôi muốn mỗi bill đã thanh toán có sẵn dữ liệu hoá đơn điện tử, để nhập vào MISA meInvoice mà không gõ lại.
+- AC1: Bill có lẩu 329.000 đ (loại "Ăn uống", 8%) và 2 bia 22.000 đ (loại "Rượu, bia", 10%), giá đã gồm thuế. Thanh toán xong thì hàng chờ có 1 hoá đơn: thuế suất 8% có tiền chưa thuế 304.630 đ, tiền thuế 24.370 đ; thuế suất 10% có 40.000 đ và 4.000 đ; tổng 373.000 đ.
+- AC2: "Ăn uống" đang 8% và được đặt 10% từ 01/01/2027. Bill thanh toán lúc 23:50 ngày 31/12/2026 dùng 8%; bill thanh toán lúc 00:10 ngày 01/01/2027 (giờ Việt Nam) dùng 10%.
+- AC3: Bill có tặng món và giảm giá: hoá đơn có dòng chiết khấu theo thuế suất của món, tổng hoá đơn bằng tiền món trừ giảm giá; cọc đã trừ vẫn tính là đã trả.
+- AC4: Thu ngân ghi người mua công ty: tên, mã số thuế 0101234567, địa chỉ, email. Mã số thuế sai dạng thì bị từ chối; hoá đơn đã có số thì không sửa được người mua.
+- AC5: Quản lý xuất file các hoá đơn chưa có số trong ngày, rồi ghi ký hiệu 1C26MKB, số 123: hoá đơn chuyển sang "Đã có số", và ký hiệu, số đó không ghi được cho hoá đơn khác. Phục vụ và bếp không xem được hàng chờ; thu ngân chỉ ghi người mua.
+
 ## Nhân sự
 
 Phần thêm theo yêu cầu của môn sau bản core (P2-05 → P2-09 trong [kế hoạch](10-ke-hoach-phat-trien.md)).
