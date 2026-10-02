@@ -243,6 +243,14 @@ Là **quản lý**, tôi muốn mỗi bill đã thanh toán có sẵn dữ liệ
 - AC4: Thu ngân ghi người mua công ty: tên, mã số thuế 0101234567, địa chỉ, email. Mã số thuế sai dạng thì bị từ chối; hoá đơn đã có số thì không sửa được người mua.
 - AC5: Quản lý xuất file các hoá đơn chưa có số trong ngày, rồi ghi ký hiệu 1C26MKB, số 123: hoá đơn chuyển sang "Đã có số", và ký hiệu, số đó không ghi được cho hoá đơn khác. Phục vụ và bếp không xem được hàng chờ; thu ngân chỉ ghi người mua.
 
+### US-41 Đơn app giao hàng — FR-21.1 → FR-21.3
+Là **phục vụ quầy**, tôi muốn nhập đơn GrabFood, ShopeeFood vào hệ thống, để bếp làm như đơn thường và doanh thu app không bị sót hay nhập trùng.
+- AC1: Nhập đơn GrabFood mã "gf-8812" gồm 2 phần nem rán giá app 79.000 đ: đơn lưu mã "GF-8812", tiền 158.000 đ, món vào bếp.
+- AC2: Nhập lại mã "GF-8812" cho GrabFood thì bị báo trùng và không tạo đơn; cùng mã cho ShopeeFood thì được; đơn GrabFood đó đã huỷ thì nhập lại được.
+- AC3: Món chưa có giá ShopeeFood thì không gọi được trong đơn ShopeeFood.
+- AC4: Còn món chưa xong thì chưa giao shipper được. Mọi món xong, bấm Giao shipper: đơn đóng, doanh thu có 158.000 đ ở dòng GrabFood, tiền mặt trong két không đổi.
+- AC5: Đơn app không thu tiền mặt hay VietQR được; bếp không tạo được đơn app.
+
 ## Nhân sự
 
 Phần thêm theo yêu cầu của môn sau bản core (P2-05 → P2-09 trong [kế hoạch](10-ke-hoach-phat-trien.md)).

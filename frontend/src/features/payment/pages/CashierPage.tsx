@@ -17,7 +17,7 @@ import { useCashShift } from '../hooks/useCashShift'
 import { adjustmentLabel, adjustmentReason, adjustmentStatusColor, adjustmentStatusLabel, isOpen } from '../utils/adjustment'
 import { orderTitle } from '../utils/bill'
 import { usePrintSlip } from '@/shared/print/usePrintSlip'
-import { cashSuggestions, hasRole, money, time } from '@/shared/utils/format'
+import { cashSuggestions, channelLabel, hasRole, money, time } from '@/shared/utils/format'
 
 /** FR-08: bills, cash, VietQR with automatic confirmation, manual confirmation, unmatched transfers, webhook warning. FR-17: the drawer shift. */
 export default function CashierPage() {
@@ -125,7 +125,8 @@ export default function CashierPage() {
   const partPaid = !!(instruction && o && askedWhen && o.paidAmount > askedWhen.paid)
   const qr = instruction && o && askedWhen && o.paidAmount === askedWhen.paid && o.due === askedWhen.due ? instruction : null
   const cashAmount = part ?? o?.due ?? 0
-  const blocked = !o || o.pendingCount > 0 || o.pendingAdjustmentCount > 0
+  // BR-47: the app takes the money of an app order, not the counter.
+  const blocked = !o || o.pendingCount > 0 || o.pendingAdjustmentCount > 0 || o.channel !== null
 
   const bill = !o ? (
     <Empty description="Chọn một đơn để tính tiền" />
@@ -239,6 +240,9 @@ export default function CashierPage() {
             <Typography.Text strong>{money(o.due)}</Typography.Text>
           </Flex>
         </>
+      )}
+      {o.channel && (
+        <Alert type="info" showIcon title={`Đơn ${channelLabel[o.channel]}: app thu tiền. Phục vụ bấm Giao shipper ở trang đơn khi giao hàng.`} />
       )}
       {o.pendingCount > 0 && <Alert type="error" showIcon title="Còn món khách gửi qua QR chưa xác nhận. Nhờ phục vụ xử lý trước." />}
       {o.pendingAdjustmentCount > 0 && (

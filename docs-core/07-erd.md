@@ -1,10 +1,10 @@
 # 7. Thiết kế cơ sở dữ liệu (PostgreSQL)
 
 Cách làm **database-first**:
-- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02), `V16` thêm ca và két (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`) (P2-01), `V17` thêm giá vốn lúc trừ kho (`stock_movement.unit_cost`) và view `v_order_item_cost` cho báo cáo lãi gộp (P2-04), `V18` thêm số phiên bản token của nhân viên để thu hồi token (P3-02), `V19` thêm đặt bàn và cọc (bảng `reservation`, cột `orders.reservation_id`, `bank_transaction.reservation_id`) (P4-01), `V20` bỏ index `ux_payment_paid_order` để một đơn thu được nhiều khoản (P1-07), `V21` thêm khách hàng (bảng `customer`, cột `orders.customer_id`, `reservation.customer_id`) (P4-02), `V22` thêm hoá đơn điện tử (bảng `tax_category`, `tax_rate`, `einvoice`, `einvoice_line`, cột `menu_item.tax_category_id`; món có tên bắt đầu bằng "Bia" hoặc "Rượu" vào loại thuế "Rượu, bia") (P4-03).
+- Lược đồ được thiết kế ở tài liệu này trước, rồi viết tay bằng SQL trong các migration ở `backend/src/main/resources/db/migration/`. `V1__init.sql` là lược đồ gốc, `V3` → `V7` là phần nhân sự (mục 7.5), `V8` thêm ngưỡng món chờ lâu (P1-06), `V9` thêm bảng `service_request` (P1-05), `V10` đổi tên quán mẫu thành "Khói Bếp" (chỉ đổi dữ liệu, không đổi lược đồ), `V11` thêm bảng `audit_entry` (P1-03), `V12` thêm bảng `adjustment` và loại nhật ký `DISCOUNT_GIVEN` (P1-04), `V13` thêm bảng `order_table` cho chuyển và ghép bàn, và chép bàn của mọi đơn cũ sang bảng này (P1-01), `V14` thêm nhà cung cấp, phiếu nhập có giá và giá vốn nguyên liệu (P2-03), `V15` thêm định lượng món (bảng `recipe_line`), loại biến động `SALE` và cột `stock_movement.order_item_id` để trừ kho khi món vào bếp, đồng thời bỏ ràng buộc tồn không âm (P2-02), `V16` thêm ca và két (bảng `cash_shift`, `cash_expense`, cột `payment.cash_shift_id`) (P2-01), `V17` thêm giá vốn lúc trừ kho (`stock_movement.unit_cost`) và view `v_order_item_cost` cho báo cáo lãi gộp (P2-04), `V18` thêm số phiên bản token của nhân viên để thu hồi token (P3-02), `V19` thêm đặt bàn và cọc (bảng `reservation`, cột `orders.reservation_id`, `bank_transaction.reservation_id`) (P4-01), `V20` bỏ index `ux_payment_paid_order` để một đơn thu được nhiều khoản (P1-07), `V21` thêm khách hàng (bảng `customer`, cột `orders.customer_id`, `reservation.customer_id`) (P4-02), `V22` thêm hoá đơn điện tử (bảng `tax_category`, `tax_rate`, `einvoice`, `einvoice_line`, cột `menu_item.tax_category_id`; món có tên bắt đầu bằng "Bia" hoặc "Rượu" vào loại thuế "Rượu, bia") (P4-03), `V23` thêm đơn app giao hàng (bảng `menu_item_app_price`, cột `orders.channel`, `orders.app_order_code`, phương thức thanh toán `GRABFOOD`, `SHOPEEFOOD`) (P4-04).
 - **Flyway** chạy các file SQL đó để tạo bảng.
 - Hibernate đặt `ddl-auto: validate`, nghĩa là **không tạo hay sửa bảng**, chỉ kiểm tra entity Java có khớp lược đồ không. Lệch thì ứng dụng không khởi động.
-- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V23__...sql` trở đi). **Không sửa** file migration đã chạy.
+- Muốn đổi lược đồ thì sửa tài liệu này, rồi viết migration mới (`V24__...sql` trở đi). **Không sửa** file migration đã chạy.
 - Script `scripts/check-erd.mjs` so mọi sơ đồ ERD trong tài liệu này với mọi migration: bảng, cột, kiểu dữ liệu, và khoá của từng cột (`PK` khoá chính, `FK` khoá ngoại, `UK` duy nhất). CI chạy nó ở mỗi lần build, lệch thì build đỏ. `UNIQUE` trên nhiều cột và unique index một phần không gắn được vào một cột, nên được liệt kê ở mục 7.2.
 
 Quy ước:
@@ -46,6 +46,7 @@ erDiagram
     CUSTOMER |o--o{ ORDERS : "ghé"
     CUSTOMER |o--o{ RESERVATION : "đặt bàn"
     TAX_CATEGORY ||--o{ MENU_ITEM : "loại thuế"
+    MENU_ITEM ||--o{ MENU_ITEM_APP_PRICE : "giá app"
     TAX_CATEGORY ||--|{ TAX_RATE : "thuế suất theo ngày"
     ORDERS ||--o| EINVOICE : "dữ liệu hoá đơn"
     EINVOICE ||--|{ EINVOICE_LINE : "gồm"
@@ -102,6 +103,8 @@ erDiagram
         timestamptz closed_at
         bigint reservation_id FK, UK "booking mở ra đơn; null khi không đặt trước"
         bigint customer_id FK "khách của đơn"
+        varchar channel "GRABFOOD, SHOPEEFOOD; null nếu không phải đơn app"
+        varchar app_order_code "mã đơn trên app, viết hoa"
     }
     ORDER_ITEM {
         bigint id PK
@@ -121,7 +124,7 @@ erDiagram
     PAYMENT {
         bigint id PK
         bigint order_id FK
-        varchar method "CASH, BANK_TRANSFER"
+        varchar method "CASH, BANK_TRANSFER, GRABFOOD, SHOPEEFOOD"
         varchar status "PENDING, PAID, CANCELLED"
         bigint amount
         varchar reference UK "KB + 8 ký tự"
@@ -275,6 +278,11 @@ erDiagram
         bigint id PK
         varchar name UK
     }
+    MENU_ITEM_APP_PRICE {
+        bigint menu_item_id PK, FK
+        varchar channel PK "GRABFOOD, SHOPEEFOOD"
+        bigint price "VND, gồm VAT"
+    }
     TAX_RATE {
         bigint id PK
         bigint tax_category_id FK
@@ -371,6 +379,9 @@ erDiagram
 | Người mua có tên, mã số thuế đúng dạng | `CONSTRAINT ck_einvoice_buyer CHECK (buyer_name IS NOT NULL OR (buyer_tax_code IS NULL AND buyer_address IS NULL AND buyer_email IS NULL))`, `CHECK (buyer_tax_code ~ '^([0-9]{10}(-[0-9]{3})?\|[0-9]{12})$')` | BR-46 |
 | Đã có số thì đủ thông tin, không trùng số | `CONSTRAINT ck_einvoice_issued CHECK ((invoice_no IS NULL) = (invoice_symbol IS NULL) AND (invoice_no IS NULL) = (issued_by IS NULL) AND (invoice_no IS NULL) = (issued_at IS NULL))`, `CHECK (invoice_symbol ~ '^[1-9][CK][0-9]{2}[A-Z][A-Z0-9]{2}$')`, `CHECK (invoice_no ~ '^[1-9][0-9]{0,7}$')`, `CONSTRAINT ux_einvoice_number UNIQUE (invoice_symbol, invoice_no)` | BR-46 |
 | Dòng hoá đơn khớp tiền, dòng món đủ thông tin | `CONSTRAINT ck_einvoice_line_amount CHECK (before_tax + tax_amount = amount)`, `CONSTRAINT ck_einvoice_line_goods CHECK ((kind = 'GOODS') = (quantity IS NOT NULL) AND (quantity IS NULL) = (unit_price IS NULL) AND (quantity IS NULL) = (unit IS NULL))`, `UNIQUE (einvoice_id, line_no)` | BR-46 |
+| Đơn app có mã, không trùng trong một kênh | `CONSTRAINT ck_orders_app CHECK ((channel IS NULL) = (app_order_code IS NULL) AND (channel IS NULL OR type = 'TAKEAWAY'))`, `CREATE UNIQUE INDEX ux_orders_app_code ON orders(channel, app_order_code) WHERE channel IS NOT NULL AND status <> 'CANCELLED'` | BR-47 |
+| Giá app hợp lệ | `PRIMARY KEY (menu_item_id, channel)`, `CHECK (price >= 0)` trên `menu_item_app_price`; xoá món thì xoá giá app (`ON DELETE CASCADE`) | BR-47 |
+| Phương thức thanh toán hợp lệ | `CHECK (method IN ('CASH', 'BANK_TRANSFER', 'GRABFOOD', 'SHOPEEFOOD'))` trên `payment`; khoản thu của app không thuộc ca nào (`ck_payment_cash_shift`) | BR-47 |
 | Một ca mở mỗi lúc | `CREATE UNIQUE INDEX ux_cash_shift_open ON cash_shift ((closed_at IS NULL)) WHERE closed_at IS NULL` | BR-39 |
 | Ca chốt đủ thông tin, lệch có lý do | `CONSTRAINT ck_cash_shift_closed CHECK ((closed_at IS NULL) = (closed_by IS NULL) AND (closed_at IS NULL) = (expected_cash IS NULL) AND (closed_at IS NULL) = (counted_cash IS NULL))`, `CONSTRAINT ck_cash_shift_reason CHECK (counted_cash = expected_cash OR close_note IS NOT NULL)`; `CHECK (opening_float >= 0)`, `CHECK (counted_cash >= 0)` | BR-39 |
 | Phiếu chi hợp lệ | `CHECK (amount > 0)` trên `cash_expense` | BR-39 |

@@ -13,9 +13,11 @@ import MenuPicker, { toSections } from '../components/MenuPicker'
 import MoveTablesModal from '../components/MoveTablesModal'
 import StatusTag from '../components/StatusTag'
 import { useCart } from '../hooks/useCart'
+import { forChannel, readyForShipper } from '../utils/appOrder'
+import { orderTitle } from '@/features/payment/utils/bill'
 import { hasRole, money, orderStatusLabel } from '@/shared/utils/format'
 
-/** FR-05, FR-06.3: take an order, confirm guest dishes, serve and cancel dishes. */
+/** FR-05, FR-06.3: take an order, confirm guest dishes, serve and cancel dishes. FR-21: an app order goes to the shipper. */
 export default function OrderPage() {
   const orderId = Number(useParams().id)
   const navigate = useNavigate()
@@ -73,11 +75,19 @@ export default function OrderPage() {
     onSuccess: () => navigate('/tables'),
     onError,
   })
+  const handOver = useMutation({
+    mutationFn: () => api.post(`/orders/${orderId}/handover`),
+    onSuccess: () => {
+      message.success('Đã giao shipper')
+      navigate('/tables')
+    },
+    onError,
+  })
 
   if (order.isLoading) return <Spin />
   if (!order.data) return <Result status="404" title="Không tìm thấy đơn" />
   const o = order.data
-  const title = o.type === 'TAKEAWAY' ? `Mang về #${o.id}` : `Bàn ${o.tableName}`
+  const title = orderTitle(o)
   const isManager = hasRole(user?.role, 'MANAGER')
 
   if (o.status !== 'OPEN') {
@@ -107,6 +117,14 @@ export default function OrderPage() {
           <Typography.Title level={4} style={{ margin: 0 }}>
             {money(o.total)}
           </Typography.Title>
+          {/* FR-21.3: the app has the money; the shipper takes the order once every dish is done. */}
+          {o.channel && (
+            <Popconfirm title="Giao đơn cho shipper?" okText="Giao" cancelText="Không" onConfirm={() => handOver.mutate()}>
+              <Button type="primary" disabled={!readyForShipper(o)} loading={handOver.isPending} title={readyForShipper(o) ? undefined : 'Chờ bếp làm xong'}>
+                Giao shipper
+              </Button>
+            </Popconfirm>
+          )}
           {o.type === 'DINE_IN' && (
             <Button icon={<SwapOutlined />} onClick={() => setMoving(true)}>
               Chuyển, ghép bàn
@@ -136,7 +154,8 @@ export default function OrderPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={14}>
           <Card title="Thực đơn" size="small">
-            <MenuPicker sections={toSections(menu.data ?? [])} cart={cart} />
+            {/* BR-47: an app order takes the dishes the app sells, at its price. */}
+            <MenuPicker sections={toSections(o.channel ? forChannel(menu.data ?? [], o.channel) : (menu.data ?? []))} cart={cart} />
           </Card>
         </Col>
         <Col xs={24} lg={10}>
@@ -179,7 +198,7 @@ export default function OrderPage() {
                   title: '',
                   render: (_, item) => (
                     <Flex gap={4} wrap>
-                      {item.status === 'READY' && (
+                      {item.status === 'READY' && !o.channel && (
                         <Button size="small" type="primary" onClick={() => serve.mutate(item.id)}>
                           Đã ra
                         </Button>

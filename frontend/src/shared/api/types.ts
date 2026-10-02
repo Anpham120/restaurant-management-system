@@ -4,7 +4,10 @@ export type Role = 'ADMIN' | 'MANAGER' | 'WAITER' | 'CHEF' | 'CASHIER'
 export type OrderType = 'DINE_IN' | 'TAKEAWAY'
 export type OrderStatus = 'OPEN' | 'PAID' | 'CANCELLED'
 export type ItemStatus = 'PENDING' | 'WAITING' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED'
-export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
+/** BR-47: the delivery app of an app order. */
+export type Channel = 'GRABFOOD' | 'SHOPEEFOOD'
+/** The delivery apps take the money of their orders (BR-47). */
+export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | Channel
 export type RevenueMethod = PaymentMethod | 'DEPOSIT'
 export type ReservationStatus = 'BOOKED' | 'SEATED' | 'CANCELLED' | 'NO_SHOW'
 export type ConsentChannel = 'ZALO' | 'SMS'
@@ -55,6 +58,8 @@ export interface MenuItem {
   /** BR-45: what share of the price is VAT. */
   taxCategoryId: number
   taxCategoryName: string
+  /** BR-47: the price on each delivery app; an app left out does not sell the dish. */
+  appPrices: Partial<Record<Channel, number>>
 }
 
 export interface MenuSection {
@@ -106,6 +111,9 @@ export interface Order {
   tableName: string | null
   guestCount: number | null
   note: string | null
+  /** BR-47: the delivery app of an app order, with the code the app gave it; null for any other. */
+  channel: Channel | null
+  appOrderCode: string | null
   /** BR-44: the guest known by phone number, or none. */
   customerId: number | null
   customerName: string | null
@@ -157,6 +165,9 @@ export interface KitchenItem {
   id: number
   orderId: number
   orderType: OrderType
+  /** An app order shows its app and code instead of a table (BR-47). */
+  channel: Channel | null
+  appOrderCode: string | null
   tableName: string | null
   itemName: string
   quantity: number

@@ -227,14 +227,17 @@ public class EInvoiceService {
         return shares;
     }
 
-    /** TM for cash only, CK for transfers only (the deposit is one), TM/CK for both, as MISA writes them. */
+    /**
+     * TM for cash only, CK for transfers only (a deposit, and an app paying for its order, are transfers too), TM/CK for
+     * both, as MISA writes them.
+     */
     private static String paymentMethod(Order order) {
         boolean cash = false;
         boolean transfer = order.depositCredit() > 0;
         for (Payment p : order.getPayments()) {
             if (p.getStatus() == PaymentStatus.PAID && p.getAmount() > 0) {
                 cash |= p.getMethod() == PaymentMethod.CASH;
-                transfer |= p.getMethod() == PaymentMethod.BANK_TRANSFER;
+                transfer |= p.getMethod() != PaymentMethod.CASH;
             }
         }
         return cash && transfer ? "TM/CK" : transfer ? "CK" : "TM";

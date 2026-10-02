@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { App, Button, Card, Col, Empty, Flex, InputNumber, Modal, Row, Spin, Tag, Typography } from 'antd'
-import { ShoppingOutlined } from '@ant-design/icons'
+import { App, Button, Card, Col, Empty, Flex, Form, Input, InputNumber, Modal, Row, Segmented, Spin, Tag, Typography } from 'antd'
+import { CarOutlined, ShoppingOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
-import type { DiningTable, Order } from '@/shared/api/types'
-import { money } from '@/shared/utils/format'
+import type { Channel, DiningTable, Order } from '@/shared/api/types'
+import { orderTitle } from '@/features/payment/utils/bill'
+import { channelLabel, money } from '@/shared/utils/format'
 
-/** FR-04.4, FR-05.1: floor plan with live state; tap a free table to open it. */
+/** FR-04.4, FR-05.1: floor plan with live state; tap a free table to open it. FR-21.2: enter an app order. */
 export default function TablesPage() {
   const navigate = useNavigate()
   const { message } = App.useApp()
   const [opening, setOpening] = useState<DiningTable | null>(null)
   const [guestCount, setGuestCount] = useState<number>(2)
+  const [enteringApp, setEnteringApp] = useState(false)
 
   const tables = useQuery({ queryKey: ['tables'], queryFn: () => api.get<DiningTable[]>('/tables').then((r) => r.data) })
   const orders = useQuery({ queryKey: ['orders', 'OPEN'], queryFn: () => api.get<Order[]>('/orders').then((r) => r.data) })
@@ -45,9 +47,14 @@ export default function TablesPage() {
     <>
       <div className="page-title">
         <Typography.Title level={3}>Sơ đồ bàn</Typography.Title>
-        <Button icon={<ShoppingOutlined />} loading={createOrder.isPending} onClick={() => createOrder.mutate({ type: 'TAKEAWAY' })}>
-          Đơn mang về
-        </Button>
+        <Flex gap={8} wrap>
+          <Button icon={<ShoppingOutlined />} loading={createOrder.isPending} onClick={() => createOrder.mutate({ type: 'TAKEAWAY' })}>
+            Đơn mang về
+          </Button>
+          <Button icon={<CarOutlined />} onClick={() => setEnteringApp(true)}>
+            Đơn app
+          </Button>
+        </Flex>
       </div>
 
       {[...byArea.entries()].map(([area, list]) => (
@@ -86,7 +93,7 @@ export default function TablesPage() {
         </div>
       ))}
 
-      <Typography.Title level={5}>Đơn mang về đang mở</Typography.Title>
+      <Typography.Title level={5}>Đơn mang về và đơn app đang mở</Typography.Title>
       {takeaways.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có" />
       ) : (
@@ -94,7 +101,7 @@ export default function TablesPage() {
           {takeaways.map((o) => (
             <Col key={o.id} xs={12} sm={8} md={6} xl={4}>
               <Card size="small" className="table-card occupied" onClick={() => navigate(`/orders/${o.id}`)}>
-                <Typography.Text strong>Mang về #{o.id}</Typography.Text>
+                <Typography.Text strong>{orderTitle(o)}</Typography.Text>
                 <div>{money(o.total)}</div>
               </Card>
             </Col>
@@ -113,6 +120,31 @@ export default function TablesPage() {
       >
         <Typography.Paragraph>Số khách</Typography.Paragraph>
         <InputNumber min={1} max={100} value={guestCount} onChange={(v) => setGuestCount(v ?? 1)} size="large" />
+      </Modal>
+
+      {/* FR-21.2, BR-47: an order from a delivery app, under the code the app gave it. */}
+      <Modal title="Đơn app giao hàng" open={enteringApp} onCancel={() => setEnteringApp(false)} footer={null} destroyOnHidden>
+        <Form<{ channel: Channel; appOrderCode: string }>
+          layout="vertical"
+          initialValues={{ channel: 'GRABFOOD' }}
+          onFinish={(v) => createOrder.mutate({ type: 'TAKEAWAY', channel: v.channel, appOrderCode: v.appOrderCode })}
+        >
+          <Form.Item name="channel" label="Kênh">
+            <Segmented<Channel>
+              block
+              options={[
+                { value: 'GRABFOOD', label: channelLabel.GRABFOOD },
+                { value: 'SHOPEEFOOD', label: channelLabel.SHOPEEFOOD },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="appOrderCode" label="Mã đơn trên app" rules={[{ required: true, whitespace: true, message: 'Nhập mã đơn trên app' }, { max: 40 }]}>
+            <Input autoFocus placeholder="Ví dụ: GF-8812" />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" block loading={createOrder.isPending}>
+            Tạo đơn
+          </Button>
+        </Form>
       </Modal>
     </>
   )

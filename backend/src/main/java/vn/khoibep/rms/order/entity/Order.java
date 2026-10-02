@@ -27,6 +27,7 @@ import org.hibernate.annotations.BatchSize;
 
 import vn.khoibep.rms.customer.entity.Customer;
 import vn.khoibep.rms.order.enums.AdjustmentStatus;
+import vn.khoibep.rms.order.enums.Channel;
 import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
 import vn.khoibep.rms.order.enums.OrderType;
@@ -75,6 +76,12 @@ public class Order {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reservation_id")
     private Reservation reservation;
+
+    /** BR-47: the delivery app of an app order, null for any other; the code is the one the app gave it. */
+    @Enumerated(EnumType.STRING)
+    private Channel channel;
+
+    private String appOrderCode;
 
     /** The guest, found by phone number (BR-44). */
     @ManyToOne(fetch = FetchType.LAZY)

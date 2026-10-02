@@ -15,6 +15,7 @@ const dish = (id: number, categoryId: number, name: string, price: number, avail
   available,
   taxCategoryId: 1,
   taxCategoryName: 'Ăn uống',
+  appPrices: {},
 })
 
 const SECTIONS: MenuSection[] = [

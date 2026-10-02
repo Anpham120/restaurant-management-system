@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import type { ItemStatus, MovementType, OrderStatus, PayType, Role, ServiceRequestType } from '@/shared/api/types'
+import type { Channel, ItemStatus, MovementType, OrderStatus, PayType, Role, ServiceRequestType } from '@/shared/api/types'
 
 const vnd = new Intl.NumberFormat('vi-VN')
 
@@ -33,6 +33,11 @@ export const itemStatusColor: Record<ItemStatus, string> = {
   READY: 'green',
   SERVED: 'default',
   CANCELLED: 'red',
+}
+
+export const channelLabel: Record<Channel, string> = {
+  GRABFOOD: 'GrabFood',
+  SHOPEEFOOD: 'ShopeeFood',
 }
 
 export const orderStatusLabel: Record<OrderStatus, string> = {

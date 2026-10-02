@@ -108,6 +108,8 @@ P4-02 **đã làm xong** (issue #25): yêu cầu FR-19.1 → FR-19.4, US-39, BR-
 
 P4-03 **đã làm xong** (issue #26): yêu cầu FR-20.1 → FR-20.4, US-40, BR-45, BR-46; CSDL là migration `V22` (bảng `tax_category`, `tax_rate`, `einvoice`, `einvoice_line`, cột `menu_item.tax_category_id`). Bản core lập dữ liệu hoá đơn khi bill được thu đủ, xuất file Excel để nhập vào MISA meInvoice, và ghi lại ký hiệu, số đã phát hành. Chưa gọi API của nhà cung cấp (FR-INT-03), chưa tách một bill cho nhiều người mua (FR-BIL-12 bản đầy đủ), chưa điều chỉnh hay thay thế hoá đơn (kế toán làm trên MISA, BR-25 bản đầy đủ). Trước khi dùng thật, kế toán cần nhập thử một ngày dữ liệu vào MISA để chốt cách ghép cột và đơn vị tính.
 
+P4-04 **đã làm xong** (issue #27): yêu cầu FR-21.1 → FR-21.3, US-41, BR-47; CSDL là migration `V23` (bảng `menu_item_app_price`, cột `orders.channel`, `orders.app_order_code`, phương thức thanh toán `GRABFOOD`, `SHOPEEFOOD`). Bản core nhập tay đơn app và ghi doanh thu theo kênh lúc giao shipper; chưa đối soát bảng kê, phí và khuyến mãi của app (FR-DLV-04), chưa nhận đơn tự động (FR-DLV-05), chưa nhắc tắt món trên app khi hết món (BR-18 bản đầy đủ).
+
 ### Giai đoạn 5 — Hồ sơ nộp môn (làm song song, chốt ở sprint 8)
 
 | Mã | Việc |

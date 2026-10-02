@@ -4,7 +4,12 @@ import { money, time } from '@/shared/utils/format'
 import { adjustmentLabel } from '../utils/adjustment'
 import { billLines, orderTitle } from '../utils/bill'
 
-const METHOD_LABEL: Record<PaymentMethod, string> = { CASH: 'Tiền mặt', BANK_TRANSFER: 'Chuyển khoản' }
+const METHOD_LABEL: Record<PaymentMethod, string> = {
+  CASH: 'Tiền mặt',
+  BANK_TRANSFER: 'Chuyển khoản',
+  GRABFOOD: 'GrabFood',
+  SHOPEEFOOD: 'ShopeeFood',
+}
 
 interface Props {
   order: Order
