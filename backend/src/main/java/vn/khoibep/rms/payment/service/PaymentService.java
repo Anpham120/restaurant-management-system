@@ -11,6 +11,7 @@ import vn.khoibep.rms.audit.service.AuditService;
 import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.util.Money;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
+import vn.khoibep.rms.einvoice.service.EInvoiceService;
 import vn.khoibep.rms.order.entity.Order;
 import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
@@ -41,6 +42,7 @@ public class PaymentService {
     private final SettingsService settings;
     private final AuditService audit;
     private final RealtimeEvents realtime;
+    private final EInvoiceService einvoices;
 
     /**
      * FR-08.2, BR-13: cash must cover what is taken; once the bill is covered the order closes and the table becomes
@@ -192,6 +194,8 @@ public class PaymentService {
         List<String> tokens = order.guestTokens();
         order.applyDeposit();
         order.close(OrderStatus.PAID);
+        // BR-46: the e-invoice data, as the bill stands now.
+        einvoices.queue(order);
         realtime.paymentPaid(order.getId(), order.tableId(), tokens);
     }
 

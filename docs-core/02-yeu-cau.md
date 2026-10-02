@@ -206,6 +206,15 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | FR-19.3 | **Lịch sử ghé** của khách: các đơn đã thanh toán và booking, số lần ghé, tổng chi | C | BR-44 |
 | FR-19.4 | **Đồng ý nhận tin**: kênh (Zalo, SMS), thời điểm, cách thu thập; **từ chối nhận tin** ghi thời điểm. Chỉ khách đang đồng ý mới được nhận tin | C | BR-44 |
 
+### FR-20 Hoá đơn điện tử (CASHIER, MANAGER)
+
+| Mã | Yêu cầu | Ưu tiên | Quy tắc |
+|---|---|---|---|
+| FR-20.1 | **Loại thuế** của món và **thuế suất theo ngày hiệu lực**: quản lý thêm loại thuế, đặt thuế suất mới từ một ngày; tới ngày đó bill tự dùng thuế suất mới, không phải sửa phần mềm | C | BR-45 |
+| FR-20.2 | Đơn **thanh toán đủ** thì có ngay **dữ liệu hoá đơn điện tử** trong hàng chờ: người mua, dòng hàng (tên, đơn vị, số lượng, đơn giá), chiết khấu, thành tiền chưa thuế, thuế suất và tiền thuế theo từng thuế suất, tổng thanh toán, hình thức thanh toán | C | BR-46 |
+| FR-20.3 | **Người mua** mặc định là khách lẻ; thu ngân hoặc quản lý ghi tên, mã số thuế, địa chỉ, email khi hoá đơn chưa có số | C | BR-46 |
+| FR-20.4 | Quản lý xem hàng chờ theo ngày, **xuất file Excel** các hoá đơn chưa có số để nhập vào MISA meInvoice, rồi **ghi ký hiệu và số hoá đơn** đã phát hành để đối chiếu | C | BR-46 |
+
 ## 2.2 Yêu cầu phi chức năng
 
 | Mã | Yêu cầu | Cách kiểm tra |

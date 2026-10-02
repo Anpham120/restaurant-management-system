@@ -40,4 +40,9 @@ public class MenuItem {
     /** False when the kitchen has run out (FR-03.3). */
     @Column(nullable = false)
     private boolean available = true;
+
+    /** BR-45: what share of the price is VAT, by the rate of the category on the day the bill is paid. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tax_category_id")
+    private TaxCategory taxCategory;
 }

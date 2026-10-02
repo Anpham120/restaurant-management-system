@@ -11,6 +11,8 @@ const NEM: MenuItem = {
   price: 65_000,
   description: null,
   available: true,
+  taxCategoryId: 1,
+  taxCategoryName: 'Ăn uống',
 }
 
 describe('useCart', () => {

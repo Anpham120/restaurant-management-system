@@ -6,6 +6,7 @@ import { api, errorMessage } from '@/shared/api/client'
 import type { BankTransaction, Order, Payment, PaymentInstruction, Settings, WebhookStatus } from '@/shared/api/types'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import AttachCustomerModal from '@/features/customer/components/AttachCustomerModal'
+import BuyerModal from '@/features/einvoice/components/BuyerModal'
 import StatusTag from '@/features/order/components/StatusTag'
 import AdjustmentModal from '../components/AdjustmentModal'
 import BillSlip from '../components/BillSlip'
@@ -31,6 +32,7 @@ export default function CashierPage() {
   const [part, setPart] = useState<number | null>(null)
   const [splitting, setSplitting] = useState(false)
   const [attaching, setAttaching] = useState(false)
+  const [buyerOpen, setBuyerOpen] = useState(false)
   // What was paid and left when the VietQR code was made, to tell a part that came in from a bill that changed.
   const [askedWhen, setAskedWhen] = useState<{ paid: number; due: number } | null>(null)
   const { user } = useAuth()
@@ -131,7 +133,15 @@ export default function CashierPage() {
     <Result
       status="success"
       title={`${orderTitle(o)}: đã nhận đủ ${money(o.total)}`}
-      extra={<Button onClick={() => setSelectedId(null)}>Xong</Button>}
+      extra={[
+        // FR-20.3: a company asks for its own e-invoice.
+        <Button key="buyer" onClick={() => setBuyerOpen(true)}>
+          Hoá đơn công ty
+        </Button>,
+        <Button key="done" onClick={() => setSelectedId(null)}>
+          Xong
+        </Button>,
+      ]}
     />
   ) : (
     <Flex vertical gap={12}>
@@ -437,6 +447,7 @@ export default function CashierPage() {
         />
       )}
       {attaching && o && <AttachCustomerModal order={o} onClose={() => setAttaching(false)} />}
+      {buyerOpen && o && <BuyerModal orderId={o.id} onClose={() => setBuyerOpen(false)} />}
       {adjusting && o && (
         <AdjustmentModal
           order={o}

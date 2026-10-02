@@ -10,6 +10,8 @@ const dish = (id: number, categoryId: number, categoryName: string): MenuItem =>
   price: 10_000,
   description: null,
   available: true,
+  taxCategoryId: 1,
+  taxCategoryName: 'Ăn uống',
 })
 
 describe('toSections', () => {

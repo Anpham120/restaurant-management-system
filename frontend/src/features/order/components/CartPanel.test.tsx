@@ -13,6 +13,8 @@ const dish = (id: number, categoryId: number, name: string, price: number, avail
   price,
   description: null,
   available,
+  taxCategoryId: 1,
+  taxCategoryName: 'Ăn uống',
 })
 
 const SECTIONS: MenuSection[] = [

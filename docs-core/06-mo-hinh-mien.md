@@ -195,7 +195,46 @@ classDiagram
         Instant optedOutAt
         mayContact() boolean
     }
+    class TaxCategory {
+        Long id
+        String name
+    }
+    class TaxRate {
+        Long id
+        int rate
+        LocalDate effectiveFrom
+    }
+    class EInvoice {
+        Long id
+        Instant invoiceDate
+        String paymentMethod
+        String buyerName
+        String buyerTaxCode
+        long beforeTax
+        long taxAmount
+        long total
+        Instant exportedAt
+        String invoiceSymbol
+        String invoiceNo
+        status() EInvoiceStatus
+    }
+    class EInvoiceLine {
+        int lineNo
+        LineKind kind
+        String itemName
+        Integer quantity
+        Long unitPrice
+        int taxRate
+        long amount
+        long beforeTax
+        long taxAmount
+    }
     Category "1" --> "0..*" MenuItem
+    TaxCategory "1" --> "0..*" MenuItem : loại thuế
+    TaxCategory "1" *-- "1..*" TaxRate : thuế suất theo ngày
+    Order "1" <-- "0..1" EInvoice : dữ liệu hoá đơn
+    EInvoice "1" *-- "1..*" EInvoiceLine
+    Employee "0..1" --> "0..*" EInvoice : ghi số
     DiningTable "1" --> "0..*" Order : bàn chính
     Order "1" *-- "0..*" OrderTable : giữ bàn
     DiningTable "1" --> "0..*" OrderTable : tối đa 1 đơn mở
@@ -253,6 +292,8 @@ Các kiểu liệt kê:
 | `AdjustmentStatus` | `PENDING` (chờ duyệt), `APPLIED` (có hiệu lực), `REJECTED` (bị từ chối), `CANCELLED` (đã huỷ) |
 | `ReservationStatus` | `BOOKED` (chờ khách tới), `SEATED` (đã nhận khách, mở đơn), `CANCELLED` (đã huỷ), `NO_SHOW` (không tới) |
 | `ConsentChannel` | `ZALO`, `SMS` |
+| `EInvoiceStatus` | `PENDING` (chờ xuất), `EXPORTED` (đã xuất file, chưa có số), `ISSUED` (đã có ký hiệu và số) |
+| `LineKind` | `GOODS` (món), `DISCOUNT` (chiết khấu: tặng món, giảm giá) |
 | `PayType` (nhân sự) | `HOURLY` (theo giờ), `MONTHLY` (theo tháng) |
 | `LeaveType` (nhân sự) | `PAID` (có lương), `UNPAID` (không lương) |
 | `LeaveStatus` (nhân sự) | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
@@ -270,6 +311,8 @@ Ghi chú thiết kế:
 - `CashShift` chỉ ghi **tiền mặt dự kiến** lúc chốt, cạnh số đếm. Trong lúc ca mở, số dự kiến được tính từ quỹ đầu ca, các khoản tiền mặt gắn vào ca và phiếu chi, nên không bao giờ lệch với các khoản thật.
 - Số điện thoại của khách được **chuẩn hoá** trước khi lưu và trước khi tìm, nên "0912 345 678" và "+84912345678" là một khách (BR-44).
 - Khách **được nhận tin** khi đã đồng ý và chưa từ chối từ đó. Đồng ý lại thì xoá thời điểm từ chối; `mayContact()` không so `consentAt` với `optedOutAt`, vì đồng hồ máy chủ có thể bị chỉnh lùi giữa hai lần ghi (BR-44).
+- **Hoá đơn điện tử tách khỏi đơn** (`EInvoice`), vì vòng đời và quyền khác nhau: đơn đóng khi thu đủ, còn hoá đơn chờ xuất, rồi có số khi kế toán phát hành trên MISA. Dữ liệu được **chụp lại** lúc thanh toán (tên, giá, thuế suất), nên sửa thực đơn hay thuế suất sau đó không đổi hoá đơn đã lập (BR-46).
+- Thuế suất có **ngày hiệu lực** (`TaxRate.effectiveFrom`), nên đổi thuế (ví dụ hết đợt giảm thuế GTGT) là thêm một thuế suất từ ngày đó, không sửa phần mềm. Giá món đã gồm thuế, nên tiền thuế được tách ngược từ giá (BR-45, BR-46).
 - Một đơn có thể có **nhiều khoản đã thu** (tách bill, BR-43). Số đã thu tính từ chính các khoản `PAID` của đơn (`Order.paidAmount`), không lưu riêng, nên không thể lệch với các khoản thật.
 - Cọc của booking **không phải** khoản thanh toán: tiền cọc nằm ở `Reservation`, bill chỉ **trừ** nó (`Order.total`), và lúc thanh toán mới ghi phần đã trừ (`depositApplied`). Vì vậy két (BR-39) chỉ đếm tiền mặt thật, còn báo cáo cộng phần cọc đã trừ vào doanh thu (BR-21).
 
@@ -341,6 +384,8 @@ Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
 | Xác nhận cọc tay | ✅ | ✅ | | | |
 | Gắn khách vào đơn, ghi đồng ý hoặc từ chối nhận tin | ✅ | ✅ | | | ✅ |
 | Danh sách khách, lịch sử ghé | ✅ | ✅ | | | |
+| Ghi người mua của hoá đơn điện tử | ✅ | ✅ | | | ✅ |
+| Loại thuế, thuế suất; hàng chờ hoá đơn điện tử, xuất file, ghi số hoá đơn | ✅ | ✅ | | | |
 | Giảm giá, tặng món (trong hạn mức thì có hiệu lực ngay) | ✅ | ✅ | | | ✅ |
 | Duyệt giảm giá vượt hạn mức | ✅ | ✅ | | | |
 | Kho, nhà cung cấp, phiếu nhập có giá, định lượng món, tiêu hao | ✅ | ✅ | | | |

@@ -106,6 +106,8 @@ P4-01 **đã làm xong** (issue #24): yêu cầu FR-18.1 → FR-18.5, US-37, BR-
 
 P4-02 **đã làm xong** (issue #25): yêu cầu FR-19.1 → FR-19.4, US-39, BR-44; CSDL là migration `V21` (bảng `customer`, cột `orders.customer_id`, `reservation.customer_id`). Bản core có một danh sách khách cho một quán; chưa có tích điểm, voucher và xử lý yêu cầu xoá dữ liệu cá nhân (FR-CUS-04, FR-CUS-05 bản mở rộng).
 
+P4-03 **đã làm xong** (issue #26): yêu cầu FR-20.1 → FR-20.4, US-40, BR-45, BR-46; CSDL là migration `V22` (bảng `tax_category`, `tax_rate`, `einvoice`, `einvoice_line`, cột `menu_item.tax_category_id`). Bản core lập dữ liệu hoá đơn khi bill được thu đủ, xuất file Excel để nhập vào MISA meInvoice, và ghi lại ký hiệu, số đã phát hành. Chưa gọi API của nhà cung cấp (FR-INT-03), chưa tách một bill cho nhiều người mua (FR-BIL-12 bản đầy đủ), chưa điều chỉnh hay thay thế hoá đơn (kế toán làm trên MISA, BR-25 bản đầy đủ). Trước khi dùng thật, kế toán cần nhập thử một ngày dữ liệu vào MISA để chốt cách ghép cột và đơn vị tính.
+
 ### Giai đoạn 5 — Hồ sơ nộp môn (làm song song, chốt ở sprint 8)
 
 | Mã | Việc |
