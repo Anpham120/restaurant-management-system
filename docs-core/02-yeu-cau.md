@@ -23,6 +23,7 @@
 | FR-02.1 | Xem, thêm, sửa nhân viên: họ tên, tên đăng nhập, vai trò | M | BR-01 |
 | FR-02.2 | Khoá hoặc mở khoá tài khoản. Không xoá nhân viên | M | BR-03 |
 | FR-02.3 | Đặt lại mật khẩu cho nhân viên | M | BR-01 |
+| FR-02.4 | **Tài khoản quản trị đầu tiên** của CSDL mới khi không bật tài khoản demo: tạo từ biến môi trường lúc khởi động, để đăng nhập lần đầu trên production | M | BR-48 |
 
 ### FR-03 Thực đơn
 

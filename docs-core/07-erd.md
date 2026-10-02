@@ -436,7 +436,7 @@ View cho báo cáo (không phải bảng, nên `check-erd` không so):
 - 6 nguyên liệu. Tồn đầu kỳ được ghi thành phiếu nhập, đúng BR-19.
 - Thông tin nhà hàng. `V10__doi_ten_quan.sql` đổi tên quán mẫu thành "Khói Bếp", chỉ khi tên và chủ tài khoản vẫn là giá trị mẫu: quản trị đã sửa ở màn hình Cài đặt thì giữ nguyên.
 
-Tài khoản demo cho 5 vai trò được tạo lúc khởi động khi bật `app.demo-accounts.enabled=true`. Mặc định cờ này **tắt** ở môi trường production.
+Tài khoản demo cho 5 vai trò được tạo lúc khởi động khi bật `app.demo-accounts.enabled=true`. Mặc định cờ này **tắt** ở môi trường production; khi đó tài khoản quản trị đầu tiên lấy từ `APP_INITIAL_ADMIN_PASSWORD` (BR-48).
 
 ## 7.5 Nhân sự
 

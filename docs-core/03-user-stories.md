@@ -11,11 +11,12 @@ Là **nhân viên**, tôi muốn đăng nhập bằng tài khoản riêng để 
 - AC3: Khi tài khoản bị khoá thì không đăng nhập được.
 - AC4: Khi một tên đăng nhập bị thử quá 10 lần trong một phút thì lần tiếp theo bị chặn, kèm thời gian phải chờ.
 
-### US-02 Quản lý tài khoản nhân viên — FR-02.1, FR-02.3
+### US-02 Quản lý tài khoản nhân viên — FR-02.1, FR-02.3, FR-02.4
 Là **quản trị**, tôi muốn tạo tài khoản và gán vai trò để mỗi người chỉ làm việc của mình.
 - AC1: Khi tạo tài khoản trùng tên đăng nhập thì báo lỗi.
 - AC2: Khi đặt lại mật khẩu thì nhân viên đăng nhập được bằng mật khẩu mới.
 - AC3: Khi phục vụ gọi API tạo nhân viên thì nhận 403.
+- AC4: CSDL mới, không bật tài khoản demo, khởi động với `APP_INITIAL_ADMIN_PASSWORD` đủ 12 ký tự thì có tài khoản quản trị `admin`. Mật khẩu ngắn hơn thì ứng dụng không khởi động. Đã có nhân viên thì biến này bị bỏ qua.
 
 ### US-03 Khoá tài khoản — FR-02.2, FR-01.3
 Là **quản trị**, tôi muốn khoá tài khoản người đã nghỉ để họ không vào hệ thống được nữa.

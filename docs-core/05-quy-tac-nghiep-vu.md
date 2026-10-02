@@ -11,6 +11,7 @@ Mỗi quy tắc được kiểm tra **ở backend**. Giao diện chỉ ẩn ho�
 | BR-03 | Nhân viên **không bị xoá**, chỉ bị khoá. Tài khoản bị khoá không đăng nhập được, token cũ bị từ chối ngay | `AuthService`, `ActiveEmployeeJwtConverter` |
 | BR-31 | Mỗi tên đăng nhập được thử **tối đa 10 lần mỗi phút**, tính cả lần đúng. Quá giới hạn thì trả 429 kèm số giây phải chờ. Giới hạn theo tên đăng nhập, không theo địa chỉ IP, vì IP sau nginx có thể bị giả | `AuthService`, `RateLimiter` |
 | BR-41 | Mỗi tài khoản có **số phiên bản token**, ghi vào token lúc đăng nhập. Đổi mật khẩu, quản trị đặt lại mật khẩu, hoặc đăng xuất mọi thiết bị thì số này tăng: mọi token mang số cũ bị từ chối (401), cả khi gọi API lẫn khi kết nối realtime. Đổi mật khẩu thì máy vừa đổi nhận token mới | `AuthService`, `EmployeeService`, `ActiveEmployeeJwtConverter` |
+| BR-48 | Khởi động với CSDL **chưa có nhân viên nào**: bật tài khoản demo thì tạo 5 tài khoản demo; không bật thì tạo **một tài khoản quản trị** từ `APP_INITIAL_ADMIN_USERNAME` (mặc định `admin`) và `APP_INITIAL_ADMIN_PASSWORD`. Mật khẩu này **ít nhất 12 ký tự**, ngắn hơn thì ứng dụng không khởi động; thiếu thì chỉ ghi cảnh báo. Đã có nhân viên thì không tạo gì, nên bỏ biến này đi sau lần đăng nhập đầu | `InitialAdminInitializer`, `DemoAccountsInitializer` |
 
 ## 5.2 Bàn, đơn và món
 
