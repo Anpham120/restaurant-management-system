@@ -128,6 +128,8 @@ P5-01 có ở [tài liệu 13](13-kiem-thu.md) (issue #29): kế hoạch, kết 
 
 P5-02 có ở [tài liệu 14](14-huong-dan-su-dung.md) (issue #30): các bước theo vai trò, 26 ảnh chụp trên dữ liệu mẫu.
 
+P5-04 có ở [tài liệu 15](15-kich-ban-demo.md) (issue #32): kịch bản đã chạy thử trọn trên máy local ngày 02/10/2026; slide 9 trang theo dàn ý ở mục 15.5.
+
 P5-03 có bản đầu ở [tài liệu 11](11-trien-khai-van-hanh.md); bổ sung ảnh và số liệu thật sau lần triển khai đầu.
 
 P5-05 đã làm (issue #33): tài liệu 01 (vai trò, phạm vi), 04 (thêm quy trình P6 → P10), 06 (trạng thái đơn), 09 (kiểm thử) theo các tính năng mới; tài liệu 02, 03, 05, 07, 08 đã sửa cùng từng tính năng.
