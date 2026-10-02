@@ -114,7 +114,7 @@ frontend/src/
 - Actuator chỉ mở `health` (công khai), `info` và `metrics` (chỉ ADMIN). Nginx chỉ chuyển tiếp `/actuator/health`, nên từ Internet không gọi được các endpoint còn lại.
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
 - Giới hạn tần suất (Bucket4j, lưu trong bộ nhớ của server): mỗi tên đăng nhập thử tối đa 10 lần mỗi phút (BR-31); trang QR của mỗi bàn gửi tối đa 10 lần mỗi phút và giữ tối đa 30 món chờ xác nhận (BR-30). Quá giới hạn thì trả 429 kèm `Retry-After`. Không giới hạn theo IP: sau Nginx, IP đầu tiên trong `X-Forwarded-For` do client tự gửi được, còn khách trong quán lại dùng chung một IP Wi-Fi.
-- Khi triển khai thật phải có **HTTPS** vì SePay chỉ gọi được địa chỉ công khai. Có thể đặt Caddy hoặc Cloudflare Tunnel trước Nginx.
+- Khi triển khai thật phải có **HTTPS**, vì SePay chỉ gọi địa chỉ HTTPS công khai. Một Caddy trên máy chủ (`deploy/caddy/`) nhận cổng 80, 443 cho cả production và staging, tự lấy và gia hạn chứng chỉ Let's Encrypt. Hai container web chỉ mở cổng trên `127.0.0.1`, nên từ Internet chỉ vào được qua Caddy.
 - Quét lỗ hổng tự động, kết quả ở tab **Security** của GitHub:
   - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`.
   - CodeQL phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
@@ -128,7 +128,7 @@ frontend/src/
 | Staging | `develop` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms-staging`, image tag theo commit | Tự deploy, có thể bật tài khoản demo để cả nhóm thử |
 | Production | `main` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms` | Deploy sau khi có người duyệt |
 
-Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. Biến chính: `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `SEPAY_API_KEY`, `APP_PUBLIC_BASE_URL` (địa chỉ in trong QR bàn), `HTTP_PORT`, `APP_DEMO_ACCOUNTS_ENABLED`.
+Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. Biến chính: `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `SEPAY_API_KEY`, `APP_PUBLIC_BASE_URL` (địa chỉ in trong QR bàn), `HTTP_PORT` (cổng trên `127.0.0.1` mà Caddy chuyển tới: production 8081, staging 8080), `APP_DEMO_ACCOUNTS_ENABLED`, `APP_INITIAL_ADMIN_PASSWORD` (tài khoản quản trị đầu tiên, BR-48). Các bước dựng máy chủ ở [tài liệu 11](11-trien-khai-van-hanh.md).
 
 **Sao lưu (P0-04).** Dịch vụ `backup` trong `deploy/docker-compose.prod.yml` chạy `pg_dump` mỗi đêm lúc `BACKUP_HOUR` giờ Việt Nam (mặc định 3 giờ):
 - Bản sao lưu nằm trong thư mục `backups/` cạnh file compose, giữ `BACKUP_KEEP` bản mới nhất (mặc định 7).

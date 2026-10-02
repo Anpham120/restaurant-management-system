@@ -30,6 +30,8 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 | P0-05 | **Test E2E Playwright** cho kịch bản nghiệm thu §1.5, chạy trong CI bằng Docker Compose | M | M | — | CI đỏ nếu luồng chính hỏng |
 | P0-06 | Dependabot (Maven, npm, Actions, Docker), CodeQL, quét image bằng Trivy | S | S | — | Có cảnh báo lỗ hổng tự động |
 
+P0-04 → P0-06 đã có trong repo: sao lưu và khôi phục (`deploy/backup.sh`, `deploy/restore.sh`), E2E trong CI, Dependabot, CodeQL, Trivy. Phần trong repo của P0-02 cũng đã sẵn: Caddy cho HTTPS (`deploy/caddy/`) và tài khoản quản trị đầu tiên (BR-48). Còn lại là việc trên GitHub và máy chủ, làm theo [tài liệu 11](11-trien-khai-van-hanh.md): ruleset và environment (P0-01); thuê VPS, trỏ tên miền, điền `.env`, bật `DEPLOY_ENABLED` (P0-02); nối SePay thật (P0-03).
+
 ### Giai đoạn 1 — Nghiệp vụ tại quán còn thiếu (sprint 2–3)
 
 | Mã | Việc | Nguồn | Công sức | Ưu tiên | CSDL |
@@ -119,6 +121,8 @@ P4-04 **đã làm xong** (issue #27): yêu cầu FR-21.1 → FR-21.3, US-41, BR-
 | P5-03 | **Hướng dẫn triển khai, vận hành**: máy chủ, SePay, sao lưu và khôi phục |
 | P5-04 | **Kịch bản demo 10 phút** và slide |
 | P5-05 | Cập nhật tài liệu 01 → 09 theo tính năng mới (FR, US, BR, ERD, API) |
+
+P5-03 có bản đầu ở [tài liệu 11](11-trien-khai-van-hanh.md); bổ sung ảnh và số liệu thật sau lần triển khai đầu.
 
 ## 10.4 Lịch theo sprint
 
