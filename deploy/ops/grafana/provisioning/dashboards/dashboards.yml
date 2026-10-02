@@ -1,0 +1,9 @@
+# P0-07: dashboards come from grafana/dashboards in the repo; edits made in the browser are not kept.
+apiVersion: 1
+providers:
+  - name: khoibep
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

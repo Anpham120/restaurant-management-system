@@ -14,7 +14,8 @@ public record AppProperties(
         String publicBaseUrl,
         List<String> corsAllowedOrigins,
         DemoAccounts demoAccounts,
-        InitialAdmin initialAdmin) {
+        InitialAdmin initialAdmin,
+        Metrics metrics) {
 
     public record Jwt(String secret, Duration ttl) {
     }
@@ -27,6 +28,10 @@ public record AppProperties(
 
     /** BR-48: the first admin of a new database without demo accounts; the password empty means none. */
     public record InitialAdmin(String username, String password) {
+    }
+
+    /** NFR-12: the token that opens /actuator/prometheus to the monitoring agent; empty means it stays shut. */
+    public record Metrics(String token) {
     }
 
     public ZoneId zoneId() {

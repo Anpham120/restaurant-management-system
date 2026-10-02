@@ -78,7 +78,8 @@ class InitialAdminInitializerTest {
 
     private InitialAdminInitializer initializer(boolean demo, String username, String password) {
         AppProperties props = new AppProperties("Asia/Ho_Chi_Minh", null, null, null, List.of(),
-                new AppProperties.DemoAccounts(demo, "123456"), new AppProperties.InitialAdmin(username, password));
+                new AppProperties.DemoAccounts(demo, "123456"), new AppProperties.InitialAdmin(username, password),
+                null);
         return new InitialAdminInitializer(props, employees, encoder);
     }
 }

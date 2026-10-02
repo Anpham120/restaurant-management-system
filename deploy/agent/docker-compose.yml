@@ -1,0 +1,40 @@
+# P0-07, NFR-12: the monitoring agent of the application server (docs-core/09 section 9.8, docs-core/11 section 11.10).
+# Grafana Alloy reads the server, its containers, the two backends and every container log, then pushes all of it
+# to the monitoring server (deploy/ops) over HTTPS. It opens no port: its own page listens on 127.0.0.1 only.
+# Runs from ~/agent, with the .env next to this file made from .env.example.
+services:
+  alloy:
+    image: grafana/alloy:v1.20.1
+    restart: unless-stopped
+    # cAdvisor reads the cgroups of every container, and the host's /proc and /sys: it needs the host's view.
+    privileged: true
+    pid: host
+    cgroup: host
+    # Host network: reaches each backend on its container address without joining the stacks' networks.
+    network_mode: host
+    mem_limit: 256m
+    command:
+      - run
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-app}
+      METRICS_URL: https://${MONITOR_DOMAIN:?set MONITOR_DOMAIN in .env}/ingest/metrics
+      LOGS_URL: https://${MONITOR_DOMAIN}/ingest/logs
+      INGEST_USER: ${INGEST_USER:-agent}
+      INGEST_PASSWORD: ${INGEST_PASSWORD:?set INGEST_PASSWORD in .env}
+      APP_METRICS_TOKEN: ${APP_METRICS_TOKEN:?set APP_METRICS_TOKEN in .env}
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy/data
+      # docker.sock for container discovery and logs; containerd's socket next to it for cAdvisor.
+      - /var/run:/var/run:ro
+      - /:/host/root:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      # backup.sh of each stack writes backup.prom (time of the last good dump) next to its dumps.
+      - ${BACKUPS_PRODUCTION:-../khoibep-rms/backups}:/backups/production:ro
+      - ${BACKUPS_STAGING:-../khoibep-rms-staging/backups}:/backups/staging:ro
+
+volumes:
+  alloy-data:

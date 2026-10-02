@@ -1,0 +1,9 @@
+# P0-07: the site is up when /actuator/health answers 200 with "UP", as the deploy pipeline checks it.
+modules:
+  health:
+    prober: http
+    timeout: 10s
+    http:
+      valid_status_codes: [200]
+      fail_if_body_not_matches_regexp: ['"status":"UP"']
+      preferred_ip_protocol: ip4

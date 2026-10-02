@@ -1,15 +1,19 @@
 package vn.khoibep.rms.config;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,6 +34,33 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    /**
+     * NFR-11, NFR-12: the monitoring agent reads /actuator/prometheus with "Bearer APP_METRICS_TOKEN", compared in
+     * constant time like the SePay key. With no token set nobody can read it, not even ADMIN.
+     */
+    @Bean
+    @Order(1)
+    SecurityFilterChain metricsFilterChain(HttpSecurity http, AppProperties props) throws Exception {
+        String token = props.metrics() == null ? null : props.metrics().token();
+        http
+                .securityMatcher("/actuator/prometheus")
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().access((authentication, context) ->
+                        new AuthorizationDecision(metricsTokenMatches(token,
+                                context.getRequest().getHeader(HttpHeaders.AUTHORIZATION)))));
+        return http.build();
+    }
+
+    /** True only when a token is set and the header is exactly "Bearer" and that token. */
+    static boolean metricsTokenMatches(String token, String authorization) {
+        if (token == null || token.isBlank() || authorization == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(("Bearer " + token).getBytes(StandardCharsets.UTF_8),
+                authorization.trim().getBytes(StandardCharsets.UTF_8));
+    }
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, ActiveEmployeeJwtConverter jwtConverter)

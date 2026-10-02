@@ -1,0 +1,304 @@
+// P0-07, NFR-12: what the application server sends to the monitoring server (docs-core/09 section 9.8).
+// Every series and log line carries server="<SERVER_NAME>". The two stacks are told apart by env="production" or
+// env="staging", taken from their Docker Compose project: ~/khoibep-rms and ~/khoibep-rms-staging.
+
+// ---- Where everything goes ------------------------------------------------------------------------------------------
+
+prometheus.remote_write "ops" {
+  endpoint {
+    url = sys.env("METRICS_URL")
+
+    basic_auth {
+      username = sys.env("INGEST_USER")
+      password = sys.env("INGEST_PASSWORD")
+    }
+  }
+  external_labels = {server = sys.env("SERVER_NAME")}
+}
+
+loki.write "ops" {
+  endpoint {
+    url = sys.env("LOGS_URL")
+
+    basic_auth {
+      username = sys.env("INGEST_USER")
+      password = sys.env("INGEST_PASSWORD")
+    }
+  }
+  external_labels = {server = sys.env("SERVER_NAME")}
+}
+
+// ---- The server: CPU, memory, swap, disks, network --------------------------------------------------------------
+
+prometheus.exporter.unix "host" {
+  rootfs_path        = "/host/root"
+  procfs_path        = "/host/root/proc"
+  sysfs_path         = "/host/root/sys"
+  udev_data_path     = "/host/root/run/udev/data"
+  disable_collectors = ["btrfs", "fibrechannel", "infiniband", "ipvs", "nfs", "nfsd", "tapestats", "xfs", "zfs"]
+
+  filesystem {
+    mount_points_exclude = "^/(dev|proc|run|sys|var/lib/docker/.+)($|/)"
+    fs_types_exclude     = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tmpfs|tracefs)$"
+  }
+
+  netclass {
+    ignored_devices = "^(veth.*|br-.*|docker.*)$"
+  }
+
+  netdev {
+    device_exclude = "^(veth.*|br-.*|docker.*|lo)$"
+  }
+}
+
+discovery.relabel "host" {
+  targets = prometheus.exporter.unix.host.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "node"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("SERVER_NAME")
+  }
+}
+
+prometheus.scrape "host" {
+  targets         = discovery.relabel.host.output
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.ops.receiver]
+}
+
+// ---- Containers: CPU and memory of each, and which are running ----------------------------------------------------
+
+prometheus.exporter.cadvisor "containers" {
+  docker_only                  = true
+  store_container_labels       = false
+  allowlisted_container_labels = ["com.docker.compose.project", "com.docker.compose.service"]
+  enabled_metrics              = ["cpu", "memory", "network", "oom_event"]
+}
+
+discovery.relabel "containers" {
+  targets = prometheus.exporter.cadvisor.containers.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "cadvisor"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("SERVER_NAME")
+  }
+}
+
+prometheus.scrape "containers" {
+  targets         = discovery.relabel.containers.output
+  scrape_interval = "30s"
+  forward_to      = [prometheus.relabel.containers.receiver]
+}
+
+prometheus.relabel "containers" {
+  rule {
+    source_labels = ["container_label_com_docker_compose_project"]
+    regex         = "khoibep-rms"
+    target_label  = "env"
+    replacement   = "production"
+  }
+
+  rule {
+    source_labels = ["container_label_com_docker_compose_project"]
+    regex         = "khoibep-rms-staging"
+    target_label  = "env"
+    replacement   = "staging"
+  }
+
+  rule {
+    source_labels = ["container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    action = "labeldrop"
+    regex  = "container_label_com_docker_compose_(project|service)"
+  }
+
+  forward_to = [prometheus.remote_write.ops.receiver]
+}
+
+// ---- The two backends: requests, JVM, database pool, business counters --------------------------------------------
+
+discovery.docker "local" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "backends" {
+  targets = discovery.docker.local.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "backend"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "khoibep-rms"
+    target_label  = "env"
+    replacement   = "production"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "khoibep-rms-staging"
+    target_label  = "env"
+    replacement   = "staging"
+  }
+
+  // Other projects on this server that happen to have a "backend" service are left out.
+  rule {
+    source_labels = ["env"]
+    regex         = ".+"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_network_ip"]
+    target_label  = "__address__"
+    replacement   = "$1:8080"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "backend"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "instance"
+  }
+}
+
+prometheus.scrape "backends" {
+  targets         = discovery.relabel.backends.output
+  metrics_path    = "/actuator/prometheus"
+  bearer_token    = sys.env("APP_METRICS_TOKEN")
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.ops.receiver]
+}
+
+// ---- Backups: backup.sh writes backup.prom after each good dump ----------------------------------------------------
+
+prometheus.exporter.unix "backup_production" {
+  set_collectors = ["textfile"]
+
+  textfile {
+    directory = "/backups/production"
+  }
+}
+
+prometheus.exporter.unix "backup_staging" {
+  set_collectors = ["textfile"]
+
+  textfile {
+    directory = "/backups/staging"
+  }
+}
+
+discovery.relabel "backup_production" {
+  targets = prometheus.exporter.unix.backup_production.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "backup"
+  }
+
+  rule {
+    target_label = "env"
+    replacement  = "production"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("SERVER_NAME")
+  }
+}
+
+discovery.relabel "backup_staging" {
+  targets = prometheus.exporter.unix.backup_staging.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "backup"
+  }
+
+  rule {
+    target_label = "env"
+    replacement  = "staging"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("SERVER_NAME")
+  }
+}
+
+prometheus.scrape "backups" {
+  targets         = array.concat(discovery.relabel.backup_production.output, discovery.relabel.backup_staging.output)
+  scrape_interval = "60s"
+  forward_to      = [prometheus.remote_write.ops.receiver]
+}
+
+// ---- Logs of every container, with env, service and, for the backend's JSON lines, level -------------------------
+
+discovery.relabel "logs" {
+  targets = discovery.docker.local.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "khoibep-rms"
+    target_label  = "env"
+    replacement   = "production"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "khoibep-rms-staging"
+    target_label  = "env"
+    replacement   = "staging"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.logs.output
+  forward_to = [loki.process.levels.receiver]
+}
+
+loki.process "levels" {
+  // NFR-11: the backend writes one JSON object per line (ECS, {"log":{"level":"INFO",...},...}); the level becomes a
+  // label. Lines that are not JSON (Nginx, PostgreSQL) go through without one.
+  stage.json {
+    expressions = {level = "log.level"}
+  }
+
+  stage.labels {
+    values = {level = ""}
+  }
+
+  forward_to = [loki.write.ops.receiver]
+}
