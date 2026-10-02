@@ -2,9 +2,9 @@
 
 Tài liệu này là các bước dựng hai máy, rồi vận hành hằng ngày:
 - **Máy ứng dụng** chạy cả **production** (nhánh `main`) và **staging** (nhánh `develop`).
-- **Máy công cụ** chạy giám sát và cảnh báo (mục 11.10).
+- **Máy công cụ** chạy giám sát và cảnh báo (mục 11.10), và Jenkins (mục 11.11).
 
-Kiến trúc và pipeline ở [tài liệu 9](09-kien-truc-va-cicd.md). Các mục ứng với việc P0-01 → P0-04, P0-07 và P5-03 trong [tài liệu 10](10-ke-hoach-phat-trien.md).
+Kiến trúc và pipeline ở [tài liệu 9](09-kien-truc-va-cicd.md). Các mục ứng với việc P0-01 → P0-04, P0-07, P0-08 và P5-03 trong [tài liệu 10](10-ke-hoach-phat-trien.md).
 
 Trong các lệnh dưới đây, thay `khoibep.example.vn` bằng tên miền thật, `<IP>` bằng địa chỉ máy ứng dụng.
 
@@ -14,10 +14,10 @@ Trong các lệnh dưới đây, thay `khoibep.example.vn` bằng tên miền th
 |---|---|
 | Máy ứng dụng | VPS Ubuntu 24.04 hoặc 22.04, chip **x86_64** (image chỉ build cho amd64), **2 vCPU, 4 GB RAM**, 40 GB SSD, IP tĩnh. Tối thiểu 2 GB RAM kèm 2 GB swap; 1 GB chỉ đủ khi chạy một môi trường |
 | Máy công cụ | VPS Ubuntu 24.04, x86_64, **4 vCPU, 8 GB RAM**, 80 GB SSD, IP tĩnh. Chạy giám sát (mục 11.10), và còn chỗ cho Jenkins |
-| Tên miền | Hai bản ghi A trỏ về `<IP>` của máy ứng dụng: `khoibep.example.vn` và `staging.khoibep.example.vn`. Một bản ghi A `monitor.khoibep.example.vn` trỏ về IP máy công cụ. Dùng Cloudflare thì để **DNS only** (mây xám), để Caddy tự lấy chứng chỉ |
+| Tên miền | Hai bản ghi A trỏ về `<IP>` của máy ứng dụng: `khoibep.example.vn` và `staging.khoibep.example.vn`. Hai bản ghi A `monitor.khoibep.example.vn` và `jenkins.khoibep.example.vn` trỏ về IP máy công cụ. Dùng Cloudflare thì để **DNS only** (mây xám), để Caddy tự lấy chứng chỉ |
 | Telegram | Một bot và một nhóm chat để nhận cảnh báo (mục 11.10) |
 | SePay | Tài khoản SePay đã liên kết tài khoản ngân hàng nhận tiền của quán |
-| GitHub | Quyền admin trên repo để tạo environment, secret, ruleset |
+| GitHub | Quyền admin trên repo để tạo environment, secret, ruleset. Một token classic cho Jenkins (mục 11.11) |
 
 Mỗi môi trường chạy 4 container: PostgreSQL, backend, web (Nginx) và sao lưu. Một Caddy dùng chung đứng trước cả hai môi trường để có HTTPS:
 
@@ -116,7 +116,7 @@ Caddy chạy độc lập với pipeline: chỉ khi đổi tên miền hoặc c�
 
 1. **Ruleset** (Settings → Rules → Rulesets) cho `main` và `develop`:
    - Bắt buộc qua pull request.
-   - Bắt buộc các check `Backend - build and test`, `Frontend - lint, test, build`, `E2E - acceptance scenario`, `CodeQL - Java`, `CodeQL - TypeScript` xanh.
+   - Bắt buộc các check `Backend - build and test`, `Frontend - lint, test, build`, `E2E - acceptance scenario`, `Monitoring - check configs`, `CodeQL - Java`, `CodeQL - TypeScript` xanh.
    - Chặn force push và xoá nhánh.
 2. **Environment** (Settings → Environments):
    - `staging`, không cần duyệt.
@@ -131,8 +131,11 @@ Caddy chạy độc lập với pipeline: chỉ khi đổi tên miền hoặc c�
 | `PUBLIC_URL` | Variable | `https://staging.khoibep.example.vn` (staging), `https://khoibep.example.vn` (production) |
 
 3. **Bật deploy:** Settings → Secrets and variables → Actions → Variables, thêm biến của repo `DEPLOY_ENABLED` = `true`.
+4. **Jenkins làm deploy chính** (P0-08), sau khi dựng Jenkins ở mục 11.11:
+   - Thêm biến của repo `JENKINS_URL` = `https://jenkins.khoibep.example.vn`. Chưa có biến này thì GitHub Actions tự deploy như trước.
+   - Thêm hai secret của repo `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, cùng giá trị với mục 11.10, để nhận tin khi Actions deploy thay Jenkins.
 
-Image build xong được đẩy lên GitHub Container Registry. Job deploy đăng nhập GHCR trên máy chủ bằng token của chính lần chạy, nên không cần tạo token riêng.
+Image build xong được đẩy lên GitHub Container Registry. Khi Actions deploy, nó đăng nhập GHCR trên máy chủ bằng token của chính lần chạy. Jenkins dùng token riêng ở mục 11.11.
 
 ## 11.5 Lần deploy đầu và tài khoản quản trị
 
@@ -191,8 +194,8 @@ sh restore.sh backups/rms-2026-10-05-0300.dump                         # khôi p
 
 ## 11.9 Cập nhật và quay lại bản cũ
 
-- **Cập nhật** là merge vào `develop` (staging tự cập nhật), rồi PR `develop` → `main` (production, sau khi người duyệt bấm duyệt ở tab Actions).
-- **Quay lại bản trước:** ở tab Actions, mở lần chạy thành công gần nhất của nhánh đó, bấm **Re-run all jobs**. Job deploy kéo lại image đúng commit cũ.
+- **Cập nhật** là merge vào `develop` (staging tự cập nhật), rồi PR `develop` → `main`. Production lên sau khi người duyệt bấm duyệt: trên Jenkins (mục 11.11), hoặc ở tab Actions khi GitHub Actions deploy thay.
+- **Quay lại bản trước:** tab Actions → **Rollback** → **Run workflow**, chọn môi trường và dán mã commit đủ 40 ký tự của bản tốt gần nhất (lấy ở tab Commits). Workflow chạy được cả khi Jenkins chết; production cần duyệt như một lần deploy. Chạy lại job cũ không còn quay lại được: job đó thấy nhánh đã có commit mới hơn và bỏ qua.
 - **Lưu ý về CSDL:** migration chỉ đi tới, và ứng dụng kiểm tra lược đồ lúc khởi động. Nếu bản mới đã chạy một migration làm đổi lược đồ, bản cũ có thể không khởi động được. Khi đó:
   - Sửa lỗi bằng một bản mới, hoặc
   - Khôi phục bản sao lưu ngay trước lúc cập nhật (mục 11.7) rồi mới quay lại.
@@ -215,12 +218,14 @@ curl -fsSL https://github.com/Anpham120/restaurant-management-system/archive/ref
 cp .env.example .env && chmod 600 .env
 openssl rand -base64 24    # mật khẩu để agent đẩy dữ liệu (INGEST_PASSWORD); ghi lại cho máy ứng dụng
 docker run --rm caddy:2-alpine caddy hash-password --plaintext '<mật khẩu vừa tạo>'
-nano .env
-docker compose up -d
-docker compose ps          # 7 container đều đang chạy
+nano .env                  # cả các biến Jenkins: làm phần chuẩn bị ở mục 11.11 trước
+docker compose up -d --build
+docker compose ps          # 8 container đều đang chạy, kể cả jenkins
 ```
 
-Biến trong `~/monitoring/.env`:
+Jenkins (P0-08) nằm chung tệp compose này, nên phải có token GitHub, khoá SSH và các biến `JENKINS_*` của mục 11.11 trước khi chạy `docker compose up`.
+
+Biến giám sát trong `~/monitoring/.env`:
 
 | Biến | Giá trị |
 |---|---|
@@ -259,4 +264,55 @@ docker compose -f docker-compose.prod.yml start backend   # vài phút sau nhậ
 
 **Khi máy công cụ chết** thì không còn ai báo. Nếu muốn chắc, đăng ký một dịch vụ kiểm tra uptime miễn phí (ví dụ UptimeRobot) gọi `https://monitor.khoibep.example.vn/api/health` mỗi 5 phút và báo qua email.
 
-**Cập nhật cấu hình giám sát** sau khi `deploy/ops` hoặc `deploy/agent` trong repo đổi: tải lại thư mục như trên (tệp `.env` được giữ nguyên), rồi chạy `docker compose up -d && docker compose restart` để các container đọc lại tệp cấu hình.
+**Cập nhật cấu hình giám sát** sau khi `deploy/ops` hoặc `deploy/agent` trong repo đổi: tải lại thư mục như trên (tệp `.env` và khoá SSH của Jenkins được giữ nguyên), rồi chạy `docker compose up -d --build && docker compose restart` để các container đọc lại tệp cấu hình.
+
+## 11.11 Jenkins và CI/CD lai (P0-08)
+
+Thiết kế ở tài liệu 09 mục 9.6: Jenkins deploy chính; GitHub Actions deploy thay khi Jenkins không trả lời. Phần chuẩn bị dưới đây làm trước `docker compose up` ở mục 11.10.
+
+**Token GitHub cho Jenkins.**
+1. Trên GitHub, vào Settings của tài khoản → Developer settings → Personal access tokens → **Tokens (classic)** → Generate new token.
+2. Chọn quyền `repo:status` và `write:packages`. Tài khoản phải có quyền push vào repo.
+3. Token chỉ hiện một lần: chép ngay vào `GITHUB_TOKEN`.
+
+**Khoá SSH để Jenkins vào máy ứng dụng.** Trên máy công cụ, trong `~/monitoring`:
+
+```bash
+ssh-keygen -t ed25519 -N "" -C jenkins-deploy -f jenkins/app-server-key
+sudo chown 1000:1000 jenkins/app-server-key   # người dùng jenkins trong container là uid 1000
+cat jenkins/app-server-key.pub
+```
+
+Trên máy ứng dụng, thêm khoá công khai vừa in vào tài khoản `deploy`, như với khoá của GitHub Actions ở mục 11.2:
+
+```bash
+echo "<nội dung jenkins/app-server-key.pub>" | sudo tee -a /home/deploy/.ssh/authorized_keys
+```
+
+Biến Jenkins trong `~/monitoring/.env`:
+
+| Biến | Giá trị |
+|---|---|
+| `JENKINS_DOMAIN` | `jenkins.khoibep.example.vn` |
+| `JENKINS_ADMIN_PASSWORD` | Mật khẩu đăng nhập Jenkins, tài khoản `admin` |
+| `GITHUB_USER`, `GITHUB_TOKEN` | Tài khoản GitHub và token ở trên |
+| `GHCR_OWNER` | `anpham120`, giống trong `.env` của máy ứng dụng |
+| `APP_SERVER_HOST` | IP máy ứng dụng |
+| `DOCKER_GID` | Kết quả `getent group docker \| cut -d: -f3` trên máy công cụ |
+
+Sau `docker compose up -d --build` ở mục 11.10:
+1. Chờ `docker compose logs -f jenkins` có dòng `Jenkins is fully up and running`.
+2. Mở `https://jenkins.khoibep.example.vn`, đăng nhập `admin`. Job **Khói Bếp: deploy** có hai nhánh `develop` và `main`. Jenkins xem commit mới mỗi 2 phút, nên GitHub không cần webhook.
+3. Trên GitHub, thêm biến `JENKINS_URL` và hai secret Telegram (mục 11.4, bước 4).
+
+**Duyệt production.** Merge vào `main` thì build của nhánh `main` dừng ở bước "Approve production": mở build trên Jenkins, bấm **Deploy**. Không ai duyệt trong 60 phút thì build dừng, commit được ghi `failure`, và GitHub Actions không deploy thay.
+
+**Thử deploy dự phòng** trên staging:
+
+```bash
+cd ~/monitoring && docker compose stop jenkins
+```
+
+Merge một PR vào `develop`:
+- Sau khi các job test xong, job `cd-gate` thấy Jenkins không trả lời (Caddy trả 502). GitHub Actions deploy staging, và Telegram nhận một tin bắt đầu bằng 🟠.
+- Bật lại bằng `docker compose start jenkins`. Jenkins build commit đó, `deploy.sh` thấy commit đang chạy rồi nên bỏ qua.
