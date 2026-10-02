@@ -2,7 +2,7 @@
 
 ## 10.1 Hiện trạng
 
-Bản core đã chạy trọn luồng: gọi món (phục vụ và khách quét QR), bếp realtime, thanh toán tiền mặt và VietQR tự xác nhận, kho, báo cáo, tài khoản nhân viên. Lúc lập kế hoạch có 64 test backend; nay có 89 test backend, 30 test frontend, test E2E và kiểm thử tải, cùng CI/CD trên GitHub (`feature/*` → `develop` → `main`). Chi tiết ở tài liệu 01 → 09.
+Bản core đã chạy trọn luồng: gọi món (phục vụ và khách quét QR), bếp realtime, thanh toán tiền mặt và VietQR tự xác nhận, kho, báo cáo, tài khoản nhân viên. Lúc lập kế hoạch có 64 test backend; nay có 192 test backend, 83 test frontend, test E2E và kiểm thử tải, cùng CI/CD trên GitHub (`feature/*` → `develop` → `main`). Giai đoạn 1 → 4 đã làm xong, trừ P4-05 chỉ có thiết kế. Chi tiết ở tài liệu 01 → 09, triển khai ở tài liệu 11.
 
 **Lịch.** Hạn nộp cuối tháng 11/2026 (lấy mốc **30/11**), nhóm **5 người**, chia **8 sprint**. Sprint 1 dài 11 ngày (01/10 → 11/10) để kịp thuê máy chủ, tên miền và nối SePay. Các sprint sau dài 1 tuần, từ thứ Hai đến Chủ nhật. Mỗi sprint ước khoảng 12–17 ngày người, tức mỗi người 2,5–3,5 ngày mỗi tuần, đã tính phần nhân sự.
 
@@ -112,6 +112,8 @@ P4-03 **đã làm xong** (issue #26): yêu cầu FR-20.1 → FR-20.4, US-40, BR-
 
 P4-04 **đã làm xong** (issue #27): yêu cầu FR-21.1 → FR-21.3, US-41, BR-47; CSDL là migration `V23` (bảng `menu_item_app_price`, cột `orders.channel`, `orders.app_order_code`, phương thức thanh toán `GRABFOOD`, `SHOPEEFOOD`). Bản core nhập tay đơn app và ghi doanh thu theo kênh lúc giao shipper; chưa đối soát bảng kê, phí và khuyến mãi của app (FR-DLV-04), chưa nhận đơn tự động (FR-DLV-05), chưa nhắc tắt món trên app khi hết món (BR-18 bản đầy đủ).
 
+P4-05 có bản thiết kế ở [tài liệu 12](12-thiet-ke-mo-rong.md) (issue #28): nhiều chi nhánh trên một máy chủ trước, rồi mới tới máy chủ tại quán để chạy khi mất mạng. Không làm trong đồ án.
+
 ### Giai đoạn 5 — Hồ sơ nộp môn (làm song song, chốt ở sprint 8)
 
 | Mã | Việc |
@@ -123,6 +125,8 @@ P4-04 **đã làm xong** (issue #27): yêu cầu FR-21.1 → FR-21.3, US-41, BR-
 | P5-05 | Cập nhật tài liệu 01 → 09 theo tính năng mới (FR, US, BR, ERD, API) |
 
 P5-03 có bản đầu ở [tài liệu 11](11-trien-khai-van-hanh.md); bổ sung ảnh và số liệu thật sau lần triển khai đầu.
+
+P5-05 đã làm (issue #33): tài liệu 01 (vai trò, phạm vi), 04 (thêm quy trình P6 → P10), 06 (trạng thái đơn), 09 (kiểm thử) theo các tính năng mới; tài liệu 02, 03, 05, 07, 08 đã sửa cùng từng tính năng.
 
 ## 10.4 Lịch theo sprint
 

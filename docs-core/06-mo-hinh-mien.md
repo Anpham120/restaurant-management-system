@@ -345,7 +345,7 @@ stateDiagram-v2
 stateDiagram-v2
     state "Đơn" as O {
         [*] --> OPEN : Mở bàn hoặc khách gửi QR đầu tiên
-        OPEN --> PAID : Có khoản thanh toán PAID
+        OPEN --> PAID : Thu đủ bill, kể cả cọc (BR-43); đơn app khi giao shipper (BR-47)
         OPEN --> CANCELLED : Mọi món đã huỷ
         PAID --> [*]
         CANCELLED --> [*]
@@ -363,7 +363,7 @@ stateDiagram-v2
     }
 ```
 
-Tiền mặt được ghi thẳng là `PAID` khi thu ngân xác nhận.
+Tiền mặt, và khoản của app lúc giao shipper, được ghi thẳng là `PAID`.
 
 ## 6.4 Ma trận quyền
 

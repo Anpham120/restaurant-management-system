@@ -32,16 +32,16 @@
 
 | Vai trò | Mã | Việc chính |
 |---|---|---|
-| Quản trị | `ADMIN` | Tài khoản nhân viên, cài đặt nhà hàng. Có mọi quyền |
-| Quản lý | `MANAGER` | Thực đơn, bàn và QR, kho, báo cáo, huỷ món đang làm |
-| Phục vụ | `WAITER` | Mở đơn, gọi món, xác nhận đơn QR, ra món |
+| Quản trị | `ADMIN` | Tài khoản và hồ sơ nhân viên, bảng lương, cài đặt nhà hàng. Có mọi quyền |
+| Quản lý | `MANAGER` | Thực đơn, loại thuế, giá app; bàn và QR; kho, nhà cung cấp, định lượng; báo cáo, nhật ký; duyệt giảm giá; ca két; xếp ca, chấm công, nghỉ phép; khách hàng; hoá đơn điện tử; huỷ món đang làm |
+| Phục vụ | `WAITER` | Mở đơn, gọi món, xác nhận đơn QR, ra món, chuyển và ghép bàn; đặt bàn; đơn app và giao shipper |
 | Bếp | `CHEF` | Màn hình bếp, đổi trạng thái món, báo hết món |
-| Thu ngân | `CASHIER` | Tính tiền: tiền mặt, chuyển khoản, xác nhận tay |
-| Khách | (không đăng nhập) | Quét QR, gọi món, xem trạng thái, tự chuyển khoản |
+| Thu ngân | `CASHIER` | Tính tiền: tiền mặt, VietQR, xác nhận tay, tách bill; giảm giá, tặng món; mở và chốt ca; gắn khách; người mua trên hoá đơn điện tử |
+| Khách | (không đăng nhập) | Quét QR, gọi món, xem trạng thái, gọi nhân viên, xin tính tiền, tự chuyển khoản |
 
-## 1.4 Phạm vi phiên bản 1
+## 1.4 Phạm vi
 
-**Có trong phạm vi**
+**Bản core**
 
 1. Đăng nhập, phân quyền 5 vai trò, quản lý tài khoản nhân viên.
 2. Thực đơn: danh mục, món, báo hết món.
@@ -53,17 +53,21 @@
 8. Báo cáo doanh thu, món bán chạy.
 9. Cài đặt nhà hàng và tài khoản nhận tiền.
 
-**Ngoài phạm vi** (để phiên bản sau)
+**Làm thêm sau bản core** (giai đoạn 1 → 4 trong [tài liệu 10](10-ke-hoach-phat-trien.md))
 
-- Đặt bàn, tiệc, cọc.
-- Giao hàng và app giao đồ ăn (GrabFood, ShopeeFood).
-- Nhiều chi nhánh.
-- Hoá đơn điện tử.
-- Khuyến mãi, giảm giá, tích điểm.
-- Trừ kho tự động theo công thức món.
-- Chấm công, tính lương. Sau bản core, môn yêu cầu quản lý nhân viên đầy đủ, nên phần này đã làm thêm (P2-05 → P2-09 trong tài liệu 10).
-- Chạy khi mất mạng.
-- In phiếu bếp bằng máy in nhiệt (v1 dùng màn hình bếp).
+- Tại quán: chuyển và ghép bàn; in phiếu tạm tính và phiếu thanh toán khổ 80 mm; nhật ký thao tác; giảm giá, tặng món có quản lý duyệt; khách gọi nhân viên, xin tính tiền; âm báo, món chờ lâu; tách bill.
+- Ca và két; định lượng món và trừ kho tự động; nhà cung cấp, phiếu nhập có giá, giá vốn; báo cáo lãi gộp, báo cáo ngoại lệ, xuất Excel.
+- Nhân sự: hồ sơ, xếp ca, chấm công, nghỉ phép, bảng lương. Môn yêu cầu quản lý nhân viên đầy đủ nên làm thêm phần này.
+- Bảo mật, vận hành: thu hồi token, đăng xuất mọi thiết bị; giới hạn tần suất; log JSON, cảnh báo webhook lỗi; sao lưu, HTTPS.
+- Mở rộng: đặt bàn và cọc VietQR; khách hàng theo số điện thoại, đồng ý nhận tin; dữ liệu hoá đơn điện tử, xuất file cho MISA; đơn app giao hàng nhập tay.
+
+**Ngoài phạm vi**
+
+- Nhiều chi nhánh, chạy khi mất mạng: chỉ có thiết kế ([tài liệu 12](12-thiet-ke-mo-rong.md)).
+- Tích điểm, voucher, gửi tin tiếp thị thật.
+- Kết nối API với nhà cung cấp hoá đơn điện tử, với app giao hàng (nhận đơn tự động, đối soát).
+- Hoàn tiền, đổi phương thức thanh toán sau khi chốt bill.
+- In phiếu bếp bằng máy in nhiệt (dùng màn hình bếp).
 
 ## 1.5 Tiêu chí nghiệm thu
 
@@ -78,7 +82,7 @@
 | Bộ tài liệu 9 phần (vision → kiến trúc) | Trạng thái **theo từng món** thay vì cả đơn, vì khách gọi thêm nhiều lượt | Redux (dùng TanStack Query) |
 | 5 vai trò, phân quyền theo API | Đơn QR phải **được nhân viên xác nhận**; repo cho vào thẳng bếp | Hoàn tiền (refund) |
 | Mỗi bàn một mã QR, trang gọi món không cần đăng nhập | Khách **gọi thêm** và **xem trạng thái** được; repo báo lỗi 409 khi bàn đã có đơn | Tải ảnh món |
-| Màn hình bếp realtime | Realtime dùng **WebSocket STOMP** của Spring thay cho Socket.IO | Nhật ký thao tác (audit log) |
+| Màn hình bếp realtime | Realtime dùng **WebSocket STOMP** của Spring thay cho Socket.IO | Nhật ký thao tác của repo: bản core tự làm nhật ký chỉ thêm, không sửa, xoá được (P1-03) |
 | Kho: nguyên liệu, mức đặt lại, lịch sử biến động | Thanh toán **VietQR + webhook SePay** tự xác nhận | |
 | Báo cáo doanh thu | Backend **Spring Boot + JPA + Flyway** thay cho Express + Prisma | |
 

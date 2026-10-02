@@ -7,7 +7,7 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | 1 | [Tầm nhìn dự án](01-tam-nhin-du-an.md) | 01-project-vision | Vấn đề, mục tiêu, người dùng, phạm vi, tiêu chí nghiệm thu |
 | 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 113 yêu cầu chức năng (21 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 11 yêu cầu phi chức năng |
 | 3 | [User stories](03-user-stories.md) | 03-user-stories | 41 story theo vai trò (7 story nhân sự), kèm tiêu chí chấp nhận |
-| 4 | [Quy trình nghiệp vụ](04-quy-trinh-nghiep-vu.md) | 04-business-workflow | Trước và sau; 5 quy trình P1 đến P5 |
+| 4 | [Quy trình nghiệp vụ](04-quy-trinh-nghiep-vu.md) | 04-business-workflow | Trước và sau; 10 quy trình P1 đến P10 |
 | 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 48 quy tắc (6 quy tắc nhân sự), ghi rõ nơi kiểm tra trong mã |
 | 6 | [Mô hình miền](06-mo-hinh-mien.md) | 06-domain-model | Sơ đồ lớp, sơ đồ trạng thái, ma trận quyền |
 | 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 35 bảng (7 bảng nhân sự ở mục 7.5), ràng buộc, index (database-first) |
@@ -15,6 +15,7 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | 9 | [Kiến trúc và CI/CD](09-kien-truc-va-cicd.md) | 09-system-architecture | Kiến trúc, công nghệ, bảo mật, triển khai, pipeline, kiểm thử |
 | 10 | [Kế hoạch phát triển tiếp](10-ke-hoach-phat-trien.md) | — | Backlog theo giai đoạn, lịch 8 sprint, quy trình làm tính năng, rủi ro, phân công theo service |
 | 11 | [Triển khai và vận hành](11-trien-khai-van-hanh.md) | — | Dựng máy chủ, HTTPS, GitHub, SePay, sao lưu, theo dõi, cập nhật và quay lại bản cũ |
+| 12 | [Thiết kế mở rộng](12-thiet-ke-mo-rong.md) | — | Nhiều chi nhánh, chạy khi mất mạng: chỉ thiết kế (P4-05) |
 
 Bản phân tích mở rộng (chuỗi quán, máy chủ tại quán, chạy offline) ở [`../docs/`](../docs/README.md), chỉ để tham khảo.
 
