@@ -1,5 +1,7 @@
 package vn.khoibep.rms.menu.entity;
 
+import java.time.LocalDate;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -9,40 +11,38 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
+/** BR-45: the VAT rate of a tax category from a day on, Vietnam time, in percent. */
 @Entity
-@Table(name = "menu_item")
+@Table(name = "tax_rate")
 @Getter
-@Setter
-@NoArgsConstructor
-public class MenuItem {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class TaxRate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_id")
-    private Category category;
-
-    @Column(nullable = false)
-    private String name;
-
-    /** VND, VAT included. */
-    @Column(nullable = false)
-    private long price;
-
-    private String description;
-
-    /** False when the kitchen has run out (FR-03.3). */
-    @Column(nullable = false)
-    private boolean available = true;
-
-    /** BR-45: what share of the price is VAT, by the rate of the category on the day the bill is paid. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tax_category_id")
-    private TaxCategory taxCategory;
+    private TaxCategory category;
+
+    @Column(nullable = false)
+    private int rate;
+
+    @Column(nullable = false)
+    private LocalDate effectiveFrom;
+
+    public TaxRate(TaxCategory category, int rate, LocalDate effectiveFrom) {
+        this.category = category;
+        this.rate = rate;
+        this.effectiveFrom = effectiveFrom;
+    }
+
+    public void change(int newRate) {
+        rate = newRate;
+    }
 }

@@ -27,10 +27,11 @@ public final class MenuDtos {
     }
 
     public record MenuItemDto(Long id, Long categoryId, String categoryName, String name, long price,
-                              String description, boolean available) {
+                              String description, boolean available, Long taxCategoryId, String taxCategoryName) {
         public static MenuItemDto from(MenuItem m) {
             return new MenuItemDto(m.getId(), m.getCategory().getId(), m.getCategory().getName(), m.getName(),
-                    m.getPrice(), m.getDescription(), m.isAvailable());
+                    m.getPrice(), m.getDescription(), m.isAvailable(), m.getTaxCategory().getId(),
+                    m.getTaxCategory().getName());
         }
     }
 
@@ -38,7 +39,8 @@ public final class MenuDtos {
                                   @NotBlank @Size(max = 150) String name,
                                   @NotNull @Min(0) @Max(100_000_000) Long price,
                                   @Size(max = 500) String description,
-                                  Boolean available) {
+                                  Boolean available,
+                                  Long taxCategoryId) {
     }
 
     public record AvailabilityRequest(@NotNull Boolean available) {

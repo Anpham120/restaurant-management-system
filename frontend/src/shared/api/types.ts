@@ -8,6 +8,8 @@ export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
 export type RevenueMethod = PaymentMethod | 'DEPOSIT'
 export type ReservationStatus = 'BOOKED' | 'SEATED' | 'CANCELLED' | 'NO_SHOW'
 export type ConsentChannel = 'ZALO' | 'SMS'
+export type EInvoiceStatus = 'PENDING' | 'EXPORTED' | 'ISSUED'
+export type LineKind = 'GOODS' | 'DISCOUNT'
 export type MovementType = 'IN' | 'OUT' | 'ADJUST' | 'SALE'
 export type PayType = 'HOURLY' | 'MONTHLY'
 export type LeaveType = 'PAID' | 'UNPAID'
@@ -50,6 +52,9 @@ export interface MenuItem {
   price: number
   description: string | null
   available: boolean
+  /** BR-45: what share of the price is VAT. */
+  taxCategoryId: number
+  taxCategoryName: string
 }
 
 export interface MenuSection {
@@ -377,6 +382,60 @@ export interface CustomerDetail {
   customer: Customer
   visits: CustomerVisit[]
   bookings: CustomerBooking[]
+}
+
+/** FR-20.1, BR-45: a tax category of dishes and its VAT rates by day, in percent. */
+export interface TaxCategory {
+  id: number
+  name: string
+  /** The rate in force today. */
+  currentRate: number
+  /** From the first one; the last ones may start after today. */
+  rates: { rate: number; effectiveFrom: string }[]
+}
+
+/** FR-20.2, BR-46: the e-invoice data of a bill paid in full. VAT included: total = beforeTax + taxAmount. */
+export interface EInvoice {
+  id: number
+  orderId: number
+  invoiceDate: string
+  /** TM, CK or TM/CK, as MISA writes them. */
+  paymentMethod: string
+  /** Null for a walk-in guest, as are the other details of the buyer. */
+  buyerName: string | null
+  buyerTaxCode: string | null
+  buyerAddress: string | null
+  buyerEmail: string | null
+  beforeTax: number
+  taxAmount: number
+  total: number
+  status: EInvoiceStatus
+  exportedAt: string | null
+  invoiceSymbol: string | null
+  invoiceNo: string | null
+  issuedByName: string | null
+  issuedAt: string | null
+}
+
+export interface EInvoiceLine {
+  lineNo: number
+  kind: LineKind
+  itemName: string
+  /** Null on a discount line, as are the quantity and the unit price. */
+  unit: string | null
+  quantity: number | null
+  unitPrice: number | null
+  taxRate: number
+  amount: number
+  beforeTax: number
+  taxAmount: number
+}
+
+export interface EInvoiceDetail {
+  invoice: EInvoice
+  lines: EInvoiceLine[]
+  /** By rate, the lowest first, the discounts taken off. */
+  taxes: { taxRate: number; beforeTax: number; taxAmount: number }[]
 }
 
 export interface ReservationDay {
