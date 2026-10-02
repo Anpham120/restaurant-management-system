@@ -43,9 +43,9 @@ public class SecurityConfig {
     @Order(1)
     SecurityFilterChain metricsFilterChain(HttpSecurity http, AppProperties props) throws Exception {
         String token = props.metrics() == null ? null : props.metrics().token();
+        // CSRF stays on: it only guards writes, and Prometheus only reads with GET.
         http
                 .securityMatcher("/actuator/prometheus")
-                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().access((authentication, context) ->
                         new AuthorizationDecision(metricsTokenMatches(token,
