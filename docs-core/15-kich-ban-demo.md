@@ -140,7 +140,7 @@ Chỉ chiếu ảnh, không demo trực tiếp:
 
 - Một ứng dụng Spring Boot chia 17 module nghiệp vụ, một ứng dụng React, PostgreSQL. Realtime qua WebSocket (STOMP). Chạy bằng Docker Compose, HTTPS bằng Caddy.
 - Database-first: thiết kế ERD rồi mới viết migration. CI so ERD với migration ở mỗi PR.
-- Nhánh `feature` → `develop` → `main`. Mỗi PR chạy test backend, frontend và E2E; xanh mới được merge. Merge vào `main` thì build image và triển khai.
+- Nhánh `feature` → `develop` → `main`. Mỗi PR chạy test backend, frontend và E2E; xanh mới được merge. Merge vào `main` thì build image; bước triển khai đã viết sẵn, bật khi máy chủ sẵn sàng ([tài liệu 11](11-trien-khai-van-hanh.md)).
 - Kết quả kiểm thử ([tài liệu 13](13-kiem-thu.md)):
   - 192 test backend, độ phủ 91,9%.
   - 83 test frontend.
@@ -152,7 +152,7 @@ Chỉ chiếu ảnh, không demo trực tiếp:
 
 - Đạt cả ba tiêu chí nghiệm thu: trọn luồng QR tới bàn trống, phân quyền theo vai trò, CI tự chạy test.
 - Việc tiếp theo:
-  - Đưa lên máy chủ thật, nối SePay thật.
+  - Đưa lên máy chủ thật: bật triển khai tự động, nối SePay thật.
   - Nhiều chi nhánh, chạy khi mất mạng: đã có thiết kế ở [tài liệu 12](12-thiet-ke-mo-rong.md).
 - Mời hỏi đáp.
 
