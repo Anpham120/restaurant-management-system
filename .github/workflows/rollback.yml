@@ -1,0 +1,73 @@
+name: Rollback
+
+# P0-08: puts the images of an earlier commit back on staging or production (docs-core/11 section 11.9), whether
+# Jenkins is up or not. The commit's images must still be on GHCR: every commit Jenkins or GitHub Actions deployed
+# has them. The compose file and scripts come from that commit, deploy.sh from this branch.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Môi trường
+        type: choice
+        options: [staging, production]
+      commit:
+        description: Mã commit đủ 40 ký tự của bản muốn quay về
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: rollback-${{ inputs.environment }}
+
+jobs:
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    # Production needs the same approval as a deploy.
+    environment: ${{ inputs.environment }}
+    env:
+      APP_DIR: ${{ inputs.environment == 'production' && 'khoibep-rms' || 'khoibep-rms-staging' }}
+      COMMIT: ${{ inputs.commit }}
+    steps:
+      - name: The commit must be a full sha
+        run: |
+          if ! printf '%s' "$COMMIT" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "Cần mã commit đủ 40 ký tự (chữ thường), ví dụ lấy từ tab Commits" >&2
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+      - name: Compose file and backup scripts of that commit
+        run: |
+          git fetch --depth=1 origin "$COMMIT"
+          git checkout "$COMMIT" -- deploy/docker-compose.prod.yml deploy/backup.sh deploy/restore.sh
+      - name: Copy them to the server
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: deploy/docker-compose.prod.yml,deploy/backup.sh,deploy/restore.sh,deploy/deploy.sh
+          target: ${{ env.APP_DIR }}
+          strip_components: 1
+      - name: Run that commit's images
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            sh ~/${{ env.APP_DIR }}/deploy.sh ${{ env.APP_DIR }} ${{ env.COMMIT }}
+            status=$?
+            docker logout ghcr.io
+            exit $status
+      - name: Check it answers
+        run: |
+          for _ in $(seq 1 30); do
+            if curl -fsS "${{ vars.PUBLIC_URL }}/actuator/health"; then exit 0; fi
+            sleep 5
+          done
+          echo "Health check failed after the rollback" >&2
+          exit 1

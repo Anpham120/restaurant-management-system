@@ -9,6 +9,7 @@ e2e/playwright-report/
 # Secrets
 .env
 deploy/.env
+deploy/ops/jenkins/app-server-key
 
 # Database dumps, if the server compose file is ever run from this folder
 deploy/backups/

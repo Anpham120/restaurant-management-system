@@ -2,6 +2,8 @@ name: CI/CD
 
 # Branches: feature/* --PR--> develop --PR--> main.
 # develop deploys to staging automatically; main deploys to production after approval.
+# P0-08: Jenkins (Jenkinsfile) does the deploys; the images and deploy jobs here run only when cd-gate says that
+# GitHub Actions must take over. Rolling back is .github/workflows/rollback.yml.
 on:
   push:
     branches: [main, develop]
@@ -162,12 +164,46 @@ jobs:
       - name: Grafana dashboards are valid JSON
         run: jq empty deploy/ops/grafana/dashboards/*.json
 
+  # P0-08: Jenkins deploys first and reports "jenkins/deploy" on the commit. This job waits for it and decides whether
+  # GitHub Actions takes over (scripts/cd-gate.sh): no Jenkins set up (no JENKINS_URL), Jenkins not answering, or
+  # silent about this commit for 5 minutes. A failure Jenkins reports stops here: Actions does not deploy over it.
+  cd-gate:
+    name: CD - Jenkins or Actions
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    permissions:
+      contents: read
+      statuses: read
+    outputs:
+      takeover: ${{ steps.gate.outputs.takeover }}
+      reason: ${{ steps.gate.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Wait for Jenkins
+        id: gate
+        env:
+          JENKINS_URL: ${{ vars.JENKINS_URL }}
+          GH_TOKEN: ${{ github.token }}
+        run: sh scripts/cd-gate.sh
+      - name: Tell Telegram that GitHub Actions deploys instead of Jenkins
+        if: steps.gate.outputs.takeover == 'true' && vars.JENKINS_URL != '' && vars.DEPLOY_ENABLED == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          REASON: ${{ steps.gate.outputs.reason }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then exit 0; fi
+          curl -fsS -o /dev/null "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+            --data-urlencode "text=🟠 $GITHUB_REF_NAME ${GITHUB_SHA::7}: $REASON" || true
+
   # Pushes to main get the moving tag "latest", pushes to develop get "develop"; every image also
-  # gets the commit sha, which is what the deploy job runs.
+  # gets the commit sha, which is what the deploy job runs. Only when GitHub Actions deploys (cd-gate).
   images:
     name: Build and push images
-    needs: [backend, frontend]
-    if: github.event_name == 'push'
+    needs: [backend, frontend, cd-gate]
+    if: github.event_name == 'push' && needs.cd-gate.outputs.takeover == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -251,37 +287,47 @@ jobs:
       APP_DIR: ${{ github.ref_name == 'main' && 'khoibep-rms' || 'khoibep-rms-staging' }}
     steps:
       - uses: actions/checkout@v7
-      - name: GHCR needs a lowercase owner
-        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
-      - name: Copy the compose file and the backup scripts to the server
+      # P0-08: a newer commit of the branch deploys itself; this one must not land after it.
+      - name: Newest commit of the branch only
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$GITHUB_REF_NAME" --jq .object.sha)
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "$GITHUB_REF_NAME already has a newer commit ($head), which deploys itself"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Copy the compose file and the scripts to the server
+        if: steps.head.outputs.skip != 'true'
         uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: deploy/docker-compose.prod.yml,deploy/backup.sh,deploy/restore.sh
+          source: deploy/docker-compose.prod.yml,deploy/backup.sh,deploy/restore.sh,deploy/deploy.sh
           target: ${{ env.APP_DIR }}
           strip_components: 1
+      # deploy.sh is the same script Jenkins runs: one deploy at a time on the server, whoever starts it.
       - name: Pull the new images and restart
+        if: steps.head.outputs.skip != 'true'
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            set -e
-            cd ${{ env.APP_DIR }}
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            export IMAGE_TAG=${{ github.sha }} GHCR_OWNER=${{ env.OWNER }}
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            sh ~/${{ env.APP_DIR }}/deploy.sh ${{ env.APP_DIR }} ${{ github.sha }}
+            status=$?
             docker logout ghcr.io
-            docker image prune -f
+            exit $status
       - name: Check the new version answers
+        if: steps.head.outputs.skip != 'true'
         run: |
           for _ in $(seq 1 30); do
             if curl -fsS "${{ vars.PUBLIC_URL }}/actuator/health"; then exit 0; fi
             sleep 5
           done
-          echo "Health check failed. Roll back: re-run this job from the last good run." >&2
+          echo "Health check failed. Roll back: Actions → Rollback → Run workflow." >&2
           exit 1
