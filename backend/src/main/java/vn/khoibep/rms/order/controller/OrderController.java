@@ -28,6 +28,8 @@ import vn.khoibep.rms.order.dto.OrderDtos.StatusRequest;
 import vn.khoibep.rms.order.enums.OrderStatus;
 import vn.khoibep.rms.order.service.OrderItemService;
 import vn.khoibep.rms.order.service.OrderService;
+import vn.khoibep.rms.payment.dto.PaymentDtos.PaymentDto;
+import vn.khoibep.rms.payment.service.PaymentService;
 
 @RestController
 @RequestMapping("/api")
@@ -36,6 +38,7 @@ public class OrderController {
 
     private final OrderService orderService;
     private final OrderItemService orderItemService;
+    private final PaymentService paymentService;
     private final CurrentUser currentUser;
 
     @GetMapping("/orders")
@@ -80,6 +83,13 @@ public class OrderController {
     @PreAuthorize("hasRole('WAITER')")
     public OrderDto cancel(@PathVariable Long id) {
         return orderService.cancel(id);
+    }
+
+    /** FR-21.3, BR-47: the shipper picks up an app order; the app has the money. */
+    @PostMapping("/orders/{id}/handover")
+    @PreAuthorize("hasRole('WAITER')")
+    public PaymentDto handOver(@PathVariable Long id) {
+        return paymentService.handOver(id, currentUser.id());
     }
 
     /** Finer checks per transition are in OrderItemService (BR-07). */

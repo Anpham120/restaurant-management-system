@@ -12,6 +12,7 @@ const dish = (id: number, categoryId: number, categoryName: string): MenuItem =>
   available: true,
   taxCategoryId: 1,
   taxCategoryName: 'Ăn uống',
+  appPrices: {},
 })
 
 describe('toSections', () => {

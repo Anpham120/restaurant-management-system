@@ -2,6 +2,7 @@ package vn.khoibep.rms.order.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -26,6 +27,7 @@ import vn.khoibep.rms.order.dto.OrderDtos.OrderDto;
 import vn.khoibep.rms.order.entity.Adjustment;
 import vn.khoibep.rms.order.entity.Order;
 import vn.khoibep.rms.order.entity.OrderItem;
+import vn.khoibep.rms.order.enums.Channel;
 import vn.khoibep.rms.order.enums.ItemSource;
 import vn.khoibep.rms.order.enums.ItemStatus;
 import vn.khoibep.rms.order.enums.OrderStatus;
@@ -72,7 +74,28 @@ public class OrderService {
             }
             holdFreeTable(order, request.tableId());
         }
+        if (request.channel() != null) {
+            describeApp(order, request.channel(), request.type(), request.appOrderCode());
+        }
         return open(order);
+    }
+
+    /** FR-21.2, BR-47: a takeaway from a delivery app, under the code the app gave it, entered once in its channel. */
+    private void describeApp(Order order, Channel channel, OrderType type, String rawCode) {
+        if (type != OrderType.TAKEAWAY) {
+            throw ApiException.badRequest("Đơn app là đơn mang đi");
+        }
+        String code = rawCode == null ? "" : rawCode.trim().toUpperCase(Locale.ROOT);
+        if (code.isEmpty()) {
+            throw ApiException.badRequest("Nhập mã đơn trên app");
+        }
+        orders.findFirstByChannelAndAppOrderCodeAndStatusNot(channel, code, OrderStatus.CANCELLED)
+                .ifPresent(other -> {
+                    throw ApiException.conflict("Đơn " + channel.label() + " mã " + code + " đã có: đơn #"
+                            + other.getId());
+                });
+        order.setChannel(channel);
+        order.setAppOrderCode(code);
     }
 
     /** FR-18.4, BR-42: the guests of a booking arrive; their bill takes the deposit off. */
@@ -134,7 +157,7 @@ public class OrderService {
     @Transactional
     public OrderDto addStaffItems(Long orderId, AddItemsRequest request, Long employeeId) {
         Order order = lockOpen(orderId);
-        List<OrderItem> added = buildItems(request.items(), ItemSource.STAFF);
+        List<OrderItem> added = buildItems(request.items(), ItemSource.STAFF, order.getChannel());
         added.forEach(order::addItem);
         payments.cancelPendingTransfers(orderId);
         orders.flush();
@@ -175,8 +198,12 @@ public class OrderService {
         return OrderDto.from(order);
     }
 
-    /** BR-05 (price snapshot) and BR-06 (dish must be on sale). */
     List<OrderItem> buildItems(List<ItemLine> lines, ItemSource source) {
+        return buildItems(lines, source, null);
+    }
+
+    /** BR-05 (price snapshot), BR-06 (dish must be on sale), BR-47 (an app order takes the price on its app). */
+    List<OrderItem> buildItems(List<ItemLine> lines, ItemSource source, Channel channel) {
         Map<Long, MenuItem> byId = menuItems.findAllById(lines.stream().map(ItemLine::menuItemId).toList())
                 .stream().collect(Collectors.toMap(MenuItem::getId, Function.identity()));
         List<OrderItem> result = new ArrayList<>();
@@ -188,15 +215,20 @@ public class OrderService {
             if (!menuItem.isAvailable()) {
                 throw ApiException.conflict("Món '" + menuItem.getName() + "' đã hết");
             }
+            Long price = channel == null ? Long.valueOf(menuItem.getPrice()) : menuItem.getAppPrices().get(channel);
+            if (price == null) {
+                throw ApiException.conflict("Món '" + menuItem.getName() + "' chưa có giá trên " + channel.label());
+            }
             String note = line.note() == null || line.note().isBlank() ? null : line.note().trim();
-            result.add(OrderItem.create(menuItem, line.quantity(), note, source));
+            result.add(OrderItem.create(menuItem, price, line.quantity(), note, source));
         }
         return result;
     }
 
     /** BR-38: "Bàn B05 · đơn #128 · Phở bò × 2", as the stock history shows it. */
     static String dishNote(Order order, OrderItem item) {
-        String where = order.getType() == OrderType.TAKEAWAY ? "Mang về" : "Bàn " + order.tableLabel();
+        String where = order.getChannel() != null ? order.getChannel().label() + " " + order.getAppOrderCode()
+                : order.getType() == OrderType.TAKEAWAY ? "Mang về" : "Bàn " + order.tableLabel();
         return where + " · đơn #" + order.getId() + " · " + item.getItemName() + " × " + item.getQuantity();
     }
 

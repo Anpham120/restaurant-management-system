@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Typography } from 'antd'
+import { App, Button, Card, Col, Flex, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { api, errorMessage } from '@/shared/api/client'
-import type { Category, MenuItem, Recipe, TaxCategory } from '@/shared/api/types'
-import { money } from '@/shared/utils/format'
+import type { Category, Channel, MenuItem, Recipe, TaxCategory } from '@/shared/api/types'
+import { channelLabel, money, moneyInputProps } from '@/shared/utils/format'
 import RecipeModal from '../components/RecipeModal'
 import TaxCard from '../components/TaxCard'
 
 type Editing<T> = { record: T | null } | null
+
+const CHANNELS: Channel[] = ['GRABFOOD', 'SHOPEEFOOD']
 
 /**
  * FR-03: categories and dishes. Ordered dishes can only be marked sold out (BR-18). FR-09.8: dish recipes. FR-20.1: the
@@ -114,6 +116,13 @@ export default function MenuAdminPage() {
                 { title: 'Giá', render: (_, m) => money(m.price) },
                 { title: 'Thuế', dataIndex: 'taxCategoryName' },
                 {
+                  title: 'Giá app',
+                  render: (_, m) =>
+                    CHANNELS.filter((c) => m.appPrices[c] !== undefined)
+                      .map((c) => `${channelLabel[c]} ${money(m.appPrices[c] ?? 0)}`)
+                      .join(', '),
+                },
+                {
                   title: 'Còn bán',
                   render: (_, m) => (
                     <Switch size="small" checked={m.available} onChange={(available) => setAvailable.mutate({ id: m.id, available })} />
@@ -176,6 +185,14 @@ export default function MenuAdminPage() {
               parser={(v) => Number((v ?? '').replace(/\./g, ''))}
             />
           </Form.Item>
+          {/* FR-21.1, BR-47: left empty, the dish is not sold on that app. */}
+          <Flex gap={12}>
+            {CHANNELS.map((c) => (
+              <Form.Item key={c} name={['appPrices', c]} label={`Giá ${channelLabel[c]}`} style={{ flex: 1 }}>
+                <InputNumber<number> min={0} step={1000} style={{ width: '100%' }} placeholder="Không bán" {...moneyInputProps} />
+              </Form.Item>
+            ))}
+          </Flex>
           <Form.Item name="taxCategoryId" label="Loại thuế" rules={[{ required: true }]}>
             <Select options={(taxes.data ?? []).map((t) => ({ label: `${t.name} (${t.currentRate}%)`, value: t.id }))} />
           </Form.Item>

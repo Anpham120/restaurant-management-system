@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import vn.khoibep.rms.order.entity.Order;
+import vn.khoibep.rms.order.enums.Channel;
 import vn.khoibep.rms.order.enums.OrderStatus;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -26,6 +27,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("select o.reservation.id as reservationId, o.id as orderId from Order o where o.reservation.id in :reservationIds")
     List<BookingOrder> findByReservationIds(@Param("reservationIds") Collection<Long> reservationIds);
+
+    /** BR-47: the order of this app code in its channel, cancelled ones aside. */
+    Optional<Order> findFirstByChannelAndAppOrderCodeAndStatusNot(Channel channel, String appOrderCode,
+                                                                  OrderStatus status);
 
     /** BR-44: a guest's visits, the latest first. */
     List<Order> findByCustomerIdAndStatusOrderByClosedAtDesc(Long customerId, OrderStatus status, Pageable page);

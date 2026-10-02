@@ -13,6 +13,7 @@ const NEM: MenuItem = {
   available: true,
   taxCategoryId: 1,
   taxCategoryName: 'Ăn uống',
+  appPrices: {},
 }
 
 describe('useCart', () => {

@@ -29,6 +29,8 @@ const order = (subtotal: number, adjustments: Adjustment[] = []): Order => ({
   tableName: 'B05',
   guestCount: 2,
   note: null,
+  channel: null,
+  appOrderCode: null,
   customerId: null,
   customerName: null,
   customerPhone: null,

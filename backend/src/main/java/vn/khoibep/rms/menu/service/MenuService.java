@@ -158,6 +158,15 @@ public class MenuService {
             item.setTaxCategory(taxCategories.findFirstByOrderByIdAsc()
                     .orElseThrow(() -> new IllegalStateException("No tax category")));
         }
+        if (request.appPrices() != null) {
+            // BR-47: the prices sent replace the old ones; an app left out does not sell the dish.
+            item.getAppPrices().clear();
+            request.appPrices().forEach((channel, price) -> {
+                if (price != null) {
+                    item.getAppPrices().put(channel, price);
+                }
+            });
+        }
     }
 
     private Category category(Long id) {

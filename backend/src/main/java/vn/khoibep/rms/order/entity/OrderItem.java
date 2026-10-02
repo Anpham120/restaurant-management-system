@@ -72,12 +72,15 @@ public class OrderItem {
     @Column(nullable = false)
     private Instant updatedAt = Instant.now();
 
-    /** Staff dishes go straight to the kitchen; guest dishes wait for confirmation (BR-10). */
-    public static OrderItem create(MenuItem menuItem, int quantity, String note, ItemSource source) {
+    /**
+     * Staff dishes go straight to the kitchen; guest dishes wait for confirmation (BR-10). The price is the menu's, or
+     * the app's for an app order (BR-47).
+     */
+    public static OrderItem create(MenuItem menuItem, long unitPrice, int quantity, String note, ItemSource source) {
         OrderItem item = new OrderItem();
         item.menuItem = menuItem;
         item.itemName = menuItem.getName();
-        item.unitPrice = menuItem.getPrice();
+        item.unitPrice = unitPrice;
         item.quantity = quantity;
         item.note = note;
         item.source = source;

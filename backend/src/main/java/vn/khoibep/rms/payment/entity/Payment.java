@@ -93,6 +93,17 @@ public class Payment {
         return p;
     }
 
+    /** BR-47: the delivery app took the guest's money; staff hand the order to the shipper. No drawer counts it. */
+    public static Payment app(Order order, PaymentMethod method, long amount, Long employeeId) {
+        Payment p = new Payment();
+        p.order = order;
+        p.method = method;
+        p.amount = amount;
+        p.markPaid(Confirmation.MANUAL, employeeId);
+        order.getPayments().add(p);
+        return p;
+    }
+
     public void markPaid(Confirmation how, Long employeeId) {
         status = PaymentStatus.PAID;
         confirmation = how;
