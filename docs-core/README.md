@@ -18,6 +18,7 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | 12 | [Thiết kế mở rộng](12-thiet-ke-mo-rong.md) | — | Nhiều chi nhánh, chạy khi mất mạng: chỉ thiết kế (P4-05) |
 | 13 | [Kế hoạch và báo cáo kiểm thử](13-kiem-thu.md) | — | Mức kiểm thử, kết quả, 56 test case theo AC của US-01 → US-19, kiểm thử tải, lỗi đã tìm thấy |
 | 14 | [Hướng dẫn sử dụng](14-huong-dan-su-dung.md) | — | Từng màn hình theo vai trò: phục vụ, bếp, thu ngân, khách, quản lý, quản trị; 26 ảnh chụp |
+| 15 | [Kịch bản demo 10 phút](15-kich-ban-demo.md) | — | Chia thời gian và người nói, chuẩn bị dữ liệu, bốn phần demo, xử lý sự cố, dàn ý 9 slide |
 
 Bản phân tích mở rộng (chuỗi quán, máy chủ tại quán, chạy offline) ở [`../docs/`](../docs/README.md), chỉ để tham khảo.
 
