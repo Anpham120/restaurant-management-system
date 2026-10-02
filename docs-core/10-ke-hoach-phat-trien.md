@@ -30,6 +30,7 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 | P0-05 | **Test E2E Playwright** cho kịch bản nghiệm thu §1.5, chạy trong CI bằng Docker Compose | M | M | — | CI đỏ nếu luồng chính hỏng |
 | P0-06 | Dependabot (Maven, npm, Actions, Docker), CodeQL, quét image bằng Trivy | S | S | — | Có cảnh báo lỗ hổng tự động |
 | P0-07 | **Giám sát và cảnh báo** trên máy công cụ (VPS 4 vCPU, 8 GB RAM): Prometheus, Loki, Grafana, Alertmanager; Alloy trên máy ứng dụng; báo Telegram (NFR-12) | M | M | — | Tắt backend staging thì Telegram báo trong khoảng 5 phút |
+| P0-08 | **CI/CD lai**: Jenkins trên máy công cụ deploy chính; GitHub Actions deploy thay khi Jenkins không trả lời (NFR-13) | M | S | — | Tắt Jenkins rồi merge vào `develop`: Actions deploy staging và báo Telegram |
 
 P0-04 → P0-06 đã có trong repo: sao lưu và khôi phục (`deploy/backup.sh`, `deploy/restore.sh`), E2E trong CI, Dependabot, CodeQL, Trivy. Phần trong repo của P0-02 cũng đã sẵn: Caddy cho HTTPS (`deploy/caddy/`) và tài khoản quản trị đầu tiên (BR-48). Còn lại là việc trên GitHub và máy chủ, làm theo [tài liệu 11](11-trien-khai-van-hanh.md): ruleset và environment (P0-01); thuê VPS, trỏ tên miền, điền `.env`, bật `DEPLOY_ENABLED` (P0-02); nối SePay thật (P0-03).
 
@@ -40,6 +41,14 @@ P0-07 (issue #90) thêm vào sau khi chốt cấu hình máy chủ. Thiết kế
 - CI chạy test quy tắc cảnh báo.
 
 Máy công cụ chọn 4 vCPU, 8 GB RAM, 80 GB để còn chỗ chạy Jenkins. Việc trên máy chủ làm theo tài liệu 11 mục 11.10.
+
+P0-08 (issue #92) theo đề nghị chạy CI/CD lai, thiết kế ở tài liệu 09 mục 9.6. Phần trong repo:
+- `Jenkinsfile` và Jenkins trong `deploy/ops/jenkins/`, cấu hình bằng Configuration as Code.
+- Job `cd-gate` của GitHub Actions (`scripts/cd-gate.sh`), quyết định Actions có deploy thay không.
+- Script deploy dùng chung `deploy/deploy.sh`.
+- Workflow Rollback.
+
+Việc trên máy chủ và GitHub làm theo tài liệu 11 mục 11.11.
 
 ### Giai đoạn 1 — Nghiệp vụ tại quán còn thiếu (sprint 2–3)
 

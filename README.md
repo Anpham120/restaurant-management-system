@@ -169,13 +169,13 @@ Cài đặt trên GitHub (chỉ làm một lần):
 File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
 
 1. Pull request vào `develop` hoặc `main` thì chạy test backend (PostgreSQL thật qua Testcontainers), frontend (lint, test, build), và kiểm tra cấu hình giám sát kèm test quy tắc cảnh báo.
-2. Push vào `develop` hoặc `main` thì build 2 image, đẩy lên GHCR. Tag là mã commit, kèm `develop` hoặc `latest`.
-3. Deploy:
+2. Push vào `develop` hoặc `main`: [Jenkins](Jenkinsfile) trên máy công cụ deploy chính. Job `cd-gate` của GitHub Actions chờ trạng thái `jenkins/deploy` trên commit, và chỉ tự build, deploy khi Jenkins chưa cấu hình, không trả lời, hoặc im lặng 5 phút ([tài liệu 09 mục 9.6](docs-core/09-kien-truc-va-cicd.md)). Ai build thì cũng đẩy 2 image lên GHCR, tag là mã commit, kèm `develop` hoặc `latest`.
+3. Deploy, bằng cùng script [deploy/deploy.sh](deploy/deploy.sh) cho cả hai bên:
    - `develop` lên máy chủ staging, thư mục `~/khoibep-rms-staging`.
    - `main` lên production, thư mục `~/khoibep-rms`.
    - Mỗi thư mục có một file `.env` làm từ [deploy/.env.example](deploy/.env.example). Staging dùng `HTTP_PORT=8080` nếu chạy chung máy với production.
 4. Sau khi deploy, pipeline gọi `/actuator/health` để kiểm tra.
-5. Quay lại bản cũ: chạy lại job deploy của lần chạy tốt gần nhất.
+5. Quay lại bản cũ: tab **Actions → Rollback → Run workflow**, chọn môi trường và commit.
 6. Chạy lại test bằng tay: tab **Actions → CI/CD → Run workflow**.
 7. Quét lỗ hổng, kết quả ở tab **Security**:
    - [`codeql.yml`](.github/workflows/codeql.yml) phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.

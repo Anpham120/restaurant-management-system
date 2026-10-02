@@ -5,7 +5,7 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | # | Tài liệu | Tương ứng repo tham khảo | Nội dung |
 |---|---|---|---|
 | 1 | [Tầm nhìn dự án](01-tam-nhin-du-an.md) | 01-project-vision | Vấn đề, mục tiêu, người dùng, phạm vi, tiêu chí nghiệm thu |
-| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 113 yêu cầu chức năng (21 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 12 yêu cầu phi chức năng |
+| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 113 yêu cầu chức năng (21 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 13 yêu cầu phi chức năng |
 | 3 | [User stories](03-user-stories.md) | 03-user-stories | 41 story theo vai trò (7 story nhân sự), kèm tiêu chí chấp nhận |
 | 4 | [Quy trình nghiệp vụ](04-quy-trinh-nghiep-vu.md) | 04-business-workflow | Trước và sau; 10 quy trình P1 đến P10 |
 | 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 48 quy tắc (6 quy tắc nhân sự), ghi rõ nơi kiểm tra trong mã |

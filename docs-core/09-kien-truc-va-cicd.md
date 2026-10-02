@@ -33,7 +33,7 @@ flowchart LR
 | Frontend | **React 19, TypeScript, Vite**, Ant Design, React Router, TanStack Query, @stomp/stompjs | Giao diện nhân viên và khách |
 | Test | JUnit 5, MockMvc, **Testcontainers (PostgreSQL)**; Vitest | Test tự động |
 | Đóng gói | Docker (multi-stage), Docker Compose, Nginx | Chạy giống nhau ở máy dev và máy chủ |
-| CI/CD | **GitHub Actions**, GitHub Container Registry (GHCR) | Build, test, đóng image, triển khai |
+| CI/CD | **GitHub Actions** (test mỗi PR, deploy dự phòng), **Jenkins** (deploy chính), GitHub Container Registry (GHCR) | Build, test, đóng image, triển khai (mục 9.6) |
 | Giám sát | **Prometheus**, **Loki**, **Grafana**, Alertmanager, blackbox exporter trên máy công cụ; **Grafana Alloy** trên máy ứng dụng; Micrometer trong backend | Số liệu, log, dashboard, cảnh báo Telegram (mục 9.8) |
 
 ## 9.3 Cấu trúc mã nguồn
@@ -116,6 +116,11 @@ frontend/src/
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
 - Giới hạn tần suất (Bucket4j, lưu trong bộ nhớ của server): mỗi tên đăng nhập thử tối đa 10 lần mỗi phút (BR-31); trang QR của mỗi bàn gửi tối đa 10 lần mỗi phút và giữ tối đa 30 món chờ xác nhận (BR-30). Quá giới hạn thì trả 429 kèm `Retry-After`. Không giới hạn theo IP: sau Nginx, IP đầu tiên trong `X-Forwarded-For` do client tự gửi được, còn khách trong quán lại dùng chung một IP Wi-Fi.
 - Khi triển khai thật phải có **HTTPS**, vì SePay chỉ gọi địa chỉ HTTPS công khai. Một Caddy trên máy chủ (`deploy/caddy/`) nhận cổng 80, 443 cho cả production và staging, tự lấy và gia hạn chứng chỉ Let's Encrypt. Hai container web chỉ mở cổng trên `127.0.0.1`, nên từ Internet chỉ vào được qua Caddy.
+- Jenkins (P0-08) chạy trên máy công cụ, không chạy trên máy ứng dụng:
+  - Jenkins điều khiển Docker của máy công cụ để build image, tức là có quyền gần như root trên máy đó.
+  - Jenkins vào máy ứng dụng bằng tài khoản `deploy` qua SSH, với khoá riêng.
+  - Token GitHub của Jenkins chỉ có quyền `repo:status` và `write:packages`.
+  - Trang Jenkins phải đăng nhập, không cho xem ẩn danh.
 - Quét lỗ hổng tự động, kết quả ở tab **Security** của GitHub:
   - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`.
   - CodeQL phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
@@ -158,13 +163,29 @@ flowchart LR
     C --> D
     D -- Không --> X[Không cho merge]
     D -- Có --> M[Merge]
-    M --> F[Build 2 image, push GHCR<br/>tag: sha + develop hoặc latest]
-    F --> G{Nhánh nào?}
-    G -- develop --> S[Deploy staging tự động]
-    G -- main --> P[Chờ duyệt rồi deploy production]
-    S --> H[Kiểm tra /actuator/health]
-    P --> H
+    M --> J[Jenkins: chờ test trên GitHub xanh,<br/>build 2 image, push GHCR, deploy]
+    M --> Q{cd-gate trên GitHub Actions:<br/>Jenkins có deploy không?}
+    J -- trạng thái jenkins/deploy --> Q
+    Q -- Có, hoặc Jenkins báo lỗi --> K[Actions không deploy]
+    Q -- Jenkins không trả lời<br/>hoặc im 5 phút --> F[Actions: build 2 image,<br/>push GHCR, deploy, báo Telegram]
+    J --> H[Kiểm tra /actuator/health]
+    F --> H
 ```
+
+**CD lai (P0-08, NFR-13).** Jenkins trên máy công cụ deploy chính. GitHub Actions deploy dự phòng.
+- **Jenkins** (`Jenkinsfile`):
+  - Ghi trạng thái `jenkins/deploy` = `pending` lên commit ngay khi bắt đầu.
+  - Chờ 4 job CI (Backend, Frontend, E2E, Giám sát) xanh trên commit đó.
+  - Build và đẩy 2 image, rồi deploy: `develop` lên staging; `main` lên production sau khi có người bấm duyệt trên Jenkins.
+  - Kiểm tra health, rồi ghi `success` hoặc `failure`.
+- **Job `cd-gate` của GitHub Actions** (`scripts/cd-gate.sh`) đọc trạng thái đó:
+  - Thấy `success`: dừng.
+  - Thấy `failure`: dừng và báo đỏ. Lỗi thật thì để người xem, không đè lên.
+  - Chỉ deploy thay khi chưa cấu hình Jenkins, Jenkins không trả lời ở `/login`, hoặc im lặng 5 phút về commit đó. Khi deploy thay thì nhắn Telegram.
+  - Jenkins đang chạy (`pending`) thì chờ tới 90 phút, kể cả lúc chờ duyệt production.
+- **Không deploy chồng, không deploy ngược:**
+  - Hai bên chạy cùng `deploy/deploy.sh` trên máy ứng dụng. Script giữ khoá (`flock`) để chỉ một lần deploy chạy, và bỏ qua nếu commit đó đang chạy rồi.
+  - Ngay trước khi deploy, cả hai kiểm commit còn là mới nhất của nhánh, nên Jenkins sống lại muộn cũng không đưa commit cũ đè lên.
 
 | Bước | Làm gì | Chặn merge nếu lỗi |
 |---|---|---|
@@ -173,9 +194,10 @@ flowchart LR
 | E2E | Dựng cả ứng dụng bằng Docker Compose, chạy kịch bản nghiệm thu bằng Playwright trên Chromium | Có |
 | CodeQL | Phân tích tĩnh mã Java và TypeScript (workflow `codeql.yml`) | Không, chỉ báo ở tab Security |
 | Giám sát | Kiểm tra cấu hình Prometheus, Alertmanager và Alloy; chạy test quy tắc cảnh báo (`promtool test rules`); dashboard Grafana là JSON hợp lệ | Có |
-| Image | Build image multi-stage, đẩy lên GHCR, gắn tag theo commit; Trivy quét lỗ hổng CRITICAL, HIGH đã có bản vá | Không, chỉ báo ở tab Security |
-| Deploy | Chạy khi bật biến `DEPLOY_ENABLED`. Environment `staging` không cần duyệt; `production` cần người duyệt | — |
-| Quay lại bản cũ | Chạy lại job deploy của lần chạy tốt gần nhất (dùng image của commit đó) | — |
+| Image | Build image multi-stage, đẩy lên GHCR, gắn tag theo commit; Trivy quét lỗ hổng CRITICAL, HIGH đã có bản vá. Jenkins build thì Trivy chạy trong Jenkins (chỉ in kết quả), Actions build thì kết quả lên tab Security | Không, chỉ báo |
+| cd-gate | Quyết định Jenkins hay GitHub Actions deploy commit này (ở trên) | — |
+| Deploy | Jenkins, hoặc GitHub Actions khi cd-gate bảo thế chỗ. Phía Actions chỉ chạy khi bật biến `DEPLOY_ENABLED`; environment `staging` không cần duyệt, `production` cần người duyệt | — |
+| Quay lại bản cũ | Workflow **Rollback** (`rollback.yml`): chọn môi trường và commit, chạy được cả khi Jenkins chết; production cần duyệt | — |
 
 ## 9.7 Chiến lược kiểm thử
 
@@ -194,7 +216,7 @@ flowchart LR
 
 ## 9.8 Giám sát và cảnh báo (P0-07, NFR-12)
 
-Giám sát chạy trên **máy công cụ**, tách khỏi **máy ứng dụng** (máy chạy staging và production). Máy ứng dụng chết thì máy công cụ vẫn còn để báo động. Trên máy ứng dụng chỉ có một agent **Grafana Alloy**: nó tự đẩy số liệu và log sang máy công cụ, nên máy ứng dụng không phải mở thêm cổng nào.
+Giám sát chạy trên **máy công cụ**, tách khỏi **máy ứng dụng** (máy chạy staging và production). Máy công cụ cũng chạy Jenkins (mục 9.6), sau cùng một Caddy. Máy ứng dụng chết thì máy công cụ vẫn còn để báo động. Trên máy ứng dụng chỉ có một agent **Grafana Alloy**: nó tự đẩy số liệu và log sang máy công cụ, nên máy ứng dụng không phải mở thêm cổng nào.
 
 ```mermaid
 flowchart LR
