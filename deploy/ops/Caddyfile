@@ -1,0 +1,29 @@
+# P0-07, NFR-12: the only door of the monitoring server. Caddy gets and renews the Let's Encrypt certificate itself.
+# Prometheus, Loki and Alertmanager publish no port; the agent reaches the first two through the paths below.
+
+{$MONITOR_DOMAIN} {
+	encode zstd gzip
+
+	# Metrics pushed by the agent of the application server (Prometheus remote write).
+	handle /ingest/metrics {
+		basic_auth {
+			{$INGEST_USER} {$INGEST_PASSWORD_HASH}
+		}
+		rewrite * /api/v1/write
+		reverse_proxy prometheus:9090
+	}
+
+	# Logs pushed by the same agent (Loki push API).
+	handle /ingest/logs {
+		basic_auth {
+			{$INGEST_USER} {$INGEST_PASSWORD_HASH}
+		}
+		rewrite * /loki/api/v1/push
+		reverse_proxy loki:3100
+	}
+
+	# Everything else is Grafana, which has its own sign-in.
+	handle {
+		reverse_proxy grafana:3000
+	}
+}

@@ -121,6 +121,47 @@ jobs:
           name: e2e-report
           path: e2e/playwright-report
 
+  # P0-07: the monitoring server and agent configs parse, and every alert fires when it should (promtool test rules).
+  # Images are the ones the compose files pin, so a Dependabot bump is checked with the new version.
+  monitoring:
+    name: Monitoring - check configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read the image versions from the compose files
+        run: |
+          image() { grep -m1 "image: $1:" "$2" | awk '{print $2}'; }
+          echo "PROMETHEUS=$(image prom/prometheus deploy/ops/docker-compose.yml)" >> "$GITHUB_ENV"
+          echo "ALERTMANAGER=$(image prom/alertmanager deploy/ops/docker-compose.yml)" >> "$GITHUB_ENV"
+          echo "ALLOY=$(image grafana/alloy deploy/agent/docker-compose.yml)" >> "$GITHUB_ENV"
+      - name: Alert rules and their tests
+        run: |
+          docker run --rm -v "$PWD/deploy/ops/prometheus:/etc/prometheus:ro" --entrypoint promtool "$PROMETHEUS" \
+            check rules /etc/prometheus/rules/khoibep.yml
+          docker run --rm -v "$PWD/deploy/ops/prometheus:/etc/prometheus:ro" -w /etc/prometheus/tests \
+            --entrypoint promtool "$PROMETHEUS" test rules khoibep_test.yml
+      - name: Prometheus config
+        run: |
+          sed -e 's|__SITE_URL_PRODUCTION__|https://example.com/actuator/health|' \
+            -e 's|__SITE_URL_STAGING__|https://staging.example.com/actuator/health|' \
+            deploy/ops/prometheus/prometheus.yml > "$RUNNER_TEMP/prometheus.yml"
+          docker run --rm -v "$RUNNER_TEMP/prometheus.yml:/tmp/prometheus.yml:ro" \
+            -v "$PWD/deploy/ops/prometheus/rules:/etc/prometheus/rules:ro" --entrypoint promtool "$PROMETHEUS" \
+            check config /tmp/prometheus.yml
+      - name: Alertmanager config
+        run: |
+          sed -e 's|__TELEGRAM_BOT_TOKEN__|123456789:ci|' -e 's|__TELEGRAM_CHAT_ID__|-1001|' \
+            deploy/ops/alertmanager/alertmanager.yml > "$RUNNER_TEMP/alertmanager.yml"
+          docker run --rm -v "$RUNNER_TEMP/alertmanager.yml:/tmp/alertmanager.yml:ro" \
+            -v "$PWD/deploy/ops/alertmanager:/etc/alertmanager:ro" --entrypoint amtool "$ALERTMANAGER" \
+            check-config /tmp/alertmanager.yml
+      - name: Alloy config
+        run: |
+          docker run --rm -v "$PWD/deploy/agent/config.alloy:/etc/alloy/config.alloy:ro" "$ALLOY" \
+            validate /etc/alloy/config.alloy
+      - name: Grafana dashboards are valid JSON
+        run: jq empty deploy/ops/grafana/dashboards/*.json
+
   # Pushes to main get the moving tag "latest", pushes to develop get "develop"; every image also
   # gets the commit sha, which is what the deploy job runs.
   images:

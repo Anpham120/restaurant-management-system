@@ -1,0 +1,365 @@
+# P0-07: every alert of rules/khoibep.yml fires when it should and stays quiet otherwise. Run in CI with
+#   promtool test rules /etc/prometheus/tests/khoibep_test.yml
+# Time starts at 0 (1970-01-01): time() equals the seconds since the start of a test.
+rule_files:
+  - ../rules/khoibep.yml
+
+evaluation_interval: 1m
+
+tests:
+  # ---- may-chu ------------------------------------------------------------------------------------------------------
+
+  - name: the application server stops pushing at minute 10
+    interval: 1m
+    input_series:
+      - series: 'up{job="node", server="app", instance="app"}'
+        values: '1x10'
+      - series: 'up{job="node", server="ops", instance="ops"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: ServerDown
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: ServerDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: node, server: app}
+            exp_annotations:
+              summary: "Máy app mất liên lạc"
+              description: "Không nhận được số liệu của máy app: máy tắt, mất mạng, hoặc agent giám sát dừng. Thử mở trang web và đăng nhập SSH vào máy."
+
+  - name: the node exporter of the monitoring server stops answering
+    interval: 1m
+    input_series:
+      - series: 'up{job="node", server="app", instance="app"}'
+        values: '1x20'
+      - series: 'up{job="node", server="ops", instance="ops"}'
+        values: '1x5 0x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ServerDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: node, server: ops, instance: ops}
+            exp_annotations:
+              summary: "Máy ops mất liên lạc"
+              description: "Không nhận được số liệu của máy ops: máy tắt, mất mạng, hoặc agent giám sát dừng. Thử mở trang web và đăng nhập SSH vào máy."
+
+  - name: CPU 95 percent busy on one server, idle on the other
+    interval: 1m
+    input_series:
+      - series: 'node_cpu_seconds_total{mode="idle", cpu="0", server="app"}'
+        values: '0+3x30'
+      - series: 'node_cpu_seconds_total{mode="idle", cpu="0", server="ops"}'
+        values: '0+60x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HostCpuHigh
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: HostCpuHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, server: app}
+            exp_annotations:
+              summary: "CPU máy app bận 95%"
+              description: "CPU bận trên 90% suốt 15 phút. Xem container nào dùng nhiều CPU ở phần Container của dashboard Khói Bếp."
+
+  - name: little memory and disk left
+    interval: 1m
+    input_series:
+      - series: 'node_memory_MemAvailable_bytes{job="node", server="app", instance="app"}'
+        values: '500000000x20'
+      - series: 'node_memory_MemTotal_bytes{job="node", server="app", instance="app"}'
+        values: '10000000000x20'
+      - series: 'node_filesystem_avail_bytes{job="node", server="app", instance="app", mountpoint="/"}'
+        values: '1000000000x20'
+      - series: 'node_filesystem_size_bytes{job="node", server="app", instance="app", mountpoint="/"}'
+        values: '10000000000x20'
+      - series: 'node_memory_MemAvailable_bytes{job="node", server="ops", instance="ops"}'
+        values: '5000000000x20'
+      - series: 'node_memory_MemTotal_bytes{job="node", server="ops", instance="ops"}'
+        values: '10000000000x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HostMemoryLow
+        exp_alerts:
+          - exp_labels: {severity: warning, job: node, server: app, instance: app}
+            exp_annotations:
+              summary: "RAM máy app chỉ còn 5% trống"
+              description: "Còn dưới 10% RAM trống suốt 10 phút: máy sắp phải dùng swap và chậm hẳn đi."
+      - eval_time: 15m
+        alertname: HostDiskLow
+        exp_alerts:
+          - exp_labels: {severity: warning, job: node, server: app, instance: app, mountpoint: /}
+            exp_annotations:
+              summary: "Ổ đĩa máy app chỉ còn 10% trống"
+              description: "Xoá image Docker cũ bằng docker image prune, và xem dung lượng thư mục backups."
+
+  # ---- container ----------------------------------------------------------------------------------------------------
+
+  - name: production lost its backup container, staging has all four
+    interval: 1m
+    input_series:
+      - series: 'container_last_seen{env="production", service="db", server="app"}'
+        values: '1x10'
+      - series: 'container_last_seen{env="production", service="backend", server="app"}'
+        values: '1x10'
+      - series: 'container_last_seen{env="production", service="frontend", server="app"}'
+        values: '1x10'
+      - series: 'container_last_seen{env="staging", service="db", server="app"}'
+        values: '1x10'
+      - series: 'container_last_seen{env="staging", service="backend", server="app"}'
+        values: '1x10'
+      - series: 'container_last_seen{env="staging", service="frontend", server="app"}'
+        values: '1x10'
+      - series: 'container_last_seen{env="staging", service="backup", server="app"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: ContainerMissing
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: ContainerMissing
+        exp_alerts:
+          - exp_labels: {severity: critical, env: production, server: app}
+            exp_annotations:
+              summary: "production chỉ còn 3 container chạy"
+              description: "Cần đủ 4 container: db, backend, frontend, backup. Chạy docker compose -f docker-compose.prod.yml ps trong thư mục của môi trường đó."
+
+  - name: the backend at 95 percent of its memory limit, the database without a limit
+    interval: 1m
+    input_series:
+      - series: 'container_memory_working_set_bytes{env="production", service="backend", server="app"}'
+        values: '760000000x20'
+      - series: 'container_spec_memory_limit_bytes{env="production", service="backend", server="app"}'
+        values: '800000000x20'
+      - series: 'container_memory_working_set_bytes{env="production", service="db", server="app"}'
+        values: '900000000x20'
+      - series: 'container_spec_memory_limit_bytes{env="production", service="db", server="app"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ContainerMemoryHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, env: production, service: backend, server: app}
+            exp_annotations:
+              summary: "Container backend của production dùng 95% giới hạn RAM"
+              description: "Chạm giới hạn thì container bị tắt vì hết bộ nhớ (OOM) rồi khởi động lại."
+
+  # ---- ung-dung -----------------------------------------------------------------------------------------------------
+
+  - name: staging stops answering from outside, production stays up
+    interval: 1m
+    input_series:
+      - series: 'probe_success{job="site", env="production", instance="https://khoibep.example.vn/actuator/health"}'
+        values: '1x10'
+      - series: 'probe_success{job="site", env="staging", instance="https://staging.khoibep.example.vn/actuator/health"}'
+        values: '1 1 0x8'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: SiteDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: SiteDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: site, env: staging, instance: "https://staging.khoibep.example.vn/actuator/health"}
+            exp_annotations:
+              summary: "Web staging không truy cập được"
+              description: "https://staging.khoibep.example.vn/actuator/health không trả UP khi gọi từ máy công cụ suốt 2 phút."
+
+  - name: the certificate runs out in 10 days
+    interval: 1m
+    input_series:
+      - series: 'probe_ssl_earliest_cert_expiry{job="site", env="production", instance="https://khoibep.example.vn/actuator/health"}'
+        values: '864000x150'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: CertificateExpiring
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: CertificateExpiring
+        exp_alerts:
+          - exp_labels: {severity: warning, job: site, env: production, instance: "https://khoibep.example.vn/actuator/health"}
+            exp_annotations:
+              summary: "Chứng chỉ HTTPS của production còn 10 ngày"
+              description: "Caddy tự gia hạn trước 30 ngày, nên còn dưới 14 ngày là việc gia hạn đang lỗi: xem docker compose logs trong ~/caddy."
+
+  - name: the agent can no longer read the production backend
+    interval: 1m
+    input_series:
+      - series: 'up{job="backend", env="production", instance="khoibep-rms-backend-1", server="app"}'
+        values: '1 1 0x8'
+      - series: 'up{job="backend", env="staging", instance="khoibep-rms-staging-backend-1", server="app"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BackendDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: backend, env: production, instance: khoibep-rms-backend-1, server: app}
+            exp_annotations:
+              summary: "Backend production không trả lời"
+              description: "Agent không đọc được số liệu của backend suốt 2 phút: backend sập, đang khởi động lại, hoặc APP_METRICS_TOKEN không khớp."
+
+  - name: half the production requests fail, staging answers them all
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{env="production", uri="/api/orders", status="500"}'
+        values: '0+60x20'
+      - series: 'http_server_requests_seconds_count{env="production", uri="/api/orders", status="200"}'
+        values: '0+60x20'
+      - series: 'http_server_requests_seconds_count{env="staging", uri="/api/orders", status="200"}'
+        values: '0+60x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels: {severity: critical, env: production}
+            exp_annotations:
+              summary: "50% request của production bị lỗi 5xx"
+              description: "Trên 5% request trả lỗi máy chủ suốt 5 phút. Xem log lỗi của backend ở cuối dashboard Khói Bếp."
+
+  - name: every request takes between 0.5 and 1 second
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_bucket{env="production", uri="/api/orders", le="0.25"}'
+        values: '0x20'
+      - series: 'http_server_requests_seconds_bucket{env="production", uri="/api/orders", le="0.5"}'
+        values: '0x20'
+      - series: 'http_server_requests_seconds_bucket{env="production", uri="/api/orders", le="1.0"}'
+        values: '0+60x20'
+      - series: 'http_server_requests_seconds_bucket{env="production", uri="/api/orders", le="+Inf"}'
+        values: '0+60x20'
+      - series: 'http_server_requests_seconds_count{env="production", uri="/api/orders"}'
+        values: '0+60x20'
+      # Open WebSocket connections are long on purpose and do not count.
+      - series: 'http_server_requests_seconds_bucket{env="staging", uri="/ws", le="+Inf"}'
+        values: '0+60x20'
+      - series: 'http_server_requests_seconds_count{env="staging", uri="/ws"}'
+        values: '0+60x20'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SlowResponses
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: SlowResponses
+        exp_alerts:
+          - exp_labels: {severity: warning, env: production}
+            exp_annotations:
+              summary: "p95 thời gian trả lời của production là 975ms"
+              description: "Quá 500 ms suốt 10 phút (NFR-02). Xem đường dẫn nào chậm ở phần Ứng dụng của dashboard."
+
+  - name: the old generation stays 95 percent full, the database pool keeps a queue
+    interval: 1m
+    input_series:
+      - series: 'jvm_memory_used_bytes{env="production", area="heap", id="G1 Old Gen"}'
+        values: '950x30'
+      - series: 'jvm_memory_max_bytes{env="production", area="heap", id="G1 Old Gen"}'
+        values: '1000x30'
+      - series: 'jvm_memory_used_bytes{env="production", area="heap", id="G1 Eden Space"}'
+        values: '990x30'
+      - series: 'jvm_memory_max_bytes{env="production", area="heap", id="G1 Eden Space"}'
+        values: '1000x30'
+      - series: 'hikaricp_connections_pending{env="production", pool="HikariPool-1"}'
+        values: '0 0 2x28'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: JvmOldGenHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, env: production}
+            exp_annotations:
+              summary: "Bộ nhớ JVM (old gen) của production đầy 95%"
+              description: "Đầy trên 90% suốt 15 phút: backend sắp chậm vì dọn rác liên tục, hoặc hết bộ nhớ."
+      - eval_time: 5m
+        alertname: DatabasePoolExhausted
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: DatabasePoolExhausted
+        exp_alerts:
+          - exp_labels: {severity: warning, env: production}
+            exp_annotations:
+              summary: "Backend production phải chờ kết nối CSDL"
+              description: "Có request chờ kết nối CSDL suốt 5 phút: truy vấn chậm hoặc CSDL quá tải."
+
+  # ---- nghiep-vu ----------------------------------------------------------------------------------------------------
+
+  - name: SePay deliveries fail three times in a row
+    interval: 1m
+    input_series:
+      - series: 'rms_sepay_webhook_consecutive_failures{env="production"}'
+        values: '0 1 2 3 3'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: SepayWebhookFailing
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: SepayWebhookFailing
+        exp_alerts:
+          - exp_labels: {severity: critical, env: production}
+            exp_annotations:
+              summary: "Webhook SePay của production lỗi 3 lần liên tiếp"
+              description: "Chuyển khoản không còn tự xác nhận (BR-32). Thu ngân xác nhận tay; kiểm tra SEPAY_API_KEY và webhook trên my.sepay.vn."
+
+  - name: one failed delivery and one unmatched transfer, then quiet
+    interval: 1m
+    input_series:
+      - series: 'rms_sepay_webhook_failed_total{env="production"}'
+        values: '0 0 0 1x40'
+      - series: 'rms_bank_transactions_unmatched_total{env="production"}'
+        values: '0 0 0 1x40'
+      - series: 'rms_bank_transactions_unmatched_total{env="staging"}'
+        values: '0x43'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: SepayWebhookErrors
+        exp_alerts:
+          - exp_labels: {severity: warning, env: production}
+            exp_annotations:
+              summary: "Webhook SePay của production có lỗi trong 15 phút qua"
+              description: "Sai khoá API, thiếu mã giao dịch, hoặc lỗi khi xử lý. Xem log của backend."
+      - eval_time: 4m
+        alertname: UnmatchedTransfers
+        exp_alerts:
+          - exp_labels: {severity: warning, env: production}
+            exp_annotations:
+              summary: "Có giao dịch chuyển khoản không khớp mới ở production"
+              description: "Sai số tiền hoặc không có mã thanh toán (BR-16). Thu ngân mở tab Giao dịch không khớp để đối chiếu với khách."
+      - eval_time: 30m
+        alertname: SepayWebhookErrors
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: UnmatchedTransfers
+        exp_alerts: []
+
+  - name: the last good dump is more than 26 hours old
+    interval: 1m
+    input_series:
+      # A dump at time 0, none after.
+      - series: 'khoibep_backup_last_success_timestamp_seconds{env="production", job="backup", instance="app", server="app"}'
+        values: '0x1620'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: BackupMissing
+        exp_alerts: []
+      - eval_time: 26h30m
+        alertname: BackupMissing
+        exp_alerts:
+          - exp_labels: {severity: critical, env: production, job: backup, instance: app, server: app}
+            exp_annotations:
+              summary: "Sao lưu production quá 26 giờ chưa chạy"
+              description: "Xem docker compose -f docker-compose.prod.yml logs backup trong thư mục của môi trường đó."
+
+  - name: production never wrote backup.prom
+    interval: 1m
+    input_series:
+      - series: 'up{job="node", server="app", instance="app"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BackupMissing
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: BackupMissing
+        exp_alerts:
+          - exp_labels: {severity: critical, env: production}
+            exp_annotations:
+              summary: "Sao lưu production quá 26 giờ chưa chạy"
+              description: "Xem docker compose -f docker-compose.prod.yml logs backup trong thư mục của môi trường đó."

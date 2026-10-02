@@ -98,7 +98,7 @@ Giới hạn tần suất (FR-01.5, FR-06.8):
 
 Tài liệu API chạy được (Swagger UI) nằm ở `/swagger-ui.html` khi chạy backend.
 
-Ngoài `/api`, backend có `/actuator/health` (công khai, pipeline gọi để kiểm tra bản mới) và `/actuator/metrics` (chỉ ADMIN, NFR-11, xem [tài liệu 09 mục 9.5](09-kien-truc-va-cicd.md#95-triển-khai)).
+Ngoài `/api`, backend có `/actuator/health` (công khai, pipeline gọi để kiểm tra bản mới), `/actuator/metrics` (chỉ ADMIN, NFR-11, xem [tài liệu 09 mục 9.5](09-kien-truc-va-cicd.md#95-triển-khai)) và `/actuator/prometheus` (cho Prometheus, cần mã `APP_METRICS_TOKEN`, NFR-12, xem [mục 9.8](09-kien-truc-va-cicd.md#98-giám-sát-và-cảnh-báo-p0-07-nfr-12)).
 
 ## 8.2 Realtime (WebSocket STOMP)
 

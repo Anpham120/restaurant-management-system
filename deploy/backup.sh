@@ -17,6 +17,17 @@ dump() {
   fi
   mv "$file.part" "$file"
   ls -1t /backups/rms-*.dump | tail -n +"$((KEEP + 1))" | xargs -r rm -f
+  # NFR-12: when the last good dump was made, read by the monitoring agent (node exporter textfile format).
+  # Written whole, then renamed, so the agent never reads half a file.
+  cat > /backups/backup.prom.part <<EOF
+# HELP khoibep_backup_last_success_timestamp_seconds When the last good database dump finished.
+# TYPE khoibep_backup_last_success_timestamp_seconds gauge
+khoibep_backup_last_success_timestamp_seconds $(date +%s)
+# HELP khoibep_backup_last_size_bytes Size of the last good database dump.
+# TYPE khoibep_backup_last_size_bytes gauge
+khoibep_backup_last_size_bytes $(stat -c %s "$file")
+EOF
+  mv /backups/backup.prom.part /backups/backup.prom
   echo "$(date '+%F %T') saved $file ($(du -h "$file" | cut -f1)), keeping the newest $KEEP"
 }
 

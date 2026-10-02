@@ -168,7 +168,7 @@ Cài đặt trên GitHub (chỉ làm một lần):
 
 File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
 
-1. Pull request vào `develop` hoặc `main` thì chạy test backend (PostgreSQL thật qua Testcontainers) và frontend (lint, test, build).
+1. Pull request vào `develop` hoặc `main` thì chạy test backend (PostgreSQL thật qua Testcontainers), frontend (lint, test, build), và kiểm tra cấu hình giám sát kèm test quy tắc cảnh báo.
 2. Push vào `develop` hoặc `main` thì build 2 image, đẩy lên GHCR. Tag là mã commit, kèm `develop` hoặc `latest`.
 3. Deploy:
    - `develop` lên máy chủ staging, thư mục `~/khoibep-rms-staging`.
@@ -221,3 +221,5 @@ docker compose -f docker-compose.prod.yml exec frontend wget -qO- --header "Auth
 Ở máy dev, backend mở cổng 8081 nên hỏi thẳng được: `curl -H "Authorization: Bearer $TOKEN" http://localhost:8081/actuator/metrics`.
 
 Webhook SePay lỗi 3 lần liên tiếp thì màn hình thu ngân hiện cảnh báo, và log có một dòng `ERROR`. Một webhook hợp lệ tới thì cảnh báo tự tắt.
+
+Trên máy chủ thật, số liệu và log còn được gom về máy công cụ: dashboard Grafana và cảnh báo qua Telegram ([tài liệu 09 mục 9.8](docs-core/09-kien-truc-va-cicd.md)). Cách dựng ở [tài liệu 11 mục 11.10](docs-core/11-trien-khai-van-hanh.md).

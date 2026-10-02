@@ -23,6 +23,7 @@ Tài liệu này là việc P5-01 ([tài liệu 10](10-ke-hoach-phat-trien.md)).
 | ERD và migration | `scripts/check-erd.mjs` | Mỗi PR và mỗi lần push |
 | E2E | Playwright trên Chromium, cả ứng dụng dựng bằng Docker Compose | Mỗi PR và mỗi lần push |
 | Bảo mật | CodeQL (Java, TypeScript), Trivy (image), Dependabot | Mỗi PR, mỗi lần build image, mỗi tuần |
+| Cảnh báo giám sát | `promtool test rules` (Prometheus), `amtool`, `alloy fmt` | Mỗi PR và mỗi lần push |
 | Tải | k6 | Chạy tay trước khi phát hành |
 | Chạy thử trên trình duyệt | Playwright, viết riêng cho từng tính năng | Trước khi mở PR của tính năng |
 

@@ -34,6 +34,7 @@ flowchart LR
 | Test | JUnit 5, MockMvc, **Testcontainers (PostgreSQL)**; Vitest | Test tự động |
 | Đóng gói | Docker (multi-stage), Docker Compose, Nginx | Chạy giống nhau ở máy dev và máy chủ |
 | CI/CD | **GitHub Actions**, GitHub Container Registry (GHCR) | Build, test, đóng image, triển khai |
+| Giám sát | **Prometheus**, **Loki**, **Grafana**, Alertmanager, blackbox exporter trên máy công cụ; **Grafana Alloy** trên máy ứng dụng; Micrometer trong backend | Số liệu, log, dashboard, cảnh báo Telegram (mục 9.8) |
 
 ## 9.3 Cấu trúc mã nguồn
 
@@ -111,7 +112,7 @@ frontend/src/
 - Mật khẩu băm **BCrypt**. Đăng nhập trả **JWT HS256** có hạn 12 giờ. Khoá bí mật lấy từ biến môi trường `APP_JWT_SECRET`.
 - Mỗi request kiểm tra nhân viên **còn hoạt động** (BR-03), và token còn đúng **số phiên bản** của tài khoản (BR-41). Đổi mật khẩu hay đăng xuất mọi thiết bị là thu hồi mọi token cũ, không cần danh sách token bị cấm.
 - API công khai chỉ gồm `/api/public/**`, `/api/auth/login`, `/api/webhooks/sepay`, `/ws`, `/actuator/health`.
-- Actuator chỉ mở `health` (công khai), `info` và `metrics` (chỉ ADMIN). Nginx chỉ chuyển tiếp `/actuator/health`, nên từ Internet không gọi được các endpoint còn lại.
+- Actuator chỉ mở `health` (công khai), `info` và `metrics` (chỉ ADMIN), `prometheus` (chỉ trả khi header `Authorization: Bearer` mang đúng `APP_METRICS_TOKEN`, so bằng phép so sánh thời gian hằng; chưa đặt mã thì đóng hẳn). Nginx chỉ chuyển tiếp `/actuator/health`, nên từ Internet không gọi được các endpoint còn lại.
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
 - Giới hạn tần suất (Bucket4j, lưu trong bộ nhớ của server): mỗi tên đăng nhập thử tối đa 10 lần mỗi phút (BR-31); trang QR của mỗi bàn gửi tối đa 10 lần mỗi phút và giữ tối đa 30 món chờ xác nhận (BR-30). Quá giới hạn thì trả 429 kèm `Retry-After`. Không giới hạn theo IP: sau Nginx, IP đầu tiên trong `X-Forwarded-For` do client tự gửi được, còn khách trong quán lại dùng chung một IP Wi-Fi.
 - Khi triển khai thật phải có **HTTPS**, vì SePay chỉ gọi địa chỉ HTTPS công khai. Một Caddy trên máy chủ (`deploy/caddy/`) nhận cổng 80, 443 cho cả production và staging, tự lấy và gia hạn chứng chỉ Let's Encrypt. Hai container web chỉ mở cổng trên `127.0.0.1`, nên từ Internet chỉ vào được qua Caddy.
@@ -128,6 +129,8 @@ frontend/src/
 | Staging | `develop` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms-staging`, image tag theo commit | Tự deploy, có thể bật tài khoản demo để cả nhóm thử |
 | Production | `main` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms` | Deploy sau khi có người duyệt |
 
+Staging và production chạy chung **máy ứng dụng**. Giám sát chạy trên một **máy công cụ** riêng (mục 9.8), để máy ứng dụng chết thì vẫn còn chỗ báo động.
+
 Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. Biến chính: `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `SEPAY_API_KEY`, `APP_PUBLIC_BASE_URL` (địa chỉ in trong QR bàn), `HTTP_PORT` (cổng trên `127.0.0.1` mà Caddy chuyển tới: production 8081, staging 8080), `APP_DEMO_ACCOUNTS_ENABLED`, `APP_INITIAL_ADMIN_PASSWORD` (tài khoản quản trị đầu tiên, BR-48). Các bước dựng máy chủ ở [tài liệu 11](11-trien-khai-van-hanh.md).
 
 **Sao lưu (P0-04).** Dịch vụ `backup` trong `deploy/docker-compose.prod.yml` chạy `pg_dump` mỗi đêm lúc `BACKUP_HOUR` giờ Việt Nam (mặc định 3 giờ):
@@ -141,6 +144,7 @@ Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. 
 - `/actuator/metrics` cho các số liệu Spring Boot tự đo: `http.server.requests` (số request và thời gian trả lời theo đường dẫn và mã trả về), `jvm.memory.used`, `hikaricp.connections.active`... Chỉ ADMIN gọi được và Nginx không chuyển tiếp, nên phải hỏi từ trong mạng Docker của máy chủ. Lệnh mẫu ở README.
 - Cảnh báo webhook (BR-32): SePay gửi lại một webhook lỗi sau 1, 2, 4, 7, 12, 20 và 33 phút kể từ lần đầu. Với ngưỡng 3 lần liên tiếp, webhook hỏng thì khoảng 2 phút sau màn hình thu ngân hiện cảnh báo; một lần lỗi thoáng qua mà lần gửi lại thành công thì không báo. Lúc bắt đầu đợt lỗi, backend ghi thêm một dòng log `ERROR`.
 - Server không thấy được lỗi kết nối (SePay không gọi tới nơi), nên khi tạo webhook trên my.sepay.vn nên bật cả bước **Cảnh báo** của SePay. SePay báo khi cả 8 lần gửi đều lỗi, tức sau khoảng 33 phút.
+- Log và số liệu trên còn được gom về máy công cụ để xem trên Grafana và báo qua Telegram (mục 9.8).
 
 ## 9.6 Nhánh và pipeline CI/CD
 
@@ -168,6 +172,7 @@ flowchart LR
 | Frontend | Kiểm tra kiểu (TypeScript), ESLint, Vitest (cả test component), build | Có |
 | E2E | Dựng cả ứng dụng bằng Docker Compose, chạy kịch bản nghiệm thu bằng Playwright trên Chromium | Có |
 | CodeQL | Phân tích tĩnh mã Java và TypeScript (workflow `codeql.yml`) | Không, chỉ báo ở tab Security |
+| Giám sát | Kiểm tra cấu hình Prometheus, Alertmanager và Alloy; chạy test quy tắc cảnh báo (`promtool test rules`); dashboard Grafana là JSON hợp lệ | Có |
 | Image | Build image multi-stage, đẩy lên GHCR, gắn tag theo commit; Trivy quét lỗ hổng CRITICAL, HIGH đã có bản vá | Không, chỉ báo ở tab Security |
 | Deploy | Chạy khi bật biến `DEPLOY_ENABLED`. Environment `staging` không cần duyệt; `production` cần người duyệt | — |
 | Quay lại bản cũ | Chạy lại job deploy của lần chạy tốt gần nhất (dùng image của commit đó) | — |
@@ -184,4 +189,75 @@ flowchart LR
 | Kiến trúc | ArchUnit (`ArchitectureTest`) | Mỗi class nằm đúng thư mục con của lớp mình, và chỉ gọi xuống các lớp dưới (mục 9.3) |
 | E2E | Playwright, chạy trong CI | Kịch bản nghiệm thu ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu): khách QR, phục vụ, bếp, chuyển khoản, bàn trống; phân quyền; trang "Của tôi" |
 | Tải | k6 (`perf/load-test.js`), workflow `load-test.yml` chạy tay ở tab Actions | NFR-02: 30 người trong 2 phút (14 khách gọi món QR, 10 phục vụ, 3 bếp, 2 thu ngân, 1 quản lý xem báo cáo 30 ngày), sau khi nạp 6 tháng bán hàng. Đạt khi p95 < 500 ms và dưới 1% request lỗi |
+| Cảnh báo | `promtool test rules`, chạy trong CI | Mỗi quy tắc ở mục 9.8 báo khi có sự cố và im khi bình thường, với số liệu giả lập theo từng phút |
 | Nghiệm thu | 2 trình duyệt + 1 điện thoại | Kịch bản ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu), làm tay khi demo |
+
+## 9.8 Giám sát và cảnh báo (P0-07, NFR-12)
+
+Giám sát chạy trên **máy công cụ**, tách khỏi **máy ứng dụng** (máy chạy staging và production). Máy ứng dụng chết thì máy công cụ vẫn còn để báo động. Trên máy ứng dụng chỉ có một agent **Grafana Alloy**: nó tự đẩy số liệu và log sang máy công cụ, nên máy ứng dụng không phải mở thêm cổng nào.
+
+```mermaid
+flowchart LR
+    subgraph App[Máy ứng dụng]
+        P[production và staging<br/>backend, PostgreSQL, Nginx, sao lưu]
+        A[Grafana Alloy<br/>máy, container, backend, log]
+    end
+    subgraph Ops[Máy công cụ]
+        C[Caddy HTTPS<br/>monitor.tên-miền]
+        PR[(Prometheus<br/>15 ngày)]
+        L[(Loki<br/>14 ngày)]
+        BB[blackbox exporter]
+        AM[Alertmanager]
+        G[Grafana]
+    end
+    A -- đọc /actuator/prometheus kèm mã --> P
+    A -- đẩy số liệu và log<br/>HTTPS, mật khẩu --> C
+    C --> PR
+    C --> L
+    BB -. gọi /actuator/health qua Internet .-> P
+    PR --> AM -- tin nhắn --> T[Telegram]
+    G --> PR
+    G --> L
+```
+
+**Thu thập gì.**
+
+| Nhóm | Số liệu | Nguồn |
+|---|---|---|
+| Máy chủ | CPU, RAM, swap, ổ đĩa, mạng | Alloy (`prometheus.exporter.unix`) trên máy ứng dụng; node exporter trên máy công cụ |
+| Container | CPU, RAM của từng container, số container đang chạy | Alloy (cAdvisor) |
+| Ứng dụng | Số request, mã trả về, thời gian trả lời; bộ nhớ JVM; kết nối CSDL | `/actuator/prometheus` của backend (Micrometer) |
+| Nghiệp vụ | Webhook SePay lỗi liên tiếp và tổng số lần lỗi (BR-32); giao dịch chuyển khoản không khớp mới (BR-16); lần sao lưu thành công gần nhất (P0-04) | Bộ đếm của backend; tệp `backup.prom` do `backup.sh` ghi sau mỗi lần sao lưu |
+| Log | Log mọi container của hai môi trường, gắn nhãn `env`, `service`, và `level` với log JSON của backend | Alloy (`loki.source.docker`) |
+| Từ bên ngoài | Web production, staging trả `UP`; hạn chứng chỉ HTTPS | blackbox exporter trên máy công cụ |
+
+Mọi số liệu có nhãn `env` (`production`, `staging`) lấy từ tên project Docker Compose (`khoibep-rms`, `khoibep-rms-staging`). Thời gian trả lời đếm theo các mốc 50 ms, 100 ms, 250 ms, 500 ms, 1 s, 2 s, 5 s, đủ để tính p95 mà không phải giữ cả histogram.
+
+**Cảnh báo** (gửi Telegram, gom theo tên cảnh báo và môi trường, nhắc lại mỗi 4 giờ khi chưa hết, báo khi đã ổn):
+
+| Cảnh báo | Khi nào | Mức |
+|---|---|---|
+| `ServerDown` | Không nhận được số liệu của máy ứng dụng 3 phút, hoặc node exporter máy công cụ không trả lời 2 phút | critical |
+| `HostCpuHigh` | CPU bận trên 90% suốt 15 phút | warning |
+| `HostMemoryLow` | RAM còn trống dưới 10% suốt 10 phút | warning |
+| `HostDiskLow` | Ổ đĩa `/` còn trống dưới 15% suốt 10 phút | warning |
+| `ContainerMissing` | Một môi trường chạy ít hơn 4 container (db, backend, frontend, backup) suốt 3 phút | critical |
+| `ContainerMemoryHigh` | Một container dùng trên 90% giới hạn RAM của nó suốt 10 phút | warning |
+| `SiteDown` | `/actuator/health` gọi từ máy công cụ không trả `UP` suốt 2 phút | critical |
+| `CertificateExpiring` | Chứng chỉ HTTPS còn dưới 14 ngày | warning |
+| `BackendDown` | Alloy không đọc được số liệu của backend suốt 2 phút | critical |
+| `HighErrorRate` | Trên 5% request trả 5xx suốt 5 phút | critical |
+| `SlowResponses` | p95 thời gian trả lời trên 500 ms suốt 10 phút (NFR-02) | warning |
+| `JvmOldGenHigh` | Vùng nhớ lâu năm (old gen) của JVM đầy trên 90% suốt 15 phút | warning |
+| `DatabasePoolExhausted` | Có request phải chờ kết nối CSDL suốt 5 phút | warning |
+| `SepayWebhookFailing` | Webhook SePay lỗi 3 lần liên tiếp, cùng lúc màn hình thu ngân hiện cảnh báo (BR-32) | critical |
+| `SepayWebhookErrors` | Có webhook SePay lỗi trong 15 phút qua | warning |
+| `UnmatchedTransfers` | Có giao dịch chuyển khoản không khớp mới trong 15 phút qua (BR-16) | warning |
+| `BackupMissing` | Quá 26 giờ chưa có bản sao lưu thành công, hoặc production chưa ghi `backup.prom` lần nào trong 26 giờ (kể cả lúc mới bật agent) | critical |
+
+**Bảo mật.**
+- Ra Internet ở máy công cụ chỉ có Caddy (cổng 80, 443). Grafana cần đăng nhập. Hai đường nhận dữ liệu `/ingest/metrics`, `/ingest/logs` cần mật khẩu riêng của agent. Prometheus, Loki và Alertmanager không mở cổng ra ngoài.
+- Alloy đọc `/actuator/prometheus` bằng `APP_METRICS_TOKEN` (NFR-11).
+- Alloy chạy `privileged` và đọc Docker socket để lấy số liệu container (cAdvisor) và log, tức là có quyền gần như root trên máy ứng dụng. Bù lại, nó không mở cổng nào, chỉ gửi đi.
+
+**Giới hạn.** Máy công cụ chết thì không còn ai báo. Muốn chắc, dùng thêm một dịch vụ kiểm tra uptime miễn phí bên ngoài gọi `https://monitor.<tên miền>/api/health` của Grafana (tài liệu 11 mục 11.10).

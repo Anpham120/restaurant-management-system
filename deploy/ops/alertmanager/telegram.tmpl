@@ -1,0 +1,11 @@
+{{/* P0-07: one Telegram message per group of alerts, in Vietnamese. Sent as HTML: annotations keep < > & out. */}}
+{{ define "khoibep.telegram" -}}
+{{ if eq .Status "firing" }}🔴 <b>{{ .CommonLabels.alertname }}</b>{{ else }}✅ <b>Đã ổn: {{ .CommonLabels.alertname }}</b>{{ end }}
+{{- with .CommonLabels.env }} · {{ . }}{{ end }}
+{{- with .CommonLabels.server }} · máy {{ . }}{{ end }}
+{{ range .Alerts }}
+• {{ .Annotations.summary }}
+{{- if eq $.Status "firing" }}
+{{ .Annotations.description }}{{ end }}
+{{ end -}}
+{{- end }}
