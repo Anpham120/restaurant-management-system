@@ -174,7 +174,7 @@ void reportStatus(String state, String description) {
                 | curl -fsS -o /dev/null -X POST -H "Authorization: Bearer $GH_TOKEN" \
                     -H "Accept: application/vnd.github+json" --data @- \
                     "https://api.github.com/repos/$REPO/statuses/$GIT_COMMIT" \
-                || echo "Could not report $STATUS_STATE to GitHub; GitHub Actions takes over after 5 minutes of silence"
+                || echo "Could not report $STATUS_STATE to GitHub: check the github credential (token scope repo:status)"
             '''
         }
     }
