@@ -16,6 +16,7 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | 10 | [Kế hoạch phát triển tiếp](10-ke-hoach-phat-trien.md) | — | Backlog theo giai đoạn, lịch 8 sprint, quy trình làm tính năng, rủi ro, phân công theo service |
 | 11 | [Triển khai và vận hành](11-trien-khai-van-hanh.md) | — | Dựng máy chủ, HTTPS, GitHub, SePay, sao lưu, theo dõi, cập nhật và quay lại bản cũ |
 | 12 | [Thiết kế mở rộng](12-thiet-ke-mo-rong.md) | — | Nhiều chi nhánh, chạy khi mất mạng: chỉ thiết kế (P4-05) |
+| 13 | [Kế hoạch và báo cáo kiểm thử](13-kiem-thu.md) | — | Mức kiểm thử, kết quả, 56 test case theo AC của US-01 → US-19, kiểm thử tải, lỗi đã tìm thấy |
 
 Bản phân tích mở rộng (chuỗi quán, máy chủ tại quán, chạy offline) ở [`../docs/`](../docs/README.md), chỉ để tham khảo.
 
@@ -50,6 +51,6 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 Kết quả lần chạy gần nhất:
 - Backend: 192 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
 - Frontend: 83 test (gồm test component), lint và kiểm tra kiểu sạch.
-- Độ phủ backend (JaCoCo): 90,3% số dòng (2103/2329), tối thiểu 70%.
-- `scripts/check-erd.mjs`, chạy trong CI: 20 migration, 29 bảng, 246 cột, 93 khoá, 0 lệch.
-- E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 19,5 ms với 30 người dùng và 6 tháng dữ liệu.
+- Độ phủ backend (JaCoCo): 91,9% số dòng (2608/2839), tối thiểu 70%.
+- `scripts/check-erd.mjs`, chạy trong CI: 23 migration, 35 bảng, 297 cột, 111 khoá, 0 lệch.
+- E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 23,8 ms, 0% lỗi với 30 người dùng và 6 tháng dữ liệu. Báo cáo đầy đủ ở [tài liệu 13](13-kiem-thu.md).
