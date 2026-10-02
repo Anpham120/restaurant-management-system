@@ -1,0 +1,22 @@
+# P0-02: one Caddy for HTTPS in front of production and staging, set up once on the server (doc 11):
+#   cd ~/caddy && docker compose up -d
+# Host networking: Caddy takes ports 80 and 443 of the server and reaches the web containers on 127.0.0.1.
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      STAGING_DOMAIN: ${STAGING_DOMAIN:?set STAGING_DOMAIN in .env}
+      PRODUCTION_PORT: ${PRODUCTION_PORT:-8081}
+      STAGING_PORT: ${STAGING_PORT:-8080}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The certificates: keep this volume, or Let's Encrypt rate limits may delay new ones.
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:
