@@ -24,13 +24,22 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 | Mã | Việc | Công sức | Ưu tiên | CSDL | Xong khi |
 |---|---|---|---|---|---|
 | P0-01 | Bật rulesets cho `main`, `develop`; tạo environment `staging`, `production` | S | M | — | Không push thẳng được vào `main`, `develop` |
-| P0-02 | Máy chủ staging (VPS 1–2 GB RAM) + tên miền + HTTPS bằng Caddy; bật `DEPLOY_ENABLED` | M | M | — | Push `develop` là staging tự cập nhật |
+| P0-02 | Máy ứng dụng (VPS 2 vCPU, 4 GB RAM) + tên miền + HTTPS bằng Caddy; bật `DEPLOY_ENABLED` | M | M | — | Push `develop` là staging tự cập nhật |
 | P0-03 | Nối **SePay thật** trên staging, chuyển thử 2.000 đ | S | M | — | Tiền thật về, bàn tự đóng |
 | P0-04 | Sao lưu CSDL hằng ngày (`pg_dump`, giữ 7 bản) và **thử khôi phục** | S | M | — | Khôi phục được bản hôm qua |
 | P0-05 | **Test E2E Playwright** cho kịch bản nghiệm thu §1.5, chạy trong CI bằng Docker Compose | M | M | — | CI đỏ nếu luồng chính hỏng |
 | P0-06 | Dependabot (Maven, npm, Actions, Docker), CodeQL, quét image bằng Trivy | S | S | — | Có cảnh báo lỗ hổng tự động |
+| P0-07 | **Giám sát và cảnh báo** trên máy công cụ (VPS 4 vCPU, 8 GB RAM): Prometheus, Loki, Grafana, Alertmanager; Alloy trên máy ứng dụng; báo Telegram (NFR-12) | M | M | — | Tắt backend staging thì Telegram báo trong khoảng 5 phút |
 
 P0-04 → P0-06 đã có trong repo: sao lưu và khôi phục (`deploy/backup.sh`, `deploy/restore.sh`), E2E trong CI, Dependabot, CodeQL, Trivy. Phần trong repo của P0-02 cũng đã sẵn: Caddy cho HTTPS (`deploy/caddy/`) và tài khoản quản trị đầu tiên (BR-48). Còn lại là việc trên GitHub và máy chủ, làm theo [tài liệu 11](11-trien-khai-van-hanh.md): ruleset và environment (P0-01); thuê VPS, trỏ tên miền, điền `.env`, bật `DEPLOY_ENABLED` (P0-02); nối SePay thật (P0-03).
+
+P0-07 (issue #90) thêm vào sau khi chốt cấu hình máy chủ. Thiết kế ở [tài liệu 09 mục 9.8](09-kien-truc-va-cicd.md), không đổi CSDL. Phần trong repo:
+- Backend mở `/actuator/prometheus`, chỉ đọc được bằng `APP_METRICS_TOKEN`, và có thêm bộ đếm nghiệp vụ.
+- `deploy/agent/`: Alloy cho máy ứng dụng.
+- `deploy/ops/`: Prometheus, Loki, Grafana, Alertmanager cho máy công cụ.
+- CI chạy test quy tắc cảnh báo.
+
+Máy công cụ chọn 4 vCPU, 8 GB RAM, 80 GB để còn chỗ chạy Jenkins. Việc trên máy chủ làm theo tài liệu 11 mục 11.10.
 
 ### Giai đoạn 1 — Nghiệp vụ tại quán còn thiếu (sprint 2–3)
 

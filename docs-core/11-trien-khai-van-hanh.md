@@ -1,15 +1,21 @@
 # 11. Triển khai và vận hành
 
-Tài liệu này là các bước dựng một máy chủ chạy cả **production** (nhánh `main`) và **staging** (nhánh `develop`), rồi vận hành hằng ngày. Kiến trúc và pipeline ở [tài liệu 9](09-kien-truc-va-cicd.md). Các mục ứng với việc P0-01 → P0-04 và P5-03 trong [tài liệu 10](10-ke-hoach-phat-trien.md).
+Tài liệu này là các bước dựng hai máy, rồi vận hành hằng ngày:
+- **Máy ứng dụng** chạy cả **production** (nhánh `main`) và **staging** (nhánh `develop`).
+- **Máy công cụ** chạy giám sát và cảnh báo (mục 11.10).
 
-Trong các lệnh dưới đây, thay `khoibep.example.vn` bằng tên miền thật, `<IP>` bằng địa chỉ máy chủ.
+Kiến trúc và pipeline ở [tài liệu 9](09-kien-truc-va-cicd.md). Các mục ứng với việc P0-01 → P0-04, P0-07 và P5-03 trong [tài liệu 10](10-ke-hoach-phat-trien.md).
+
+Trong các lệnh dưới đây, thay `khoibep.example.vn` bằng tên miền thật, `<IP>` bằng địa chỉ máy ứng dụng.
 
 ## 11.1 Chuẩn bị
 
 | Thứ cần có | Gợi ý |
 |---|---|
-| Máy chủ | VPS Ubuntu 24.04 hoặc 22.04, **2 GB RAM** (1 GB chỉ đủ khi chạy một môi trường), 20 GB ổ đĩa, IP tĩnh |
-| Tên miền | Hai bản ghi A trỏ về `<IP>`: `khoibep.example.vn` và `staging.khoibep.example.vn`. Dùng Cloudflare thì để **DNS only** (mây xám), để Caddy tự lấy chứng chỉ |
+| Máy ứng dụng | VPS Ubuntu 24.04 hoặc 22.04, chip **x86_64** (image chỉ build cho amd64), **2 vCPU, 4 GB RAM**, 40 GB SSD, IP tĩnh. Tối thiểu 2 GB RAM kèm 2 GB swap; 1 GB chỉ đủ khi chạy một môi trường |
+| Máy công cụ | VPS Ubuntu 24.04, x86_64, **4 vCPU, 8 GB RAM**, 80 GB SSD, IP tĩnh. Chạy giám sát (mục 11.10), và còn chỗ cho Jenkins |
+| Tên miền | Hai bản ghi A trỏ về `<IP>` của máy ứng dụng: `khoibep.example.vn` và `staging.khoibep.example.vn`. Một bản ghi A `monitor.khoibep.example.vn` trỏ về IP máy công cụ. Dùng Cloudflare thì để **DNS only** (mây xám), để Caddy tự lấy chứng chỉ |
+| Telegram | Một bot và một nhóm chat để nhận cảnh báo (mục 11.10) |
 | SePay | Tài khoản SePay đã liên kết tài khoản ngân hàng nhận tiền của quán |
 | GitHub | Quyền admin trên repo để tạo environment, secret, ruleset |
 
@@ -74,6 +80,7 @@ curl -fsSL $BASE/.env.example -o ~/khoibep-rms-staging/.env
 chmod 600 ~/khoibep-rms/.env ~/khoibep-rms-staging/.env
 openssl rand -base64 48   # một giá trị cho APP_JWT_SECRET của mỗi môi trường
 openssl rand -base64 24   # một giá trị cho POSTGRES_PASSWORD của mỗi môi trường
+openssl rand -hex 32      # một giá trị APP_METRICS_TOKEN, dùng chung cho hai môi trường
 ```
 
 Sửa hai tệp `.env` (`nano ~/khoibep-rms/.env`). Các biến khác nhau giữa hai môi trường:
@@ -87,6 +94,7 @@ Sửa hai tệp `.env` (`nano ~/khoibep-rms/.env`). Các biến khác nhau giữ
 | `APP_DEMO_ACCOUNTS_PASSWORD` | Không dùng | Mật khẩu riêng; đừng để `123456` trên máy có Internet |
 | `APP_INITIAL_ADMIN_PASSWORD` | Ít nhất 12 ký tự (BR-48); xoá sau lần đăng nhập đầu | Không dùng |
 | `SEPAY_API_KEY` | API key của webhook production | API key của webhook staging |
+| `APP_METRICS_TOKEN` | Giá trị chung ở trên; Alloy dùng nó để đọc số liệu (mục 11.10) | Cùng giá trị với production |
 
 `APP_PUBLIC_BASE_URL` là địa chỉ in trong mã QR bàn: đổi tên miền sau này thì phải in lại QR.
 
@@ -174,6 +182,7 @@ sh restore.sh backups/rms-2026-10-05-0300.dump                         # khôi p
 
 | Việc | Cách xem |
 |---|---|
+| Dashboard, cảnh báo | Grafana ở `https://monitor.khoibep.example.vn`; sự cố tự báo về Telegram (mục 11.10) |
 | Ứng dụng còn chạy | `https://khoibep.example.vn/actuator/health` trả `{"status":"UP"}` |
 | Log backend (JSON, ECS) | `docker compose -f docker-compose.prod.yml logs -f backend`, lọc bằng `jq`, ví dụ `... logs --no-log-prefix backend \| jq -r '."log.level" + " " + .message'` |
 | Container đang chạy | `docker compose -f docker-compose.prod.yml ps` |
@@ -187,3 +196,67 @@ sh restore.sh backups/rms-2026-10-05-0300.dump                         # khôi p
 - **Lưu ý về CSDL:** migration chỉ đi tới, và ứng dụng kiểm tra lược đồ lúc khởi động. Nếu bản mới đã chạy một migration làm đổi lược đồ, bản cũ có thể không khởi động được. Khi đó:
   - Sửa lỗi bằng một bản mới, hoặc
   - Khôi phục bản sao lưu ngay trước lúc cập nhật (mục 11.7) rồi mới quay lại.
+
+## 11.10 Giám sát và cảnh báo (P0-07)
+
+Thiết kế và danh sách cảnh báo ở tài liệu 09 mục 9.8.
+
+**Bot Telegram.**
+1. Trong Telegram, nhắn `@BotFather` lệnh `/newbot` rồi đặt tên. BotFather trả một token dạng `123456789:AAH…`: đó là `TELEGRAM_BOT_TOKEN`.
+2. Tạo một nhóm, ví dụ "Khói Bếp cảnh báo", thêm bot vào nhóm, rồi gửi một tin bất kỳ trong nhóm.
+3. Mở `https://api.telegram.org/bot<token>/getUpdates` trên trình duyệt, tìm `"chat":{"id":-100…`. Số đó, kể cả dấu trừ, là `TELEGRAM_CHAT_ID`.
+
+**Máy công cụ.** Cài Docker, tạo tài khoản `deploy` và bật tường lửa như mục 11.2; không cần swap và khoá SSH cho GitHub Actions. Rồi bằng tài khoản `deploy`:
+
+```bash
+mkdir -p ~/monitoring && cd ~/monitoring
+curl -fsSL https://github.com/Anpham120/restaurant-management-system/archive/refs/heads/main.tar.gz \
+  | tar -xz --strip-components=3 restaurant-management-system-main/deploy/ops
+cp .env.example .env && chmod 600 .env
+openssl rand -base64 24    # mật khẩu để agent đẩy dữ liệu (INGEST_PASSWORD); ghi lại cho máy ứng dụng
+docker run --rm caddy:2-alpine caddy hash-password --plaintext '<mật khẩu vừa tạo>'
+nano .env
+docker compose up -d
+docker compose ps          # 7 container đều đang chạy
+```
+
+Biến trong `~/monitoring/.env`:
+
+| Biến | Giá trị |
+|---|---|
+| `MONITOR_DOMAIN` | `monitor.khoibep.example.vn` |
+| `SITE_URL_PRODUCTION`, `SITE_URL_STAGING` | `https://khoibep.example.vn/actuator/health`, `https://staging.khoibep.example.vn/actuator/health` |
+| `GRAFANA_ADMIN_PASSWORD` | Mật khẩu đăng nhập Grafana, tài khoản `admin` |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Lấy ở bước bot Telegram |
+| `INGEST_USER` | `agent` |
+| `INGEST_PASSWORD_HASH` | Kết quả của `caddy hash-password`, để trong dấu nháy đơn vì nó có ký tự `$` |
+
+Mở `https://monitor.khoibep.example.vn`, đăng nhập `admin`. Dashboard **Khói Bếp** có các phần: tổng quan, máy chủ, container, ứng dụng, nghiệp vụ và log lỗi.
+
+**Máy ứng dụng.** Bằng tài khoản `deploy`:
+
+```bash
+mkdir -p ~/agent && cd ~/agent
+curl -fsSL https://github.com/Anpham120/restaurant-management-system/archive/refs/heads/main.tar.gz \
+  | tar -xz --strip-components=3 restaurant-management-system-main/deploy/agent
+cp .env.example .env && chmod 600 .env
+nano .env                  # MONITOR_DOMAIN, INGEST_PASSWORD (mật khẩu gốc, không phải hash), APP_METRICS_TOKEN
+docker compose up -d
+docker compose logs -f     # không có dòng "level=error"
+```
+
+`APP_METRICS_TOKEN` phải giống giá trị trong `~/khoibep-rms/.env` và `~/khoibep-rms-staging/.env`. Lần đầu thêm biến đó vào hai tệp này, chạy `docker compose -f docker-compose.prod.yml up -d` trong mỗi thư mục để backend đọc giá trị mới.
+
+Tệp `backup.prom` (thời điểm sao lưu thành công gần nhất) có từ lần sao lưu đầu sau khi deploy bản có P0-07. Chưa có tệp này thì khoảng 10 phút sau khi bật agent, Telegram nhận `BackupMissing` cho production. Muốn có ngay thì chạy `docker compose -f docker-compose.prod.yml exec backup sh /backup.sh now` trong mỗi thư mục.
+
+**Thử báo động** trên staging:
+
+```bash
+cd ~/khoibep-rms-staging
+docker compose -f docker-compose.prod.yml stop backend    # khoảng 3 phút sau Telegram nhận BackendDown, SiteDown
+docker compose -f docker-compose.prod.yml start backend   # vài phút sau nhận tin đã ổn
+```
+
+**Khi máy công cụ chết** thì không còn ai báo. Nếu muốn chắc, đăng ký một dịch vụ kiểm tra uptime miễn phí (ví dụ UptimeRobot) gọi `https://monitor.khoibep.example.vn/api/health` mỗi 5 phút và báo qua email.
+
+**Cập nhật cấu hình giám sát** sau khi `deploy/ops` hoặc `deploy/agent` trong repo đổi: tải lại thư mục như trên (tệp `.env` được giữ nguyên), rồi chạy `docker compose up -d && docker compose restart` để các container đọc lại tệp cấu hình.
