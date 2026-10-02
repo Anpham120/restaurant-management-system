@@ -126,6 +126,8 @@ P4-05 có bản thiết kế ở [tài liệu 12](12-thiet-ke-mo-rong.md) (issue
 
 P5-01 có ở [tài liệu 13](13-kiem-thu.md) (issue #29): kế hoạch, kết quả ngày 02/10/2026, test case theo AC của US-01 → US-19, kiểm thử tải đo lại sau giai đoạn 4.
 
+P5-02 có ở [tài liệu 14](14-huong-dan-su-dung.md) (issue #30): các bước theo vai trò, 26 ảnh chụp trên dữ liệu mẫu.
+
 P5-03 có bản đầu ở [tài liệu 11](11-trien-khai-van-hanh.md); bổ sung ảnh và số liệu thật sau lần triển khai đầu.
 
 P5-05 đã làm (issue #33): tài liệu 01 (vai trò, phạm vi), 04 (thêm quy trình P6 → P10), 06 (trạng thái đơn), 09 (kiểm thử) theo các tính năng mới; tài liệu 02, 03, 05, 07, 08 đã sửa cùng từng tính năng.
