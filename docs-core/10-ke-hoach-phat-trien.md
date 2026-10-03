@@ -23,16 +23,17 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 
 | Mã | Việc | Công sức | Ưu tiên | CSDL | Xong khi |
 |---|---|---|---|---|---|
-| P0-01 | Bật rulesets cho `main`, `develop`; tạo environment `staging`, `production` | S | M | — | Không push thẳng được vào `main`, `develop` |
-| P0-02 | Máy ứng dụng (VPS 2 vCPU, 4 GB RAM) + tên miền + HTTPS bằng Caddy; bật `DEPLOY_ENABLED` | M | M | — | Push `develop` là staging tự cập nhật |
+| P0-01 | Bật rulesets cho `main`, `develop`: bắt buộc PR và check của Jenkins | S | M | — | Không push thẳng được vào `main`, `develop`; PR đỏ không merge được |
+| P0-02 | Máy chủ + tên miền + HTTPS bằng Caddy; dựng Jenkins | M | M | — | Push `develop` là staging tự cập nhật |
 | P0-03 | Nối **SePay thật** trên staging, chuyển thử 2.000 đ | S | M | — | Tiền thật về, bàn tự đóng |
 | P0-04 | Sao lưu CSDL hằng ngày (`pg_dump`, giữ 7 bản) và **thử khôi phục** | S | M | — | Khôi phục được bản hôm qua |
 | P0-05 | **Test E2E Playwright** cho kịch bản nghiệm thu §1.5, chạy trong CI bằng Docker Compose | M | M | — | CI đỏ nếu luồng chính hỏng |
 | P0-06 | Dependabot (Maven, npm, Actions, Docker), CodeQL, quét image bằng Trivy | S | S | — | Có cảnh báo lỗ hổng tự động |
 | P0-07 | **Giám sát và cảnh báo** trên máy công cụ (VPS 4 vCPU, 8 GB RAM): Prometheus, Loki, Grafana, Alertmanager; Alloy trên máy ứng dụng; báo Telegram (NFR-12) | M | M | — | Tắt backend staging thì Telegram báo trong khoảng 5 phút |
-| P0-08 | **CI/CD lai**: Jenkins trên máy công cụ deploy chính; GitHub Actions deploy thay khi Jenkins không trả lời (NFR-13) | M | S | — | Tắt Jenkins rồi merge vào `develop`: Actions deploy staging và báo Telegram |
+| P0-08 | **Jenkins deploy**, GitHub Actions deploy thay khi Jenkins không trả lời (NFR-13). Đã thay bằng P0-09 | M | S | — | Tắt Jenkins rồi merge vào `develop`: Actions deploy staging và báo Telegram |
+| P0-09 | **Triển khai trên một máy; Jenkins là CI/CD**: một máy 8 vCPU, 16 GB RAM chạy app, giám sát và Jenkins. Jenkins test mọi PR và deploy; bỏ GitHub Actions cho CI/CD (NFR-13) | M | M | — | Trên một máy: PR có trạng thái của Jenkins; merge vào `develop` thì Jenkins test rồi deploy staging; Grafana, Jenkins mở qua HTTPS bằng một Caddy |
 
-P0-04 → P0-06 đã có trong repo: sao lưu và khôi phục (`deploy/backup.sh`, `deploy/restore.sh`), E2E trong CI, Dependabot, CodeQL, Trivy. Phần trong repo của P0-02 cũng đã sẵn: Caddy cho HTTPS (`deploy/caddy/`) và tài khoản quản trị đầu tiên (BR-48). Còn lại là việc trên GitHub và máy chủ, làm theo [tài liệu 11](11-trien-khai-van-hanh.md): ruleset và environment (P0-01); thuê VPS, trỏ tên miền, điền `.env`, bật `DEPLOY_ENABLED` (P0-02); nối SePay thật (P0-03).
+P0-04 → P0-06 đã có trong repo: sao lưu và khôi phục (`deploy/backup.sh`, `deploy/restore.sh`), E2E trong CI, Dependabot, CodeQL, Trivy. Phần trong repo của P0-02 cũng đã sẵn: Caddy cho HTTPS (`deploy/caddy/`) và tài khoản quản trị đầu tiên (BR-48). Còn lại là việc trên GitHub và máy chủ, làm theo [tài liệu 11](11-trien-khai-van-hanh.md): ruleset (P0-01); thuê VPS, trỏ tên miền, điền `.env`, dựng Jenkins (P0-02); nối SePay thật (P0-03).
 
 P0-07 (issue #90) thêm vào sau khi chốt cấu hình máy chủ. Thiết kế ở [tài liệu 09 mục 9.8](09-kien-truc-va-cicd.md), không đổi CSDL. Phần trong repo:
 - Backend mở `/actuator/prometheus`, chỉ đọc được bằng `APP_METRICS_TOKEN`, và có thêm bộ đếm nghiệp vụ.
@@ -44,11 +45,25 @@ Máy công cụ chọn 4 vCPU, 8 GB RAM, 80 GB để còn chỗ chạy Jenkins. 
 
 P0-08 (issue #92) theo đề nghị chạy CI/CD lai, thiết kế ở tài liệu 09 mục 9.6. Phần trong repo:
 - `Jenkinsfile` và Jenkins trong `deploy/ops/jenkins/`, cấu hình bằng Configuration as Code.
-- Job `cd-gate` của GitHub Actions (`scripts/cd-gate.sh`), quyết định Actions có deploy thay không.
+- Job `cd-gate` của GitHub Actions (`scripts/cd-gate.sh`), quyết định Actions có deploy thay không. Đã bỏ ở P0-09.
 - Script deploy dùng chung `deploy/deploy.sh`.
-- Workflow Rollback.
+- Workflow Rollback. Đã bỏ ở P0-09, thay bằng job trên Jenkins.
 
 Việc trên máy chủ và GitHub làm theo tài liệu 11 mục 11.11.
+
+P0-09 (issue #94): ngày 03/10/2026 nhóm chốt ba việc:
+- Triển khai trên **một máy** 8 vCPU, 16 GB RAM, chưa tách máy công cụ.
+- **Jenkins là CI/CD**: test mọi PR (báo trạng thái lên PR để chặn merge), test lại rồi deploy `develop` và `main`.
+- **Bỏ GitHub Actions cho CI/CD.** Phần deploy dự phòng của P0-08 (`cd-gate`, workflow Rollback) bỏ đi. GitHub Actions chỉ còn CodeQL và kiểm thử tải chạy tay.
+
+Phần trong repo:
+- `deploy/single/`: Caddy cho cả 4 tên miền, và tệp ghép cho giám sát và agent.
+- Các bước test trong `Jenkinsfile`.
+- Job **quay lại bản cũ** trên Jenkins.
+
+Thiết kế ở tài liệu 09 mục 9.5 và 9.6, cách dựng ở tài liệu 11 mục 11.12. Khi quán dùng thật thì tách thành hai máy như P0-07.
+
+Chuyển đổi: ruleset hiện còn bắt buộc check của GitHub Actions, nên `ci-cd.yml` tạm giữ 4 job test. Khi Jenkins đã chạy và ruleset đổi sang check của Jenkins (tài liệu 11 mục 11.4), một PR nhỏ xoá tệp này.
 
 ### Giai đoạn 1 — Nghiệp vụ tại quán còn thiếu (sprint 2–3)
 

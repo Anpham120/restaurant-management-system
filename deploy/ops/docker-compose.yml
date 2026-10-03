@@ -1,6 +1,6 @@
 # P0-07, NFR-12: the monitoring server (docs-core/09 section 9.8, docs-core/11 section 11.10).
 # Prometheus keeps the numbers 15 days, Loki the logs 14 days, Grafana shows both, Alertmanager sends alerts to
-# Telegram, blackbox exporter calls the restaurant from outside. Jenkins (P0-08) deploys. Only Caddy faces the
+# Telegram, blackbox exporter calls the restaurant from outside. Jenkins (P0-09) tests and deploys. Only Caddy faces the
 # Internet: Grafana, Jenkins, and the two paths the agent of the application server pushes to.
 # Runs from ~/monitoring with the .env made from .env.example: docker compose up -d --build
 services:
@@ -30,6 +30,8 @@ services:
     environment:
       SITE_URL_PRODUCTION: ${SITE_URL_PRODUCTION:?set SITE_URL_PRODUCTION in .env}
       SITE_URL_STAGING: ${SITE_URL_STAGING:?set SITE_URL_STAGING in .env}
+      # This server's node exporter; empty on a single server (deploy/single).
+      OPS_NODE_EXPORTER: node-exporter:9100
     volumes:
       - ./prometheus:/etc/prometheus:ro
       - prometheus-data:/prometheus
@@ -81,8 +83,8 @@ services:
       - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
     mem_limit: 64m
 
-  # P0-08: Jenkins, the primary deployer. Builds the images with this server's Docker and deploys them over SSH;
-  # GitHub Actions takes over when it does not answer (docs-core/09 section 9.6).
+  # P0-08, P0-09: Jenkins, the CI/CD (docs-core/09 section 9.6). Runs the tests and builds the images with this
+  # server's Docker, and deploys them over SSH.
   jenkins:
     build: ./jenkins
     restart: unless-stopped

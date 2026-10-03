@@ -23,12 +23,14 @@ Tài liệu này là việc P5-01 ([tài liệu 10](10-ke-hoach-phat-trien.md)).
 | ERD và migration | `scripts/check-erd.mjs` | Mỗi PR và mỗi lần push |
 | E2E | Playwright trên Chromium, cả ứng dụng dựng bằng Docker Compose | Mỗi PR và mỗi lần push |
 | Bảo mật | CodeQL (Java, TypeScript), Trivy (image), Dependabot | Mỗi PR, mỗi lần build image, mỗi tuần |
-| Cảnh báo giám sát | `promtool test rules` (Prometheus), `amtool`, `alloy fmt` | Mỗi PR và mỗi lần push |
+| Cảnh báo giám sát | `promtool test rules` (Prometheus), `amtool`, `alloy validate` | Mỗi PR và mỗi lần push |
 | Tải | k6 | Chạy tay trước khi phát hành |
 | Chạy thử trên trình duyệt | Playwright, viết riêng cho từng tính năng | Trước khi mở PR của tính năng |
 
+Các mức Đơn vị, Tích hợp, Kiến trúc, Frontend, ERD, E2E và Cảnh báo giám sát chạy trên Jenkins ở mỗi PR, và chạy lại trước mỗi lần deploy ([tài liệu 09 mục 9.6](09-kien-truc-va-cicd.md)). E2E của Jenkins chạy trên đúng image sẽ deploy.
+
 **Môi trường.**
-- CI: GitHub Actions trên Ubuntu, Java 21, Node 24.
+- CI: Jenkins trên máy chủ; mỗi bước test chạy trong một container riêng (Temurin 21, Node 24, Playwright). Kết quả ở mục 13.2 là của GitHub Actions (Ubuntu, Java 21, Node 24), trước khi chuyển sang Jenkins.
 - Máy dev: Windows 11 với Docker Desktop, dùng để chạy thử và đo tải.
 
 **Tiêu chí đạt:**

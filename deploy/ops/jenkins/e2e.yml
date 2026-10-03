@@ -1,0 +1,12 @@
+# P0-09: the E2E stack of the Jenkinsfile (e2e.sh), on top of docker-compose.yml: the two images this build just
+# made, and no port on the host, where production and staging already use 8081 and 8080. Playwright reaches the
+# web container by name on the stack's own network.
+services:
+  db:
+    ports: !reset []
+  backend:
+    image: ghcr.io/${GHCR_OWNER}/rms-backend:${IMAGE_TAG}
+    ports: !reset []
+  frontend:
+    image: ghcr.io/${GHCR_OWNER}/rms-frontend:${IMAGE_TAG}
+    ports: !reset []

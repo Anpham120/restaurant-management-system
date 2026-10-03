@@ -53,7 +53,7 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 Kết quả lần chạy gần nhất:
 - Backend: 197 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
 - Frontend: 83 test (gồm test component), lint và kiểm tra kiểu sạch.
-- Độ phủ backend (JaCoCo): 92,0% số dòng (2658/2889), tối thiểu 70%.
+- Độ phủ backend (JaCoCo): 91,9% số dòng (2630/2861), tối thiểu 70%, đo trên Jenkins ngày 03/10/2026.
 - Giám sát: 17 quy tắc cảnh báo, mỗi quy tắc có test `promtool` báo khi có sự cố và im khi bình thường.
 - `scripts/check-erd.mjs`, chạy trong CI: 23 migration, 35 bảng, 297 cột, 111 khoá, 0 lệch.
 - E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 23,8 ms, 0% lỗi với 30 người dùng và 6 tháng dữ liệu. Báo cáo đầy đủ ở [tài liệu 13](13-kiem-thu.md).

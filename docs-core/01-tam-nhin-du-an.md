@@ -5,7 +5,7 @@
 | Dự án | Hệ thống quản lý nhà hàng **Khói Bếp** (KB-RMS), **bản core** cho đồ án môn học |
 | Địa điểm | Một nhà hàng ở Đống Đa, Hà Nội, khoảng 24 bàn |
 | Mô hình | Quán **lẩu nướng và cơm nhà** kiểu Hà Nội, phục vụ tại bàn: khách gọi món qua phục vụ hoặc tự quét QR, ăn xong mới trả tiền. Có bán mang về |
-| Công nghệ | Backend **Java 21 + Spring Boot**, frontend **React + TypeScript**, CSDL **PostgreSQL**, **Docker**, CI/CD **GitHub Actions** |
+| Công nghệ | Backend **Java 21 + Spring Boot**, frontend **React + TypeScript**, CSDL **PostgreSQL**, **Docker**, CI/CD **Jenkins** |
 | Repo tham khảo chính | [nazrul-ancala/Restaurant-Management-System](https://github.com/nazrul-ancala/Restaurant-Management-System): khung tài liệu, vai trò, chia module |
 
 ## 1.1 Vấn đề hiện tại

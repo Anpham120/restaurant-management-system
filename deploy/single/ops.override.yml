@@ -1,0 +1,27 @@
+# P0-09: the tools of deploy/ops on the same server as the app (docs-core/11 section 11.12). Copy this file to
+# ~/monitoring/docker-compose.override.yml, which docker compose reads by itself.
+# - The Caddy of ~/caddy (deploy/single/Caddyfile) serves Grafana and Jenkins, so the one here does not run.
+# - The agent already reads this server, so its own node exporter does not run either.
+# - Grafana, Jenkins, Prometheus and Loki listen on 127.0.0.1 only; the agent pushes to Prometheus and Loki there.
+services:
+  caddy:
+    profiles: [two-servers]
+  node-exporter:
+    profiles: [two-servers]
+  prometheus:
+    environment:
+      OPS_NODE_EXPORTER: ""
+    ports:
+      - "127.0.0.1:9090:9090"
+  loki:
+    ports:
+      - "127.0.0.1:3100:3100"
+  grafana:
+    ports:
+      - "127.0.0.1:3000:3000"
+  jenkins:
+    ports:
+      - "127.0.0.1:8090:8080"
+    # Jenkins deploys to this very server over SSH (APP_SERVER_HOST=host.docker.internal in ~/monitoring/.env).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,5 +1,5 @@
 # P0-07, NFR-12. The application server pushes its numbers here (remote write, see deploy/agent); Prometheus itself
-# only reads this server and calls the two sites from outside. start.sh puts the site addresses in.
+# only reads this server and calls the two sites from outside. start.sh puts the site addresses and targets in.
 global:
   scrape_interval: 30s
   evaluation_interval: 30s
@@ -19,12 +19,11 @@ scrape_configs:
         labels:
           server: ops
 
+  # This server's own node exporter. start.sh writes the list: none on a single server (P0-09), where the agent
+  # already reads the machine.
   - job_name: node
-    static_configs:
-      - targets: ["node-exporter:9100"]
-        labels:
-          server: ops
-          instance: ops
+    file_sd_configs:
+      - files: ["/prometheus/targets/*.yml"]
 
   - job_name: loki
     static_configs:
