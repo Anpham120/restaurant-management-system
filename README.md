@@ -12,7 +12,7 @@
 | Backend | Java 21, Spring Boot 4.1 (Web MVC, Security + JWT, Data JPA, WebSocket STOMP), Flyway |
 | Frontend | React 19, TypeScript, Vite, Ant Design, TanStack Query |
 | CSDL | PostgreSQL 17 (thiết kế trước, **database-first**) |
-| DevOps | Docker, Docker Compose, GitHub Actions, GHCR |
+| DevOps | Docker, Docker Compose, Jenkins, GHCR, Caddy, Prometheus, Grafana |
 
 Tài liệu phân tích thiết kế: [docs-core/](docs-core/README.md). Thư mục [docs/](docs/README.md) là bản phân tích mở rộng, chỉ để tham khảo.
 
@@ -154,33 +154,32 @@ Sau đó mở pull request vào `develop` trên GitHub.
 Cài đặt trên GitHub (chỉ làm một lần):
 1. **Settings → Rules → Rulesets**, áp cho `main` và `develop` (đã bật):
    - Bắt buộc đi qua pull request, không push thẳng, không force push.
-   - Bắt buộc các check xanh: *Backend - build and test*, *Frontend - lint, test, build*, *E2E - acceptance scenario*, *CodeQL - Java*, *CodeQL - TypeScript*.
+   - Bắt buộc các check xanh: *continuous-integration/jenkins/pr-merge* (Jenkins), *CodeQL - Java*, *CodeQL - TypeScript*. Hiện ruleset còn bắt buộc 3 check cũ của GitHub Actions thay cho check của Jenkins; cách chuyển ở [tài liệu 11 mục 11.4](docs-core/11-trien-khai-van-hanh.md).
    - Không bật *Require branches to be up to date*, để các PR xếp chồng lên nhau không phải cập nhật lại liên tục.
    - **Settings → General → Pull Requests:** đã bật *Allow auto-merge* (PR tự merge khi CI xanh nếu bấm *Enable auto-merge*) và *Automatically delete head branches*.
-2. **Settings → Environments:**
-   - Tạo `staging`, không cần duyệt.
-   - Tạo `production`, bật *Required reviewers*.
-   - Mỗi environment có secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` và variable `PUBLIC_URL`.
-3. **Settings → Variables:** đặt `DEPLOY_ENABLED=true` khi đã có máy chủ. Chưa đặt thì pipeline chỉ test và build image, không deploy.
-4. **Settings → Code security:** bật *Dependabot alerts* và *Dependabot security updates*, để GitHub báo và tự mở PR vá khi thư viện có lỗ hổng.
+2. **Settings → Code security:** bật *Dependabot alerts* và *Dependabot security updates*, để GitHub báo và tự mở PR vá khi thư viện có lỗ hổng.
 
 ## CI/CD
 
-File [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
+[Jenkins](Jenkinsfile) làm cả CI lẫn CD ([tài liệu 09 mục 9.6](docs-core/09-kien-truc-va-cicd.md)); cách dựng ở [tài liệu 11 mục 11.11](docs-core/11-trien-khai-van-hanh.md). Jenkins quét repo mỗi 2 phút.
 
-1. Pull request vào `develop` hoặc `main` thì chạy test backend (PostgreSQL thật qua Testcontainers), frontend (lint, test, build), và kiểm tra cấu hình giám sát kèm test quy tắc cảnh báo.
-2. Push vào `develop` hoặc `main`: [Jenkins](Jenkinsfile) trên máy công cụ deploy chính. Job `cd-gate` của GitHub Actions chờ trạng thái `jenkins/deploy` trên commit, và chỉ tự build, deploy khi Jenkins chưa cấu hình, không trả lời, hoặc im lặng 5 phút ([tài liệu 09 mục 9.6](docs-core/09-kien-truc-va-cicd.md)). Ai build thì cũng đẩy 2 image lên GHCR, tag là mã commit, kèm `develop` hoặc `latest`.
-3. Deploy, bằng cùng script [deploy/deploy.sh](deploy/deploy.sh) cho cả hai bên:
-   - `develop` lên máy chủ staging, thư mục `~/khoibep-rms-staging`.
-   - `main` lên production, thư mục `~/khoibep-rms`.
-   - Mỗi thư mục có một file `.env` làm từ [deploy/.env.example](deploy/.env.example). Staging dùng `HTTP_PORT=8080` nếu chạy chung máy với production.
-4. Sau khi deploy, pipeline gọi `/actuator/health` để kiểm tra.
-5. Quay lại bản cũ: tab **Actions → Rollback → Run workflow**, chọn môi trường và commit.
-6. Chạy lại test bằng tay: tab **Actions → CI/CD → Run workflow**.
-7. Quét lỗ hổng, kết quả ở tab **Security**:
-   - [`codeql.yml`](.github/workflows/codeql.yml) phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
-   - Sau khi build image, Trivy quét 2 image.
-   - [`dependabot.yml`](.github/dependabot.yml) mở PR cập nhật thư viện mỗi tuần vào `develop`.
+1. **Mỗi PR mở từ chính repo.** Jenkins làm lần lượt trên kết quả merge PR vào nhánh đích:
+   - Chạy test: ERD, backend (PostgreSQL thật qua Testcontainers), frontend, cấu hình giám sát.
+   - Build 2 image, rồi chạy E2E trên đúng 2 image đó.
+   - Báo kết quả lên PR. GitHub chỉ cho merge khi xanh.
+
+   PR từ fork không được build.
+2. **Mỗi commit mới của `develop` hoặc `main`.** Jenkins chạy lại các bước trên, quét image bằng Trivy (kết quả in trong log build), đẩy 2 image lên GHCR (tag là mã commit, kèm `develop` hoặc `latest`). Sau đó deploy bằng [deploy/deploy.sh](deploy/deploy.sh):
+   - `develop` lên staging, thư mục `~/khoibep-rms-staging`.
+   - `main` lên production, thư mục `~/khoibep-rms`, sau khi có người bấm duyệt trên Jenkins.
+   - Mỗi thư mục có một file `.env` làm từ [deploy/.env.example](deploy/.env.example). Staging dùng `HTTP_PORT=8080` khi chạy chung máy với production.
+3. Sau khi deploy, Jenkins gọi `/actuator/health` để kiểm tra.
+4. Quay lại bản cũ: job **Khói Bếp: quay lại bản cũ** trên Jenkins, chọn môi trường và commit.
+5. GitHub Actions chỉ còn:
+   - [`codeql.yml`](.github/workflows/codeql.yml): phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần, kết quả ở tab **Security**.
+   - [`load-test.yml`](.github/workflows/load-test.yml): kiểm thử tải, chạy tay.
+   - [`ci-cd.yml`](.github/workflows/ci-cd.yml): giữ tạm 4 job test vì ruleset còn bắt buộc chúng. Tệp này xoá khi ruleset chuyển sang check của Jenkins.
+6. [`dependabot.yml`](.github/dependabot.yml) mở PR cập nhật thư viện mỗi tuần vào `develop`. Jenkins test các PR đó như mọi PR khác.
 
 ## Sao lưu và khôi phục
 

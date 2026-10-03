@@ -33,7 +33,7 @@ flowchart LR
 | Frontend | **React 19, TypeScript, Vite**, Ant Design, React Router, TanStack Query, @stomp/stompjs | Giao diện nhân viên và khách |
 | Test | JUnit 5, MockMvc, **Testcontainers (PostgreSQL)**; Vitest | Test tự động |
 | Đóng gói | Docker (multi-stage), Docker Compose, Nginx | Chạy giống nhau ở máy dev và máy chủ |
-| CI/CD | **GitHub Actions** (test mỗi PR, deploy dự phòng), **Jenkins** (deploy chính), GitHub Container Registry (GHCR) | Build, test, đóng image, triển khai (mục 9.6) |
+| CI/CD | **Jenkins** (test mỗi PR, build, deploy), GitHub Container Registry (GHCR). GitHub Actions chỉ còn CodeQL và kiểm thử tải chạy tay | Build, test, đóng image, triển khai (mục 9.6) |
 | Giám sát | **Prometheus**, **Loki**, **Grafana**, Alertmanager, blackbox exporter trên máy công cụ; **Grafana Alloy** trên máy ứng dụng; Micrometer trong backend | Số liệu, log, dashboard, cảnh báo Telegram (mục 9.8) |
 
 ## 9.3 Cấu trúc mã nguồn
@@ -60,7 +60,8 @@ flowchart LR
 ├── perf/                            kiểm thử tải k6, dữ liệu bán hàng 6 tháng để thử
 ├── docker-compose.yml               chạy toàn bộ ở máy dev
 ├── deploy/docker-compose.prod.yml   chạy trên máy chủ bằng image từ GHCR
-└── .github/                         ci-cd.yml (pipeline), codeql.yml, load-test.yml (chạy tay), dependabot.yml
+├── Jenkinsfile                      pipeline CI/CD; Jenkins và các tệp của nó ở deploy/ops/jenkins/
+└── .github/                         codeql.yml, load-test.yml (chạy tay), dependabot.yml
 ```
 
 Mỗi module nghiệp vụ là một package, bên trong chia theo lớp. Ví dụ module `order`:
@@ -116,15 +117,16 @@ frontend/src/
 - Webhook kiểm tra `Authorization: Apikey <SEPAY_API_KEY>` bằng phép so sánh thời gian hằng.
 - Giới hạn tần suất (Bucket4j, lưu trong bộ nhớ của server): mỗi tên đăng nhập thử tối đa 10 lần mỗi phút (BR-31); trang QR của mỗi bàn gửi tối đa 10 lần mỗi phút và giữ tối đa 30 món chờ xác nhận (BR-30). Quá giới hạn thì trả 429 kèm `Retry-After`. Không giới hạn theo IP: sau Nginx, IP đầu tiên trong `X-Forwarded-For` do client tự gửi được, còn khách trong quán lại dùng chung một IP Wi-Fi.
 - Khi triển khai thật phải có **HTTPS**, vì SePay chỉ gọi địa chỉ HTTPS công khai. Một Caddy trên máy chủ (`deploy/caddy/`) nhận cổng 80, 443 cho cả production và staging, tự lấy và gia hạn chứng chỉ Let's Encrypt. Hai container web chỉ mở cổng trên `127.0.0.1`, nên từ Internet chỉ vào được qua Caddy.
-- Jenkins (P0-08) chạy trên máy công cụ, không chạy trên máy ứng dụng:
-  - Jenkins điều khiển Docker của máy công cụ để build image, tức là có quyền gần như root trên máy đó.
+- Jenkins (P0-08) chạy trên máy công cụ. Nếu bố trí một máy thì Jenkins chạy chung máy với app (mục 9.5):
+  - Jenkins điều khiển Docker của máy nó chạy để build image và chạy test, tức là có quyền gần như root trên máy đó. Nếu bố trí một máy thì đó cũng là máy chứa dữ liệu thật.
+  - Vì vậy Jenkins chỉ build PR mở từ chính repo, do thành viên có quyền push tạo ra. PR từ fork (người ngoài) không được build.
   - Jenkins vào máy ứng dụng bằng tài khoản `deploy` qua SSH, với khoá riêng.
   - Token GitHub của Jenkins chỉ có quyền `repo:status` và `write:packages`.
   - Trang Jenkins phải đăng nhập, không cho xem ẩn danh.
 - Quét lỗ hổng tự động, kết quả ở tab **Security** của GitHub:
   - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`.
   - CodeQL phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
-  - Trivy quét 2 image sau mỗi lần build.
+  - Trivy quét 2 image sau mỗi lần build của Jenkins. Kết quả in trong log build, không lên tab Security.
 
 ## 9.5 Triển khai
 
@@ -134,7 +136,16 @@ frontend/src/
 | Staging | `develop` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms-staging`, image tag theo commit | Tự deploy, có thể bật tài khoản demo để cả nhóm thử |
 | Production | `main` | `deploy/docker-compose.prod.yml` trong `~/khoibep-rms` | Deploy sau khi có người duyệt |
 
-Staging và production chạy chung **máy ứng dụng**. Giám sát chạy trên một **máy công cụ** riêng (mục 9.8), để máy ứng dụng chết thì vẫn còn chỗ báo động.
+Staging và production chạy chung **máy ứng dụng**. Giám sát (mục 9.8) và Jenkins (mục 9.6) chạy trên **máy công cụ**. Có hai cách bố trí:
+- **Một máy** (P0-09, chọn ngày 03/10/2026):
+  - Một máy 8 vCPU, 16 GB RAM vừa là máy ứng dụng vừa là máy công cụ.
+  - Một Caddy phục vụ cả 4 tên miền: production, staging, Grafana, Jenkins (`deploy/single/`).
+  - Grafana, Jenkins, Prometheus, Loki chỉ mở cổng trên `127.0.0.1`.
+  - Rẻ và gọn. Nhưng máy chết thì giám sát chết theo, nên phải có kiểm tra uptime từ bên ngoài và chép bản sao lưu ra ngoài máy.
+- **Hai máy** (máy ứng dụng 2 vCPU, 4 GB; máy công cụ 4 vCPU, 8 GB), dùng khi quán dùng thật:
+  - Máy ứng dụng chết thì máy công cụ vẫn báo động.
+  - Build và test không giành tài nguyên với quán.
+  - Jenkins không nằm chung máy với dữ liệu thật.
 
 Bí mật để trong tệp `.env` trên máy chủ, **không đưa vào Git**. Biến chính: `POSTGRES_PASSWORD`, `APP_JWT_SECRET`, `SEPAY_API_KEY`, `APP_PUBLIC_BASE_URL` (địa chỉ in trong QR bàn), `HTTP_PORT` (cổng trên `127.0.0.1` mà Caddy chuyển tới: production 8081, staging 8080), `APP_DEMO_ACCOUNTS_ENABLED`, `APP_INITIAL_ADMIN_PASSWORD` (tài khoản quản trị đầu tiên, BR-48). Các bước dựng máy chủ ở [tài liệu 11](11-trien-khai-van-hanh.md).
 
@@ -157,47 +168,45 @@ Mô hình nhánh: `feature/<tên>` → PR vào `develop` → PR vào `main`. C�
 
 ```mermaid
 flowchart LR
-    A[Pull request vào develop hoặc main] --> B[Backend<br/>mvnw verify: JUnit + Testcontainers]
-    A --> C[Frontend<br/>npm ci, lint, test, build]
-    B --> D{Test xanh?}
-    C --> D
-    D -- Không --> X[Không cho merge]
+    A[Pull request vào develop hoặc main] --> T[Jenkins: ERD, backend, frontend,<br/>giám sát, build 2 image, E2E]
+    T --> D{Xanh?}
+    D -- Không --> X[GitHub không cho merge]
     D -- Có --> M[Merge]
-    M --> J[Jenkins: chờ test trên GitHub xanh,<br/>build 2 image, push GHCR, deploy]
-    M --> Q{cd-gate trên GitHub Actions:<br/>Jenkins có deploy không?}
-    J -- trạng thái jenkins/deploy --> Q
-    Q -- Có, hoặc Jenkins báo lỗi --> K[Actions không deploy]
-    Q -- Jenkins không trả lời<br/>hoặc im 5 phút --> F[Actions: build 2 image,<br/>push GHCR, deploy, báo Telegram]
-    J --> H[Kiểm tra /actuator/health]
-    F --> H
+    M --> J[Jenkins: test lại, build 2 image,<br/>E2E trên đúng image đó, quét Trivy, push GHCR]
+    J --> G{Nhánh nào?}
+    G -- develop --> S[Deploy staging]
+    G -- main --> P[Chờ duyệt trên Jenkins<br/>rồi deploy production]
+    S --> H[Kiểm tra /actuator/health]
+    P --> H
 ```
 
-**CD lai (P0-08, NFR-13).** Jenkins trên máy công cụ deploy chính. GitHub Actions deploy dự phòng.
-- **Jenkins** (`Jenkinsfile`):
-  - Ghi trạng thái `jenkins/deploy` = `pending` lên commit ngay khi bắt đầu.
-  - Chờ 4 job CI (Backend, Frontend, E2E, Giám sát) xanh trên commit đó.
-  - Build và đẩy 2 image, rồi deploy: `develop` lên staging; `main` lên production sau khi có người bấm duyệt trên Jenkins.
-  - Kiểm tra health, rồi ghi `success` hoặc `failure`.
-- **Job `cd-gate` của GitHub Actions** (`scripts/cd-gate.sh`) đọc trạng thái đó:
-  - Thấy `success`: dừng.
-  - Thấy `failure`: dừng và báo đỏ. Lỗi thật thì để người xem, không đè lên.
-  - Chỉ deploy thay khi chưa cấu hình Jenkins, Jenkins không trả lời ở `/login`, hoặc im lặng 5 phút về commit đó. Khi deploy thay thì nhắn Telegram.
-  - Jenkins đang chạy (`pending`) thì chờ tới 90 phút, kể cả lúc chờ duyệt production.
+**CI/CD trên Jenkins (P0-08, P0-09, NFR-13).** Cả CI lẫn CD chạy trên Jenkins (`Jenkinsfile`). Jenkins xem repo trên GitHub mỗi 2 phút: nhánh `develop`, `main`, và các PR mở từ chính repo.
+- **Với mỗi PR**, trên kết quả merge PR vào nhánh đích:
+  - Chạy test: ERD, backend (PostgreSQL thật qua Testcontainers), frontend, cấu hình giám sát. Mỗi phần chạy trong một container riêng, nhận mã nguồn của đúng commit đó.
+  - Build 2 image, rồi chạy E2E trên đúng 2 image đó, trong một mạng Docker riêng không mở cổng nào ra máy.
+  - Báo kết quả lên PR với trạng thái `continuous-integration/jenkins/pr-merge`. Ruleset của GitHub chỉ cho merge khi trạng thái này xanh.
+- **Với mỗi commit mới của `develop` và `main`:**
+  - Chạy lại các bước trên, quét Trivy, đẩy image lên GHCR.
+  - Deploy: `develop` lên staging; `main` lên production sau khi có người bấm duyệt trên Jenkins.
+  - Kiểm tra health sau khi deploy. Test lỗi thì không deploy.
+- Hai build không chạy phần test và build cùng lúc (khoá `khoibep-build`), để không giành RAM với app thật.
 - **Không deploy chồng, không deploy ngược:**
-  - Hai bên chạy cùng `deploy/deploy.sh` trên máy ứng dụng. Script giữ khoá (`flock`) để chỉ một lần deploy chạy, và bỏ qua nếu commit đó đang chạy rồi.
-  - Ngay trước khi deploy, cả hai kiểm commit còn là mới nhất của nhánh, nên Jenkins sống lại muộn cũng không đưa commit cũ đè lên.
+  - `deploy/deploy.sh` giữ khoá (`flock`) để chỉ một lần deploy chạy. Script bỏ qua nếu commit đó đang chạy rồi.
+  - Ngay trước khi deploy, Jenkins kiểm commit còn là mới nhất của nhánh.
+- **Jenkins là điểm duy nhất.** Jenkins hoặc máy của nó chết thì không có gì được test hay deploy. GitHub cũng không cho merge cho tới khi Jenkins chạy lại.
+- **Chuyển từ GitHub Actions sang Jenkins:** ruleset hiện còn bắt buộc các check của GitHub Actions. Vì vậy `ci-cd.yml` tạm giữ 4 job test (Backend, Frontend, E2E, Giám sát), không còn build hay deploy. Khi Jenkins đã chạy và ruleset đổi sang `continuous-integration/jenkins/pr-merge` (tài liệu 11 mục 11.4), tệp này được xoá.
 
 | Bước | Làm gì | Chặn merge nếu lỗi |
 |---|---|---|
-| Backend | So ERD với migration (`scripts/check-erd.mjs`), biên dịch, chạy test đơn vị và test tích hợp với PostgreSQL thật, đo độ phủ bằng JaCoCo (dưới 70% số dòng là lỗi) | Có |
+| ERD | So ERD với migration (`scripts/check-erd.mjs`) | Có |
+| Backend | Biên dịch, chạy test đơn vị và test tích hợp với PostgreSQL thật, đo độ phủ bằng JaCoCo (dưới 70% số dòng là lỗi) | Có |
 | Frontend | Kiểm tra kiểu (TypeScript), ESLint, Vitest (cả test component), build | Có |
-| E2E | Dựng cả ứng dụng bằng Docker Compose, chạy kịch bản nghiệm thu bằng Playwright trên Chromium | Có |
-| CodeQL | Phân tích tĩnh mã Java và TypeScript (workflow `codeql.yml`) | Không, chỉ báo ở tab Security |
-| Giám sát | Kiểm tra cấu hình Prometheus, Alertmanager và Alloy; chạy test quy tắc cảnh báo (`promtool test rules`); dashboard Grafana là JSON hợp lệ | Có |
-| Image | Build image multi-stage, đẩy lên GHCR, gắn tag theo commit; Trivy quét lỗ hổng CRITICAL, HIGH đã có bản vá. Jenkins build thì Trivy chạy trong Jenkins (chỉ in kết quả), Actions build thì kết quả lên tab Security | Không, chỉ báo |
-| cd-gate | Quyết định Jenkins hay GitHub Actions deploy commit này (ở trên) | — |
-| Deploy | Jenkins, hoặc GitHub Actions khi cd-gate bảo thế chỗ. Phía Actions chỉ chạy khi bật biến `DEPLOY_ENABLED`; environment `staging` không cần duyệt, `production` cần người duyệt | — |
-| Quay lại bản cũ | Workflow **Rollback** (`rollback.yml`): chọn môi trường và commit, chạy được cả khi Jenkins chết; production cần duyệt | — |
+| Giám sát | Kiểm tra cấu hình Prometheus, Alertmanager và Alloy; chạy test quy tắc cảnh báo (`promtool test rules`); dashboard Grafana là JSON hợp lệ (`scripts/check-monitoring.sh`) | Có |
+| E2E | Dựng ứng dụng từ 2 image vừa build, chạy kịch bản nghiệm thu bằng Playwright trên Chromium | Có |
+| CodeQL | Phân tích tĩnh mã Java và TypeScript (GitHub Actions, `codeql.yml`) | Không, chỉ báo ở tab Security |
+| Image | Build image multi-stage, gắn tag theo commit; Trivy quét lỗ hổng CRITICAL, HIGH đã có bản vá, in trong log Jenkins; đẩy lên GHCR (chỉ `develop`, `main`) | Không, chỉ báo |
+| Deploy | `develop` lên staging; `main` lên production sau khi có người duyệt trên Jenkins | — |
+| Quay lại bản cũ | Job **Khói Bếp: quay lại bản cũ** trên Jenkins: chọn môi trường và commit; production cần duyệt | — |
 
 ## 9.7 Chiến lược kiểm thử
 
@@ -207,16 +216,23 @@ flowchart LR
 | Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, cảnh báo webhook lỗi liên tiếp, giảm giá và duyệt vượt hạn mức, chuyển và ghép bàn, phân quyền (cả quyền xem số liệu Actuator), nhật ký thao tác (kể cả CSDL chặn sửa, xoá), kho, phiếu nhập và giá vốn, định lượng và trừ kho tự động, ca và két, báo cáo lãi gộp và ngoại lệ, đặt bàn và cọc, tách bill, khách hàng, hoá đơn điện tử và thuế suất theo ngày, đơn app giao hàng, xếp ca, chấm công, nghỉ phép, bảng lương. Test chấm công đặt giờ bằng một `Clock` giả |
 | Frontend | Vitest | Định dạng tiền, nhãn trạng thái, giờ công, bảng lương và báo cáo xuất Excel, tách bill, khoản giảm giá, ca két, cọc, khách hàng, mã số thuế và số hoá đơn, thuế suất sắp đổi, món của đơn app |
 | Component | Vitest + Testing Library, trình duyệt giả lập jsdom | Chọn món vào giỏ (tổng tiền, bớt món, ghi chú, món hết, đổi nhóm), giỏ tối đa 50 phần mỗi món (BR-06), mã VietQR, nhãn trạng thái món, phiếu in 80 mm (BR-33) |
-| Độ phủ | JaCoCo | Backend phải chạy tới ≥ 70% số dòng, thấp hơn thì CI đỏ. Con số in ở trang kết quả của lần chạy CI, báo cáo HTML ở artifact `backend-coverage` |
+| Độ phủ | JaCoCo | Backend phải chạy tới ≥ 70% số dòng, thấp hơn thì CI đỏ. Con số in trong log build của Jenkins, ở bước Backend |
 | Kiến trúc | ArchUnit (`ArchitectureTest`) | Mỗi class nằm đúng thư mục con của lớp mình, và chỉ gọi xuống các lớp dưới (mục 9.3) |
 | E2E | Playwright, chạy trong CI | Kịch bản nghiệm thu ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu): khách QR, phục vụ, bếp, chuyển khoản, bàn trống; phân quyền; trang "Của tôi" |
 | Tải | k6 (`perf/load-test.js`), workflow `load-test.yml` chạy tay ở tab Actions | NFR-02: 30 người trong 2 phút (14 khách gọi món QR, 10 phục vụ, 3 bếp, 2 thu ngân, 1 quản lý xem báo cáo 30 ngày), sau khi nạp 6 tháng bán hàng. Đạt khi p95 < 500 ms và dưới 1% request lỗi |
 | Cảnh báo | `promtool test rules`, chạy trong CI | Mỗi quy tắc ở mục 9.8 báo khi có sự cố và im khi bình thường, với số liệu giả lập theo từng phút |
 | Nghiệm thu | 2 trình duyệt + 1 điện thoại | Kịch bản ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu), làm tay khi demo |
 
+Các mức Đơn vị, Tích hợp, Kiến trúc, Frontend, Component, Độ phủ, E2E và Cảnh báo chạy trên Jenkins ở mỗi PR, và chạy lại trước mỗi lần deploy (mục 9.6).
+
 ## 9.8 Giám sát và cảnh báo (P0-07, NFR-12)
 
 Giám sát chạy trên **máy công cụ**, tách khỏi **máy ứng dụng** (máy chạy staging và production). Máy công cụ cũng chạy Jenkins (mục 9.6), sau cùng một Caddy. Máy ứng dụng chết thì máy công cụ vẫn còn để báo động. Trên máy ứng dụng chỉ có một agent **Grafana Alloy**: nó tự đẩy số liệu và log sang máy công cụ, nên máy ứng dụng không phải mở thêm cổng nào.
+
+Khi bố trí một máy (mục 9.5), mọi thứ dưới đây chạy chung máy, với ba điểm khác:
+- Agent đẩy thẳng vào Prometheus và Loki qua `127.0.0.1`, không qua Internet. Hai đường `/ingest` không mở ra ngoài.
+- Không chạy node exporter riêng, vì agent đã đọc chính máy này.
+- Blackbox gọi trang của quán qua tên miền của chính máy.
 
 ```mermaid
 flowchart LR
@@ -282,4 +298,4 @@ Mọi số liệu có nhãn `env` (`production`, `staging`) lấy từ tên proj
 - Alloy đọc `/actuator/prometheus` bằng `APP_METRICS_TOKEN` (NFR-11).
 - Alloy chạy `privileged` và đọc Docker socket để lấy số liệu container (cAdvisor) và log, tức là có quyền gần như root trên máy ứng dụng. Bù lại, nó không mở cổng nào, chỉ gửi đi.
 
-**Giới hạn.** Máy công cụ chết thì không còn ai báo. Muốn chắc, dùng thêm một dịch vụ kiểm tra uptime miễn phí bên ngoài gọi `https://monitor.<tên miền>/api/health` của Grafana (tài liệu 11 mục 11.10).
+**Giới hạn.** Máy công cụ chết thì không còn ai báo. Muốn chắc, dùng thêm một dịch vụ kiểm tra uptime miễn phí bên ngoài gọi `https://monitor.<tên miền>/api/health` của Grafana (tài liệu 11 mục 11.10). Khi bố trí một máy, máy chết thì cả quán lẫn giám sát cùng chết, nên kiểm tra uptime từ bên ngoài là bắt buộc. Kiểm tra đó gọi thẳng `https://<tên miền>/actuator/health` của quán (tài liệu 11 mục 11.12).
