@@ -3,6 +3,8 @@ job-dsl
 workflow-aggregator
 workflow-multibranch
 git
+github-branch-source
+lockable-resources
 ssh-agent
 credentials-binding
 pipeline-stage-view

@@ -1,0 +1,27 @@
+# P0-09: one Caddy for everything on a single server (docs-core/11 section 11.12): the restaurant, its staging,
+# Grafana and Jenkins. Copy it over ~/caddy/Caddyfile and add MONITOR_DOMAIN, JENKINS_DOMAIN to ~/caddy/.env; all
+# four names point to this server. Every service behind it listens on 127.0.0.1 only. Caddy gets and renews the
+# Let's Encrypt certificates itself.
+
+{$DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy 127.0.0.1:{$PRODUCTION_PORT:8081}
+}
+
+{$STAGING_DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy 127.0.0.1:{$STAGING_PORT:8080}
+}
+
+# Grafana and Jenkins have their own sign-in.
+{$MONITOR_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
+
+{$JENKINS_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8090
+}

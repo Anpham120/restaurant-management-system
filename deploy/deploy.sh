@@ -1,5 +1,5 @@
 #!/bin/sh
-# P0-08: runs one commit's images on the application server, for Jenkins and for GitHub Actions alike
+# P0-08, P0-09: runs one commit's images on the application server, for the Jenkinsfile and the rollback job
 # (docs-core/09 section 9.6). Both copy this file next to docker-compose.prod.yml, log in to GHCR, then call:
 #   sh ~/<folder>/deploy.sh <folder> <image tag>        e.g. deploy.sh khoibep-rms-staging 3f2c1d...
 # Only one deploy runs at a time on this server, whoever starts it; a tag that already runs is left alone.

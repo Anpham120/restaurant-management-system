@@ -1,0 +1,8 @@
+# P0-09: the agent of deploy/agent on the same server as the tools (docs-core/11 section 11.12). Copy this file to
+# ~/agent/docker-compose.override.yml. The agent pushes straight to Prometheus and Loki on 127.0.0.1, not through
+# the Internet; INGEST_PASSWORD in ~/agent/.env is then unused.
+services:
+  alloy:
+    environment:
+      METRICS_URL: http://127.0.0.1:9090/api/v1/write
+      LOGS_URL: http://127.0.0.1:3100/loki/api/v1/push

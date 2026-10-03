@@ -28,7 +28,7 @@
 	}
 }
 
-# P0-08: Jenkins, with its own sign-in. GitHub Actions calls /login here to know whether Jenkins is alive.
+# P0-08, P0-09: Jenkins, with its own sign-in.
 {$JENKINS_DOMAIN} {
 	encode zstd gzip
 	reverse_proxy jenkins:8080
