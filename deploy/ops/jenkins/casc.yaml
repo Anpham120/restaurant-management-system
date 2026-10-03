@@ -1,0 +1,116 @@
+# P0-08, P0-09: the whole Jenkins setup, applied at every start (docs-core/11 section 11.11). Secrets come from
+# ~/monitoring/.env through the environment, and the SSH key of the deploy user from the file mounted at
+# /run/secrets/app_server_key. Nothing is set up by hand in the web page.
+jenkins:
+  systemMessage: "Khói Bếp: CI/CD (P0-09). Test mọi PR; deploy develop lên staging, main lên production sau khi duyệt."
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: APP_SERVER_HOST
+            value: "${APP_SERVER_HOST}"
+          - key: GHCR_OWNER
+            value: "${GHCR_OWNER}"
+          - key: SITE_URL_PRODUCTION
+            value: "${SITE_URL_PRODUCTION}"
+          - key: SITE_URL_STAGING
+            value: "${SITE_URL_STAGING}"
+
+unclassified:
+  location:
+    url: "https://${JENKINS_DOMAIN}/"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: github
+              description: "GitHub: đọc repo, báo trạng thái lên PR, đẩy image lên GHCR"
+              username: "${GITHUB_USER}"
+              password: "${GITHUB_TOKEN}"
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: app-server
+              description: "deploy@máy ứng dụng"
+              username: deploy
+              privateKeySource:
+                directEntry:
+                  privateKey: "${readFile:/run/secrets/app_server_key}"
+
+# The CI/CD job: develop and main as branches, and pull requests opened from this repository (none from forks: they
+# would run strangers' code on a server with Docker rights), each merged with its target before the build. Jenkins
+# reports each result on GitHub as "continuous-integration/jenkins/pr-merge" or ".../branch". It scans GitHub every
+# 2 minutes, so GitHub needs no webhook. The rollback job takes its parameters here, so they show from the start.
+jobs:
+  - script: |
+      multibranchPipelineJob('khoibep-cd') {
+        displayName('Khói Bếp: CI/CD')
+        branchSources {
+          branchSource {
+            source {
+              github {
+                id('khoibep-github')
+                repoOwner('Anpham120')
+                repository('restaurant-management-system')
+                repositoryUrl('https://github.com/Anpham120/restaurant-management-system')
+                configuredByUrl(true)
+                credentialsId('github')
+                traits {
+                  gitHubBranchDiscovery {
+                    strategyId(3)
+                  }
+                  gitHubPullRequestDiscovery {
+                    strategyId(1)
+                  }
+                  headWildcardFilter {
+                    includes('develop main PR-*')
+                    excludes('')
+                  }
+                }
+              }
+            }
+          }
+        }
+        triggers {
+          periodicFolderTrigger {
+            interval('2m')
+          }
+        }
+        orphanedItemStrategy {
+          discardOldItems {
+            numToKeep(10)
+          }
+        }
+      }
+      pipelineJob('khoibep-rollback') {
+        displayName('Khói Bếp: quay lại bản cũ')
+        parameters {
+          choiceParam('TARGET', ['staging', 'production'], 'Môi trường')
+          stringParam('COMMIT', '', 'Mã commit đủ 40 ký tự của bản muốn quay về')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/Anpham120/restaurant-management-system.git')
+                }
+                branch('*/develop')
+              }
+            }
+            scriptPath('deploy/ops/jenkins/rollback.Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }

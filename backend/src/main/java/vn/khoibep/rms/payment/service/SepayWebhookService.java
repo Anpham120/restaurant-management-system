@@ -3,6 +3,8 @@ package vn.khoibep.rms.payment.service;
 import java.time.Instant;
 import java.util.Optional;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,12 +35,22 @@ import vn.khoibep.rms.reservation.repository.ReservationRepository;
 @RequiredArgsConstructor
 public class SepayWebhookService {
 
+    /** NFR-12: transfers kept as UNMATCHED, for the monitoring server. */
+    static final String UNMATCHED_METRIC = "rms.bank.transactions.unmatched";
+
     private final BankTransactionRepository bankTransactions;
     private final PaymentRepository payments;
     private final ReservationRepository reservations;
     private final OrderRepository orders;
     private final PaymentService paymentService;
     private final RealtimeEvents realtime;
+    private final MeterRegistry meters;
+
+    /** Registered at 0 on start, so the first unmatched transfer after a restart still counts as an increase. */
+    @PostConstruct
+    void registerMetrics() {
+        meters.counter(UNMATCHED_METRIC);
+    }
 
     @Transactional
     public void handle(SepayWebhookRequest request) {
@@ -85,6 +97,7 @@ public class SepayWebhookService {
         bankTransactions.save(tx);
         if (tx.getMatchStatus() == MatchStatus.UNMATCHED) {
             realtime.staffNotice(RealtimeEvent.BANK_TRANSACTION);
+            meters.counter(UNMATCHED_METRIC).increment();
         }
     }
 

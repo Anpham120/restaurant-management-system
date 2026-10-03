@@ -2,7 +2,7 @@
 
 ## 10.1 Hiện trạng
 
-Bản core đã chạy trọn luồng: gọi món (phục vụ và khách quét QR), bếp realtime, thanh toán tiền mặt và VietQR tự xác nhận, kho, báo cáo, tài khoản nhân viên. Lúc lập kế hoạch có 64 test backend; nay có 89 test backend, 30 test frontend, test E2E và kiểm thử tải, cùng CI/CD trên GitHub (`feature/*` → `develop` → `main`). Chi tiết ở tài liệu 01 → 09.
+Bản core đã chạy trọn luồng: gọi món (phục vụ và khách quét QR), bếp realtime, thanh toán tiền mặt và VietQR tự xác nhận, kho, báo cáo, tài khoản nhân viên. Lúc lập kế hoạch có 64 test backend; nay có 192 test backend, 83 test frontend, test E2E và kiểm thử tải, cùng CI/CD trên GitHub (`feature/*` → `develop` → `main`). Giai đoạn 1 → 4 đã làm xong, trừ P4-05 chỉ có thiết kế. Chi tiết ở tài liệu 01 → 09, triển khai ở tài liệu 11.
 
 **Lịch.** Hạn nộp cuối tháng 11/2026 (lấy mốc **30/11**), nhóm **5 người**, chia **8 sprint**. Sprint 1 dài 11 ngày (01/10 → 11/10) để kịp thuê máy chủ, tên miền và nối SePay. Các sprint sau dài 1 tuần, từ thứ Hai đến Chủ nhật. Mỗi sprint ước khoảng 12–17 ngày người, tức mỗi người 2,5–3,5 ngày mỗi tuần, đã tính phần nhân sự.
 
@@ -23,14 +23,47 @@ Công sức: **S** ≤ 2 ngày người, **M** 3–5 ngày người, **L** > 5 n
 
 | Mã | Việc | Công sức | Ưu tiên | CSDL | Xong khi |
 |---|---|---|---|---|---|
-| P0-01 | Bật rulesets cho `main`, `develop`; tạo environment `staging`, `production` | S | M | — | Không push thẳng được vào `main`, `develop` |
-| P0-02 | Máy chủ staging (VPS 1–2 GB RAM) + tên miền + HTTPS bằng Caddy; bật `DEPLOY_ENABLED` | M | M | — | Push `develop` là staging tự cập nhật |
+| P0-01 | Bật rulesets cho `main`, `develop`: bắt buộc PR và check của Jenkins | S | M | — | Không push thẳng được vào `main`, `develop`; PR đỏ không merge được |
+| P0-02 | Máy chủ + tên miền + HTTPS bằng Caddy; dựng Jenkins | M | M | — | Push `develop` là staging tự cập nhật |
 | P0-03 | Nối **SePay thật** trên staging, chuyển thử 2.000 đ | S | M | — | Tiền thật về, bàn tự đóng |
 | P0-04 | Sao lưu CSDL hằng ngày (`pg_dump`, giữ 7 bản) và **thử khôi phục** | S | M | — | Khôi phục được bản hôm qua |
 | P0-05 | **Test E2E Playwright** cho kịch bản nghiệm thu §1.5, chạy trong CI bằng Docker Compose | M | M | — | CI đỏ nếu luồng chính hỏng |
 | P0-06 | Dependabot (Maven, npm, Actions, Docker), CodeQL, quét image bằng Trivy | S | S | — | Có cảnh báo lỗ hổng tự động |
+| P0-07 | **Giám sát và cảnh báo** trên máy công cụ (VPS 4 vCPU, 8 GB RAM): Prometheus, Loki, Grafana, Alertmanager; Alloy trên máy ứng dụng; báo Telegram (NFR-12) | M | M | — | Tắt backend staging thì Telegram báo trong khoảng 5 phút |
+| P0-08 | **Jenkins deploy**, GitHub Actions deploy thay khi Jenkins không trả lời (NFR-13). Đã thay bằng P0-09 | M | S | — | Tắt Jenkins rồi merge vào `develop`: Actions deploy staging và báo Telegram |
+| P0-09 | **Triển khai trên một máy; Jenkins là CI/CD**: một máy 8 vCPU, 16 GB RAM chạy app, giám sát và Jenkins. Jenkins test mọi PR và deploy; bỏ GitHub Actions cho CI/CD (NFR-13) | M | M | — | Trên một máy: PR có trạng thái của Jenkins; merge vào `develop` thì Jenkins test rồi deploy staging; Grafana, Jenkins mở qua HTTPS bằng một Caddy |
 
-P0-04 → P0-06 đã có trong repo: sao lưu và khôi phục (`deploy/backup.sh`, `deploy/restore.sh`), E2E trong CI, Dependabot, CodeQL, Trivy. Phần trong repo của P0-02 cũng đã sẵn: Caddy cho HTTPS (`deploy/caddy/`) và tài khoản quản trị đầu tiên (BR-48). Còn lại là việc trên GitHub và máy chủ, làm theo [tài liệu 11](11-trien-khai-van-hanh.md): ruleset và environment (P0-01); thuê VPS, trỏ tên miền, điền `.env`, bật `DEPLOY_ENABLED` (P0-02); nối SePay thật (P0-03).
+P0-04 → P0-06 đã có trong repo: sao lưu và khôi phục (`deploy/backup.sh`, `deploy/restore.sh`), E2E trong CI, Dependabot, CodeQL, Trivy. Phần trong repo của P0-02 cũng đã sẵn: Caddy cho HTTPS (`deploy/caddy/`) và tài khoản quản trị đầu tiên (BR-48). Còn lại là việc trên GitHub và máy chủ, làm theo [tài liệu 11](11-trien-khai-van-hanh.md): ruleset (P0-01); thuê VPS, trỏ tên miền, điền `.env`, dựng Jenkins (P0-02); nối SePay thật (P0-03).
+
+P0-07 (issue #90) thêm vào sau khi chốt cấu hình máy chủ. Thiết kế ở [tài liệu 09 mục 9.8](09-kien-truc-va-cicd.md), không đổi CSDL. Phần trong repo:
+- Backend mở `/actuator/prometheus`, chỉ đọc được bằng `APP_METRICS_TOKEN`, và có thêm bộ đếm nghiệp vụ.
+- `deploy/agent/`: Alloy cho máy ứng dụng.
+- `deploy/ops/`: Prometheus, Loki, Grafana, Alertmanager cho máy công cụ.
+- CI chạy test quy tắc cảnh báo.
+
+Máy công cụ chọn 4 vCPU, 8 GB RAM, 80 GB để còn chỗ chạy Jenkins. Việc trên máy chủ làm theo tài liệu 11 mục 11.10.
+
+P0-08 (issue #92) theo đề nghị chạy CI/CD lai, thiết kế ở tài liệu 09 mục 9.6. Phần trong repo:
+- `Jenkinsfile` và Jenkins trong `deploy/ops/jenkins/`, cấu hình bằng Configuration as Code.
+- Job `cd-gate` của GitHub Actions (`scripts/cd-gate.sh`), quyết định Actions có deploy thay không. Đã bỏ ở P0-09.
+- Script deploy dùng chung `deploy/deploy.sh`.
+- Workflow Rollback. Đã bỏ ở P0-09, thay bằng job trên Jenkins.
+
+Việc trên máy chủ và GitHub làm theo tài liệu 11 mục 11.11.
+
+P0-09 (issue #94): ngày 03/10/2026 nhóm chốt ba việc:
+- Triển khai trên **một máy** 8 vCPU, 16 GB RAM, chưa tách máy công cụ.
+- **Jenkins là CI/CD**: test mọi PR (báo trạng thái lên PR để chặn merge), test lại rồi deploy `develop` và `main`.
+- **Bỏ GitHub Actions cho CI/CD.** Phần deploy dự phòng của P0-08 (`cd-gate`, workflow Rollback) bỏ đi. GitHub Actions chỉ còn CodeQL và kiểm thử tải chạy tay.
+
+Phần trong repo:
+- `deploy/single/`: Caddy cho cả 4 tên miền, và tệp ghép cho giám sát và agent.
+- Các bước test trong `Jenkinsfile`.
+- Job **quay lại bản cũ** trên Jenkins.
+
+Thiết kế ở tài liệu 09 mục 9.5 và 9.6, cách dựng ở tài liệu 11 mục 11.12. Khi quán dùng thật thì tách thành hai máy như P0-07.
+
+Chuyển đổi: ruleset hiện còn bắt buộc check của GitHub Actions, nên `ci-cd.yml` tạm giữ 4 job test. Khi Jenkins đã chạy và ruleset đổi sang check của Jenkins (tài liệu 11 mục 11.4), một PR nhỏ xoá tệp này.
 
 ### Giai đoạn 1 — Nghiệp vụ tại quán còn thiếu (sprint 2–3)
 
@@ -112,6 +145,8 @@ P4-03 **đã làm xong** (issue #26): yêu cầu FR-20.1 → FR-20.4, US-40, BR-
 
 P4-04 **đã làm xong** (issue #27): yêu cầu FR-21.1 → FR-21.3, US-41, BR-47; CSDL là migration `V23` (bảng `menu_item_app_price`, cột `orders.channel`, `orders.app_order_code`, phương thức thanh toán `GRABFOOD`, `SHOPEEFOOD`). Bản core nhập tay đơn app và ghi doanh thu theo kênh lúc giao shipper; chưa đối soát bảng kê, phí và khuyến mãi của app (FR-DLV-04), chưa nhận đơn tự động (FR-DLV-05), chưa nhắc tắt món trên app khi hết món (BR-18 bản đầy đủ).
 
+P4-05 có bản thiết kế ở [tài liệu 12](12-thiet-ke-mo-rong.md) (issue #28): nhiều chi nhánh trên một máy chủ trước, rồi mới tới máy chủ tại quán để chạy khi mất mạng. Không làm trong đồ án.
+
 ### Giai đoạn 5 — Hồ sơ nộp môn (làm song song, chốt ở sprint 8)
 
 | Mã | Việc |
@@ -122,7 +157,15 @@ P4-04 **đã làm xong** (issue #27): yêu cầu FR-21.1 → FR-21.3, US-41, BR-
 | P5-04 | **Kịch bản demo 10 phút** và slide |
 | P5-05 | Cập nhật tài liệu 01 → 09 theo tính năng mới (FR, US, BR, ERD, API) |
 
+P5-01 có ở [tài liệu 13](13-kiem-thu.md) (issue #29): kế hoạch, kết quả ngày 02/10/2026, test case theo AC của US-01 → US-19, kiểm thử tải đo lại sau giai đoạn 4.
+
+P5-02 có ở [tài liệu 14](14-huong-dan-su-dung.md) (issue #30): các bước theo vai trò, 26 ảnh chụp trên dữ liệu mẫu.
+
+P5-04 có ở [tài liệu 15](15-kich-ban-demo.md) (issue #32): kịch bản đã chạy thử trọn trên máy local ngày 02/10/2026; slide 9 trang theo dàn ý ở mục 15.5.
+
 P5-03 có bản đầu ở [tài liệu 11](11-trien-khai-van-hanh.md); bổ sung ảnh và số liệu thật sau lần triển khai đầu.
+
+P5-05 đã làm (issue #33): tài liệu 01 (vai trò, phạm vi), 04 (thêm quy trình P6 → P10), 06 (trạng thái đơn), 09 (kiểm thử) theo các tính năng mới; tài liệu 02, 03, 05, 07, 08 đã sửa cùng từng tính năng.
 
 ## 10.4 Lịch theo sprint
 

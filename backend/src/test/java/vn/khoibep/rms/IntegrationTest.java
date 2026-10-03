@@ -16,6 +16,7 @@ import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.micrometer.metrics.test.autoconfigure.AutoConfigureMetrics;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -34,13 +35,17 @@ import tools.jackson.databind.json.JsonMapper;
 @SpringBootTest(properties = {
         "app.demo-accounts.enabled=true",
         "app.demo-accounts.password=" + IntegrationTest.PASSWORD,
-        "app.sepay.api-key=" + IntegrationTest.SEPAY_KEY})
+        "app.sepay.api-key=" + IntegrationTest.SEPAY_KEY,
+        "app.metrics.token=" + IntegrationTest.METRICS_TOKEN})
 @AutoConfigureMockMvc
+// Spring Boot leaves metrics export out of tests; /actuator/prometheus (NFR-12) needs it on.
+@AutoConfigureMetrics
 @Import({TestcontainersConfiguration.class, TestClockConfiguration.class})
 public abstract class IntegrationTest {
 
     protected static final String PASSWORD = "secret123";
     protected static final String SEPAY_KEY = "test-sepay-key";
+    protected static final String METRICS_TOKEN = "test-metrics-token";
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final Map<String, String> TOKENS = new ConcurrentHashMap<>();

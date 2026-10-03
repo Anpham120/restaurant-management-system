@@ -36,3 +36,13 @@ updates:
     target-branch: develop
     schedule:
       interval: weekly
+
+  # P0-07: images of the monitoring server and of the agent, pinned in their compose files.
+  - package-ecosystem: docker-compose
+    directories: [/deploy/ops, /deploy/agent]
+    target-branch: develop
+    schedule:
+      interval: weekly
+    groups:
+      monitoring:
+        patterns: ["*"]

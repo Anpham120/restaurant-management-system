@@ -20,8 +20,14 @@ management:
   endpoints:
     web:
       exposure:
-        # health is public; the others are for ADMIN only (SecurityConfig) and Nginx does not forward them (NFR-11).
-        include: health,info,metrics
+        # health is public; info and metrics are for ADMIN only, prometheus for APP_METRICS_TOKEN only (SecurityConfig).
+        # Nginx forwards none of them but health (NFR-11, NFR-12).
+        include: health,info,metrics,prometheus
+  metrics:
+    distribution:
+      # NFR-02, NFR-12: enough buckets for the p95-over-500-ms alert, without a full histogram per URI.
+      slo:
+        http.server.requests: 50ms,100ms,250ms,500ms,1s,2s,5s
 
 springdoc:
   swagger-ui:
@@ -46,3 +52,6 @@ app:
   initial-admin:
     username: ${APP_INITIAL_ADMIN_USERNAME:admin}
     password: ${APP_INITIAL_ADMIN_PASSWORD:}
+  # NFR-11, NFR-12: the Bearer token Alloy sends to read /actuator/prometheus; empty keeps the endpoint shut.
+  metrics:
+    token: ${APP_METRICS_TOKEN:}

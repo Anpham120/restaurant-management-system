@@ -1,13 +1,11 @@
 name: CI/CD
 
-# Branches: feature/* --PR--> develop --PR--> main.
-# develop deploys to staging automatically; main deploys to production after approval.
+# P0-09: Jenkins (Jenkinsfile) is the CI/CD: it tests every pull request and deploys develop and main. These four
+# test jobs stay only while the rulesets of develop and main still require them; once the rulesets require Jenkins'
+# check instead (docs-core/11 section 11.4), this file goes.
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main, develop]
-  # "Run workflow" button in the Actions tab: runs the tests only (no images, no deploy).
   workflow_dispatch:
 
 permissions:
@@ -121,126 +119,13 @@ jobs:
           name: e2e-report
           path: e2e/playwright-report
 
-  # Pushes to main get the moving tag "latest", pushes to develop get "develop"; every image also
-  # gets the commit sha, which is what the deploy job runs.
-  images:
-    name: Build and push images
-    needs: [backend, frontend]
-    if: github.event_name == 'push'
+  # P0-07: the monitoring server and agent configs parse, and every alert fires when it should (promtool test rules).
+  # Images are the ones the compose files pin, so a Dependabot bump is checked with the new version.
+  monitoring:
+    name: Monitoring - check configs
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      security-events: write
-    env:
-      CHANNEL: ${{ github.ref_name == 'main' && 'latest' || 'develop' }}
     steps:
       - uses: actions/checkout@v7
-      - name: GHCR needs a lowercase owner
-        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Backend image
-        uses: docker/build-push-action@v7
-        with:
-          context: backend
-          push: true
-          tags: |
-            ghcr.io/${{ env.OWNER }}/rms-backend:${{ github.sha }}
-            ghcr.io/${{ env.OWNER }}/rms-backend:${{ env.CHANNEL }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
-      - name: Frontend image
-        uses: docker/build-push-action@v7
-        with:
-          context: frontend
-          push: true
-          tags: |
-            ghcr.io/${{ env.OWNER }}/rms-frontend:${{ github.sha }}
-            ghcr.io/${{ env.OWNER }}/rms-frontend:${{ env.CHANNEL }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
-      # P0-06: report known vulnerabilities in both images under Security → Code scanning. Reports only,
-      # never fails the build. The third-party action is pinned to a commit, not a movable tag.
-      - name: Scan the backend image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ghcr.io/${{ env.OWNER }}/rms-backend:${{ github.sha }}
-          format: sarif
-          output: trivy-backend.sarif
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-      - name: Scan the frontend image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ghcr.io/${{ env.OWNER }}/rms-frontend:${{ github.sha }}
-          format: sarif
-          output: trivy-frontend.sarif
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-      - name: Upload the backend image scan
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-backend.sarif
-          category: trivy-backend
-      - name: Upload the frontend image scan
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-frontend.sarif
-          category: trivy-frontend
-
-  # develop → environment "staging" (no approval), main → environment "production" (add required
-  # reviewers in GitHub settings). Each environment holds its own DEPLOY_* secrets and PUBLIC_URL.
-  # Nothing is deployed until the repository variable DEPLOY_ENABLED is "true".
-  deploy:
-    # Static name: GitHub does not evaluate expressions in the name of a skipped job.
-    name: Deploy
-    needs: images
-    if: github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
-    runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
-    permissions:
-      contents: read
-      packages: read
-    env:
-      APP_DIR: ${{ github.ref_name == 'main' && 'khoibep-rms' || 'khoibep-rms-staging' }}
-    steps:
-      - uses: actions/checkout@v7
-      - name: GHCR needs a lowercase owner
-        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
-      - name: Copy the compose file and the backup scripts to the server
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: deploy/docker-compose.prod.yml,deploy/backup.sh,deploy/restore.sh
-          target: ${{ env.APP_DIR }}
-          strip_components: 1
-      - name: Pull the new images and restart
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ env.APP_DIR }}
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            export IMAGE_TAG=${{ github.sha }} GHCR_OWNER=${{ env.OWNER }}
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
-            docker logout ghcr.io
-            docker image prune -f
-      - name: Check the new version answers
-        run: |
-          for _ in $(seq 1 30); do
-            if curl -fsS "${{ vars.PUBLIC_URL }}/actuator/health"; then exit 0; fi
-            sleep 5
-          done
-          echo "Health check failed. Roll back: re-run this job from the last good run." >&2
-          exit 1
+      # P0-09: the same script the Jenkinsfile runs before it deploys.
+      - name: Alert rules, Prometheus, Alertmanager, Alloy and Grafana configs
+        run: sh scripts/check-monitoring.sh

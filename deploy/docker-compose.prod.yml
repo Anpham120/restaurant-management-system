@@ -40,6 +40,8 @@ services:
       SPRINGDOC_SWAGGERUI_ENABLED: "false"
       # NFR-11: one JSON object per log line (Elastic Common Schema), for jq or a log collector.
       LOGGING_STRUCTURED_FORMAT_CONSOLE: ecs
+      # NFR-12: the monitoring agent reads /actuator/prometheus with this token; empty keeps it shut.
+      APP_METRICS_TOKEN: ${APP_METRICS_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy

@@ -1,0 +1,173 @@
+# P0-07, NFR-12: the alerts of docs-core/09 section 9.8. Tested by tests/khoibep_test.yml (promtool test rules, CI).
+# Annotations go to Telegram as HTML: keep the characters < > & out of them.
+groups:
+  - name: may-chu
+    rules:
+      - alert: ServerDown
+        # The application server pushes its numbers: none for 3 minutes means the server, its network or the agent
+        # is gone. This server's node exporter is read directly.
+        expr: absent_over_time(up{job="node", server="app"}[3m]) or up{job="node"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Máy {{ $labels.server }} mất liên lạc"
+          description: "Không nhận được số liệu của máy {{ $labels.server }}: máy tắt, mất mạng, hoặc agent giám sát dừng. Thử mở trang web và đăng nhập SSH vào máy."
+
+      - alert: HostCpuHigh
+        expr: 100 * (1 - avg by (server) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 90
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU máy {{ $labels.server }} bận {{ $value | printf \"%.0f\" }}%"
+          description: "CPU bận trên 90% suốt 15 phút. Xem container nào dùng nhiều CPU ở phần Container của dashboard Khói Bếp."
+
+      - alert: HostMemoryLow
+        expr: 100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RAM máy {{ $labels.server }} chỉ còn {{ $value | printf \"%.0f\" }}% trống"
+          description: "Còn dưới 10% RAM trống suốt 10 phút: máy sắp phải dùng swap và chậm hẳn đi."
+
+      - alert: HostDiskLow
+        expr: 100 * node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ổ đĩa máy {{ $labels.server }} chỉ còn {{ $value | printf \"%.0f\" }}% trống"
+          description: "Xoá image Docker cũ bằng docker image prune, và xem dung lượng thư mục backups."
+
+  - name: container
+    rules:
+      - alert: ContainerMissing
+        expr: count by (env, server) (container_last_seen{env=~"production|staging"}) < 4
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.env }} chỉ còn {{ $value }} container chạy"
+          description: "Cần đủ 4 container: db, backend, frontend, backup. Chạy docker compose -f docker-compose.prod.yml ps trong thư mục của môi trường đó."
+
+      - alert: ContainerMemoryHigh
+        expr: 100 * container_memory_working_set_bytes{env!=""} / (container_spec_memory_limit_bytes{env!=""} > 0) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.service }} của {{ $labels.env }} dùng {{ $value | printf \"%.0f\" }}% giới hạn RAM"
+          description: "Chạm giới hạn thì container bị tắt vì hết bộ nhớ (OOM) rồi khởi động lại."
+
+  - name: ung-dung
+    rules:
+      - alert: SiteDown
+        expr: probe_success{job="site"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Web {{ $labels.env }} không truy cập được"
+          description: "{{ $labels.instance }} không trả UP khi gọi từ máy công cụ suốt 2 phút."
+
+      - alert: CertificateExpiring
+        expr: (probe_ssl_earliest_cert_expiry{job="site"} - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Chứng chỉ HTTPS của {{ $labels.env }} còn {{ $value | printf \"%.0f\" }} ngày"
+          description: "Caddy tự gia hạn trước 30 ngày, nên còn dưới 14 ngày là việc gia hạn đang lỗi: xem docker compose logs trong ~/caddy."
+
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend {{ $labels.env }} không trả lời"
+          description: "Agent không đọc được số liệu của backend suốt 2 phút: backend sập, đang khởi động lại, hoặc APP_METRICS_TOKEN không khớp."
+
+      - alert: HighErrorRate
+        expr: |
+          sum by (env) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            / sum by (env) (rate(http_server_requests_seconds_count[5m])) > 0.05
+          and sum by (env) (rate(http_server_requests_seconds_count[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $value | humanizePercentage }} request của {{ $labels.env }} bị lỗi 5xx"
+          description: "Trên 5% request trả lỗi máy chủ suốt 5 phút. Xem log lỗi của backend ở cuối dashboard Khói Bếp."
+
+      - alert: SlowResponses
+        expr: |
+          histogram_quantile(0.95, sum by (env, le) (rate(http_server_requests_seconds_bucket{uri!~"/ws.*|/actuator.*"}[5m]))) > 0.5
+          and sum by (env) (rate(http_server_requests_seconds_count{uri!~"/ws.*|/actuator.*"}[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 thời gian trả lời của {{ $labels.env }} là {{ $value | humanizeDuration }}"
+          description: "Quá 500 ms suốt 10 phút (NFR-02). Xem đường dẫn nào chậm ở phần Ứng dụng của dashboard."
+
+      - alert: JvmOldGenHigh
+        expr: |
+          max by (env) (jvm_memory_used_bytes{area="heap", id=~".*(Old|Tenured).*"}
+            / jvm_memory_max_bytes{area="heap", id=~".*(Old|Tenured).*"}) > 0.9
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Bộ nhớ JVM (old gen) của {{ $labels.env }} đầy {{ $value | humanizePercentage }}"
+          description: "Đầy trên 90% suốt 15 phút: backend sắp chậm vì dọn rác liên tục, hoặc hết bộ nhớ."
+
+      - alert: DatabasePoolExhausted
+        expr: max by (env) (hikaricp_connections_pending) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend {{ $labels.env }} phải chờ kết nối CSDL"
+          description: "Có request chờ kết nối CSDL suốt 5 phút: truy vấn chậm hoặc CSDL quá tải."
+
+  - name: nghiep-vu
+    rules:
+      - alert: SepayWebhookFailing
+        expr: max by (env) (rms_sepay_webhook_consecutive_failures) >= 3
+        labels:
+          severity: critical
+        annotations:
+          summary: "Webhook SePay của {{ $labels.env }} lỗi {{ $value }} lần liên tiếp"
+          description: "Chuyển khoản không còn tự xác nhận (BR-32). Thu ngân xác nhận tay; kiểm tra SEPAY_API_KEY và webhook trên my.sepay.vn."
+
+      - alert: SepayWebhookErrors
+        expr: sum by (env) (increase(rms_sepay_webhook_failed_total[15m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Webhook SePay của {{ $labels.env }} có lỗi trong 15 phút qua"
+          description: "Sai khoá API, thiếu mã giao dịch, hoặc lỗi khi xử lý. Xem log của backend."
+
+      - alert: UnmatchedTransfers
+        expr: sum by (env) (increase(rms_bank_transactions_unmatched_total[15m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Có giao dịch chuyển khoản không khớp mới ở {{ $labels.env }}"
+          description: "Sai số tiền hoặc không có mã thanh toán (BR-16). Thu ngân mở tab Giao dịch không khớp để đối chiếu với khách."
+
+      - alert: BackupMissing
+        # The last good dump is old, or production has not written backup.prom at all for 26 hours (also right
+        # after the agent first starts, until "sh /backup.sh now" or the first night).
+        expr: |
+          time() - khoibep_backup_last_success_timestamp_seconds > 26 * 3600
+          or absent_over_time(khoibep_backup_last_success_timestamp_seconds{env="production"}[26h])
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Sao lưu {{ $labels.env }} quá 26 giờ chưa chạy"
+          description: "Xem docker compose -f docker-compose.prod.yml logs backup trong thư mục của môi trường đó."

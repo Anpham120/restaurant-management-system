@@ -11,6 +11,9 @@ services:
       STAGING_DOMAIN: ${STAGING_DOMAIN:?set STAGING_DOMAIN in .env}
       PRODUCTION_PORT: ${PRODUCTION_PORT:-8081}
       STAGING_PORT: ${STAGING_PORT:-8080}
+      # Only for the single-server Caddyfile (deploy/single), which also serves Grafana and Jenkins.
+      MONITOR_DOMAIN: ${MONITOR_DOMAIN:-}
+      JENKINS_DOMAIN: ${JENKINS_DOMAIN:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # The certificates: keep this volume, or Let's Encrypt rate limits may delay new ones.

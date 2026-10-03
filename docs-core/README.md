@@ -5,16 +5,20 @@ Bộ tài liệu nộp cho đồ án. Cấu trúc theo repo tham khảo [nazrul-
 | # | Tài liệu | Tương ứng repo tham khảo | Nội dung |
 |---|---|---|---|
 | 1 | [Tầm nhìn dự án](01-tam-nhin-du-an.md) | 01-project-vision | Vấn đề, mục tiêu, người dùng, phạm vi, tiêu chí nghiệm thu |
-| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 113 yêu cầu chức năng (21 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 11 yêu cầu phi chức năng |
+| 2 | [Yêu cầu](02-yeu-cau.md) | 02-requirements | 113 yêu cầu chức năng (21 nhóm, trong đó 4 nhóm nhân sự làm sau bản core), 13 yêu cầu phi chức năng |
 | 3 | [User stories](03-user-stories.md) | 03-user-stories | 41 story theo vai trò (7 story nhân sự), kèm tiêu chí chấp nhận |
-| 4 | [Quy trình nghiệp vụ](04-quy-trinh-nghiep-vu.md) | 04-business-workflow | Trước và sau; 5 quy trình P1 đến P5 |
+| 4 | [Quy trình nghiệp vụ](04-quy-trinh-nghiep-vu.md) | 04-business-workflow | Trước và sau; 10 quy trình P1 đến P10 |
 | 5 | [Quy tắc nghiệp vụ](05-quy-tac-nghiep-vu.md) | 05-business-rules | 48 quy tắc (6 quy tắc nhân sự), ghi rõ nơi kiểm tra trong mã |
 | 6 | [Mô hình miền](06-mo-hinh-mien.md) | 06-domain-model | Sơ đồ lớp, sơ đồ trạng thái, ma trận quyền |
 | 7 | [Cơ sở dữ liệu](07-erd.md) | 07-erd | ERD 35 bảng (7 bảng nhân sự ở mục 7.5), ràng buộc, index (database-first) |
 | 8 | [Thiết kế hệ thống](08-thiet-ke-he-thong.md) | 08-system-design | REST API, kênh realtime, màn hình, sơ đồ tuần tự |
 | 9 | [Kiến trúc và CI/CD](09-kien-truc-va-cicd.md) | 09-system-architecture | Kiến trúc, công nghệ, bảo mật, triển khai, pipeline, kiểm thử |
 | 10 | [Kế hoạch phát triển tiếp](10-ke-hoach-phat-trien.md) | — | Backlog theo giai đoạn, lịch 8 sprint, quy trình làm tính năng, rủi ro, phân công theo service |
-| 11 | [Triển khai và vận hành](11-trien-khai-van-hanh.md) | — | Dựng máy chủ, HTTPS, GitHub, SePay, sao lưu, theo dõi, cập nhật và quay lại bản cũ |
+| 11 | [Triển khai và vận hành](11-trien-khai-van-hanh.md) | — | Dựng máy ứng dụng và máy công cụ, HTTPS, GitHub, SePay, sao lưu, giám sát và cảnh báo Telegram, cập nhật và quay lại bản cũ |
+| 12 | [Thiết kế mở rộng](12-thiet-ke-mo-rong.md) | — | Nhiều chi nhánh, chạy khi mất mạng: chỉ thiết kế (P4-05) |
+| 13 | [Kế hoạch và báo cáo kiểm thử](13-kiem-thu.md) | — | Mức kiểm thử, kết quả, 56 test case theo AC của US-01 → US-19, kiểm thử tải, lỗi đã tìm thấy |
+| 14 | [Hướng dẫn sử dụng](14-huong-dan-su-dung.md) | — | Từng màn hình theo vai trò: phục vụ, bếp, thu ngân, khách, quản lý, quản trị; 26 ảnh chụp |
+| 15 | [Kịch bản demo 10 phút](15-kich-ban-demo.md) | — | Chia thời gian và người nói, chuẩn bị dữ liệu, bốn phần demo, xử lý sự cố, dàn ý 9 slide |
 
 Bản phân tích mở rộng (chuỗi quán, máy chủ tại quán, chạy offline) ở [`../docs/`](../docs/README.md), chỉ để tham khảo.
 
@@ -47,8 +51,9 @@ Mỗi nhóm yêu cầu nối tới story, quy tắc, nơi hiện thực và test
 | FR-21 Đơn app giao hàng | US-41 | BR-47 | `/api/orders`, `/api/orders/{id}/handover`; `/tables`, `/orders/:id`, `/kitchen`, `/admin/menu` | `AppOrderIntegrationTest`, `appOrder.test.ts` |
 
 Kết quả lần chạy gần nhất:
-- Backend: 192 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
+- Backend: 197 test, 0 lỗi (JUnit, PostgreSQL 17 qua Testcontainers), gồm 10 quy tắc kiến trúc của `ArchitectureTest`.
 - Frontend: 83 test (gồm test component), lint và kiểm tra kiểu sạch.
-- Độ phủ backend (JaCoCo): 90,3% số dòng (2103/2329), tối thiểu 70%.
-- `scripts/check-erd.mjs`, chạy trong CI: 20 migration, 29 bảng, 246 cột, 93 khoá, 0 lệch.
-- E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 19,5 ms với 30 người dùng và 6 tháng dữ liệu.
+- Độ phủ backend (JaCoCo): 91,9% số dòng (2630/2861), tối thiểu 70%, đo trên Jenkins ngày 03/10/2026.
+- Giám sát: 17 quy tắc cảnh báo, mỗi quy tắc có test `promtool` báo khi có sự cố và im khi bình thường.
+- `scripts/check-erd.mjs`, chạy trong CI: 23 migration, 35 bảng, 297 cột, 111 khoá, 0 lệch.
+- E2E: kịch bản nghiệm thu chạy xanh trong CI. Kiểm thử tải (k6, NFR-02): p95 23,8 ms, 0% lỗi với 30 người dùng và 6 tháng dữ liệu. Báo cáo đầy đủ ở [tài liệu 13](13-kiem-thu.md).

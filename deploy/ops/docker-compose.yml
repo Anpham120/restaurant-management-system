@@ -1,0 +1,130 @@
+# P0-07, NFR-12: the monitoring server (docs-core/09 section 9.8, docs-core/11 section 11.10).
+# Prometheus keeps the numbers 15 days, Loki the logs 14 days, Grafana shows both, Alertmanager sends alerts to
+# Telegram, blackbox exporter calls the restaurant from outside. Jenkins (P0-09) tests and deploys. Only Caddy faces the
+# Internet: Grafana, Jenkins, and the two paths the agent of the application server pushes to.
+# Runs from ~/monitoring with the .env made from .env.example: docker compose up -d --build
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      MONITOR_DOMAIN: ${MONITOR_DOMAIN:?set MONITOR_DOMAIN in .env}
+      JENKINS_DOMAIN: ${JENKINS_DOMAIN:?set JENKINS_DOMAIN in .env}
+      INGEST_USER: ${INGEST_USER:-agent}
+      INGEST_PASSWORD_HASH: ${INGEST_PASSWORD_HASH:?set INGEST_PASSWORD_HASH in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 128m
+
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    restart: unless-stopped
+    # Prometheus reads no environment variables in its config: start.sh writes the two site addresses in first.
+    entrypoint: ["/bin/sh", "/etc/prometheus/start.sh"]
+    environment:
+      SITE_URL_PRODUCTION: ${SITE_URL_PRODUCTION:?set SITE_URL_PRODUCTION in .env}
+      SITE_URL_STAGING: ${SITE_URL_STAGING:?set SITE_URL_STAGING in .env}
+      # This server's node exporter; empty on a single server (deploy/single).
+      OPS_NODE_EXPORTER: node-exporter:9100
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    mem_limit: 1g
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    restart: unless-stopped
+    # The bot token and chat id stay in .env: start.sh writes them into the config inside the container.
+    entrypoint: ["/bin/sh", "/etc/alertmanager/start.sh"]
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID in .env}
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - alertmanager-data:/alertmanager
+    mem_limit: 128m
+
+  loki:
+    image: grafana/loki:3.7.8
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    mem_limit: 768m
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    environment:
+      GF_SERVER_ROOT_URL: https://${MONITOR_DOMAIN}/
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/khoibep.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    mem_limit: 512m
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.28.0
+    restart: unless-stopped
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    mem_limit: 64m
+
+  # P0-08, P0-09: Jenkins, the CI/CD (docs-core/09 section 9.6). Runs the tests and builds the images with this
+  # server's Docker, and deploys them over SSH.
+  jenkins:
+    build: ./jenkins
+    restart: unless-stopped
+    environment:
+      CASC_JENKINS_CONFIG: /var/jenkins_conf/casc.yaml
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=false -Xmx1g
+      JENKINS_DOMAIN: ${JENKINS_DOMAIN:?set JENKINS_DOMAIN in .env}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set JENKINS_ADMIN_PASSWORD in .env}
+      GITHUB_USER: ${GITHUB_USER:?set GITHUB_USER in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:?set GITHUB_TOKEN in .env}
+      GHCR_OWNER: ${GHCR_OWNER:?set GHCR_OWNER in .env}
+      APP_SERVER_HOST: ${APP_SERVER_HOST:?set APP_SERVER_HOST in .env}
+      SITE_URL_PRODUCTION: ${SITE_URL_PRODUCTION}
+      SITE_URL_STAGING: ${SITE_URL_STAGING}
+    # The group that owns /var/run/docker.sock on this server: getent group docker | cut -d: -f3
+    group_add:
+      - "${DOCKER_GID:?set DOCKER_GID in .env}"
+    volumes:
+      - ./jenkins/casc.yaml:/var/jenkins_conf/casc.yaml:ro
+      # Private key of the deploy user on the application server; made on this server, never in Git.
+      - ./jenkins/app-server-key:/run/secrets/app_server_key:ro
+      - jenkins-home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    mem_limit: 2g
+
+  # This server's own CPU, memory and disk (network numbers are the container's, not the host's).
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes:
+      - /:/host:ro
+    mem_limit: 64m
+
+volumes:
+  caddy-data:
+  caddy-config:
+  prometheus-data:
+  alertmanager-data:
+  loki-data:
+  grafana-data:
+  jenkins-home:
