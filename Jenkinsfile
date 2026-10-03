@@ -47,13 +47,20 @@ pipeline {
                         sh 'sh deploy/ops/jenkins/in-container.sh "$NODE_IMAGE" . "node scripts/check-erd.mjs"'
                     }
                 }
-                // PostgreSQL comes from Testcontainers, through the server's Docker; Maven keeps its downloads.
+                // PostgreSQL comes from Testcontainers, through the server's Docker, and publishes a port there. On a
+                // Linux server the tests reach it on the server's own loopback, which ufw leaves open; Docker Desktop
+                // (Jenkins tried on a laptop) only forwards it through host.docker.internal. Maven keeps its downloads.
                 stage('Backend') {
                     steps {
                         sh '''
+                            if docker info --format '{{.OperatingSystem}}' | grep -q 'Docker Desktop'; then
+                                network="--add-host host.docker.internal:host-gateway -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal"
+                            else
+                                network="--network host -e TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1"
+                            fi
                             sh deploy/ops/jenkins/in-container.sh "$JDK_IMAGE" backend \
                                 "./mvnw -B verify && sh ../scripts/coverage-summary.sh" \
-                                -v khoibep-m2:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock
+                                -v khoibep-m2:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock $network
                         '''
                     }
                 }
