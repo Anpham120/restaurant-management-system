@@ -12,7 +12,8 @@ compose up -d --no-build
 echo "Waiting for the app"
 up=false
 for _ in $(seq 1 60); do
-  if compose exec -T frontend wget -qO- http://localhost/actuator/health 2>/dev/null | grep -q '"status":"UP"'; then
+  # 127.0.0.1, not localhost: busybox wget tries ::1 first, and the web container's nginx listens on IPv4 only.
+  if compose exec -T frontend wget -qO- http://127.0.0.1/actuator/health 2>/dev/null | grep -q '"status":"UP"'; then
     up=true
     break
   fi
