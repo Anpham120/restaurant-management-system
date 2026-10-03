@@ -152,6 +152,7 @@ Kết quả:
 | Trang Thực đơn tràn ngang trên điện thoại | Chạy thử P1-07 ở khổ 375 px | Bảng danh mục và bảng món cuộn ngang bên trong (PR #79) |
 | Tệp `.xlsx` thiếu kiểu mặc định, openpyxl cảnh báo | Mở thử tệp xuất bằng openpyxl ở chế độ coi cảnh báo là lỗi | Thêm `cellStyles` (PR #81) |
 | Bảng loại thuế chật; cột thao tác của hàng chờ hoá đơn bị khuất khi cuộn ngang | Xem ảnh chụp lúc chạy thử P4-03 | Gọn còn 3 cột, ghim cột thao tác bên phải (PR #81) |
+| Image backend có 3 lỗ hổng CRITICAL của Tomcat 11.0.24 (CVE-2026-65182, CVE-2026-65905, CVE-2026-68525) và các lỗ hổng HIGH gây từ chối dịch vụ của Jackson 3.1.5, 2.21.5 | Trivy quét image trước lần triển khai đầu | Spring Boot 4.1.1 chưa có bản mới, nên ghi đè phiên bản trong `pom.xml`: Tomcat 11.0.26, Jackson 3.1.7 và 2.21.7 (PR #97) |
 
 ## 13.6 Việc còn lại
 
