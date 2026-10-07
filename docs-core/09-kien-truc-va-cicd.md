@@ -46,7 +46,7 @@ flowchart LR
 │       ├── controller/              REST API, kiểm quyền
 │       ├── service/                 quy tắc nghiệp vụ, giao dịch
 │       ├── repository/              Spring Data JPA
-│       ├── entity/                  mỗi bảng một lớp
+│       ├── model/                   model (entity JPA), mỗi bảng một lớp
 │       ├── dto/                     dữ liệu vào, ra của API
 │       ├── enums/                   trạng thái và loại
 │       ├── aspect/                  Spring AOP
@@ -71,14 +71,14 @@ Backend là **một ứng dụng Spring Boot (monolith) chia theo tầng** (P3-0
 | `controller/` | Nhận request, kiểm quyền bằng `@PreAuthorize`, gọi service | `OrderController`, `PaymentController` |
 | `service/` | Quy tắc nghiệp vụ, mở giao dịch (`@Transactional`). Các lớp tính toán thuần cũng nằm ở đây | `OrderService`, `PayCalculator`, `PaymentReference`, `VietQr`, `QrTokenGenerator` |
 | `repository/` | Đọc ghi CSDL bằng Spring Data JPA | `OrderRepository` |
-| `entity/` | Mỗi bảng một lớp `@Entity`; riêng bảng `menu_item_app_price` là `@ElementCollection` trong `MenuItem` | `Order`, `Payment` |
+| `model/` | Model của ứng dụng: mỗi bảng một lớp `@Entity` (JPA); riêng bảng `menu_item_app_price` là `@ElementCollection` trong `MenuItem` | `Order`, `Payment` |
 | `dto/` | Dữ liệu vào, ra của API (`record`), gom theo nghiệp vụ | `OrderDtos`, `PaymentDtos` |
 | `enums/` | Trạng thái và loại | `OrderStatus`, `ItemStatus` |
 | `aspect/` | Spring AOP | `LoggingAspect` |
 | `config/` | Cấu hình Spring; thành phần chạy lúc khởi động | `SecurityConfig`, `DemoAccountsInitializer`, `InitialAdminInitializer` |
 | `common/` | Dùng chung, không phải nghiệp vụ: lỗi (`exception/`), sự kiện realtime (`realtime/`), người đăng nhập và giới hạn tần suất (`security/`), tiện ích (`util/`) | `ApiException`, `RealtimeEvents`, `Money` |
 
-**Vì sao chia theo tầng.** Nhiều bảng được nhiều nghiệp vụ dùng chung. Ví dụ bảng `orders` (`Order`) được gọi món, thanh toán, đặt bàn, báo cáo và hoá đơn điện tử cùng đọc ghi. Nếu chia theo nghiệp vụ, entity đó "thuộc" package `order` dù không riêng của nghiệp vụ nào. Chia theo tầng thì mọi entity nằm chung `entity/`, mọi service chung `service/`, và chiều gọi giữa các tầng được kiểm bằng test kiến trúc (dưới).
+**Vì sao chia theo tầng.** Nhiều bảng được nhiều nghiệp vụ dùng chung. Ví dụ bảng `orders` (`Order`) được gọi món, thanh toán, đặt bàn, báo cáo và hoá đơn điện tử cùng đọc ghi. Nếu chia theo nghiệp vụ, model đó "thuộc" package `order` dù không riêng của nghiệp vụ nào. Chia theo tầng thì mọi model nằm chung `model/`, mọi service chung `service/`, và chiều gọi giữa các tầng được kiểm bằng test kiến trúc (dưới). Package model chứa entity JPA nên lớp vẫn mang annotation `@Entity`; tên `model` là cách gọi chữ M trong MVC.
 
 **AOP.** `aspect/LoggingAspect` (`@Aspect`) bọc mọi phương thức public của các lớp `@Service`:
 - Lời gọi chậm hơn `app.slow-service-threshold` (mặc định 500 ms, bằng mục tiêu p95 của NFR-02) được ghi log `WARN` kèm tên lớp, tên phương thức và thời gian.
@@ -89,7 +89,7 @@ Nhờ đó, khi cảnh báo `SlowResponses` (mục 9.8) báo một đường d�
 
 **Nghiệp vụ nằm ở lớp nào.** Mỗi nghiệp vụ có lớp ở nhiều tầng, đặt tên cùng gốc; repository, DTO và enum theo cùng tên (`OrderRepository`, `OrderDtos`, `OrderStatus`):
 
-| Nghiệp vụ | Controller | Service | Entity |
+| Nghiệp vụ | Controller | Service | Model |
 |---|---|---|---|
 | Gọi món, bếp, QR, giảm giá | `OrderController`, `GuestOrderController`, `ServiceRequestController`, `AdjustmentController` | `OrderService`, `OrderItemService`, `GuestOrderService`, `ServiceRequestService`, `AdjustmentService` | `Order`, `OrderItem`, `OrderTable`, `ServiceRequest`, `Adjustment` |
 | Bàn | `TableController` | `TableService`, `QrTokenGenerator` | `DiningTable` |
@@ -98,10 +98,10 @@ Nhờ đó, khi cảnh báo `SlowResponses` (mục 9.8) báo một đường d�
 | Cài đặt | `SettingsController` | `SettingsService` | `RestaurantSettings` |
 | Thực đơn, thuế | `MenuController`, `TaxController` | `MenuService`, `TaxService` | `Category`, `MenuItem`, `TaxCategory`, `TaxRate` |
 | Kho, nhà cung cấp | `InventoryController`, `PurchaseController`, `RecipeController` | `InventoryService`, `SupplierService`, `GoodsReceiptService`, `RecipeService`, `StockUsageService` | `InventoryItem`, `Supplier`, `GoodsReceipt`, `ReceiptLine`, `RecipeLine`, `StockMovement` |
-| Báo cáo | `ReportController` | `ReportService` | (không có entity riêng) |
+| Báo cáo | `ReportController` | `ReportService` | (không có model riêng) |
 | Khách hàng | `CustomerController` | `CustomerService` | `Customer` |
 | Hoá đơn điện tử | `EInvoiceController` | `EInvoiceService` | `EInvoice`, `EInvoiceLine` |
-| Đăng nhập | `AuthController` | `AuthService` | (không có entity riêng) |
+| Đăng nhập | `AuthController` | `AuthService` | (không có model riêng) |
 | Nhân viên | `EmployeeController` | `EmployeeService` | `Employee` |
 | Xếp ca | `ScheduleController` | `ScheduleService` | `WorkShift`, `ShiftAssignment` |
 | Chấm công | `AttendanceController` | `AttendanceService` | `Attendance` |
@@ -112,9 +112,9 @@ Nhờ đó, khi cảnh báo `SlowResponses` (mục 9.8) báo một đường d�
 **Test.** Test tích hợp (gọi API với PostgreSQL thật, kế thừa `IntegrationTest`) nằm ở `integration/`, ví dụ `integration/OrderFlowIntegrationTest`. Test đơn vị đặt cùng package với lớp nó kiểm tra, ví dụ `enums/ItemStatusTest`, `service/PayCalculatorTest`, `aspect/LoggingAspectTest`.
 
 `ArchitectureTest` (ArchUnit, 11 quy tắc) giữ cấu trúc này khi cả nhóm cùng viết code; đặt sai chỗ thì CI đỏ, kèm tên class sai:
-- Controller, service, repository, entity, enum, DTO, aspect phải nằm đúng package của tầng mình.
-- Chỉ gọi xuống: controller không dùng thẳng repository, không ai gọi controller, repository và entity không gọi service.
-- Entity và enum không dùng DTO, vì dữ liệu không nên phụ thuộc vào cách API định dạng yêu cầu và trả lời.
+- Controller, service, repository, model, enum, DTO, aspect phải nằm đúng package của tầng mình.
+- Chỉ gọi xuống: controller không dùng thẳng repository, không ai gọi controller, repository và model không gọi service.
+- Model và enum không dùng DTO, vì dữ liệu không nên phụ thuộc vào cách API định dạng yêu cầu và trả lời.
 
 Frontend vẫn chia theo tính năng (`features/<nghiệp vụ>`), mỗi thư mục ứng với một nghiệp vụ ở bảng trên:
 
