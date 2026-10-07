@@ -8,6 +8,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import jakarta.persistence.Entity;
+import org.aspectj.lang.annotation.Aspect;
 import org.springframework.data.repository.Repository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,6 +48,10 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule dtosLiveInDto = classes().that().haveSimpleNameEndingWith("Dtos")
             .should().resideInAPackage("..dto..");
+
+    @ArchTest
+    static final ArchRule aspectsLiveInAspect = classes().that().areAnnotatedWith(Aspect.class)
+            .should().resideInAPackage("..aspect..");
 
     // Calls go down the layers only.
 
