@@ -47,9 +47,10 @@ public class OrderService {
     private final StockUsageService stockUsage;
     private final RealtimeEvents realtime;
 
+    /** The orders still open, oldest first, with their tables and dishes. */
     @Transactional(readOnly = true)
-    public List<OrderDto> list(OrderStatus status) {
-        return orders.findWithItemsByStatus(status).stream().map(OrderDto::from).toList();
+    public List<OrderDto> openOrders() {
+        return orders.findWithItemsByStatus(OrderStatus.OPEN).stream().map(OrderDto::from).toList();
     }
 
     @Transactional(readOnly = true)

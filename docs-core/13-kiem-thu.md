@@ -44,8 +44,8 @@ Các mức Đơn vị, Tích hợp, Kiến trúc, Frontend, ERD, E2E và Cảnh 
 
 | Hạng mục | Kết quả |
 |---|---|
-| Backend | **192 test, 0 lỗi**, trong 36 lớp test (gồm 10 quy tắc kiến trúc) |
-| Độ phủ backend | **91,9%** số dòng (2608/2839); ngưỡng 70% |
+| Backend | **209 test, 0 lỗi**, trong 41 lớp test (gồm 11 quy tắc kiến trúc); đo lại bằng `./mvnw clean verify` ngày 07/10/2026 |
+| Độ phủ backend | **92,0%** số dòng (2647/2876); ngưỡng 70% |
 | Frontend | **83 test** trong 25 tệp, 0 lỗi; ESLint và kiểm tra kiểu sạch |
 | E2E | 3 kịch bản xanh: luồng QR và chuyển khoản tới bàn trống; mỗi vai trò chỉ làm việc của mình; trang "Của tôi" |
 | ERD và migration | 23 migration, 35 bảng, 297 cột, 111 khoá, 0 lệch |

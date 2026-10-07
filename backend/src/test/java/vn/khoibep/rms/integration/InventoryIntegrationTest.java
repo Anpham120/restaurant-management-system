@@ -47,6 +47,25 @@ class InventoryIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].createdByName").value("Nguyễn Văn Quản"));
     }
 
+    /** FR-09.3: the history holds the newest 200 movements; older ones stay in the database. */
+    @Test
+    void historyListsTheNewest200Movements() throws Exception {
+        long id = readLong(post("/api/inventory-items", as("quanly"),
+                        Map.of("name", unique("Muối"), "unit", "kg", "minQuantity", 5))
+                        .andExpect(status().isCreated()),
+                "$.id");
+        String movements = "/api/inventory-items/" + id + "/movements";
+        for (int i = 1; i <= 201; i++) {
+            post(movements, as("quanly"), Map.of("type", "IN", "quantity", 1, "note", "Lần " + i))
+                    .andExpect(status().isCreated());
+        }
+
+        get(movements, as("quanly"))
+                .andExpect(jsonPath("$.length()").value(200))
+                .andExpect(jsonPath("$[0].note").value("Lần 201"))
+                .andExpect(jsonPath("$[199].note").value("Lần 2"));
+    }
+
     @Test
     void onlyManagersWorkWithInventory() throws Exception {
         get("/api/inventory-items", as("phucvu")).andExpect(status().isForbidden());

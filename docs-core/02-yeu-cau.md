@@ -88,7 +88,7 @@
 | FR-08.4 | Tự xác nhận khi nhận **webhook SePay** hợp lệ. Màn hình thu ngân và điện thoại khách cập nhật ngay. Đơn đóng, bàn trống | M | BR-15, 16 |
 | FR-08.5 | **Khách tự thanh toán** trên trang QR: bấm "Thanh toán" → hiện VietQR → tự xác nhận | M | BR-13, 14 |
 | FR-08.6 | Thu ngân **xác nhận tay** khi webhook không tới. Hệ thống ghi người xác nhận | M | BR-17 |
-| FR-08.7 | Xem danh sách giao dịch ngân hàng **không khớp** để kiểm tra | S | BR-16 |
+| FR-08.7 | Xem danh sách giao dịch ngân hàng **không khớp** để kiểm tra (200 giao dịch gần nhất) | S | BR-16 |
 | FR-08.8 | **Cảnh báo webhook lỗi**: webhook SePay bị từ chối hoặc xử lý lỗi **3 lần liên tiếp** thì màn hình thu ngân hiện cảnh báo trong ≤ 2 giây, kèm lý do và lúc bắt đầu lỗi, để thu ngân kiểm tra app ngân hàng rồi xác nhận tay. Nhận được một webhook hợp lệ thì cảnh báo tự tắt | C | BR-32 |
 | FR-08.9 | **In phiếu khổ 80 mm** từ trình duyệt. Phục vụ và thu ngân in **phiếu tạm tính** của đơn đang mở để khách kiểm tra. Thu ngân in **phiếu thanh toán** sau khi đơn đã trả, in lại được. Phiếu ghi tên, địa chỉ, điện thoại quán, bàn, các món tính tiền và tổng; phiếu thanh toán ghi thêm cách trả, tiền khách đưa và tiền thối, hoặc mã chuyển khoản | M | BR-12, 33 |
 | FR-08.10 | **Giảm giá, tặng món**: thu ngân hoặc quản lý giảm một số tiền trên cả bill, hoặc tặng nguyên một dòng món, kèm lý do. Bill, trang khách và phiếu in ghi tiền món, từng khoản giảm và tổng sau giảm. Khoản giảm còn huỷ được khi đơn chưa trả | M | BR-12, 35 |
@@ -102,7 +102,7 @@
 |---|---|---|---|
 | FR-09.1 | Thêm, sửa nguyên liệu: tên, đơn vị, mức tối thiểu | M | — |
 | FR-09.2 | Nhập kho, xuất kho, kiểm kê (điều chỉnh về số thực tế), có ghi chú | M | BR-19 |
-| FR-09.3 | Xem lịch sử biến động của từng nguyên liệu | M | BR-19 |
+| FR-09.3 | Xem lịch sử biến động của từng nguyên liệu (200 lần gần nhất) | M | BR-19 |
 | FR-09.4 | Cảnh báo nguyên liệu có tồn ≤ mức tối thiểu | M | BR-20 |
 | FR-09.5 | **Nhà cung cấp**: tên, điện thoại, địa chỉ, mã số thuế, ghi chú. Ngừng giao dịch thì không chọn được khi lập phiếu, nhưng phiếu cũ vẫn giữ | S | BR-37 |
 | FR-09.6 | **Phiếu nhập có giá**: chọn nhà cung cấp, các dòng nguyên liệu với số lượng và đơn giá; tổng tiền phiếu tự tính. Lưu phiếu thì tồn tăng, lịch sử kho ghi số phiếu. Xem lại phiếu theo khoảng ngày | S | BR-19, 37 |

@@ -10,6 +10,9 @@ import SuppliersTab from '../components/SuppliersTab'
 import UsageTab from '../components/UsageTab'
 import { stockValue } from '../utils/receipt'
 
+/** FR-09.3: the server sends at most this many movements, newest first. */
+const HISTORY_ROWS = 200
+
 /** FR-09: ingredients, stock movements and low-stock warnings; receipts, suppliers (FR-09.5 → FR-09.7); usage (FR-09.10). */
 export default function InventoryPage() {
   const queryClient = useQueryClient()
@@ -168,6 +171,7 @@ export default function InventoryPage() {
       </Modal>
 
       <Drawer title={`Lịch sử: ${historyOf?.name ?? ''}`} open={historyOf !== null} onClose={() => setHistoryOf(null)} size={560}>
+        {history.data?.length === HISTORY_ROWS && <Typography.Paragraph type="secondary">Chỉ hiện {HISTORY_ROWS} lần thay đổi gần nhất.</Typography.Paragraph>}
         <Table<StockMovement>
           size="small"
           rowKey="id"

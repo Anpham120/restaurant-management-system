@@ -40,7 +40,7 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | Bàn | `GET /tables` (kèm trạng thái) | WAITER, MANAGER, CASHIER | FR-04.4 |
 | | `POST /tables`, `PUT /tables/{id}`, `DELETE /tables/{id}` | MANAGER | FR-04.1 |
 | | `POST /tables/{id}/qr-token` (tạo lại mã) | MANAGER | FR-04.3 |
-| Đơn | `GET /orders?status=OPEN`, `GET /orders/{id}` | WAITER, MANAGER, CASHIER | FR-05, FR-08.1 |
+| Đơn | `GET /orders` (chỉ các đơn đang mở; hỏi trạng thái khác thì báo lỗi 400), `GET /orders/{id}` | WAITER, MANAGER, CASHIER | FR-05, FR-08.1 |
 | | `POST /orders` (đơn app: `type` là `TAKEAWAY`, có `channel` và `appOrderCode`) | WAITER, MANAGER | FR-05.1, FR-21.2 |
 | | `POST /orders/{id}/items` | WAITER, MANAGER | FR-05.2, FR-05.3 |
 | | `POST /orders/{id}/confirm-pending` | WAITER, MANAGER | FR-06.3 |
@@ -57,7 +57,7 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | | `POST /orders/{id}/adjustments` (giảm một số tiền trên cả bill, hoặc tặng một dòng món; kèm lý do) | CASHIER, MANAGER | FR-08.10 |
 | | `POST /adjustments/{id}/cancel` (huỷ khoản giảm khi đơn chưa trả) | CASHIER, MANAGER | FR-08.10 |
 | | `GET /adjustments?status=PENDING`, `POST /adjustments/{id}/approve`, `POST /adjustments/{id}/reject` | MANAGER | FR-08.11 |
-| | `GET /bank-transactions?status=UNMATCHED` | CASHIER, MANAGER | FR-08.7 |
+| | `GET /bank-transactions?status=UNMATCHED` (200 giao dịch mới nhất của trạng thái đó) | CASHIER, MANAGER | FR-08.7 |
 | | `GET /bank-transactions/webhook-status` (webhook SePay có đang lỗi liên tiếp không) | CASHIER, MANAGER | FR-08.8 |
 | | `POST /webhooks/sepay` | SePay (header API key) | FR-08.4 |
 | Ca két | `GET /cash-shifts/current` (ca đang mở và tiền mặt dự kiến; chưa có ca thì 204), `POST /cash-shifts` (mở ca), `POST /cash-shifts/current/expenses`, `POST /cash-shifts/current/close`. Không có API sửa, xoá | CASHIER, MANAGER | FR-17.1 → FR-17.3 |
@@ -80,7 +80,7 @@ Tiền tố `/api`. Dữ liệu JSON. Lỗi trả theo chuẩn **Problem Details
 | Khách gọi | `GET /service-requests` (đang chờ, cũ nhất trước) | WAITER, MANAGER | FR-06.6 |
 | | `POST /service-requests/{id}/take` (đã nhận) | WAITER, MANAGER | FR-06.7 |
 | Kho | `GET /inventory-items`, `POST /inventory-items`, `PUT /inventory-items/{id}` | MANAGER | FR-09.1, FR-09.4 |
-| | `POST /inventory-items/{id}/movements`, `GET /inventory-items/{id}/movements` | MANAGER | FR-09.2, FR-09.3 |
+| | `POST /inventory-items/{id}/movements`, `GET /inventory-items/{id}/movements` (200 dòng mới nhất) | MANAGER | FR-09.2, FR-09.3 |
 | | `GET /suppliers`, `POST /suppliers`, `PUT /suppliers/{id}` (không có xoá; `active` để ngừng giao dịch) | MANAGER | FR-09.5 |
 | | `GET /goods-receipts?from=&to=`, `GET /goods-receipts/{id}`, `POST /goods-receipts` (không có sửa, xoá) | MANAGER | FR-09.6, FR-09.7 |
 | | `GET /recipes`, `PUT /menu-items/{id}/recipe` (gửi cả định lượng của món; danh sách rỗng là bỏ định lượng) | MANAGER | FR-09.8 |

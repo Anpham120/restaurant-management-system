@@ -142,7 +142,7 @@ Chỉ chiếu ảnh, không demo trực tiếp:
 - Database-first: thiết kế ERD rồi mới viết migration. CI so ERD với migration ở mỗi PR.
 - Nhánh `feature` → `develop` → `main`. Mỗi PR chạy test backend, frontend và E2E; xanh mới được merge. Merge vào `main` thì build image; bước triển khai đã viết sẵn, bật khi máy chủ sẵn sàng ([tài liệu 11](11-trien-khai-van-hanh.md)).
 - Kết quả kiểm thử ([tài liệu 13](13-kiem-thu.md)):
-  - 203 test backend, độ phủ 91,9%.
+  - 209 test backend, độ phủ 92,0%.
   - 83 test frontend.
   - 3 kịch bản E2E.
   - 56 test case theo tiêu chí chấp nhận.

@@ -175,4 +175,18 @@ class PaymentIntegrationTest extends IntegrationTest {
         get("/api/bank-transactions?status=IGNORED", as("thungan"))
                 .andExpect(jsonPath("$[?(@.providerTxnId == '%s')]", String.valueOf(txnId)).value(hasSize(1)));
     }
+
+    /** FR-08.7: the list holds the newest 200 transactions of the status; older ones stay in the database. */
+    @Test
+    void bankTransactionsListTheNewest200() throws Exception {
+        long last = 0;
+        for (int i = 1; i <= 201; i++) {
+            last = newTxnId();
+            sepay(SEPAY_KEY, last, "tra tien lan " + i, 10_000, "out").andExpect(jsonPath("$.success").value(true));
+        }
+
+        get("/api/bank-transactions?status=IGNORED", as("thungan"))
+                .andExpect(jsonPath("$.length()").value(200))
+                .andExpect(jsonPath("$[0].providerTxnId").value(String.valueOf(last)));
+    }
 }

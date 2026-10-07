@@ -2,6 +2,7 @@ package vn.khoibep.rms.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -122,6 +123,22 @@ class OrderFlowIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
         get("/api/tables", as("phucvu"))
                 .andExpect(jsonPath("$[?(@.id == %d)].status", table.id()).value(hasItem("AVAILABLE")));
+    }
+
+    /** P3-07: the list holds open orders only; a closed order is read by its id. */
+    @Test
+    void onlyOpenOrdersAreListed() throws Exception {
+        long open = openOrder(newTable().id());
+        long cancelled = openOrder(newTable().id());
+        post("/api/orders/" + cancelled + "/cancel", as("phucvu"), null).andExpect(status().isOk());
+
+        get("/api/orders", as("phucvu"))
+                .andExpect(jsonPath("$[?(@.id == %d)]", open).value(hasSize(1)))
+                .andExpect(jsonPath("$[?(@.id == %d)]", cancelled).value(hasSize(0)))
+                .andExpect(jsonPath("$[?(@.status != 'OPEN')]").value(hasSize(0)));
+        ResultActions paid = get("/api/orders?status=PAID", as("thungan")).andExpect(status().isBadRequest());
+        assertThat(body(paid)).contains("Chỉ xem được danh sách đơn đang mở");
+        get("/api/orders/" + cancelled, as("phucvu")).andExpect(jsonPath("$.status").value("CANCELLED"));
     }
 
     @Test
