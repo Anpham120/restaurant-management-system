@@ -18,7 +18,7 @@ Tài liệu này là việc P5-01 ([tài liệu 10](10-ke-hoach-phat-trien.md)).
 |---|---|---|
 | Đơn vị | JUnit 5, AssertJ, Mockito | Mỗi PR và mỗi lần push |
 | Tích hợp | Spring Boot Test, MockMvc, Testcontainers (PostgreSQL 17 thật) | Mỗi PR và mỗi lần push |
-| Kiến trúc | ArchUnit, 10 quy tắc | Mỗi PR và mỗi lần push |
+| Kiến trúc | ArchUnit, 11 quy tắc | Mỗi PR và mỗi lần push |
 | Frontend, component | Vitest, Testing Library (jsdom) | Mỗi PR và mỗi lần push |
 | ERD và migration | `scripts/check-erd.mjs` | Mỗi PR và mỗi lần push |
 | E2E | Playwright trên Chromium, cả ứng dụng dựng bằng Docker Compose | Mỗi PR và mỗi lần push |

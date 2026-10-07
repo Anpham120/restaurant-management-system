@@ -119,6 +119,7 @@ P2-04 **đã làm xong** (issue #18), trước lịch: yêu cầu FR-10.4 → FR
 | P3-03 | **Kiểm thử tải k6** theo NFR-02 (30 người, p95 ≤ 500 ms); sửa truy vấn chậm | S | M |
 | P3-04 | Test component cho frontend (Testing Library); đo độ phủ backend bằng JaCoCo, mục tiêu ≥ 70% | M | S |
 | P3-05 | Log JSON, số liệu Actuator; cảnh báo khi webhook SePay lỗi liên tục | S | C |
+| P3-06 | **Chia backend theo tầng** (monolith chuẩn Spring Boot: controller, service, repository, model, dto, enums dùng chung cho mọi nghiệp vụ) và **AOP**: aspect ghi log lời gọi service chậm | M | M |
 
 P3-01 → P3-05 **đã làm xong** (issue #19 → #23), trước lịch:
 - P3-01: giới hạn theo bàn (10 lần gửi mỗi phút, tối đa 30 món chờ xác nhận) và theo tên đăng nhập (10 lần thử mỗi phút), bằng Bucket4j. Không giới hạn theo IP, lý do ở tài liệu 09 mục 9.4.
@@ -126,6 +127,8 @@ P3-01 → P3-05 **đã làm xong** (issue #19 → #23), trước lịch:
 - P3-03: đo bằng k6 với 30 người trong 2 phút, sau khi nạp 6 tháng bán hàng (khoảng 21.500 đơn, 107.000 món). p95 toàn bộ là 19,5 ms, 0% lỗi. Chậm nhất là báo cáo 30 ngày (p95 156 ms). Không có truy vấn nào cần sửa: báo cáo đã cộng dồn trong SQL, báo cáo 180 ngày trả lời trong khoảng 0,2 giây.
 - P3-04: lúc bật JaCoCo, test backend chạy tới 83,2% số dòng; từ nay CI đỏ nếu dưới 70%. Test component phủ phần chọn món vào giỏ, mã VietQR và nhãn trạng thái món.
 - P3-05: yêu cầu FR-08.8, NFR-11, AC3 và AC4 của US-19, BR-32; không đổi CSDL. Staging và production ghi log JSON chuẩn ECS; `/actuator/metrics` chỉ ADMIN xem được; webhook SePay lỗi 3 lần liên tiếp thì màn hình thu ngân hiện cảnh báo, tự tắt khi webhook chạy lại.
+
+P3-06 **đã làm xong** (issue #102), theo yêu cầu của giảng viên: nhiều bảng được nhiều nghiệp vụ dùng chung (ví dụ `orders` được gọi món, thanh toán, đặt bàn, báo cáo và hoá đơn điện tử cùng dùng), nên backend chia theo tầng thay cho chia theo nghiệp vụ (tài liệu 09 mục 9.3). Không đổi CSDL, API hay hành vi. Thêm `LoggingAspect` ghi log lời gọi service chậm hơn 500 ms (NFR-11). Package của entity JPA mang tên `model/`, theo cách gọi của môn (chữ M trong MVC). Test tích hợp chuyển vào `integration/`; `ArchitectureTest` thêm quy tắc cho aspect.
 
 ### Giai đoạn 4 — Mở rộng, chọn theo thời gian còn lại (sprint 7)
 
@@ -214,14 +217,16 @@ Bảng việc nằm trên GitHub: mỗi sprint là một [milestone](https://git
 
 Theo yêu cầu của môn, mỗi người giữ **một service** và làm cả backend lẫn frontend của service đó, gồm cả test và tài liệu. Hạ tầng dùng chung không phải service, nên Anpham120 (mạnh hạ tầng) giữ thêm.
 
-| Service | Người | Backend (`vn.khoibep.rms.*`) | Frontend | Việc |
+Từ P3-06, backend chia theo tầng nên một service không còn là một package: người giữ service giữ **các lớp của nghiệp vụ đó ở mọi tầng** (controller, service, repository, model, dto, enums), theo tên ở cột Backend. Bảng đầy đủ ở tài liệu 09 mục 9.3.
+
+| Service | Người | Backend (lớp) | Frontend | Việc |
 |---|---|---|---|---|
-| Gọi món, bếp, QR | Anpham120 | `order` | `/orders/:id`, `/kitchen`, `/q/:token` | P1-05, P1-06, P3-01; tuỳ chọn P4-04 |
-| Bàn và đặt bàn | totototototoads | `table` | `/tables`, `/admin/tables` | P1-01, P4-01; tuỳ chọn P4-02 |
-| Thanh toán | buidaoducanh1210 | `payment`, `settings` | `/cashier`, `/admin/settings` | P0-03, P1-02, P1-03, P1-04, P2-01; P1-07 nếu còn sức; tuỳ chọn P4-03 |
-| Thực đơn, kho, báo cáo | Tanh2k8-123 | `menu`, `inventory`, `report` | `/admin/menu`, `/admin/inventory`, `/admin/reports` | P2-02, P2-03, P2-04 |
-| Nhân sự | quanghieu1605 | `auth`, `employee`, `schedule`, `attendance`, `leave`, `payroll` | `/login`, `/me`, `/admin/employees`, `/admin/schedule`, `/admin/attendance`, `/admin/leave`, `/admin/payroll` | P2-05 → P2-09 (đã xong); P3-02 nếu còn sức |
-| Hạ tầng (dùng chung) | Anpham120 | `config`, `common`, Docker, CI/CD | — | P0-01, P0-02, P0-05, P3-03, P3-04, P3-05 |
+| Gọi món, bếp, QR | Anpham120 | `Order*`, `GuestOrder*`, `ServiceRequest*`, `Adjustment*` | `/orders/:id`, `/kitchen`, `/q/:token` | P1-05, P1-06, P3-01; tuỳ chọn P4-04 |
+| Bàn và đặt bàn | totototototoads | `Table*`, `DiningTable`, `QrTokenGenerator` | `/tables`, `/admin/tables` | P1-01, P4-01; tuỳ chọn P4-02 |
+| Thanh toán | buidaoducanh1210 | `Payment*`, `CashShift*`, `CashExpense`, `BankTransaction*`, `Sepay*`, `VietQr`, `Settings*`, `RestaurantSettings` | `/cashier`, `/admin/settings` | P0-03, P1-02, P1-03, P1-04, P2-01; P1-07 nếu còn sức; tuỳ chọn P4-03 |
+| Thực đơn, kho, báo cáo | Tanh2k8-123 | `Menu*`, `Category*`, `Tax*`, `Inventory*`, `Supplier*`, `Purchase*`, `GoodsReceipt*`, `ReceiptLine`, `Recipe*`, `Stock*`, `Report*` | `/admin/menu`, `/admin/inventory`, `/admin/reports` | P2-02, P2-03, P2-04 |
+| Nhân sự | quanghieu1605 | `Auth*`, `Employee*`, `Schedule*`, `WorkShift`, `ShiftAssignment`, `Attendance*`, `Leave*`, `Payroll*`, `Payslip`, `PayAdjustment`, `PayCalculator` | `/login`, `/me`, `/admin/employees`, `/admin/schedule`, `/admin/attendance`, `/admin/leave`, `/admin/payroll` | P2-05 → P2-09 (đã xong); P3-02 nếu còn sức |
+| Hạ tầng (dùng chung) | Anpham120 | `config/`, `common/`, `aspect/`, Docker, CI/CD | — | P0-01, P0-02, P0-05, P3-03, P3-04, P3-05, P3-06 |
 
 Phần nhân sự nhiều việc, nên service Nhân sự chỉ giữ tài khoản và nhân sự. Ba phần khác chuyển đi:
 - Cài đặt nhà hàng sang Thanh toán, vì chủ yếu là tài khoản nhận tiền.

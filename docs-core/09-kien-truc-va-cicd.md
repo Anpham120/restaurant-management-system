@@ -2,7 +2,7 @@
 
 ## 9.1 Kiến trúc tổng thể
 
-Một ứng dụng **Spring Boot** duy nhất (monolith chia module) và một ứng dụng **React** dùng chung cho nhân viên và khách. Không tách microservice, vì một nhà hàng không cần.
+Một ứng dụng **Spring Boot** duy nhất (monolith chia theo tầng, mục 9.3) và một ứng dụng **React** dùng chung cho nhân viên và khách. Không tách microservice, vì một nhà hàng không cần.
 
 ```mermaid
 flowchart LR
@@ -26,7 +26,7 @@ flowchart LR
 
 | Lớp | Công nghệ | Dùng cho |
 |---|---|---|
-| Backend | **Java 21, Spring Boot 4.1**: Web MVC, Security, OAuth2 Resource Server (JWT), Data JPA, Validation, WebSocket, Actuator | API, phân quyền, realtime |
+| Backend | **Java 21, Spring Boot 4.1**: Web MVC, Security, OAuth2 Resource Server (JWT), Data JPA, Validation, WebSocket, Actuator, AOP (AspectJ) | API, phân quyền, realtime, ghi log lời gọi chậm |
 | Lược đồ CSDL | **Flyway** | Tạo và nâng cấp bảng theo phiên bản |
 | Tài liệu API | springdoc-openapi (Swagger UI) | Xem và thử API |
 | CSDL | **PostgreSQL 17** | Lưu dữ liệu, ràng buộc toàn vẹn |
@@ -40,19 +40,19 @@ flowchart LR
 
 ```text
 .
-├── backend/                         Spring Boot (Maven Wrapper)
+├── backend/                         Spring Boot (Maven Wrapper), một ứng dụng (monolith) chia theo tầng
 │   └── src/main/java/vn/khoibep/rms/
+│       ├── RmsApplication.java      điểm khởi động, quét mọi package bên dưới
+│       ├── controller/              REST API, kiểm quyền
+│       ├── service/                 quy tắc nghiệp vụ, giao dịch
+│       ├── repository/              Spring Data JPA
+│       ├── model/                   model (entity JPA), mỗi bảng một lớp
+│       ├── dto/                     dữ liệu vào, ra của API
+│       ├── enums/                   trạng thái và loại
+│       ├── aspect/                  Spring AOP
+│       ├── config/                  Security, JWT, WebSocket, OpenAPI, khởi tạo tài khoản
 │       ├── common/                  exception/ (lỗi chung), realtime/ (sự kiện), security/ (người đăng nhập,
 │       │                            giới hạn tần suất), util/
-│       ├── config/                  Security, JWT, WebSocket
-│       ├── auth/  employee/         đăng nhập, nhân viên, hồ sơ và lương
-│       ├── menu/  table/            thực đơn, bàn và QR
-│       ├── order/                   đơn, món, bếp, khách QR
-│       ├── payment/                 thanh toán, VietQR, webhook SePay
-│       ├── inventory/  report/  settings/
-│       ├── schedule/  attendance/   xếp ca, chấm công
-│       ├── leave/  payroll/         nghỉ phép, bảng lương
-│       ├── audit/                   nhật ký thao tác (chỉ thêm)
 │       └── resources/db/migration/  Flyway V1 (bảng), V2 (dữ liệu mẫu), V3 → V7 (nhân sự), V8 (món chờ lâu), V9 (khách gọi nhân viên), V10 (đổi tên quán), V11 (nhật ký thao tác), V12 (giảm giá, tặng món), V13 (chuyển, ghép bàn), V14 (nhà cung cấp, phiếu nhập), V15 (định lượng, trừ kho tự động), V16 (ca và két), V17 (giá vốn lúc trừ kho, view báo cáo), V18 (thu hồi token), V19 (đặt bàn và cọc), V20 (tách bill), V21 (khách hàng), V22 (hoá đơn điện tử), V23 (đơn app giao hàng)
 ├── frontend/                        React + Vite
 │   └── src/ app/ (định tuyến, khung trang), shared/ (API, realtime, định dạng), features/<module>/
@@ -64,32 +64,59 @@ flowchart LR
 └── .github/                         codeql.yml, load-test.yml (chạy tay), dependabot.yml
 ```
 
-Mỗi module nghiệp vụ là một package, bên trong chia theo lớp. Ví dụ module `order`:
+Backend là **một ứng dụng Spring Boot (monolith) chia theo tầng** (P3-06). Mỗi tầng là một package dùng chung cho mọi nghiệp vụ:
 
-```text
-order/
-├── controller/   OrderController, GuestOrderController (API trang QR), ServiceRequestController
-├── service/      OrderService, OrderItemService, GuestOrderService, ServiceRequestService
-├── repository/   OrderRepository, OrderItemRepository, ServiceRequestRepository
-├── entity/       Order, OrderItem, ServiceRequest
-├── dto/          OrderDtos (các record vào, ra của API)
-└── enums/        OrderStatus, OrderType, ItemStatus, ItemSource, ServiceRequestType
-```
+| Package | Chứa | Ví dụ |
+|---|---|---|
+| `controller/` | Nhận request, kiểm quyền bằng `@PreAuthorize`, gọi service | `OrderController`, `PaymentController` |
+| `service/` | Quy tắc nghiệp vụ, mở giao dịch (`@Transactional`). Các lớp tính toán thuần cũng nằm ở đây | `OrderService`, `PayCalculator`, `PaymentReference`, `VietQr`, `QrTokenGenerator` |
+| `repository/` | Đọc ghi CSDL bằng Spring Data JPA | `OrderRepository` |
+| `model/` | Model của ứng dụng: mỗi bảng một lớp `@Entity` (JPA); riêng bảng `menu_item_app_price` là `@ElementCollection` trong `MenuItem` | `Order`, `Payment` |
+| `dto/` | Dữ liệu vào, ra của API (`record`), gom theo nghiệp vụ | `OrderDtos`, `PaymentDtos` |
+| `enums/` | Trạng thái và loại | `OrderStatus`, `ItemStatus` |
+| `aspect/` | Spring AOP | `LoggingAspect` |
+| `config/` | Cấu hình Spring; thành phần chạy lúc khởi động | `SecurityConfig`, `DemoAccountsInitializer`, `InitialAdminInitializer` |
+| `common/` | Dùng chung, không phải nghiệp vụ: lỗi (`exception/`), sự kiện realtime (`realtime/`), người đăng nhập và giới hạn tần suất (`security/`), tiện ích (`util/`) | `ApiException`, `RealtimeEvents`, `Money` |
 
-- **controller/** nhận request, kiểm tra quyền bằng `@PreAuthorize`.
-- **service/** giữ quy tắc nghiệp vụ, mở giao dịch (`@Transactional`). Các lớp tính toán riêng cũng nằm ở đây, ví dụ `PayCalculator`, `PaymentReference`, `QrTokenGenerator`.
-- **repository/** là Spring Data JPA.
-- **entity/** là các bảng của module, **dto/** là dữ liệu vào ra của API, **enums/** là các trạng thái và loại.
-- Module nào có thành phần chạy lúc khởi động thì thêm **config/**, ví dụ `employee/config/DemoAccountsInitializer`.
+**Vì sao chia theo tầng.** Nhiều bảng được nhiều nghiệp vụ dùng chung. Ví dụ bảng `orders` (`Order`) được gọi món, thanh toán, đặt bàn, báo cáo và hoá đơn điện tử cùng đọc ghi. Nếu chia theo nghiệp vụ, model đó "thuộc" package `order` dù không riêng của nghiệp vụ nào. Chia theo tầng thì mọi model nằm chung `model/`, mọi service chung `service/`, và chiều gọi giữa các tầng được kiểm bằng test kiến trúc (dưới). Package model chứa entity JPA nên lớp vẫn mang annotation `@Entity`; tên `model` là cách gọi chữ M trong MVC.
 
-Module không có bảng riêng thì bỏ các thư mục không dùng: `auth` và `report` chỉ có `controller/`, `service/`, `dto/`. Test tích hợp đặt ở gốc module (`order/OrderFlowIntegrationTest`); test đơn vị đặt cạnh class nó kiểm tra (`order/enums/ItemStatusTest`).
+**AOP.** `aspect/LoggingAspect` (`@Aspect`) bọc mọi phương thức public của các lớp `@Service`:
+- Lời gọi chậm hơn `app.slow-service-threshold` (mặc định 500 ms, bằng mục tiêu p95 của NFR-02) được ghi log `WARN` kèm tên lớp, tên phương thức và thời gian.
+- Nhanh hơn thì chỉ ghi `DEBUG` (mặc định không hiện).
+- Lỗi vẫn ném ra nguyên vẹn; aspect không đổi kết quả hay giao dịch.
 
-`ArchitectureTest` (ArchUnit) giữ cấu trúc này khi cả nhóm cùng viết code; đặt sai chỗ thì CI đỏ, kèm tên class sai:
-- Controller, service, repository, entity, enum, DTO phải nằm đúng thư mục con của lớp mình.
-- Chỉ gọi xuống: controller không dùng thẳng repository, không ai gọi controller, repository và entity không gọi service.
-- Entity và enum không dùng DTO, vì dữ liệu không nên phụ thuộc vào cách API định dạng yêu cầu và trả lời.
+Nhờ đó, khi cảnh báo `SlowResponses` (mục 9.8) báo một đường dẫn chậm, log chỉ ra đúng phương thức service gây chậm (NFR-11). Spring tạo proxy cho aspect theo cùng cơ chế đã dùng cho `@Transactional` và `@PreAuthorize` (thư viện `spring-boot-starter-aspectj`).
 
-Frontend chia theo cùng các module đó, để phần việc của mỗi người (CSDL, backend, frontend) mang cùng một tên:
+**Nghiệp vụ nằm ở lớp nào.** Mỗi nghiệp vụ có lớp ở nhiều tầng, đặt tên cùng gốc; repository, DTO và enum theo cùng tên (`OrderRepository`, `OrderDtos`, `OrderStatus`):
+
+| Nghiệp vụ | Controller | Service | Model |
+|---|---|---|---|
+| Gọi món, bếp, QR, giảm giá | `OrderController`, `GuestOrderController`, `ServiceRequestController`, `AdjustmentController` | `OrderService`, `OrderItemService`, `GuestOrderService`, `ServiceRequestService`, `AdjustmentService` | `Order`, `OrderItem`, `OrderTable`, `ServiceRequest`, `Adjustment` |
+| Bàn | `TableController` | `TableService`, `QrTokenGenerator` | `DiningTable` |
+| Đặt bàn và cọc | `ReservationController` | `ReservationService` | `Reservation` |
+| Thanh toán, ca két | `PaymentController`, `CashShiftController`, `SepayWebhookController` | `PaymentService`, `CashShiftService`, `SepayWebhookService`, `SepayWebhookMonitor`, `PaymentReference`, `VietQr` | `Payment`, `BankTransaction`, `CashShift`, `CashExpense` |
+| Cài đặt | `SettingsController` | `SettingsService` | `RestaurantSettings` |
+| Thực đơn, thuế | `MenuController`, `TaxController` | `MenuService`, `TaxService` | `Category`, `MenuItem`, `TaxCategory`, `TaxRate` |
+| Kho, nhà cung cấp | `InventoryController`, `PurchaseController`, `RecipeController` | `InventoryService`, `SupplierService`, `GoodsReceiptService`, `RecipeService`, `StockUsageService` | `InventoryItem`, `Supplier`, `GoodsReceipt`, `ReceiptLine`, `RecipeLine`, `StockMovement` |
+| Báo cáo | `ReportController` | `ReportService` | (không có model riêng) |
+| Khách hàng | `CustomerController` | `CustomerService` | `Customer` |
+| Hoá đơn điện tử | `EInvoiceController` | `EInvoiceService` | `EInvoice`, `EInvoiceLine` |
+| Đăng nhập | `AuthController` | `AuthService` | (không có model riêng) |
+| Nhân viên | `EmployeeController` | `EmployeeService` | `Employee` |
+| Xếp ca | `ScheduleController` | `ScheduleService` | `WorkShift`, `ShiftAssignment` |
+| Chấm công | `AttendanceController` | `AttendanceService` | `Attendance` |
+| Nghỉ phép | `LeaveController` | `LeaveService` | `LeaveRequest` |
+| Bảng lương | `PayrollController` | `PayrollService`, `PayCalculator`, `PayrollLock` | `Payroll`, `Payslip`, `PayAdjustment` |
+| Nhật ký thao tác | `AuditController` | `AuditService` | `AuditEntry` |
+
+**Test.** Test tích hợp (gọi API với PostgreSQL thật, kế thừa `IntegrationTest`) nằm ở `integration/`, ví dụ `integration/OrderFlowIntegrationTest`. Test đơn vị đặt cùng package với lớp nó kiểm tra, ví dụ `enums/ItemStatusTest`, `service/PayCalculatorTest`, `aspect/LoggingAspectTest`.
+
+`ArchitectureTest` (ArchUnit, 11 quy tắc) giữ cấu trúc này khi cả nhóm cùng viết code; đặt sai chỗ thì CI đỏ, kèm tên class sai:
+- Controller, service, repository, model, enum, DTO, aspect phải nằm đúng package của tầng mình.
+- Chỉ gọi xuống: controller không dùng thẳng repository, không ai gọi controller, repository và model không gọi service.
+- Model và enum không dùng DTO, vì dữ liệu không nên phụ thuộc vào cách API định dạng yêu cầu và trả lời.
+
+Frontend vẫn chia theo tính năng (`features/<nghiệp vụ>`), mỗi thư mục ứng với một nghiệp vụ ở bảng trên:
 
 ```text
 frontend/src/
@@ -213,12 +240,12 @@ flowchart LR
 
 | Mức | Công cụ | Nội dung chính |
 |---|---|---|
-| Đơn vị | JUnit 5 | Chuyển trạng thái món (BR-07), dò mã thanh toán trong nội dung chuyển khoản (BR-15), công thức lương (BR-26), tách thuế và chia giảm giá theo thuế suất (BR-46), tệp `.xlsx`, tài khoản quản trị đầu tiên (BR-48) |
+| Đơn vị | JUnit 5 | Chuyển trạng thái món (BR-07), dò mã thanh toán trong nội dung chuyển khoản (BR-15), công thức lương (BR-26), tách thuế và chia giảm giá theo thuế suất (BR-46), tệp `.xlsx`, tài khoản quản trị đầu tiên (BR-48), ghi log lời gọi service chậm (`LoggingAspect`) |
 | Tích hợp | Spring Boot Test + MockMvc + Testcontainers | Gọi món, QR và xác nhận, bếp, tiền mặt, chuyển khoản và webhook, cảnh báo webhook lỗi liên tiếp, giảm giá và duyệt vượt hạn mức, chuyển và ghép bàn, phân quyền (cả quyền xem số liệu Actuator), nhật ký thao tác (kể cả CSDL chặn sửa, xoá), kho, phiếu nhập và giá vốn, định lượng và trừ kho tự động, ca và két, báo cáo lãi gộp và ngoại lệ, đặt bàn và cọc, tách bill, khách hàng, hoá đơn điện tử và thuế suất theo ngày, đơn app giao hàng, xếp ca, chấm công, nghỉ phép, bảng lương. Test chấm công đặt giờ bằng một `Clock` giả |
 | Frontend | Vitest | Định dạng tiền, nhãn trạng thái, giờ công, bảng lương và báo cáo xuất Excel, tách bill, khoản giảm giá, ca két, cọc, khách hàng, mã số thuế và số hoá đơn, thuế suất sắp đổi, món của đơn app |
 | Component | Vitest + Testing Library, trình duyệt giả lập jsdom | Chọn món vào giỏ (tổng tiền, bớt món, ghi chú, món hết, đổi nhóm), giỏ tối đa 50 phần mỗi món (BR-06), mã VietQR, nhãn trạng thái món, phiếu in 80 mm (BR-33) |
 | Độ phủ | JaCoCo | Backend phải chạy tới ≥ 70% số dòng, thấp hơn thì CI đỏ. Con số in trong log build của Jenkins, ở bước Backend |
-| Kiến trúc | ArchUnit (`ArchitectureTest`) | Mỗi class nằm đúng thư mục con của lớp mình, và chỉ gọi xuống các lớp dưới (mục 9.3) |
+| Kiến trúc | ArchUnit (`ArchitectureTest`) | Mỗi class nằm đúng package của tầng mình (cả aspect), và chỉ gọi xuống các tầng dưới (mục 9.3) |
 | E2E | Playwright, chạy trong CI | Kịch bản nghiệm thu ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu): khách QR, phục vụ, bếp, chuyển khoản, bàn trống; phân quyền; trang "Của tôi" |
 | Tải | k6 (`perf/load-test.js`), workflow `load-test.yml` chạy tay ở tab Actions | NFR-02: 30 người trong 2 phút (14 khách gọi món QR, 10 phục vụ, 3 bếp, 2 thu ngân, 1 quản lý xem báo cáo 30 ngày), sau khi nạp 6 tháng bán hàng. Đạt khi p95 < 500 ms và dưới 1% request lỗi |
 | Cảnh báo | `promtool test rules`, chạy trong CI | Mỗi quy tắc ở mục 9.8 báo khi có sự cố và im khi bình thường, với số liệu giả lập theo từng phút |
