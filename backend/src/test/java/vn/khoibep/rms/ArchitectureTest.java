@@ -13,9 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The layout of every module (doc 09, section 9.3): each kind of class in the sub-package of its layer, and calls
- * only going down the layers, controller → service → repository → entity. A class put elsewhere fails the build.
- * common and config are shared and have their own layout.
+ * The layered layout of the backend (doc 09, section 9.3, P3-06): each kind of class in the package of its layer,
+ * shared by every feature, and calls only going down the layers, controller → service → repository → entity. A class
+ * put elsewhere fails the build. common and config are shared and have their own layout.
  */
 @AnalyzeClasses(packages = "vn.khoibep.rms", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureTest {

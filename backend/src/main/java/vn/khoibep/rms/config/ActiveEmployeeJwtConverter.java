@@ -12,8 +12,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
-import vn.khoibep.rms.employee.entity.Employee;
-import vn.khoibep.rms.employee.repository.EmployeeRepository;
+import vn.khoibep.rms.entity.Employee;
+import vn.khoibep.rms.repository.EmployeeRepository;
 
 /**
  * BR-03: every request re-checks that the employee still exists and is active, so locking an account

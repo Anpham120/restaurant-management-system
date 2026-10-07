@@ -1,0 +1,96 @@
+package vn.khoibep.rms.entity;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import vn.khoibep.rms.enums.MovementType;
+
+/** Append-only stock ledger entry. */
+@Entity
+@Table(name = "stock_movement")
+@Getter
+@NoArgsConstructor
+public class StockMovement {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "inventory_item_id")
+    private InventoryItem item;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private MovementType type;
+
+    /** Signed: positive adds stock, negative removes it. */
+    @Column(nullable = false)
+    private BigDecimal quantityChange;
+
+    @Column(nullable = false)
+    private BigDecimal quantityAfter;
+
+    private String note;
+
+    private Long createdBy;
+
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt = Instant.now();
+
+    /** The goods receipt this came from; null for a movement entered by hand (FR-09.6). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "goods_receipt_id")
+    private GoodsReceipt goodsReceipt;
+
+    /** The dish in an order that used the stock or gave it back; only for SALE (BR-38). */
+    private Long orderItemId;
+
+    /** VND for one unit of the ingredient when a dish took it; only for SALE, null while it had no cost (BR-40). */
+    private Long unitCost;
+
+    public StockMovement(InventoryItem item, MovementType type, BigDecimal quantityChange, String note,
+                         Long createdBy) {
+        this.item = item;
+        this.type = type;
+        this.quantityChange = quantityChange;
+        this.quantityAfter = item.getQuantity();
+        this.note = note;
+        this.createdBy = createdBy;
+    }
+
+    /** BR-37: the stock a receipt brought in, after the item has received it. */
+    public static StockMovement received(ReceiptLine line, Long createdBy) {
+        GoodsReceipt receipt = line.getReceipt();
+        StockMovement movement = new StockMovement(line.getItem(), MovementType.IN, line.getQuantity(),
+                "Phiếu nhập #" + receipt.getId() + " · " + receipt.getSupplier().getName(), createdBy);
+        movement.goodsReceipt = receipt;
+        return movement;
+    }
+
+    /**
+     * BR-38: stock a dish used (a negative change) or gave back (positive), after the item has changed.
+     * BR-40: the unit cost of the moment goes with it, for the profit of the dish.
+     */
+    public static StockMovement forDish(InventoryItem item, BigDecimal change, Long orderItemId, String note,
+                                       Long createdBy) {
+        StockMovement movement = new StockMovement(item, MovementType.SALE, change, note, createdBy);
+        movement.orderItemId = orderItemId;
+        movement.unitCost = item.getUnitCost();
+        return movement;
+    }
+}
