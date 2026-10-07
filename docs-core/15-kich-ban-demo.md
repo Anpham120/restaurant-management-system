@@ -138,11 +138,11 @@ Chỉ chiếu ảnh, không demo trực tiếp:
 
 ### Kiến trúc, quy trình, kiểm thử (8:15–9:30), slide 6–8
 
-- Một ứng dụng Spring Boot chia 17 module nghiệp vụ, một ứng dụng React, PostgreSQL. Realtime qua WebSocket (STOMP). Chạy bằng Docker Compose, HTTPS bằng Caddy.
+- Một ứng dụng Spring Boot (monolith) chia theo tầng: controller, service, repository, model, dto dùng chung cho mọi nghiệp vụ; AOP ghi log lời gọi service chậm. Một ứng dụng React, PostgreSQL. Realtime qua WebSocket (STOMP). Chạy bằng Docker Compose, HTTPS bằng Caddy.
 - Database-first: thiết kế ERD rồi mới viết migration. CI so ERD với migration ở mỗi PR.
 - Nhánh `feature` → `develop` → `main`. Mỗi PR chạy test backend, frontend và E2E; xanh mới được merge. Merge vào `main` thì build image; bước triển khai đã viết sẵn, bật khi máy chủ sẵn sàng ([tài liệu 11](11-trien-khai-van-hanh.md)).
 - Kết quả kiểm thử ([tài liệu 13](13-kiem-thu.md)):
-  - 192 test backend, độ phủ 91,9%.
+  - 203 test backend, độ phủ 91,9%.
   - 83 test frontend.
   - 3 kịch bản E2E.
   - 56 test case theo tiêu chí chấp nhận.
@@ -173,7 +173,8 @@ Câu hỏi hay gặp:
 | Khách gửi món đùa thì sao? | Món chờ nhân viên xác nhận mới vào bếp. Mỗi bàn gửi tối đa 10 lần mỗi phút, tối đa 30 món chờ (BR-30). Lộ mã thì tạo lại QR, mã cũ hết hiệu lực ngay |
 | Ai đó gửi webhook giả thì sao? | Webhook phải có đúng khoá API. Sai tiền, sai mã thì giao dịch vào danh sách "không khớp", không tự đóng bill (BR-16) |
 | Mất mạng thì sao? | Bản này cần mạng. Chạy khi mất mạng đã có thiết kế ở tài liệu 12, chưa làm |
-| Sao không chia microservice? | Một nhà hàng không cần. Monolith chia module dễ chạy, dễ sao lưu; mỗi người vẫn giữ một module |
+| Sao không chia microservice? | Một nhà hàng không cần. Monolith dễ chạy, dễ sao lưu; mỗi người vẫn giữ các lớp của một nghiệp vụ |
+| Sao chia theo tầng mà không theo nghiệp vụ? | Nhiều bảng dùng chung: `orders` được gọi món, thanh toán, đặt bàn, báo cáo, hoá đơn điện tử cùng dùng. Theo tầng thì mọi model ở chung `model/`, không bảng nào "thuộc" một nghiệp vụ; test kiến trúc (ArchUnit) giữ chiều gọi controller → service → repository → model |
 
 ## 15.5 Dàn ý slide
 
@@ -184,7 +185,7 @@ Câu hỏi hay gặp:
 | 3 | Mục tiêu và người dùng | G1–G6 kèm cách đo; 5 vai trò nhân viên và khách |
 | 4 | Demo | Bốn phần demo, theo bảng ở mục 15.1 |
 | 5 | Tính năng mở rộng | Đặt bàn và cọc, đơn app, khách hàng, hoá đơn điện tử, kèm ảnh |
-| 6 | Kiến trúc | Sơ đồ ở mục 9.1; 17 module nghiệp vụ, 35 bảng, 23 migration |
+| 6 | Kiến trúc | Sơ đồ ở mục 9.1; monolith chia theo tầng (controller, service, repository, model, dto, aspect), 35 bảng, 23 migration |
 | 7 | Quy trình và CI/CD | Database-first, nhánh, pipeline; 49 PR đã merge |
 | 8 | Kiểm thử | Số test, độ phủ, E2E, kiểm thử tải |
 | 9 | Kết luận | Ba tiêu chí nghiệm thu, việc tiếp theo, hỏi đáp |

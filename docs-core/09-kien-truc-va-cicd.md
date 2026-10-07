@@ -2,7 +2,7 @@
 
 ## 9.1 Kiến trúc tổng thể
 
-Một ứng dụng **Spring Boot** duy nhất (monolith chia module) và một ứng dụng **React** dùng chung cho nhân viên và khách. Không tách microservice, vì một nhà hàng không cần.
+Một ứng dụng **Spring Boot** duy nhất (monolith chia theo tầng, mục 9.3) và một ứng dụng **React** dùng chung cho nhân viên và khách. Không tách microservice, vì một nhà hàng không cần.
 
 ```mermaid
 flowchart LR
