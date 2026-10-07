@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.security.CurrentUser;
 import vn.khoibep.rms.dto.OrderDtos.AddItemsRequest;
 import vn.khoibep.rms.dto.OrderDtos.CancelRequest;
@@ -41,10 +42,14 @@ public class OrderController {
     private final PaymentService paymentService;
     private final CurrentUser currentUser;
 
+    /** P3-07: only the open orders are listed; a closed order is read by its id, from a report or a customer. */
     @GetMapping("/orders")
     @PreAuthorize("hasAnyRole('WAITER', 'CASHIER')")
     public List<OrderDto> list(@RequestParam(defaultValue = "OPEN") OrderStatus status) {
-        return orderService.list(status);
+        if (status != OrderStatus.OPEN) {
+            throw ApiException.badRequest("Chỉ xem được danh sách đơn đang mở");
+        }
+        return orderService.openOrders();
     }
 
     @GetMapping("/orders/{id}")

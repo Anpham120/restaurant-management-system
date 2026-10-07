@@ -3,6 +3,7 @@ package vn.khoibep.rms.service;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,9 @@ import vn.khoibep.rms.repository.ReservationRepository;
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
+
+    /** FR-08.7: the bank transactions list shows at most this many rows. */
+    private static final int BANK_ROWS = 200;
 
     private final PaymentRepository payments;
     private final ReservationRepository reservations;
@@ -130,10 +134,11 @@ public class PaymentService {
                 .map(PaymentDto::from).toList();
     }
 
+    /** FR-08.7: the newest transactions of a status; older ones stay in the database. */
     @Transactional(readOnly = true)
     public List<BankTransactionDto> bankTransactions(MatchStatus status) {
-        return bankTransactions.findByMatchStatusOrderByReceivedAtDesc(status).stream()
-                .map(BankTransactionDto::from).toList();
+        return bankTransactions.findByMatchStatusOrderByReceivedAtDescIdDesc(status, PageRequest.of(0, BANK_ROWS))
+                .stream().map(BankTransactionDto::from).toList();
     }
 
     /** BR-14: a pending code is void as soon as the bill changes. */

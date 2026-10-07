@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,9 @@ import vn.khoibep.rms.repository.StockMovementRepository;
 @Service
 @RequiredArgsConstructor
 public class InventoryService {
+
+    /** FR-09.3: the history of an ingredient shows at most this many movements. */
+    private static final int HISTORY_ROWS = 200;
 
     private final InventoryItemRepository items;
     private final StockMovementRepository movements;
@@ -84,9 +88,11 @@ public class InventoryService {
         return InventoryItemDto.from(item);
     }
 
+    /** FR-09.3: the newest movements of an ingredient; older ones stay in the database. */
     @Transactional(readOnly = true)
     public List<MovementDto> movements(Long id) {
-        List<StockMovement> list = movements.findByItemIdOrderByCreatedAtDescIdDesc(id);
+        List<StockMovement> list = movements.findByItemIdOrderByCreatedAtDescIdDesc(id,
+                PageRequest.of(0, HISTORY_ROWS));
         Map<Long, String> names = employees.findAllById(list.stream().map(StockMovement::getCreatedBy)
                         .filter(Objects::nonNull).distinct().toList())
                 .stream().collect(Collectors.toMap(Employee::getId, Employee::getFullName));

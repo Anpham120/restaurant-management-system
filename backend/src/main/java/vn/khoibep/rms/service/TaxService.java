@@ -42,7 +42,7 @@ public class TaxService {
         public int on(Long categoryId, LocalDate day) {
             NavigableMap<LocalDate, Integer> days = byCategory.get(categoryId);
             if (days == null || days.isEmpty()) {
-                throw new IllegalStateException("Tax category " + categoryId + " has no rate");
+                throw ApiException.conflict("Loại thuế " + categoryId + " chưa có thuế suất");
             }
             Map.Entry<LocalDate, Integer> inForce = days.floorEntry(day);
             return (inForce != null ? inForce : days.firstEntry()).getValue();
