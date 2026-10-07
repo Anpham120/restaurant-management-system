@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import vn.khoibep.rms.entity.Supplier;
+import vn.khoibep.rms.model.Supplier;
 
 public interface SupplierRepository extends JpaRepository<Supplier, Long> {
 

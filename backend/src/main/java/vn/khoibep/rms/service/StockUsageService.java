@@ -19,9 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import vn.khoibep.rms.common.util.DateRange;
 import vn.khoibep.rms.dto.RecipeDtos.UsageDto;
-import vn.khoibep.rms.entity.InventoryItem;
-import vn.khoibep.rms.entity.StockMovement;
 import vn.khoibep.rms.enums.MovementType;
+import vn.khoibep.rms.model.InventoryItem;
+import vn.khoibep.rms.model.StockMovement;
 import vn.khoibep.rms.repository.InventoryItemRepository;
 import vn.khoibep.rms.repository.RecipeLineRepository.Portion;
 import vn.khoibep.rms.repository.RecipeLineRepository;

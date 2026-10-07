@@ -10,9 +10,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.Reservation;
 import vn.khoibep.rms.enums.Confirmation;
 import vn.khoibep.rms.enums.ReservationStatus;
+import vn.khoibep.rms.model.Reservation;
 
 /** Bookings and their deposits (FR-18). Amounts in VND. */
 public final class ReservationDtos {

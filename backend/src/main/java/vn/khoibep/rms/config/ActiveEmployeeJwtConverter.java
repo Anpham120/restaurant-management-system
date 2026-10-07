@@ -12,7 +12,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
-import vn.khoibep.rms.entity.Employee;
+import vn.khoibep.rms.model.Employee;
 import vn.khoibep.rms.repository.EmployeeRepository;
 
 /**

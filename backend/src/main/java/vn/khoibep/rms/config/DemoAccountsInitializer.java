@@ -9,9 +9,9 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import vn.khoibep.rms.entity.Employee;
 import vn.khoibep.rms.enums.PayType;
 import vn.khoibep.rms.enums.Role;
+import vn.khoibep.rms.model.Employee;
 import vn.khoibep.rms.repository.EmployeeRepository;
 
 /** Creates one demo account per role on an empty database when app.demo-accounts.enabled=true. */

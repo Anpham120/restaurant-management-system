@@ -6,7 +6,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import vn.khoibep.rms.entity.TaxRate;
+import vn.khoibep.rms.model.TaxRate;
 
 public interface TaxRateRepository extends JpaRepository<TaxRate, Long> {
 

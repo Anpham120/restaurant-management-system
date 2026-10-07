@@ -7,12 +7,12 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
-import vn.khoibep.rms.entity.BankTransaction;
-import vn.khoibep.rms.entity.Payment;
 import vn.khoibep.rms.enums.Confirmation;
 import vn.khoibep.rms.enums.MatchStatus;
 import vn.khoibep.rms.enums.PaymentMethod;
 import vn.khoibep.rms.enums.PaymentStatus;
+import vn.khoibep.rms.model.BankTransaction;
+import vn.khoibep.rms.model.Payment;
 
 public final class PaymentDtos {
 

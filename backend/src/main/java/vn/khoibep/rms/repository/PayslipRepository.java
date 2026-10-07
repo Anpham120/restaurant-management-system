@@ -6,8 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import vn.khoibep.rms.entity.Payslip;
 import vn.khoibep.rms.enums.PayrollStatus;
+import vn.khoibep.rms.model.Payslip;
 
 public interface PayslipRepository extends JpaRepository<Payslip, Long> {
 

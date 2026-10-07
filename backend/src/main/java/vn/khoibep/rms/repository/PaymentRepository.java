@@ -9,8 +9,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import vn.khoibep.rms.entity.Payment;
 import vn.khoibep.rms.enums.PaymentStatus;
+import vn.khoibep.rms.model.Payment;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 

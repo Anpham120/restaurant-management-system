@@ -5,7 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import vn.khoibep.rms.entity.DiningTable;
+import vn.khoibep.rms.model.DiningTable;
 
 public interface DiningTableRepository extends JpaRepository<DiningTable, Long> {
 

@@ -7,9 +7,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.ShiftAssignment;
-import vn.khoibep.rms.entity.WorkShift;
 import vn.khoibep.rms.enums.Role;
+import vn.khoibep.rms.model.ShiftAssignment;
+import vn.khoibep.rms.model.WorkShift;
 
 public final class ScheduleDtos {
 

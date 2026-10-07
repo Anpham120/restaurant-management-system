@@ -10,9 +10,9 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.InventoryItem;
-import vn.khoibep.rms.entity.RecipeLine;
 import vn.khoibep.rms.enums.MovementType;
+import vn.khoibep.rms.model.InventoryItem;
+import vn.khoibep.rms.model.RecipeLine;
 
 /** Dish recipes and what dishes used from stock (FR-09.8 → FR-09.10). */
 public final class RecipeDtos {

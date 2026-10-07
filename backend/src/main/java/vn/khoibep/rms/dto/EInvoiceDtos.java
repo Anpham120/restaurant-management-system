@@ -11,10 +11,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.EInvoice;
-import vn.khoibep.rms.entity.EInvoiceLine;
 import vn.khoibep.rms.enums.EInvoiceStatus;
 import vn.khoibep.rms.enums.LineKind;
+import vn.khoibep.rms.model.EInvoice;
+import vn.khoibep.rms.model.EInvoiceLine;
 
 /** E-invoices of paid bills (FR-20). Amounts in VND, rates in percent. */
 public final class EInvoiceDtos {

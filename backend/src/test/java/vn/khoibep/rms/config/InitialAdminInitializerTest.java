@@ -15,8 +15,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import vn.khoibep.rms.entity.Employee;
 import vn.khoibep.rms.enums.Role;
+import vn.khoibep.rms.model.Employee;
 import vn.khoibep.rms.repository.EmployeeRepository;
 
 /** BR-48, US-02 AC4: the first admin of a production database, from APP_INITIAL_ADMIN_PASSWORD. */

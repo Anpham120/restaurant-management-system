@@ -11,8 +11,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import vn.khoibep.rms.entity.ServiceRequest;
 import vn.khoibep.rms.enums.ServiceRequestType;
+import vn.khoibep.rms.model.ServiceRequest;
 
 public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, Long> {
 

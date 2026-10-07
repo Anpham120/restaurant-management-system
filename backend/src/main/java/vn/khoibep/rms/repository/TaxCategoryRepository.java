@@ -5,7 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import vn.khoibep.rms.entity.TaxCategory;
+import vn.khoibep.rms.model.TaxCategory;
 
 public interface TaxCategoryRepository extends JpaRepository<TaxCategory, Long> {
 

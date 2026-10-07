@@ -13,9 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.khoibep.rms.common.security.CurrentUser;
 import vn.khoibep.rms.common.util.DateRange;
 import vn.khoibep.rms.dto.AuditDtos.AuditEntryDto;
-import vn.khoibep.rms.entity.AuditEntry;
-import vn.khoibep.rms.entity.Order;
 import vn.khoibep.rms.enums.AuditAction;
+import vn.khoibep.rms.model.AuditEntry;
+import vn.khoibep.rms.model.Order;
 import vn.khoibep.rms.repository.AuditEntryRepository;
 import vn.khoibep.rms.repository.EmployeeRepository;
 

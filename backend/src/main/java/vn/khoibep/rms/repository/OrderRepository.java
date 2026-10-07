@@ -12,9 +12,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import vn.khoibep.rms.entity.Order;
 import vn.khoibep.rms.enums.Channel;
 import vn.khoibep.rms.enums.OrderStatus;
+import vn.khoibep.rms.model.Order;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 

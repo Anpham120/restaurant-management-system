@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The layered layout of the backend (doc 09, section 9.3, P3-06): each kind of class in the package of its layer,
- * shared by every feature, and calls only going down the layers, controller → service → repository → entity. A class
+ * shared by every feature, and calls only going down the layers, controller → service → repository → model. A class
  * put elsewhere fails the build. common and config are shared and have their own layout.
  */
 @AnalyzeClasses(packages = "vn.khoibep.rms", importOptions = ImportOption.DoNotIncludeTests.class)
@@ -37,8 +37,8 @@ class ArchitectureTest {
             .should().resideInAPackage("..repository..");
 
     @ArchTest
-    static final ArchRule entitiesLiveInEntity = classes().that().areAnnotatedWith(Entity.class)
-            .should().resideInAPackage("..entity..");
+    static final ArchRule entitiesLiveInModel = classes().that().areAnnotatedWith(Entity.class)
+            .should().resideInAPackage("..model..");
 
     @ArchTest
     static final ArchRule enumsLiveInEnums = classes().that().areEnums().and().areTopLevelClasses()
@@ -65,11 +65,11 @@ class ArchitectureTest {
 
     @ArchTest
     static final ArchRule dataDoesNotCallServices = noClasses()
-            .that().resideInAnyPackage("..repository..", "..entity..", "..enums..")
+            .that().resideInAnyPackage("..repository..", "..model..", "..enums..")
             .should().dependOnClassesThat().resideInAPackage("..service..");
 
-    /** Entities and enums are the data model: they do not know how the API shapes its requests and answers. */
+    /** The model and the enums are the data: they do not know how the API shapes its requests and answers. */
     @ArchTest
-    static final ArchRule dataDoesNotKnowTheApi = noClasses().that().resideInAnyPackage("..entity..", "..enums..")
+    static final ArchRule dataDoesNotKnowTheApi = noClasses().that().resideInAnyPackage("..model..", "..enums..")
             .should().dependOnClassesThat().resideInAPackage("..dto..");
 }

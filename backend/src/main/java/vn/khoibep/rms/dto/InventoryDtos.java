@@ -9,8 +9,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.InventoryItem;
 import vn.khoibep.rms.enums.MovementType;
+import vn.khoibep.rms.model.InventoryItem;
 
 public final class InventoryDtos {
 

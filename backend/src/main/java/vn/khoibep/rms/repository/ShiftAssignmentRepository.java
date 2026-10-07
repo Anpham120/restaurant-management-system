@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import vn.khoibep.rms.entity.ShiftAssignment;
+import vn.khoibep.rms.model.ShiftAssignment;
 
 public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment, Long> {
 

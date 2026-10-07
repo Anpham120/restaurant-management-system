@@ -11,8 +11,8 @@ import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.common.realtime.RealtimeEvents;
 import vn.khoibep.rms.common.security.CurrentUser;
 import vn.khoibep.rms.dto.OrderDtos.ServiceRequestDto;
-import vn.khoibep.rms.entity.DiningTable;
-import vn.khoibep.rms.entity.ServiceRequest;
+import vn.khoibep.rms.model.DiningTable;
+import vn.khoibep.rms.model.ServiceRequest;
 import vn.khoibep.rms.repository.ServiceRequestRepository;
 
 /** The waiters' side of guest calls (FR-06.6, FR-06.7). The guest side is in {@link GuestOrderService}. */

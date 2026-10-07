@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import vn.khoibep.rms.entity.CashShift;
+import vn.khoibep.rms.model.CashShift;
 
 public interface CashShiftRepository extends JpaRepository<CashShift, Long> {
 

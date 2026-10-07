@@ -10,7 +10,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
-import vn.khoibep.rms.entity.Employee;
+import vn.khoibep.rms.model.Employee;
 
 /**
  * Issues the HS256 access token (BR-01: valid for app.jwt.ttl, 12 hours by default). It carries the token version of

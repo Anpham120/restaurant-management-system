@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import vn.khoibep.rms.dto.SettingsDtos.SettingsDto;
 import vn.khoibep.rms.dto.SettingsDtos.SettingsRequest;
-import vn.khoibep.rms.entity.RestaurantSettings;
+import vn.khoibep.rms.model.RestaurantSettings;
 import vn.khoibep.rms.repository.SettingsRepository;
 
 @Service

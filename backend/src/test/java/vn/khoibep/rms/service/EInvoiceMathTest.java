@@ -6,7 +6,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import vn.khoibep.rms.entity.EInvoiceLine;
+import vn.khoibep.rms.model.EInvoiceLine;
 
 /** BR-46: the tax taken back out of prices that include it, and a discount spread over the tax rates. */
 class EInvoiceMathTest {

@@ -4,8 +4,8 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import vn.khoibep.rms.entity.Payroll;
 import vn.khoibep.rms.enums.PayrollStatus;
+import vn.khoibep.rms.model.Payroll;
 
 public interface PayrollRepository extends JpaRepository<Payroll, Long> {
 

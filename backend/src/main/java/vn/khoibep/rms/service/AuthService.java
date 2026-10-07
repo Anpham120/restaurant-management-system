@@ -14,7 +14,7 @@ import vn.khoibep.rms.dto.AuthDtos.ChangePasswordRequest;
 import vn.khoibep.rms.dto.AuthDtos.LoginRequest;
 import vn.khoibep.rms.dto.AuthDtos.LoginResponse;
 import vn.khoibep.rms.dto.EmployeeDtos.EmployeeDto;
-import vn.khoibep.rms.entity.Employee;
+import vn.khoibep.rms.model.Employee;
 import vn.khoibep.rms.repository.EmployeeRepository;
 
 @Service

@@ -14,9 +14,9 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.GoodsReceipt;
-import vn.khoibep.rms.entity.ReceiptLine;
-import vn.khoibep.rms.entity.Supplier;
+import vn.khoibep.rms.model.GoodsReceipt;
+import vn.khoibep.rms.model.ReceiptLine;
+import vn.khoibep.rms.model.Supplier;
 
 /** Suppliers and goods receipts with prices (FR-09.5 → FR-09.7). */
 public final class PurchaseDtos {

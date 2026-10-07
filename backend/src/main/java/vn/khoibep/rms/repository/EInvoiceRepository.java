@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import vn.khoibep.rms.entity.EInvoice;
+import vn.khoibep.rms.model.EInvoice;
 
 public interface EInvoiceRepository extends JpaRepository<EInvoice, Long> {
 

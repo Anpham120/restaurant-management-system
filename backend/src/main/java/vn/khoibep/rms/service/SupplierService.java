@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.khoibep.rms.common.exception.ApiException;
 import vn.khoibep.rms.dto.PurchaseDtos.SupplierDto;
 import vn.khoibep.rms.dto.PurchaseDtos.SupplierRequest;
-import vn.khoibep.rms.entity.Supplier;
+import vn.khoibep.rms.model.Supplier;
 import vn.khoibep.rms.repository.SupplierRepository;
 
 /** FR-09.5, BR-37: suppliers are never deleted, only stopped. */

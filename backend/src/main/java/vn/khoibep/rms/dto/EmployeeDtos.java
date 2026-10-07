@@ -8,9 +8,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.Employee;
 import vn.khoibep.rms.enums.PayType;
 import vn.khoibep.rms.enums.Role;
+import vn.khoibep.rms.model.Employee;
 
 public final class EmployeeDtos {
 

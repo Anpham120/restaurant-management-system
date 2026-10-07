@@ -9,9 +9,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.Category;
-import vn.khoibep.rms.entity.MenuItem;
 import vn.khoibep.rms.enums.Channel;
+import vn.khoibep.rms.model.Category;
+import vn.khoibep.rms.model.MenuItem;
 
 public final class MenuDtos {
 

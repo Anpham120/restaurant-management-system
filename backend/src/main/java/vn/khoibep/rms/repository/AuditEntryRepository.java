@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import vn.khoibep.rms.entity.AuditEntry;
+import vn.khoibep.rms.model.AuditEntry;
 
 public interface AuditEntryRepository extends JpaRepository<AuditEntry, Long> {
 

@@ -18,8 +18,8 @@ import vn.khoibep.rms.dto.TaxDtos.TaxCategoryDto;
 import vn.khoibep.rms.dto.TaxDtos.TaxCategoryRequest;
 import vn.khoibep.rms.dto.TaxDtos.TaxRateDto;
 import vn.khoibep.rms.dto.TaxDtos.TaxRateRequest;
-import vn.khoibep.rms.entity.TaxCategory;
-import vn.khoibep.rms.entity.TaxRate;
+import vn.khoibep.rms.model.TaxCategory;
+import vn.khoibep.rms.model.TaxRate;
 import vn.khoibep.rms.repository.TaxCategoryRepository;
 import vn.khoibep.rms.repository.TaxRateRepository;
 

@@ -14,10 +14,10 @@ import vn.khoibep.rms.common.realtime.RealtimeEvents;
 import vn.khoibep.rms.config.AppProperties;
 import vn.khoibep.rms.dto.TableDtos.TableDto;
 import vn.khoibep.rms.dto.TableDtos.TableRequest;
-import vn.khoibep.rms.entity.DiningTable;
-import vn.khoibep.rms.entity.Order;
 import vn.khoibep.rms.enums.ItemStatus;
 import vn.khoibep.rms.enums.OrderStatus;
+import vn.khoibep.rms.model.DiningTable;
+import vn.khoibep.rms.model.Order;
 import vn.khoibep.rms.repository.DiningTableRepository;
 import vn.khoibep.rms.repository.OrderRepository;
 

@@ -2,8 +2,8 @@ package vn.khoibep.rms.dto;
 
 import java.time.Instant;
 
-import vn.khoibep.rms.entity.AuditEntry;
 import vn.khoibep.rms.enums.AuditAction;
+import vn.khoibep.rms.model.AuditEntry;
 
 public final class AuditDtos {
 

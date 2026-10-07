@@ -9,8 +9,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.CashExpense;
-import vn.khoibep.rms.entity.CashShift;
+import vn.khoibep.rms.model.CashExpense;
+import vn.khoibep.rms.model.CashShift;
 
 /** Shifts of the cash drawer (FR-17). Amounts in VND. */
 public final class CashShiftDtos {

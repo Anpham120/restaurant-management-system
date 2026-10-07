@@ -9,8 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import vn.khoibep.rms.entity.StockMovement;
 import vn.khoibep.rms.enums.MovementType;
+import vn.khoibep.rms.model.StockMovement;
 
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
 

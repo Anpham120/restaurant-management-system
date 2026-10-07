@@ -10,12 +10,6 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.Adjustment;
-import vn.khoibep.rms.entity.Customer;
-import vn.khoibep.rms.entity.DiningTable;
-import vn.khoibep.rms.entity.Order;
-import vn.khoibep.rms.entity.OrderItem;
-import vn.khoibep.rms.entity.ServiceRequest;
 import vn.khoibep.rms.enums.AdjustmentReason;
 import vn.khoibep.rms.enums.AdjustmentStatus;
 import vn.khoibep.rms.enums.AdjustmentType;
@@ -25,6 +19,12 @@ import vn.khoibep.rms.enums.ItemStatus;
 import vn.khoibep.rms.enums.OrderStatus;
 import vn.khoibep.rms.enums.OrderType;
 import vn.khoibep.rms.enums.ServiceRequestType;
+import vn.khoibep.rms.model.Adjustment;
+import vn.khoibep.rms.model.Customer;
+import vn.khoibep.rms.model.DiningTable;
+import vn.khoibep.rms.model.Order;
+import vn.khoibep.rms.model.OrderItem;
+import vn.khoibep.rms.model.ServiceRequest;
 
 public final class OrderDtos {
 

@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import vn.khoibep.rms.entity.WorkShift;
+import vn.khoibep.rms.model.WorkShift;
 
 public interface WorkShiftRepository extends JpaRepository<WorkShift, Long> {
 

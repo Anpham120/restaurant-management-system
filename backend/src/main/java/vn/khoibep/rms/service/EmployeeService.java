@@ -15,7 +15,7 @@ import vn.khoibep.rms.dto.EmployeeDtos.CreateEmployeeRequest;
 import vn.khoibep.rms.dto.EmployeeDtos.EmployeeDetailDto;
 import vn.khoibep.rms.dto.EmployeeDtos.ProfileRequest;
 import vn.khoibep.rms.dto.EmployeeDtos.UpdateEmployeeRequest;
-import vn.khoibep.rms.entity.Employee;
+import vn.khoibep.rms.model.Employee;
 import vn.khoibep.rms.repository.EmployeeRepository;
 import vn.khoibep.rms.repository.ShiftAssignmentRepository;
 

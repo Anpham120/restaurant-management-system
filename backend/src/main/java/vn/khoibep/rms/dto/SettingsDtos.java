@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import vn.khoibep.rms.entity.RestaurantSettings;
+import vn.khoibep.rms.model.RestaurantSettings;
 
 public final class SettingsDtos {
 
