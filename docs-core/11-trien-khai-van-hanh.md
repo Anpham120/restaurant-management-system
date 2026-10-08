@@ -112,13 +112,15 @@ Caddy chạy độc lập với pipeline: chỉ khi đổi tên miền hoặc c�
 
 1. **Ruleset** (Settings → Rules → Rulesets) cho `main` và `develop`:
    - Bắt buộc qua pull request.
-   - Bắt buộc các check xanh: `continuous-integration/jenkins/pr-merge` (Jenkins), `CodeQL - Java`, `CodeQL - TypeScript`.
+   - Bắt buộc check xanh `continuous-integration/jenkins/pr-merge` (Jenkins).
    - Chặn force push và xoá nhánh.
-2. **Chuyển từ check của GitHub Actions sang check của Jenkins.** Làm một lần, sau khi Jenkins ở mục 11.11 đã chạy:
+2. **Repo không dùng GitHub Actions** (P3-09), nên ruleset không được bắt buộc check nào của Actions: không còn ai báo các check đó, và mọi PR sẽ kẹt. Nếu ruleset còn `Backend - build and test`, `Frontend - lint, test, build`, `E2E - acceptance scenario`, `CodeQL - Java`, `CodeQL - TypeScript` thì bỏ cả 5.
+3. **Thêm check của Jenkins**, làm một lần sau khi Jenkins ở mục 11.11 đã chạy:
    1. Mở một PR bất kỳ. Chờ Jenkins báo trạng thái `continuous-integration/jenkins/pr-merge` lên PR (Jenkins quét repo mỗi 2 phút). GitHub chỉ cho chọn một check đã từng báo về repo.
-   2. Trong ruleset của `develop` và `main`, thêm check đó, rồi bỏ `Backend - build and test`, `Frontend - lint, test, build`, `E2E - acceptance scenario`.
-   3. Xoá `.github/workflows/ci-cd.yml` bằng một PR nhỏ. Jenkins kiểm chính PR đó.
-3. GitHub Actions không cần environment, secret hay biến nào, vì deploy chạy trên Jenkins. Nếu trước đây đã tạo cho Actions thì xoá được: environment `staging`, `production`; `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `PUBLIC_URL`, `DEPLOY_ENABLED`, `JENKINS_URL`; hai secret Telegram.
+   2. Thêm check đó vào ruleset của `develop` và `main`.
+
+   Trước bước này, mỗi PR phải chạy test ở máy trước khi merge.
+4. GitHub Actions không còn chạy gì. Environment, secret, biến cũ của Actions xoá được: environment `staging`, `production`; `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `PUBLIC_URL`, `DEPLOY_ENABLED`, `JENKINS_URL`; hai secret Telegram.
 
 Jenkins đẩy image lên GitHub Container Registry, và kéo image trên máy chủ, bằng token ở mục 11.11.
 

@@ -122,6 +122,7 @@ P2-04 **đã làm xong** (issue #18), trước lịch: yêu cầu FR-10.4 → FR
 | P3-06 | **Chia backend theo tầng** (monolith chuẩn Spring Boot: controller, service, repository, model, dto, enums dùng chung cho mọi nghiệp vụ) và **AOP**: aspect ghi log lời gọi service chậm | M | M |
 | P3-07 | **Giới hạn các danh sách lớn dần theo thời gian**: danh sách đơn chỉ gồm đơn đang mở; giao dịch ngân hàng và lịch sử kho trả 200 dòng mới nhất | S | S |
 | P3-08 | **Chuẩn bị lần deploy đầu**: image chạy đúng Java 21 và Node 24 như test; mỗi lần deploy dọn image của commit cũ; cài `jq` trên máy chủ | S | M |
+| P3-09 | **Bỏ hết GitHub Actions**: Jenkins làm toàn bộ CI/CD | S | M |
 
 P3-01 → P3-05 **đã làm xong** (issue #19 → #23), trước lịch:
 - P3-01: giới hạn theo bàn (10 lần gửi mỗi phút, tối đa 30 món chờ xác nhận) và theo tên đăng nhập (10 lần thử mỗi phút), bằng Bucket4j. Không giới hạn theo IP, lý do ở tài liệu 09 mục 9.4.
@@ -140,6 +141,13 @@ P3-08 **đã làm xong** (issue #108), trước lần deploy đầu:
 - **Cài `jq`** ở bước cài máy chủ (tài liệu 11 mục 11.2), vì mục 11.8 dùng nó để đọc log JSON.
 
 Không đổi CSDL, API hay hành vi.
+
+P3-09 **đã làm xong** (issue #113): nhóm chốt Jenkins làm toàn bộ CI/CD, không dùng GitHub Actions nữa. Việc này thay cho cách chuyển dần ghi ở P0-09.
+- `ci-cd.yml` bỏ: 4 job test của nó (ERD và backend, frontend, E2E, cấu hình giám sát) đều đã là bước của `Jenkinsfile`.
+- `codeql.yml` bỏ: không còn phân tích tĩnh mã nguồn. Còn Trivy quét image trên Jenkins và cảnh báo thư viện của Dependabot. Có thể thêm một bước phân tích vào `Jenkinsfile` sau.
+- `load-test.yml` bỏ: kiểm thử tải chạy trong Docker trên máy bất kỳ, như README đã ghi.
+- Dependabot thôi theo dõi phiên bản của GitHub Actions, vì không còn workflow nào.
+- Ruleset của `develop` và `main` thôi bắt buộc 5 check do GitHub Actions báo; check của Jenkins được thêm khi Jenkins chạy (tài liệu 11 mục 11.4). Trong lúc chờ, mỗi PR chạy test ở máy trước khi merge.
 
 ### Giai đoạn 4 — Mở rộng, chọn theo thời gian còn lại (sprint 7)
 
