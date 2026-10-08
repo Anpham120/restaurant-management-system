@@ -8,7 +8,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Component;
 
 import vn.khoibep.rms.common.exception.ApiException;
-import vn.khoibep.rms.employee.enums.Role;
+import vn.khoibep.rms.enums.Role;
 
 /** The signed-in employee. Role checks follow the role hierarchy (ADMIN > MANAGER > WAITER, CHEF, CASHIER). */
 @Component

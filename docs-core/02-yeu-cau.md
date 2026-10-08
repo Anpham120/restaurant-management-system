@@ -88,7 +88,7 @@
 | FR-08.4 | Tự xác nhận khi nhận **webhook SePay** hợp lệ. Màn hình thu ngân và điện thoại khách cập nhật ngay. Đơn đóng, bàn trống | M | BR-15, 16 |
 | FR-08.5 | **Khách tự thanh toán** trên trang QR: bấm "Thanh toán" → hiện VietQR → tự xác nhận | M | BR-13, 14 |
 | FR-08.6 | Thu ngân **xác nhận tay** khi webhook không tới. Hệ thống ghi người xác nhận | M | BR-17 |
-| FR-08.7 | Xem danh sách giao dịch ngân hàng **không khớp** để kiểm tra | S | BR-16 |
+| FR-08.7 | Xem danh sách giao dịch ngân hàng **không khớp** để kiểm tra (200 giao dịch gần nhất) | S | BR-16 |
 | FR-08.8 | **Cảnh báo webhook lỗi**: webhook SePay bị từ chối hoặc xử lý lỗi **3 lần liên tiếp** thì màn hình thu ngân hiện cảnh báo trong ≤ 2 giây, kèm lý do và lúc bắt đầu lỗi, để thu ngân kiểm tra app ngân hàng rồi xác nhận tay. Nhận được một webhook hợp lệ thì cảnh báo tự tắt | C | BR-32 |
 | FR-08.9 | **In phiếu khổ 80 mm** từ trình duyệt. Phục vụ và thu ngân in **phiếu tạm tính** của đơn đang mở để khách kiểm tra. Thu ngân in **phiếu thanh toán** sau khi đơn đã trả, in lại được. Phiếu ghi tên, địa chỉ, điện thoại quán, bàn, các món tính tiền và tổng; phiếu thanh toán ghi thêm cách trả, tiền khách đưa và tiền thối, hoặc mã chuyển khoản | M | BR-12, 33 |
 | FR-08.10 | **Giảm giá, tặng món**: thu ngân hoặc quản lý giảm một số tiền trên cả bill, hoặc tặng nguyên một dòng món, kèm lý do. Bill, trang khách và phiếu in ghi tiền món, từng khoản giảm và tổng sau giảm. Khoản giảm còn huỷ được khi đơn chưa trả | M | BR-12, 35 |
@@ -102,7 +102,7 @@
 |---|---|---|---|
 | FR-09.1 | Thêm, sửa nguyên liệu: tên, đơn vị, mức tối thiểu | M | — |
 | FR-09.2 | Nhập kho, xuất kho, kiểm kê (điều chỉnh về số thực tế), có ghi chú | M | BR-19 |
-| FR-09.3 | Xem lịch sử biến động của từng nguyên liệu | M | BR-19 |
+| FR-09.3 | Xem lịch sử biến động của từng nguyên liệu (200 lần gần nhất) | M | BR-19 |
 | FR-09.4 | Cảnh báo nguyên liệu có tồn ≤ mức tối thiểu | M | BR-20 |
 | FR-09.5 | **Nhà cung cấp**: tên, điện thoại, địa chỉ, mã số thuế, ghi chú. Ngừng giao dịch thì không chọn được khi lập phiếu, nhưng phiếu cũ vẫn giữ | S | BR-37 |
 | FR-09.6 | **Phiếu nhập có giá**: chọn nhà cung cấp, các dòng nguyên liệu với số lượng và đơn giá; tổng tiền phiếu tự tính. Lưu phiếu thì tồn tăng, lịch sử kho ghi số phiếu. Xem lại phiếu theo khoảng ngày | S | BR-19, 37 |
@@ -238,6 +238,6 @@ FR-12 → FR-15 là phần **nhân sự**, thêm theo yêu cầu của môn sau 
 | NFR-08 | Tiền là số nguyên VND. Giờ theo múi giờ Việt Nam (`Asia/Ho_Chi_Minh`) | Test báo cáo |
 | NFR-09 | Test tích hợp chạy với **PostgreSQL thật** (Testcontainers). CI chạy test mỗi lần push | Xem pipeline |
 | NFR-10 | Triển khai bằng **Docker Compose**. Quay về phiên bản trước bằng tag image | Làm thử một lần |
-| NFR-11 | Trên staging và production, backend ghi **log dạng JSON** (chuẩn ECS). Số liệu vận hành xem ở `/actuator/metrics`, **chỉ ADMIN**. Số liệu cho Prometheus ở `/actuator/prometheus`, chỉ trả khi request mang đúng mã `APP_METRICS_TOKEN`; chưa đặt mã thì đóng. Nginx không mở hai đường dẫn này ra ngoài | Xem `docker compose logs backend`; test tích hợp phân quyền |
+| NFR-11 | Trên staging và production, backend ghi **log dạng JSON** (chuẩn ECS). Số liệu vận hành xem ở `/actuator/metrics`, **chỉ ADMIN**. Số liệu cho Prometheus ở `/actuator/prometheus`, chỉ trả khi request mang đúng mã `APP_METRICS_TOKEN`; chưa đặt mã thì đóng. Nginx không mở hai đường dẫn này ra ngoài. Lời gọi vào một service chậm hơn 500 ms (đặt bằng `app.slow-service-threshold`) được ghi log `WARN` kèm tên lớp, tên phương thức và thời gian (Spring AOP) | Xem `docker compose logs backend`; test tích hợp phân quyền; `LoggingAspectTest` |
 | NFR-12 | **Giám sát và cảnh báo**: số liệu máy chủ, container, ứng dụng, nghiệp vụ và log của máy ứng dụng gom về Prometheus và Loki, xem trên Grafana. Chạy trên máy công cụ riêng, hoặc chung máy với ứng dụng khi chỉ có một máy; khi đó phải có thêm kiểm tra uptime từ bên ngoài. Sự cố báo qua **Telegram** trong khoảng 5 phút, hết sự cố thì báo đã ổn. Danh sách cảnh báo ở [tài liệu 09 mục 9.8](09-kien-truc-va-cicd.md) | `promtool test rules` trong CI; tắt thử backend staging, Telegram nhận tin |
 | NFR-13 | **CI/CD trên Jenkins**: mỗi PR được Jenkins test, cả E2E, và GitHub chỉ cho merge khi Jenkins báo xanh. Mỗi commit mới của `develop` và `main` được test lại, build image, chạy E2E trên đúng image đó rồi mới deploy; production cần người duyệt trên Jenkins. Không build PR từ fork. Hai lần deploy không chạy chồng nhau, không đưa commit cũ đè lên commit mới ([tài liệu 09 mục 9.6](09-kien-truc-va-cicd.md)) | Mở PR: Jenkins báo trạng thái lên PR. Merge vào `develop`: Jenkins test rồi deploy staging |

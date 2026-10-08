@@ -40,6 +40,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		<!-- P3-06: Spring AOP with AspectJ annotations, for the aspects in aspect/ (LoggingAspect, NFR-11). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aspectj</artifactId>
+		</dependency>
 		<!-- NFR-12: /actuator/prometheus for the monitoring server. -->
 		<dependency>
 			<groupId>io.micrometer</groupId>
@@ -86,7 +91,7 @@
 		<dependency>
 			<groupId>com.bucket4j</groupId>
 			<artifactId>bucket4j_jdk17-core</artifactId>
-			<version>8.20.0</version>
+			<version>8.21.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.ben-manes.caffeine</groupId>

@@ -25,4 +25,7 @@ docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 echo "$tag" > .deployed
 docker image prune -f
+# Images of earlier commits: GHCR keeps every one for a rollback, so the server drops those no container runs once
+# they are three days old, as the Jenkinsfile does on the build server. Images in use are never removed.
+docker image prune -af --filter label=khoibep.build=true --filter until=72h || true
 echo "$folder now runs $tag"
