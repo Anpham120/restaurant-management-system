@@ -36,6 +36,13 @@ updates:
     target-branch: develop
     schedule:
       interval: weekly
+    # P3-08: a new Java or Node major goes in by hand, with the versions the tests run on (pom.xml, ci-cd.yml,
+    # Jenkinsfile), so that the images run what the tests ran.
+    ignore:
+      - dependency-name: eclipse-temurin
+        update-types: ["version-update:semver-major"]
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
   # P0-07: images of the monitoring server and of the agent, pinned in their compose files.
   - package-ecosystem: docker-compose

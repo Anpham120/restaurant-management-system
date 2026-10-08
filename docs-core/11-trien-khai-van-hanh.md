@@ -37,6 +37,9 @@ Internet ──443──> Caddy ──> 127.0.0.1:8081  web production  ──> 
 # Docker Engine và Docker Compose, bằng script chính thức của Docker
 curl -fsSL https://get.docker.com | sudo sh
 
+# jq để đọc log JSON của backend (mục 11.8)
+sudo apt-get install -y jq
+
 # Người dùng riêng cho việc deploy; Jenkins đăng nhập bằng tài khoản này qua SSH
 sudo adduser --disabled-password --gecos "" deploy
 sudo usermod -aG docker deploy
@@ -171,7 +174,7 @@ sh restore.sh backups/rms-2026-10-05-0300.dump                         # khôi p
 | Ứng dụng còn chạy | `https://khoibep.example.vn/actuator/health` trả `{"status":"UP"}` |
 | Log backend (JSON, ECS) | `docker compose -f docker-compose.prod.yml logs -f backend`, lọc bằng `jq`, ví dụ `... logs --no-log-prefix backend \| jq -r '."log.level" + " " + .message'` |
 | Container đang chạy | `docker compose -f docker-compose.prod.yml ps` |
-| Dung lượng đĩa | `df -h /` và `docker system df`; job deploy tự xoá image cũ không dùng |
+| Dung lượng đĩa | `df -h /` và `docker system df`. Mỗi lần deploy tự xoá image của dự án không còn container nào dùng và đã quá 3 ngày; GHCR vẫn giữ mọi commit để quay lại bản cũ |
 | Webhook SePay hỏng liên tiếp | Trang **Thu ngân** hiện cảnh báo đỏ; khi đó xác nhận tay và kiểm tra cấu hình webhook |
 
 ## 11.9 Cập nhật và quay lại bản cũ
