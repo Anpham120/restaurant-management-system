@@ -121,6 +121,7 @@ P2-04 **đã làm xong** (issue #18), trước lịch: yêu cầu FR-10.4 → FR
 | P3-05 | Log JSON, số liệu Actuator; cảnh báo khi webhook SePay lỗi liên tục | S | C |
 | P3-06 | **Chia backend theo tầng** (monolith chuẩn Spring Boot: controller, service, repository, model, dto, enums dùng chung cho mọi nghiệp vụ) và **AOP**: aspect ghi log lời gọi service chậm | M | M |
 | P3-07 | **Giới hạn các danh sách lớn dần theo thời gian**: danh sách đơn chỉ gồm đơn đang mở; giao dịch ngân hàng và lịch sử kho trả 200 dòng mới nhất | S | S |
+| P3-08 | **Chuẩn bị lần deploy đầu**: image chạy đúng Java 21 và Node 24 như test; mỗi lần deploy dọn image của commit cũ; cài `jq` trên máy chủ | S | M |
 
 P3-01 → P3-05 **đã làm xong** (issue #19 → #23), trước lịch:
 - P3-01: giới hạn theo bàn (10 lần gửi mỗi phút, tối đa 30 món chờ xác nhận) và theo tên đăng nhập (10 lần thử mỗi phút), bằng Bucket4j. Không giới hạn theo IP, lý do ở tài liệu 09 mục 9.4.
@@ -132,6 +133,13 @@ P3-01 → P3-05 **đã làm xong** (issue #19 → #23), trước lịch:
 P3-06 **đã làm xong** (issue #102), theo yêu cầu của giảng viên: nhiều bảng được nhiều nghiệp vụ dùng chung (ví dụ `orders` được gọi món, thanh toán, đặt bàn, báo cáo và hoá đơn điện tử cùng dùng), nên backend chia theo tầng thay cho chia theo nghiệp vụ (tài liệu 09 mục 9.3). Không đổi CSDL, API hay hành vi. Thêm `LoggingAspect` ghi log lời gọi service chậm hơn 500 ms (NFR-11). Package của entity JPA mang tên `model/`, theo cách gọi của môn (chữ M trong MVC). Test tích hợp chuyển vào `integration/`; `ArchitectureTest` thêm quy tắc cho aspect.
 
 P3-07 **đã làm xong** (issue #104), sau khi rà soát mã: các danh sách không còn trả toàn bộ lịch sử. `GET /api/orders` chỉ trả đơn đang mở (giao diện chỉ dùng vậy; trạng thái khác báo lỗi 400, như danh sách khoản giảm giá); giao dịch ngân hàng (FR-08.7) và lịch sử kho của một nguyên liệu (FR-09.3) trả 200 dòng mới nhất, màn Kho ghi rõ khi danh sách bị cắt. Loại thuế chưa có thuế suất thì báo lỗi rõ ràng thay vì lỗi máy chủ. Không đổi CSDL.
+
+P3-08 **đã làm xong** (issue #108), trước lần deploy đầu:
+- **Image chạy đúng bản đã test.** Test luôn chạy trên Java 21 và Node 24 (`pom.xml`, `ci-cd.yml`, `Jenkinsfile`), nhưng Dependabot đã nâng image lên Java 25 và Node 26. Image trở lại Java 21, Node 24. Dependabot không còn đề xuất bản lớn của hai image này; muốn lên bản lớn thì nâng tay cùng lúc với chỗ chạy test.
+- **Deploy dọn image cũ.** Trước đây `deploy.sh` chỉ xoá image không tên, nên máy ứng dụng giữ image của mọi commit từng deploy cho tới khi đầy đĩa. Nay mỗi lần deploy xoá image của dự án không còn container nào dùng và đã quá 3 ngày, như `Jenkinsfile` vẫn làm trên máy build. GHCR vẫn giữ mọi commit để quay lại bản cũ.
+- **Cài `jq`** ở bước cài máy chủ (tài liệu 11 mục 11.2), vì mục 11.8 dùng nó để đọc log JSON.
+
+Không đổi CSDL, API hay hành vi.
 
 ### Giai đoạn 4 — Mở rộng, chọn theo thời gian còn lại (sprint 7)
 

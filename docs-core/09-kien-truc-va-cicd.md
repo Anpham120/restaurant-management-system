@@ -151,7 +151,7 @@ frontend/src/
   - Token GitHub của Jenkins chỉ có quyền `repo:status` và `write:packages`.
   - Trang Jenkins phải đăng nhập, không cho xem ẩn danh.
 - Quét lỗ hổng tự động, kết quả ở tab **Security** của GitHub:
-  - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`.
+  - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`. Riêng bản lớn của Java và Node (image `eclipse-temurin`, `node`) thì không: chúng phải lên cùng lúc với bản chạy test (`pom.xml`, `ci-cd.yml`, `Jenkinsfile`), để image chạy đúng thứ đã test.
   - CodeQL phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
   - Trivy quét 2 image sau mỗi lần build của Jenkins. Kết quả in trong log build, không lên tab Security.
   - Trivy báo lỗ hổng trong một thư viện do Spring Boot quản lý mà Spring Boot chưa có bản mới thì ghi đè phiên bản trong `backend/pom.xml` (như `tomcat.version`). Bỏ dòng ghi đè khi Spring Boot đã quản lý phiên bản đó hoặc mới hơn.
