@@ -1,5 +1,5 @@
 # Build stage on glibc (Debian): npm does not install lightningcss' musl binary on Alpine.
-# Node 24, the version the tests run on (ci-cd.yml, Jenkinsfile): a new major moves all of them together.
+# Node 24, the version the tests run on (Jenkinsfile): a new major moves all of them together.
 FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

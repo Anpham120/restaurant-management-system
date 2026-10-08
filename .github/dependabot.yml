@@ -22,22 +22,13 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
 
-  - package-ecosystem: github-actions
-    directory: /
-    target-branch: develop
-    schedule:
-      interval: weekly
-    groups:
-      actions:
-        patterns: ["*"]
-
   - package-ecosystem: docker
     directories: [/backend, /frontend]
     target-branch: develop
     schedule:
       interval: weekly
-    # P3-08: a new Java or Node major goes in by hand, with the versions the tests run on (pom.xml, ci-cd.yml,
-    # Jenkinsfile), so that the images run what the tests ran.
+    # P3-08: a new Java or Node major goes in by hand, with the versions the tests run on (pom.xml, Jenkinsfile),
+    # so that the images run what the tests ran.
     ignore:
       - dependency-name: eclipse-temurin
         update-types: ["version-update:semver-major"]

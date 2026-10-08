@@ -115,7 +115,7 @@ docker compose -p rms-e2e down -v
 
 Tên project `rms-e2e` tách dữ liệu test khỏi dữ liệu của `docker compose up` thường. `down -v` xoá luôn dữ liệu test.
 
-Kiểm thử tải ([perf/load-test.js](perf/load-test.js), NFR-02): 30 người dùng cùng lúc trong 2 phút. Đạt khi 95% request trả lời dưới 500 ms và dưới 1% request lỗi. Trên GitHub, chạy tay ở **Actions → Load test → Run workflow**. Chạy ở máy (k6 chạy trong Docker, không cần cài):
+Kiểm thử tải ([perf/load-test.js](perf/load-test.js), NFR-02): 30 người dùng cùng lúc trong 2 phút. Đạt khi 95% request trả lời dưới 500 ms và dưới 1% request lỗi. Chạy tay trên máy có Docker (k6 chạy trong Docker, không cần cài):
 
 ```bash
 docker compose -p rms-perf up -d --build
@@ -154,7 +154,7 @@ Sau đó mở pull request vào `develop` trên GitHub.
 Cài đặt trên GitHub (chỉ làm một lần):
 1. **Settings → Rules → Rulesets**, áp cho `main` và `develop` (đã bật):
    - Bắt buộc đi qua pull request, không push thẳng, không force push.
-   - Bắt buộc các check xanh: *continuous-integration/jenkins/pr-merge* (Jenkins), *CodeQL - Java*, *CodeQL - TypeScript*. Hiện ruleset còn bắt buộc 3 check cũ của GitHub Actions thay cho check của Jenkins; cách chuyển ở [tài liệu 11 mục 11.4](docs-core/11-trien-khai-van-hanh.md).
+   - Bắt buộc check xanh *continuous-integration/jenkins/pr-merge* (Jenkins), thêm khi Jenkins đã chạy; trước đó không bắt buộc check nào, và mỗi PR chạy test ở máy trước khi merge ([tài liệu 11 mục 11.4](docs-core/11-trien-khai-van-hanh.md)).
    - Không bật *Require branches to be up to date*, để các PR xếp chồng lên nhau không phải cập nhật lại liên tục.
    - **Settings → General → Pull Requests:** đã bật *Allow auto-merge* (PR tự merge khi CI xanh nếu bấm *Enable auto-merge*) và *Automatically delete head branches*.
 2. **Settings → Code security:** bật *Dependabot alerts* và *Dependabot security updates*, để GitHub báo và tự mở PR vá khi thư viện có lỗ hổng.
@@ -175,10 +175,7 @@ Cài đặt trên GitHub (chỉ làm một lần):
    - Mỗi thư mục có một file `.env` làm từ [deploy/.env.example](deploy/.env.example). Staging dùng `HTTP_PORT=8080` khi chạy chung máy với production.
 3. Sau khi deploy, Jenkins gọi `/actuator/health` để kiểm tra.
 4. Quay lại bản cũ: job **Khói Bếp: quay lại bản cũ** trên Jenkins, chọn môi trường và commit.
-5. GitHub Actions chỉ còn:
-   - [`codeql.yml`](.github/workflows/codeql.yml): phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần, kết quả ở tab **Security**.
-   - [`load-test.yml`](.github/workflows/load-test.yml): kiểm thử tải, chạy tay.
-   - [`ci-cd.yml`](.github/workflows/ci-cd.yml): giữ tạm 4 job test vì ruleset còn bắt buộc chúng. Tệp này xoá khi ruleset chuyển sang check của Jenkins.
+5. Không dùng GitHub Actions (P3-09). Kiểm thử tải chạy tay trên máy có Docker (mục [Kiểm thử](#kiểm-thử) ở trên).
 6. [`dependabot.yml`](.github/dependabot.yml) mở PR cập nhật thư viện mỗi tuần vào `develop`. Jenkins test các PR đó như mọi PR khác.
 
 ## Sao lưu và khôi phục

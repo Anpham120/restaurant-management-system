@@ -22,7 +22,7 @@ Tài liệu này là việc P5-01 ([tài liệu 10](10-ke-hoach-phat-trien.md)).
 | Frontend, component | Vitest, Testing Library (jsdom) | Mỗi PR và mỗi lần push |
 | ERD và migration | `scripts/check-erd.mjs` | Mỗi PR và mỗi lần push |
 | E2E | Playwright trên Chromium, cả ứng dụng dựng bằng Docker Compose | Mỗi PR và mỗi lần push |
-| Bảo mật | CodeQL (Java, TypeScript), Trivy (image), Dependabot | Mỗi PR, mỗi lần build image, mỗi tuần |
+| Bảo mật | Trivy (image), Dependabot. CodeQL bỏ cùng GitHub Actions (P3-09) | Mỗi lần build image, mỗi tuần |
 | Cảnh báo giám sát | `promtool test rules` (Prometheus), `amtool`, `alloy validate` | Mỗi PR và mỗi lần push |
 | Tải | k6 | Chạy tay trước khi phát hành |
 | Chạy thử trên trình duyệt | Playwright, viết riêng cho từng tính năng | Trước khi mở PR của tính năng |
@@ -50,7 +50,7 @@ Các mức Đơn vị, Tích hợp, Kiến trúc, Frontend, ERD, E2E và Cảnh 
 | E2E | 3 kịch bản xanh: luồng QR và chuyển khoản tới bàn trống; mỗi vai trò chỉ làm việc của mình; trang "Của tôi" |
 | ERD và migration | 23 migration, 35 bảng, 297 cột, 111 khoá, 0 lệch |
 | Tải (NFR-02) | p95 **23,8 ms**, 0% lỗi trên 2.281 request (mục 13.4) |
-| Bảo mật | CodeQL Java và TypeScript chạy ở mọi PR; Trivy quét 2 image; không chặn PR nào |
+| Bảo mật | Trivy quét 2 image; không chặn PR nào. CodeQL Java và TypeScript chạy ở mọi PR cho tới khi bỏ GitHub Actions (P3-09) |
 | Chạy thử | Mỗi tính năng P1 → P4 và phần triển khai đều dựng bằng Docker Compose, rồi chạy Playwright trên Chromium, cả ở khổ điện thoại 375 px |
 
 ## 13.3 Test case theo tiêu chí chấp nhận

@@ -33,7 +33,7 @@ flowchart LR
 | Frontend | **React 19, TypeScript, Vite**, Ant Design, React Router, TanStack Query, @stomp/stompjs | Giao diện nhân viên và khách |
 | Test | JUnit 5, MockMvc, **Testcontainers (PostgreSQL)**; Vitest | Test tự động |
 | Đóng gói | Docker (multi-stage), Docker Compose, Nginx | Chạy giống nhau ở máy dev và máy chủ |
-| CI/CD | **Jenkins** (test mỗi PR, build, deploy), GitHub Container Registry (GHCR). GitHub Actions chỉ còn CodeQL và kiểm thử tải chạy tay | Build, test, đóng image, triển khai (mục 9.6) |
+| CI/CD | **Jenkins** (test mỗi PR, build, deploy), GitHub Container Registry (GHCR). Không dùng GitHub Actions (P3-09) | Build, test, đóng image, triển khai (mục 9.6) |
 | Giám sát | **Prometheus**, **Loki**, **Grafana**, Alertmanager, blackbox exporter trên máy công cụ; **Grafana Alloy** trên máy ứng dụng; Micrometer trong backend | Số liệu, log, dashboard, cảnh báo Telegram (mục 9.8) |
 
 ## 9.3 Cấu trúc mã nguồn
@@ -61,7 +61,7 @@ flowchart LR
 ├── docker-compose.yml               chạy toàn bộ ở máy dev
 ├── deploy/docker-compose.prod.yml   chạy trên máy chủ bằng image từ GHCR
 ├── Jenkinsfile                      pipeline CI/CD; Jenkins và các tệp của nó ở deploy/ops/jenkins/
-└── .github/                         codeql.yml, load-test.yml (chạy tay), dependabot.yml
+└── .github/                         dependabot.yml
 ```
 
 Backend là **một ứng dụng Spring Boot (monolith) chia theo tầng** (P3-06). Mỗi tầng là một package dùng chung cho mọi nghiệp vụ:
@@ -151,9 +151,9 @@ frontend/src/
   - Token GitHub của Jenkins chỉ có quyền `repo:status` và `write:packages`.
   - Trang Jenkins phải đăng nhập, không cho xem ẩn danh.
 - Quét lỗ hổng tự động, kết quả ở tab **Security** của GitHub:
-  - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`. Riêng bản lớn của Java và Node (image `eclipse-temurin`, `node`) thì không: chúng phải lên cùng lúc với bản chạy test (`pom.xml`, `ci-cd.yml`, `Jenkinsfile`), để image chạy đúng thứ đã test.
-  - CodeQL phân tích mã Java và TypeScript ở mỗi PR và mỗi tuần.
+  - Dependabot mở PR cập nhật thư viện mỗi tuần vào `develop`. Riêng bản lớn của Java và Node (image `eclipse-temurin`, `node`) thì không: chúng phải lên cùng lúc với bản chạy test (`pom.xml`, `Jenkinsfile`), để image chạy đúng thứ đã test.
   - Trivy quét 2 image sau mỗi lần build của Jenkins. Kết quả in trong log build, không lên tab Security.
+  - Không còn phân tích tĩnh mã nguồn: CodeQL chạy trên GitHub Actions nên bỏ cùng Actions (P3-09). Muốn có lại thì thêm một bước vào `Jenkinsfile`.
   - Trivy báo lỗ hổng trong một thư viện do Spring Boot quản lý mà Spring Boot chưa có bản mới thì ghi đè phiên bản trong `backend/pom.xml` (như `tomcat.version`). Bỏ dòng ghi đè khi Spring Boot đã quản lý phiên bản đó hoặc mới hơn.
 
 ## 9.5 Triển khai
@@ -222,7 +222,9 @@ flowchart LR
   - `deploy/deploy.sh` giữ khoá (`flock`) để chỉ một lần deploy chạy. Script bỏ qua nếu commit đó đang chạy rồi.
   - Ngay trước khi deploy, Jenkins kiểm commit còn là mới nhất của nhánh.
 - **Jenkins là điểm duy nhất.** Jenkins hoặc máy của nó chết thì không có gì được test hay deploy. GitHub cũng không cho merge cho tới khi Jenkins chạy lại.
-- **Chuyển từ GitHub Actions sang Jenkins:** ruleset hiện còn bắt buộc các check của GitHub Actions. Vì vậy `ci-cd.yml` tạm giữ 4 job test (Backend, Frontend, E2E, Giám sát), không còn build hay deploy. Khi Jenkins đã chạy và ruleset đổi sang `continuous-integration/jenkins/pr-merge` (tài liệu 11 mục 11.4), tệp này được xoá.
+- **Không còn GitHub Actions** (P3-09): mọi bước test, build, deploy chạy trên Jenkins.
+  - Ruleset của `develop` và `main` bắt buộc check `continuous-integration/jenkins/pr-merge` sau khi Jenkins đã chạy (tài liệu 11 mục 11.4).
+  - Trước đó ruleset không bắt buộc check nào, nên mỗi PR phải chạy test ở máy trước khi merge.
 
 | Bước | Làm gì | Chặn merge nếu lỗi |
 |---|---|---|
@@ -231,7 +233,6 @@ flowchart LR
 | Frontend | Kiểm tra kiểu (TypeScript), ESLint, Vitest (cả test component), build | Có |
 | Giám sát | Kiểm tra cấu hình Prometheus, Alertmanager và Alloy; chạy test quy tắc cảnh báo (`promtool test rules`); dashboard Grafana là JSON hợp lệ (`scripts/check-monitoring.sh`) | Có |
 | E2E | Dựng ứng dụng từ 2 image vừa build, chạy kịch bản nghiệm thu bằng Playwright trên Chromium | Có |
-| CodeQL | Phân tích tĩnh mã Java và TypeScript (GitHub Actions, `codeql.yml`) | Không, chỉ báo ở tab Security |
 | Image | Build image multi-stage, gắn tag theo commit; Trivy quét lỗ hổng CRITICAL, HIGH đã có bản vá, in trong log Jenkins; đẩy lên GHCR (chỉ `develop`, `main`) | Không, chỉ báo |
 | Deploy | `develop` lên staging; `main` lên production sau khi có người duyệt trên Jenkins | — |
 | Quay lại bản cũ | Job **Khói Bếp: quay lại bản cũ** trên Jenkins: chọn môi trường và commit; production cần duyệt | — |
@@ -247,7 +248,7 @@ flowchart LR
 | Độ phủ | JaCoCo | Backend phải chạy tới ≥ 70% số dòng, thấp hơn thì CI đỏ. Con số in trong log build của Jenkins, ở bước Backend |
 | Kiến trúc | ArchUnit (`ArchitectureTest`) | Mỗi class nằm đúng package của tầng mình (cả aspect), và chỉ gọi xuống các tầng dưới (mục 9.3) |
 | E2E | Playwright, chạy trong CI | Kịch bản nghiệm thu ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu): khách QR, phục vụ, bếp, chuyển khoản, bàn trống; phân quyền; trang "Của tôi" |
-| Tải | k6 (`perf/load-test.js`), workflow `load-test.yml` chạy tay ở tab Actions | NFR-02: 30 người trong 2 phút (14 khách gọi món QR, 10 phục vụ, 3 bếp, 2 thu ngân, 1 quản lý xem báo cáo 30 ngày), sau khi nạp 6 tháng bán hàng. Đạt khi p95 < 500 ms và dưới 1% request lỗi |
+| Tải | k6 (`perf/load-test.js`), chạy tay trong Docker trên máy có Docker (cách chạy ở README) | NFR-02: 30 người trong 2 phút (14 khách gọi món QR, 10 phục vụ, 3 bếp, 2 thu ngân, 1 quản lý xem báo cáo 30 ngày), sau khi nạp 6 tháng bán hàng. Đạt khi p95 < 500 ms và dưới 1% request lỗi |
 | Cảnh báo | `promtool test rules`, chạy trong CI | Mỗi quy tắc ở mục 9.8 báo khi có sự cố và im khi bình thường, với số liệu giả lập theo từng phút |
 | Nghiệm thu | 2 trình duyệt + 1 điện thoại | Kịch bản ở [§1.5](01-tam-nhin-du-an.md#15-tiêu-chí-nghiệm-thu), làm tay khi demo |
 
