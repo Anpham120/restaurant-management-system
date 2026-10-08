@@ -1,7 +1,7 @@
 #!/bin/sh
 # P0-07, P0-09: checks the monitoring configs with the image versions the compose files pin: the alert rules and
 # their tests, the Prometheus and Alertmanager configs, the Alloy config and the Grafana dashboards. Run from the
-# repository root by the Jenkinsfile (and by ci-cd.yml while it stays). The files reach each container through stdin
+# repository root by the Jenkinsfile. The files reach each container through stdin
 # rather than a mount, because under Jenkins the Docker daemon does not see the workspace.
 set -eu
 

@@ -1,5 +1,5 @@
 # Build stage: Maven Wrapper downloads Maven, so no Maven install is needed.
-# Java 21, the version the tests run on (pom.xml, ci-cd.yml, Jenkinsfile): a new major moves all of them together.
+# Java 21, the version the tests run on (pom.xml, Jenkinsfile): a new major moves all of them together.
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 COPY .mvn .mvn
