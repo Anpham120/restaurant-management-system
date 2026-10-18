@@ -1,0 +1,30 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Gọi món và gửi đơn
+
+|Waiter|
+start
+:Chọn phiên phục vụ đang mở;
+|Hệ thống|
+:Hiển thị món đang bán\nvà số suất còn nhận;
+repeat
+  repeat
+    |Waiter|
+    :Chọn, sửa hoặc xóa món\ntrong danh sách nháp;
+  repeat while (Còn chỉnh danh sách nháp?) is (có) not (không)
+  :Gửi đơn kèm request_key;
+  |Hệ thống|
+  if (request_key đã được xử lý?) then (có)
+    :Không tạo đợt mới, trả lại\nkết quả lần gửi trước;
+  else (không)
+    :Tạo đợt gọi món mới\ntrong cùng đơn và phiên;
+    :Dòng đủ suất: tạo PENDING\nvà giữ tạm suất;
+    :Dòng hết suất hoặc UNAVAILABLE:\nkhông tạo, báo lại Waiter;
+    |Order Coordinator (POS)|
+    :Nhận món mới qua WebSocket\n(không gửi lại món cũ);
+  endif
+  |Waiter|
+  :Xem trạng thái từng món;
+repeat while (Khách gọi thêm món?) is (có) not (không)
+stop
+@enduml

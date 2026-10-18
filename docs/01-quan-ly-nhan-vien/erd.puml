@@ -1,0 +1,157 @@
+@startuml
+!include ../_style.puml
+hide circle
+set separator none
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 55
+title ERD – Phân hệ 1: Quản lý nhân viên
+
+entity "departments" as departments {
+  * id : bigint <<PK>>
+  --
+  * department_name : varchar(50) <<UK>>
+}
+
+entity "employees" as employees {
+  * id : bigint <<PK>>
+  --
+  * employee_code : varchar(20) <<UK>>
+  * full_name : varchar(100)
+  gender : varchar(10)
+  date_of_birth : date
+  * phone : varchar(15)
+  email : varchar(100)
+  address : varchar(255)
+  * hire_date : date
+  end_date : date
+  * work_status : varchar(20)
+  * department_id : bigint <<FK>>
+}
+
+entity "accounts" as accounts {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK, UK>>
+  * username : varchar(50) <<UK>>
+  * password_hash : varchar(255)
+  * must_change_password : boolean
+  * account_status : varchar(20)
+}
+
+entity "roles" as roles {
+  * id : bigint <<PK>>
+  --
+  * role_code : varchar(30) <<UK>>
+  * role_name : varchar(50)
+}
+
+entity "permissions" as permissions {
+  * id : bigint <<PK>>
+  --
+  * permission_code : varchar(50) <<UK>>
+  description : varchar(255)
+}
+
+entity "account_roles" as account_roles {
+  * id : bigint <<PK>>
+  --
+  * account_id : bigint <<FK>>
+  * role_id : bigint <<FK>>
+  ..
+  UK (account_id, role_id)
+}
+
+entity "role_permissions" as role_permissions {
+  * id : bigint <<PK>>
+  --
+  * role_id : bigint <<FK>>
+  * permission_id : bigint <<FK>>
+  ..
+  UK (role_id, permission_id)
+}
+
+entity "shifts" as shifts {
+  * id : bigint <<PK>>
+  --
+  * shift_name : varchar(50) <<UK>>
+  * start_time : time
+  * end_time : time
+  * break_minutes : integer
+  * is_active : boolean
+  ..
+  CHECK end_time khác start_time
+  CHECK 0 ≤ break_minutes ≤ thời lượng ca
+}
+
+entity "shift_assignments" as shift_assignments {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  * shift_id : bigint <<FK>>
+  * work_date : date
+  * scheduled_start_at : timestamptz
+  * scheduled_end_at : timestamptz
+  * scheduled_break_minutes : integer
+  * status : varchar(20)
+  note : varchar(255)
+  cancel_reason : varchar(255)
+  cancelled_by_id : bigint <<FK>>
+  cancelled_at : timestamptz
+  ..
+  CHECK scheduled_end_at > scheduled_start_at
+  CHECK 0 ≤ scheduled_break_minutes ≤ thời lượng
+  EXCLUDE (employee_id =, khoảng thời gian &&) khi SCHEDULED
+}
+
+entity "attendances" as attendances {
+  * id : bigint <<PK>>
+  --
+  * shift_assignment_id : bigint <<FK, UK>>
+  * attendance_status : varchar(20)
+  actual_start_at : timestamptz
+  actual_end_at : timestamptz
+  * worked_minutes : integer
+  note : varchar(255)
+  * confirmed_by_id : bigint <<FK>>
+  * confirmed_at : timestamptz
+}
+
+entity "attendance_adjustments" as attendance_adjustments {
+  * id : bigint <<PK>>
+  --
+  * attendance_id : bigint <<FK>>
+  * old_status : varchar(20)
+  * new_status : varchar(20)
+  old_start_at : timestamptz
+  new_start_at : timestamptz
+  old_end_at : timestamptz
+  new_end_at : timestamptz
+  * old_worked_minutes : integer
+  * new_worked_minutes : integer
+  * reason : varchar(255)
+  * adjusted_by_id : bigint <<FK>>
+  * adjusted_at : timestamptz
+}
+
+departments ||--o{ employees : has
+employees ||--o| accounts : owns
+accounts ||--o{ account_roles : has
+roles ||--o{ account_roles : assigned_in
+roles ||--o{ role_permissions : grants
+permissions ||--o{ role_permissions : granted_in
+employees ||--o{ shift_assignments : works
+employees |o--o{ shift_assignments : cancelled_by
+shifts ||--o{ shift_assignments : schedules
+shift_assignments ||--o| attendances : confirmed_as
+attendances ||-right-o{ attendance_adjustments : logs
+employees ||--o{ attendances : confirmed_by
+employees ||-down-o{ attendance_adjustments : adjusted_by
+
+legend right
+  * bắt buộc, PK khóa chính, FK khóa ngoại, UK duy nhất
+  cancelled_by_id, confirmed_by_id, adjusted_by_id tham chiếu employees.id
+  Mọi khóa ngoại ON DELETE RESTRICT: không xóa cứng dữ liệu đã có lịch sử.
+  Các phân hệ khác tham chiếu employees: xem ERD tổng thể.
+endlegend
+@enduml

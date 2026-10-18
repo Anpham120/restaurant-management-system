@@ -1,0 +1,61 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Xử lý yêu cầu gọi món: suất và nguyên liệu
+
+|Waiter|
+start
+:Gửi yêu cầu gọi món;
+|Hệ thống|
+if (Đủ suất cho cả dòng món?) then (không)
+  :Không nhận dòng món,\nbáo Waiter;
+else (có)
+  :PENDING, giữ tạm suất;
+  |Order Coordinator (POS)|
+  :Duyệt từng dòng món;
+  if (Chấp nhận cả dòng?) then (không)
+    |Hệ thống|
+    :REJECTED, hoàn suất giữ tạm;
+  else (có)
+    |Hệ thống|
+    :Đặt giữ nguyên liệu;
+    if (Đặt giữ thành công?) then (không)
+      :REJECTED (thiếu nguyên liệu),\nhoàn suất giữ tạm;
+    else (có)
+      :ACCEPTED, suất giữ tạm\nthành suất đã nhận;
+      |Order Coordinator (POS)|
+      :Chuyển món xuống bếp;
+      |Hệ thống|
+      :IN_KITCHEN, tạo phiếu bếp;
+      |Bếp|
+      :Nhận phiếu, bắt đầu nấu,\nbáo qua bộ đàm;
+      |Order Coordinator (POS)|
+      :Ghi nhận bắt đầu chế biến;
+      |Hệ thống|
+      if (Kho thiếu nguyên liệu\n(sau khi phân bổ lại theo FEFO)?) then (có)
+        :Giữ IN_KITCHEN, không tiêu hao,\nđánh dấu ngoại lệ thiếu nguyên liệu;
+        :Tính lại khả dụng, đồng bộ\ntới POS và Mobile;
+        |Order Coordinator (POS)|
+        :Hỏi bếp qua bộ đàm,\nquyết định xử lý tiếp;
+        stop
+      else (không)
+        |Hệ thống|
+        :COOKING, chuyển nguyên liệu\nđặt giữ thành tiêu hao;
+        note right
+          Trước COOKING: hủy hợp lệ thì hoàn suất và
+          giải phóng đặt giữ (IN_KITCHEN cần bếp xác nhận).
+          Từ COOKING: không hoàn nguyên liệu tự động.
+        end note
+        |Bếp|
+        :Báo món hoàn thành;
+        |Order Coordinator (POS)|
+        :Đánh dấu hoàn thành;
+        |Hệ thống|
+        :READY, thông báo Waiter;
+      endif
+    endif
+  endif
+endif
+|Hệ thống|
+:Tính lại khả dụng, đồng bộ\ntới POS và Mobile;
+stop
+@enduml

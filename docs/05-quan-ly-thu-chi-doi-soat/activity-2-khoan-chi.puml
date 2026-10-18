@@ -1,0 +1,39 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Ghi nhận và hủy khoản chi vận hành
+
+|Manager / Cashier|
+|Hệ thống|
+|Manager / Cashier|
+start
+:Mở màn hình "Khoản chi vận hành";
+if (Thao tác?) then (Ghi khoản chi)
+  :Nhập ngày kinh doanh, loại, nội dung, số tiền,\nphương thức, nguồn tiền, thời điểm đã chi;
+  if (Chi trả cho phiếu nhập kho?) then (có)
+    :Chọn phiếu nhập kho liên quan;
+  else (không)
+  endif
+  |Hệ thống|
+  if (Hợp lệ: số tiền > 0, đã thực trả,\nchi từ quầy phải là tiền mặt,\nCashier chỉ chi tiền mặt từ quầy?) then (không)
+    :Từ chối, báo lỗi;
+  else (có)
+    :Lưu khoản chi RECORDED, lưu người ghi\nvà thời điểm, không đổi phiếu nhập kho;
+    if (Ngày đã có bản đối soát hiện hành?) then (có)
+      :Giữ nguyên bản đối soát,\nđánh dấu "cần kiểm tra lại";
+    else (không)
+    endif
+  endif
+else (Hủy khoản chi nhập sai)
+  |Manager / Cashier|
+  :Manager chọn khoản chi,\nnhập lý do hủy;
+  |Hệ thống|
+  :Khoản chi VOIDED, giữ bản ghi,\nlưu người, thời điểm và lý do;
+  if (Ngày đã có bản đối soát hiện hành?) then (có)
+    :Giữ nguyên bản đối soát,\nđánh dấu "cần kiểm tra lại";
+  else (không)
+  endif
+endif
+|Manager / Cashier|
+:Xem kết quả;
+stop
+@enduml

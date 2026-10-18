@@ -1,0 +1,31 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Tra cứu và kiểm tra giao dịch
+
+|Manager / Cashier|
+|Hệ thống|
+|Manager / Cashier|
+start
+:Mở màn hình "Tra cứu giao dịch";
+:Chọn loại tra cứu và bộ lọc\n(ngày kinh doanh, phương thức, trạng thái);
+|Hệ thống|
+:Kiểm tra quyền (RBAC) theo vai trò;
+if (Loại tra cứu?) then (Thanh toán)
+  :Truy vấn payments (đã hoàn tất) và\npayment_requests (đang chờ);
+elseif (QR bất thường?) then (có)
+  :Truy vấn payment_webhook_events\nMISMATCH, AFTER_CANCEL;
+elseif (Khoản chi?) then (có)
+  :Truy vấn operating_expenses;
+else (Chênh lệch đối soát)
+  :Truy vấn daily_cash_reconciliations\n(chênh lệch khác 0, cần kiểm tra lại);
+endif
+:Hiển thị kết quả chỉ đọc, kèm liên kết truy về\nhóa đơn, webhook hoặc phiếu nhập kho;
+note right
+  Không sửa PAID, không tạo lại webhook,
+  không hủy hóa đơn đã thanh toán.
+  Ngoại lệ thanh toán thuộc phân hệ 3.
+end note
+|Manager / Cashier|
+:Xem kết quả, chuyển xử lý ngoại lệ\nsang phân hệ 3 nếu cần;
+stop
+@enduml

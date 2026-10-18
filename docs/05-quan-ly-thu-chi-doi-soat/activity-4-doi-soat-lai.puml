@@ -1,0 +1,35 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Đối soát lại khi đếm lại hoặc dữ liệu thay đổi
+
+|Cashier|
+|Hệ thống|
+|Manager|
+|Cashier|
+start
+:Mở bản đối soát đã lưu\ncủa một ngày kinh doanh;
+|Hệ thống|
+:Tính lại cash_sales và cash_expenses\ntừ dữ liệu hiện tại của ngày;
+if (Khác số đã lưu? (giao dịch đến muộn,\nkhoản chi mới hoặc đã hủy)) then (có)
+  :Đánh dấu bản đối soát "cần kiểm tra lại",\nhiển thị phần số liệu thay đổi;
+else (không)
+  :Hiển thị bản đối soát như đã lưu;
+endif
+|Cashier|
+if (Đếm lại hoặc cần cập nhật?) then (có)
+  :Nhập lại tiền thực đếm (và tiền lẻ đầu ngày\nnếu sai), nhập lý do đối soát lại;
+  |Hệ thống|
+  :Tính lại expected_cash theo dữ liệu hiện tại\nvà difference = actual_cash − expected_cash;
+  if (Chênh lệch khác 0?) then (có)
+    |Cashier|
+    :Nhập lý do chênh lệch;
+    |Hệ thống|
+  else (không)
+  endif
+  :Tạo phiên bản mới (CURRENT), bản cũ thành SUPERSEDED\nvà giữ nguyên số liệu cũ, lưu người và thời điểm;
+else (không)
+endif
+|Manager|
+:Xem lịch sử các phiên bản;
+stop
+@enduml

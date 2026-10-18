@@ -1,0 +1,47 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Theo dõi chế biến và trả món
+
+|Bếp|
+|Order Coordinator (POS)|
+|Hệ thống|
+|Waiter|
+|Bếp|
+start
+:Nhận phiếu bếp, bắt đầu chế biến;
+:Báo qua bộ đàm: đã bắt đầu nấu;
+|Order Coordinator (POS)|
+:Ghi nhận bắt đầu chế biến\n(có thể cập nhật nhiều món cùng lúc);
+|Hệ thống|
+:Kho kiểm tra các lô đã đặt giữ,\nphân bổ lại theo FEFO nếu cần;
+if (Kho cấp đủ nguyên liệu?) then (không)
+  :Giữ dòng ở IN_KITCHEN, không tiêu hao,\nđánh dấu ngoại lệ thiếu nguyên liệu;
+  |Order Coordinator (POS)|
+  :Liên hệ bếp qua bộ đàm,\nquyết định xử lý tiếp;
+  note right: Không tự hủy món đã chuyển bếp
+  stop
+else (có)
+  |Hệ thống|
+  :Chuyển dòng sang COOKING;
+  :Kho ghi nhận tiêu hao theo công thức;
+  note right: Chỉ trừ một lần cho mỗi dòng món
+endif
+if (Món chờ quá ngưỡng cấu hình?) then (có)
+  :Làm nổi bật món chờ lâu trên POS;
+  |Order Coordinator (POS)|
+  :Hỏi bếp qua bộ đàm;
+else (không)
+  |Order Coordinator (POS)|
+endif
+|Bếp|
+:Báo món hoàn thành;
+|Order Coordinator (POS)|
+:Đánh dấu hoàn thành\n(từng món hoặc nhóm món vừa xong);
+|Hệ thống|
+:Chuyển dòng sang READY\nvà thông báo trạng thái tới Waiter;
+|Order Coordinator (POS)|
+:Gọi phục vụ lấy món qua bộ đàm;
+|Waiter|
+:Nhận thông tin, lấy món\nmang ra bàn;
+stop
+@enduml

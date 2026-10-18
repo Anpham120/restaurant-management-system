@@ -1,0 +1,35 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Giải phóng hoặc đặt giữ lại khi hủy, sửa món
+
+|Order Coordinator (POS)|
+start
+:Hủy hợp lệ hoặc sửa số lượng dòng món\n(đã qua kiểm tra trạng thái ở phân hệ 3);
+note right
+  Hủy thông thường: PENDING, ACCEPTED.
+  Hủy ngoại lệ IN_KITCHEN: bếp đã xác nhận chưa chế biến.
+  COOKING, READY: không xử lý ở đây,
+  không hoàn nguyên liệu tự động.
+end note
+|Hệ thống|
+:Khóa dòng món;
+if (Thao tác?) then (Hủy)
+  :Đặt giữ ACTIVE → RELEASED (ITEM_CANCELLED),\ngiảm lượng đặt giữ của lô;
+  :Dòng món CANCELLED, hoàn suất,\nbỏ cờ ngoại lệ, không tạo tiêu hao;
+else (Sửa số lượng)
+  if (Dòng món PENDING?) then (có)
+    :Chưa đặt giữ nguyên liệu,\nchỉ cập nhật suất giữ tạm;
+  else (ACCEPTED)
+    :Giải phóng đặt giữ cũ (ITEM_EDITED),\ntính lại nhu cầu theo số lượng mới;
+    if (Đủ nguyên liệu?) then (có)
+      :Đặt giữ lại theo FEFO;
+    else (không)
+      :Rollback: giữ nguyên số lượng\nvà đặt giữ cũ, báo POS;
+    endif
+  endif
+endif
+:Tính lại khả dụng, đồng bộ POS / Mobile;
+|Order Coordinator (POS)|
+:Nhận kết quả;
+stop
+@enduml

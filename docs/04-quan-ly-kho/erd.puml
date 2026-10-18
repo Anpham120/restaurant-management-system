@@ -1,0 +1,198 @@
+@startuml
+!include ../_style.puml
+hide circle
+set separator none
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 55
+title ERD – Phân hệ 4: Quản lý kho & nguyên liệu
+
+entity "ingredients" as ingredients {
+  * id : bigint <<PK>>
+  --
+  * name : varchar(100) <<UK>>
+  * base_unit : varchar(20)
+  * min_quantity : decimal(12,3)
+  * is_expiry_tracked : boolean
+  * is_active : boolean
+}
+
+entity "stock_receipts" as stock_receipts {
+  * id : bigint <<PK>>
+  --
+  supplier_name : varchar(100)
+  * status : varchar(20)
+  note : varchar(255)
+  * created_at : timestamptz
+  confirmed_by_id : bigint <<FK>>
+  confirmed_at : timestamptz
+}
+
+entity "stock_receipt_items" as stock_receipt_items {
+  * id : bigint <<PK>>
+  --
+  * stock_receipt_id : bigint <<FK>>
+  * ingredient_id : bigint <<FK>>
+  * input_quantity : decimal(12,3)
+  * input_unit : varchar(20)
+  * conversion_factor : decimal(12,3)
+  * quantity : decimal(12,3)
+  * unit_price : decimal(12,2)
+  lot_code : varchar(50)
+  expiry_date : date
+}
+
+entity "inventory_batches" as inventory_batches {
+  * id : bigint <<PK>>
+  --
+  * ingredient_id : bigint <<FK>>
+  * stock_receipt_item_id : bigint <<FK, UK>>
+  lot_code : varchar(50)
+  expiry_date : date
+  * received_at : timestamptz
+  * quantity_on_hand : decimal(12,3)
+  * reserved_quantity : decimal(12,3)
+  * is_usable : boolean
+  unusable_reason : varchar(255)
+  unusable_marked_by_id : bigint <<FK>>
+  unusable_marked_at : timestamptz
+  ..
+  CHECK quantity_on_hand >= 0
+}
+
+entity "stock_movements" as stock_movements {
+  * id : bigint <<PK>>
+  --
+  * inventory_batch_id : bigint <<FK>>
+  * movement_type : varchar(20)
+  * quantity_delta : decimal(12,3)
+  * balance_after : decimal(12,3)
+  order_item_id : bigint <<FK>>
+  stock_count_item_id : bigint <<FK, UK>>
+  * created_at : timestamptz
+  ..
+  UK (inventory_batch_id) khi RECEIPT
+  UK (order_item_id, inventory_batch_id)
+}
+
+entity "stock_reservations" as stock_reservations {
+  * id : bigint <<PK>>
+  --
+  * order_item_id : bigint <<FK>>
+  * inventory_batch_id : bigint <<FK>>
+  * quantity : decimal(12,3)
+  * status : varchar(20)
+  release_reason : varchar(30)
+  * created_at : timestamptz
+  closed_at : timestamptz
+  ..
+  UK (order_item_id, inventory_batch_id) khi ACTIVE
+}
+
+entity "stock_counts" as stock_counts {
+  * id : bigint <<PK>>
+  --
+  * status : varchar(20)
+  note : varchar(255)
+  * created_at : timestamptz
+  confirmed_by_id : bigint <<FK>>
+  confirmed_at : timestamptz
+}
+
+entity "stock_count_items" as stock_count_items {
+  * id : bigint <<PK>>
+  --
+  * stock_count_id : bigint <<FK>>
+  * inventory_batch_id : bigint <<FK>>
+  * book_quantity : decimal(12,3)
+  * actual_quantity : decimal(12,3)
+  * difference : decimal(12,3)
+  reason : varchar(255)
+  ..
+  UK (stock_count_id, inventory_batch_id)
+}
+
+entity "employees" as employees {
+  * id : bigint <<PK>>
+  --
+  * employee_code : varchar(20) <<UK>>
+  * full_name : varchar(100)
+  gender : varchar(10)
+  date_of_birth : date
+  * phone : varchar(15)
+  email : varchar(100)
+  address : varchar(255)
+  * hire_date : date
+  end_date : date
+  * work_status : varchar(20)
+  * department_id : bigint <<FK>>
+}
+
+entity "recipes" as recipes {
+  * id : bigint <<PK>>
+  --
+  * menu_item_id : bigint <<FK>>
+  * version : int
+  * is_current : boolean
+  ..
+  UK (menu_item_id, version)
+}
+
+entity "recipe_ingredients" as recipe_ingredients {
+  * id : bigint <<PK>>
+  --
+  * recipe_id : bigint <<FK>>
+  * ingredient_id : bigint <<FK>>
+  * quantity_per_serving : decimal(12,3)
+}
+
+entity "daily_menu_items" as daily_menu_items {
+  * id : bigint <<PK>>
+  --
+  * daily_menu_id : bigint <<FK>>
+  * menu_item_id : bigint <<FK>>
+  * recipe_id : bigint <<FK>>
+  * quota_total : int
+  * is_paused : boolean
+  pause_reason : varchar(255)
+  ..
+  UK (daily_menu_id, menu_item_id)
+}
+
+entity "order_items" as order_items {
+  * id : bigint <<PK>>
+  --
+  * order_batch_id : bigint <<FK>>
+  * daily_menu_item_id : bigint <<FK>>
+  * quantity : int
+  * unit_price : decimal(12,2)
+  * status : varchar(20)
+  * has_stock_exception : boolean
+  note : varchar(255)
+}
+
+employees |o--o{ stock_receipts : confirmed_by
+employees |o--o{ stock_counts : confirmed_by
+employees |o--o{ inventory_batches : marked_unusable_by
+recipes ||--o{ recipe_ingredients : contains
+recipes ||--o{ daily_menu_items : applied_to
+daily_menu_items ||--o{ order_items : selected_from
+ingredients ||--o{ recipe_ingredients : used_in
+ingredients ||--o{ stock_receipt_items : received_as
+ingredients ||--o{ inventory_batches : stored_in
+stock_receipts ||--o{ stock_receipt_items : contains
+stock_receipt_items ||--o| inventory_batches : creates
+inventory_batches ||--o{ stock_movements : affected_by
+inventory_batches ||--o{ stock_reservations : reserved_from
+order_items ||--o{ stock_reservations : reserves
+order_items |o--o{ stock_movements : consumed_by
+stock_counts ||--o{ stock_count_items : contains
+inventory_batches ||--o{ stock_count_items : counted_in
+stock_count_items |o--o| stock_movements : adjusted_by
+
+legend right
+  * bắt buộc, PK khóa chính, FK khóa ngoại, UK duy nhất
+  Bảng của phân hệ 1, 2, 3 vẽ đủ cột để thấy liên kết; khóa ngoại trỏ ra ngoài sơ đồ này: xem ERD tổng thể.
+  Số lượng theo đơn vị cơ sở của nguyên liệu, decimal(12,3).
+endlegend
+@enduml

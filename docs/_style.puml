@@ -1,0 +1,55 @@
+' Style dùng chung cho mọi sơ đồ RMS (use case, activity, ERD): đen trắng, dễ đọc.
+' Cách dùng trong file sơ đồ: !include ../_style.puml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam defaultFontColor #000000
+skinparam dpi 120
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam backgroundColor #FFFFFF
+skinparam titleFontSize 18
+skinparam titleFontStyle bold
+skinparam titleFontColor #000000
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 12
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #000000
+skinparam NoteFontColor #000000
+skinparam LegendBackgroundColor #FFFFFF
+skinparam LegendBorderColor #000000
+skinparam LegendFontColor #000000
+
+' Use case
+skinparam actorBackgroundColor #FFFFFF
+skinparam actorBorderColor #000000
+skinparam actorFontColor #000000
+skinparam usecaseBackgroundColor #FFFFFF
+skinparam usecaseBorderColor #000000
+skinparam usecaseFontColor #000000
+skinparam rectangleBackgroundColor #FFFFFF
+skinparam rectangleBorderColor #000000
+skinparam rectangleFontColor #000000
+' Nhóm chức năng trong use case (package nét đứt, khác với ranh giới hệ thống là rectangle nét liền)
+skinparam packageBackgroundColor #FFFFFF
+skinparam packageBorderColor #000000
+skinparam packageFontColor #000000
+
+' Activity
+skinparam activityBackgroundColor #FFFFFF
+skinparam activityBorderColor #000000
+skinparam activityFontColor #000000
+skinparam activityDiamondBackgroundColor #FFFFFF
+skinparam activityDiamondBorderColor #000000
+skinparam activityDiamondFontColor #000000
+skinparam activityStartColor #000000
+skinparam activityEndColor #000000
+skinparam swimlaneBorderColor #000000
+
+' ERD
+skinparam entityBackgroundColor #FFFFFF
+skinparam entityBorderColor #000000
+skinparam entityFontColor #000000
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #000000
+skinparam classFontColor #000000

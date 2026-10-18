@@ -1,0 +1,36 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Xử lý đặt giữ khi lô không còn sử dụng được
+
+|Hệ thống|
+|Order Coordinator (POS)|
+|Bếp|
+|Hệ thống|
+start
+:Lô bị đánh dấu không đạt chất lượng, hoặc\nphát hiện lô hết hạn còn đặt giữ ACTIVE;
+:Khóa lô và các dòng món có đặt giữ ACTIVE trên lô;
+:Giải phóng đặt giữ trên lô: ACTIVE → RELEASED\n(LOT_UNAVAILABLE), giảm lượng đặt giữ của lô;
+note right: Lô không còn bị đặt giữ chiếm dụng
+repeat
+  :Lấy dòng món bị ảnh hưởng\n(theo thứ tự thời điểm chấp nhận);
+  :Thử đặt giữ lại phần nguyên liệu vừa mất\ntừ các lô hợp lệ khác theo FEFO\n(tất cả hoặc không);
+  if (Đủ nguyên liệu?) then (có)
+    :Tạo đặt giữ ACTIVE mới trên các lô hợp lệ;
+  else (không)
+    :Không giữ một phần,\nđánh dấu ngoại lệ thiếu nguyên liệu;
+  endif
+repeat while (Còn dòng món bị ảnh hưởng?) is (có) not (không)
+:Tính lại khả dụng, đồng bộ POS / Mobile\n(món bị ảnh hưởng có thể UNAVAILABLE);
+if (Có dòng món ngoại lệ?) then (có)
+  :Thông báo POS danh sách dòng món ngoại lệ;
+  |Order Coordinator (POS)|
+  :Liên hệ bếp qua bộ đàm;
+  |Bếp|
+  :Cho biết món đã chế biến chưa,\ncó thể chờ hay dừng;
+  |Order Coordinator (POS)|
+  :Quyết định: chờ nhập bổ sung rồi ghi nhận lại,\nhoặc hủy hợp lệ (ACCEPTED: hủy thông thường,\nIN_KITCHEN: hủy ngoại lệ có bếp xác nhận);
+  note right: Không tự hủy món, không tự hủy đơn
+else (không)
+endif
+stop
+@enduml

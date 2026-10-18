@@ -1,0 +1,35 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Nhập kho theo lô
+
+|Manager|
+start
+:Kiểm tra hàng thực tế\nnhà cung cấp giao;
+:Tạo phiếu nhập (DRAFT);
+repeat
+  :Thêm dòng: nguyên liệu, số lượng, đơn vị nhập,\nhệ số quy đổi, đơn giá, số lô, hạn dùng;
+  |Hệ thống|
+  :Quy đổi về đơn vị cơ sở\n(ví dụ 5 kg × 1.000 = 5.000 g);
+  if (Nguyên liệu đang dùng, số lượng > 0,\nhệ số > 0, đơn vị nhập cùng nhóm\nvới đơn vị cơ sở?) then (không)
+    :Báo lỗi dòng phiếu;
+  elseif (Nguyên liệu theo dõi hạn dùng\nmà thiếu hạn hoặc hạn đã qua?) then (có)
+    :Báo lỗi dòng phiếu;
+  else (hợp lệ)
+    :Lưu dòng vào phiếu nháp\n(chưa thay đổi tồn);
+  endif
+  |Manager|
+repeat while (Thêm dòng khác?) is (có) not (không)
+:Xác nhận phiếu nhập;
+|Hệ thống|
+if (Phiếu còn DRAFT và\ncó ít nhất một dòng?) then (có)
+  :Mỗi dòng tạo một lô, cộng tồn,\nghi biến động RECEIPT;
+  :Phiếu CONFIRMED, lưu người và thời điểm\nxác nhận; giữ nguyên dòng phiếu\n(kể cả hệ số quy đổi);
+  note right: Cùng một transaction
+  :Phân hệ Thực đơn tính lại khả dụng,\nđồng bộ POS / Mobile;
+else (không)
+  :Từ chối: phiếu đã xác nhận\nhoặc không có dòng;
+endif
+|Manager|
+:Xem kết quả nhập kho;
+stop
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Quản lý thực đơn hằng ngày
+
+|Manager|
+start
+:Chọn ngày bán;
+if (Sao chép thực đơn ngày trước?) then (có)
+  |Hệ thống|
+  :Tạo bản nháp từ ngày trước\n(dùng công thức hiện hành);
+else (không)
+  |Hệ thống|
+  :Tạo bản nháp trống;
+endif
+repeat
+  |Manager|
+  :Chọn món và nhập hạn mức suất;
+  |Hệ thống|
+  :Tính nhu cầu nguyên liệu\nvà đối chiếu tồn kho;
+  if (Đủ nguyên liệu cho\nkế hoạch cả ngày?) then (không)
+    :Hiển thị cảnh báo thiếu nguyên liệu;
+  else (có)
+    :Hiển thị kế hoạch đủ nguyên liệu;
+  endif
+  |Manager|
+repeat while (Điều chỉnh suất hoặc\nbổ sung kho trước?) is (có) not (không)
+:Xác nhận công bố;
+note right: Được công bố dù còn\ncảnh báo thiếu nguyên liệu
+|Hệ thống|
+:Chuyển sang PUBLISHED,\nkhông đặt giữ nguyên liệu;
+:Đồng bộ thực đơn tới POS và Mobile;
+|POS / Mobile|
+:Chỉ nhận số suất khả dụng\ntại thời điểm đặt;
+|Manager|
+:Đóng thực đơn khi ngừng\nnhận món trong ngày;
+|Hệ thống|
+:CLOSED: chặn yêu cầu gọi món mới,\nmón đã tiếp nhận vẫn xử lý tiếp;
+stop
+@enduml

@@ -1,0 +1,42 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Luồng vận hành tổng thể của đơn hàng
+
+|Waiter|
+start
+:Khách đến nhà hàng;
+:Mở bàn (mở phiên phục vụ);
+repeat
+  :Chọn món trên điện thoại;
+  :Gửi đơn đến POS;
+  |Order Coordinator (POS)|
+  :Duyệt từng dòng món;
+  :Chuyển món đã duyệt xuống bếp;
+  |Bếp|
+  :Nhận phiếu và chế biến;
+  |Order Coordinator (POS)|
+  :Cập nhật món sẵn sàng (READY);
+  :Gọi phục vụ qua bộ đàm;
+  |Waiter|
+  :Mang món ra bàn;
+repeat while (Khách gọi thêm món?) is (có) not (không)
+:Khách yêu cầu thanh toán;
+:Gửi yêu cầu thanh toán đến thu ngân;
+|Cashier|
+:Duyệt yêu cầu thanh toán;
+|Waiter|
+if (Phương thức thanh toán?) then (QR)
+  :Hiển thị QR, khách chuyển khoản;
+  |Hệ thống|
+  :Nhận webhook xác nhận\ngiao dịch thành công;
+else (Tiền mặt)
+  |Waiter|
+  :Thu tiền mặt tại bàn\nvà mang về quầy;
+  |Cashier|
+  :Xác nhận đã nhận tiền mặt;
+endif
+|Hệ thống|
+:Hóa đơn PAID, đơn CLOSED;
+:Kết thúc phiên, bàn AVAILABLE;
+stop
+@enduml

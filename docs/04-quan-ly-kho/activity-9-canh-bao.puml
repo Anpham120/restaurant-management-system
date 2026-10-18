@@ -1,0 +1,24 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Cảnh báo nguyên liệu và đồng bộ thực đơn
+
+|Hệ thống|
+start
+:Kho thay đổi (nhập, đặt giữ, giải phóng,\ntiêu hao, kiểm kê, đánh dấu lô)\nhoặc người dùng mở màn hình;
+:Tính lại tồn sử dụng được\nvà khả dụng theo nguyên liệu;
+if (Có lô hết hạn còn đặt giữ ACTIVE?) then (có)
+  :Xử lý đặt giữ trên lô\n(xem sơ đồ 4.10)|
+else (không)
+endif
+:Lập cảnh báo:\n– khả dụng dưới ngưỡng tối thiểu\n– không đủ nguyên liệu cho một suất\n– lô gần hết hạn (ngưỡng cấu hình chung,\n  mặc định 3 ngày), lô hết hạn\n– chênh lệch kiểm kê\n– lô không đạt chất lượng\n– thiếu so với đặt giữ,\n  dòng món ngoại lệ thiếu nguyên liệu;
+:Phân hệ Thực đơn tính lại số suất\nvà mã lý do OUT_OF_STOCK;
+|POS / Mobile|
+:Cập nhật món AVAILABLE / UNAVAILABLE\nqua WebSocket;
+if (Có cảnh báo thiếu so với đặt giữ?) then (có)
+  :POS xử lý món đã chấp nhận:\nhủy hợp lệ hoặc chờ Manager bổ sung;
+else (không)
+endif
+|Manager|
+:Xem cảnh báo và xử lý: nhập bổ sung,\nkiểm kê, đánh dấu lô;
+stop
+@enduml

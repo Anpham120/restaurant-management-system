@@ -1,0 +1,37 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Quản lý bảng công
+
+|Manager|
+|Hệ thống|
+|Manager|
+start
+:Mở màn hình "Bảng công";
+:Chọn kỳ (tuần / tháng)\nvà nhân viên hoặc bộ phận;
+|Hệ thống|
+:Tổng hợp từ chấm công (không có bảng riêng):\nsố ca đã làm, số phút / giờ làm, số ca vắng,\nsố ngày đi làm (mỗi ngày tính 1 dù có nhiều ca),\nsố lần điều chỉnh;
+:Hiển thị bảng công tổng hợp;
+|Manager|
+if (Cần điều chỉnh công?) then (có)
+  :Chọn dòng chấm công cần điều chỉnh;
+  repeat
+    :Nhập trạng thái hoặc giờ vào – ra mới\nvà lý do điều chỉnh (bắt buộc);
+    |Hệ thống|
+    :Kiểm tra: lý do không trống,\ngiờ ra sau giờ vào, không ở tương lai;
+  repeat while (Thiếu lý do hoặc\ndữ liệu sai?) is (có: báo lỗi,\nnhập lại) not (không)
+  |Hệ thống|
+  :Trong một transaction: ghi nhật ký điều chỉnh\n(giá trị cũ → mới, người sửa, thời điểm),\ncập nhật chấm công, tính lại số phút làm việc;
+  note right: Không sửa trực tiếp lịch sử.\nKhông tính lương từ bảng công.
+  :Tổng hợp lại bảng công theo dữ liệu mới;
+else (không)
+endif
+|Manager|
+if (Xuất Excel?) then (có)
+  |Hệ thống|
+  :Tạo file Excel từ bảng công đang xem;
+  |Manager|
+  :Nhận và lưu file Excel;
+else (không)
+endif
+stop
+@enduml

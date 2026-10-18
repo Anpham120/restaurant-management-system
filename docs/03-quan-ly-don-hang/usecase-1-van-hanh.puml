@@ -1,0 +1,73 @@
+@startuml
+!include ../_style.puml
+left to right direction
+skinparam nodesep 40
+skinparam ranksep 80
+title Sơ đồ use case – Phân hệ 3: Quản lý đơn hàng (1/2: vận hành đơn hàng)
+
+actor "Waiter\n(Phục vụ)" as Waiter
+actor "Order Coordinator\n(POS điều phối)" as Coord
+actor "Manager\n(Quản lý)" as Manager
+
+rectangle "3.1 Quản lý bàn & phiên phục vụ" {
+  usecase "UC01\nXem trạng thái bàn" as UC01
+  usecase "UC02\nMở phiên phục vụ" as UC02
+  usecase "UC03\nChuyển bàn" as UC03
+  usecase "UC04\nKết thúc phiên phục vụ" as UC04
+}
+
+rectangle "3.2 Gọi món & cập nhật đơn" {
+  usecase "UC05\nGọi món và gửi đơn\n(kể cả gọi thêm món)" as UC05
+  usecase "UC06\nXem trạng thái món" as UC06
+}
+
+rectangle "3.3 Tiếp nhận & điều phối POS" {
+  usecase "UC07\nDuyệt món" as UC07
+  usecase "UC08\nTừ chối món" as UC08
+  usecase "UC09\nChuyển món xuống bếp" as UC09
+  usecase "UC10\nHủy món thông thường" as UC10
+}
+
+rectangle "3.4 Theo dõi chế biến & trả món" {
+  usecase "UC11\nTheo dõi chế biến\nvà thời gian chờ" as UC11
+  usecase "UC12\nGhi nhận bắt đầu chế biến" as UC12
+  usecase "UC13\nĐánh dấu món hoàn thành" as UC13
+  usecase "UC14\nGọi phục vụ lấy món" as UC14
+}
+
+rectangle "3.6 Xử lý ngoại lệ đơn hàng" {
+  usecase "UC15\nSửa món chưa chuyển bếp" as UC15
+  usecase "UC16\nHủy ngoại lệ món\nđã chuyển bếp" as UC16
+  usecase "UC17\nGiám sát đơn hàng" as UC17
+  usecase "UC18\nXử lý ngoại lệ\ncần quyền quản lý" as UC18
+}
+
+Waiter --> UC01
+Waiter --> UC02
+Waiter --> UC03
+Waiter --> UC04
+Waiter --> UC05
+Waiter --> UC06
+Waiter --> UC14
+
+UC01 <-- Coord
+UC07 <-- Coord
+UC08 <-- Coord
+UC09 <-- Coord
+UC10 <-- Coord
+UC11 <-- Coord
+UC12 <-- Coord
+UC13 <-- Coord
+UC14 <-- Coord
+UC15 <-- Coord
+UC16 <-- Coord
+
+UC17 <-- Manager
+UC18 <-- Manager
+
+legend bottom
+  Bếp không phải actor: bếp nhận phiếu, chế biến và giao tiếp qua bộ đàm, POS ghi nhận tiến độ.
+  Chống gửi trùng, cảnh báo chờ lâu, giữ suất là xử lý nội bộ, mô tả trong sơ đồ hoạt động.
+  Thanh toán (3.5) xem sơ đồ 2/2. Điều kiện tiên quyết: người dùng đã đăng nhập.
+endlegend
+@enduml

@@ -1,0 +1,52 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Quản lý phân ca
+
+|Manager|
+|Hệ thống|
+|Manager|
+start
+:Mở màn hình "Phân ca";
+:Chọn tuần cần xếp lịch;
+|Hệ thống|
+:Hiển thị lịch tuần và danh sách\nmẫu ca đang dùng;
+|Manager|
+if (Cần tạo hoặc sửa mẫu ca?) then (có)
+  repeat
+    :Nhập tên ca, giờ bắt đầu, giờ kết thúc,\nkhoảng nghỉ (phút);
+    |Hệ thống|
+    :Kiểm tra: tên không trống và không trùng,\ngiờ bắt đầu khác giờ kết thúc\n(kết thúc ≤ bắt đầu là ca qua đêm),\nkhoảng nghỉ từ 0 đến thời lượng ca;
+  repeat while (Cấu hình không hợp lệ?) is (có: báo lỗi,\nManager sửa lại) not (không)
+  |Hệ thống|
+  :Lưu mẫu ca;
+  note right
+    Đổi mẫu ca chỉ áp dụng cho phân ca tạo sau đó.
+    Phân ca và chấm công đã có giữ nguyên.
+  end note
+else (không)
+endif
+repeat
+  |Manager|
+  :Chọn nhân viên, ngày làm việc và ca;
+  |Hệ thống|
+  :Tính thời gian bắt đầu, kết thúc theo múi giờ\nAsia/Ho_Chi_Minh (ca qua đêm kết thúc hôm sau);
+  if (Nhân viên "Đang làm" và ngày làm việc nằm\ntrong thời gian làm việc (từ ngày vào làm\nđến trước ngày nghỉ việc)?) then (không)
+    :Báo lỗi: không thể phân ca;
+  elseif (Trùng hoặc chồng giờ với phân ca SCHEDULED\nkhác, kể cả ca qua đêm bắt đầu hôm trước?) then (có)
+    :Báo lỗi trùng lịch\n(PostgreSQL từ chối bằng EXCLUDE);
+  else (không)
+    :Lưu phân ca SCHEDULED kèm giờ bắt đầu,\ngiờ kết thúc, khoảng nghỉ đã lên lịch;
+  endif
+  |Manager|
+repeat while (Phân thêm ca?) is (có) not (không)
+if (Cần sửa hoặc hủy phân ca tương lai?) then (có)
+  :Chọn phân ca chưa diễn ra, chưa chấm công\nvà nhập lý do;
+  |Hệ thống|
+  :Hủy phân ca cũ: CANCELLED, lý do,\nngười hủy, thời điểm;
+  note right: Sửa = hủy bản cũ rồi tạo bản mới\ntheo các kiểm tra phía trên
+else (không)
+endif
+|Hệ thống|
+:Hiển thị lịch làm việc tuần;
+stop
+@enduml

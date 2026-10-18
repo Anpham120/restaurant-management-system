@@ -1,0 +1,34 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Thanh toán tiền mặt tại bàn
+
+|Waiter|
+start
+:Khách yêu cầu thanh toán tiền mặt;
+:Gửi yêu cầu đến Cashier;
+|Cashier|
+:Kiểm tra hóa đơn và duyệt;
+|Hệ thống|
+:APPROVED, chuyển sang\nWAITING_CASH_HANDOVER;
+|Waiter|
+:Thu tiền tại bàn, nhập số tiền\nkhách đưa (cash_received);
+|Hệ thống|
+:Tính tiền thừa (change_amount);
+|Waiter|
+:Mang toàn bộ tiền đến quầy;
+|Cashier|
+:Kiểm đếm, nhập số tiền\nthực đếm (cash_counted);
+:Đưa tiền thừa cho Waiter\n(nếu khách trả dư);
+if (Thu ngân đã nhận đủ tiền bàn giao\nvà xử lý tiền thừa?) then (có)
+  :Xác nhận đã nhận tiền\nvà bàn giao tiền thừa;
+  |Hệ thống|
+  :Ghi nhận thanh toán (số tiền sau khi trả\ntiền thừa, kèm ngày kinh doanh),\nyêu cầu và hóa đơn PAID;
+  :Đơn CLOSED, phiên CLOSED,\nbàn AVAILABLE;
+  |Waiter|
+  :Trả tiền thừa cho khách;
+else (không)
+  |Hệ thống|
+  :Giữ WAITING_CASH_HANDOVER\nđể đối chiếu;
+endif
+stop
+@enduml

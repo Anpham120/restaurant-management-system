@@ -1,0 +1,31 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Tính khả dụng của món
+
+|Waiter / POS|
+start
+:Xem thực đơn hoặc gửi yêu cầu gọi món;
+|Hệ thống|
+note right
+  Tính lại khi có đơn mới, khi dòng món
+  bị từ chối hoặc hủy, khi kho thay đổi.
+end note
+if (Thực đơn PUBLISHED và\nmón có trong thực đơn ngày?) then (không)
+  :Không hiển thị món để gọi;
+elseif (POS đang tạm ngừng bán?) then (có)
+  :UNAVAILABLE (PAUSED);
+else (không)
+  :Q_quota = max(0, hạn mức\n− đã giữ − đã nhận);
+  :Q_kho = nhỏ nhất theo nguyên liệu của\nphần nguyên (khả dụng / định lượng);
+  if (Q_quota = 0?) then (có)
+    :UNAVAILABLE (SOLD_OUT);
+  elseif (Q_kho = 0?) then (có)
+    :UNAVAILABLE (OUT_OF_STOCK);
+  else (không)
+    :AVAILABLE, nhận tối đa\nmin(Q_quota, Q_kho) suất;
+  endif
+endif
+|Waiter / POS|
+:Nút gọi món bật hoặc bị vô hiệu;
+stop
+@enduml

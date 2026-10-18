@@ -1,0 +1,103 @@
+@startuml
+!include ../_style.puml
+hide circle
+set separator none
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 55
+title ERD – Phân hệ 2: Quản lý thực đơn
+
+entity "menu_categories" as menu_categories {
+  * id : bigint <<PK>>
+  --
+  * name : varchar(100)
+  * sort_order : int
+  * is_active : boolean
+}
+
+entity "menu_items" as menu_items {
+  * id : bigint <<PK>>
+  --
+  * menu_category_id : bigint <<FK>>
+  * name : varchar(100)
+  * price : decimal(12,2)
+  image_url : varchar(255)
+  * is_active : boolean
+}
+
+entity "recipes" as recipes {
+  * id : bigint <<PK>>
+  --
+  * menu_item_id : bigint <<FK>>
+  * version : int
+  * is_current : boolean
+  ..
+  UK (menu_item_id, version)
+}
+
+entity "recipe_ingredients" as recipe_ingredients {
+  * id : bigint <<PK>>
+  --
+  * recipe_id : bigint <<FK>>
+  * ingredient_id : bigint <<FK>>
+  * quantity_per_serving : decimal(12,3)
+}
+
+entity "daily_menus" as daily_menus {
+  * id : bigint <<PK>>
+  --
+  * business_date : date <<UK>>
+  * status : varchar(20)
+  published_at : timestamptz
+}
+
+entity "daily_menu_items" as daily_menu_items {
+  * id : bigint <<PK>>
+  --
+  * daily_menu_id : bigint <<FK>>
+  * menu_item_id : bigint <<FK>>
+  * recipe_id : bigint <<FK>>
+  * quota_total : int
+  * is_paused : boolean
+  pause_reason : varchar(255)
+  ..
+  UK (daily_menu_id, menu_item_id)
+}
+
+entity "ingredients" as ingredients {
+  * id : bigint <<PK>>
+  --
+  * name : varchar(100) <<UK>>
+  * base_unit : varchar(20)
+  * min_quantity : decimal(12,3)
+  * is_expiry_tracked : boolean
+  * is_active : boolean
+}
+
+entity "order_items" as order_items {
+  * id : bigint <<PK>>
+  --
+  * order_batch_id : bigint <<FK>>
+  * daily_menu_item_id : bigint <<FK>>
+  * quantity : int
+  * unit_price : decimal(12,2)
+  * status : varchar(20)
+  * has_stock_exception : boolean
+  note : varchar(255)
+}
+
+menu_categories ||--o{ menu_items : contains
+menu_items ||--o{ recipes : has
+recipes ||--o{ recipe_ingredients : contains
+ingredients ||--o{ recipe_ingredients : used_in
+daily_menus ||--o{ daily_menu_items : includes
+menu_items ||--o{ daily_menu_items : appears_in
+recipes ||--o{ daily_menu_items : applied_to
+daily_menu_items ||--o{ order_items : selected_from
+
+legend right
+  * bắt buộc, PK khóa chính, FK khóa ngoại, UK duy nhất
+  ingredients (phân hệ 4) và order_items (phân hệ 3) vẽ đủ cột để thấy liên kết.
+  Khóa ngoại trỏ ra ngoài sơ đồ này: xem ERD tổng thể.
+endlegend
+@enduml

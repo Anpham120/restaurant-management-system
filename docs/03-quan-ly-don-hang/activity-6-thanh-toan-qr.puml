@@ -1,0 +1,39 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Thanh toán QR tự động
+
+|Waiter|
+|Hệ thống|
+|Cashier|
+|Cổng thanh toán (SePay)|
+|Waiter|
+start
+:Khách yêu cầu thanh toán QR;
+:Gửi yêu cầu thanh toán;
+|Cashier|
+:Kiểm tra hóa đơn và duyệt;
+|Hệ thống|
+:APPROVED, tạo QR đúng số tiền\nvà mã tham chiếu hóa đơn;
+:Chuyển sang WAITING_TRANSFER;
+|Waiter|
+:Hiển thị QR cho khách;
+:Khách quét QR và chuyển khoản;
+note right: Quét QR chưa phải\nthanh toán thành công
+|Cổng thanh toán (SePay)|
+:Gửi webhook giao dịch;
+|Hệ thống|
+if (Xác thực webhook\nthành công?) then (không)
+  :Từ chối webhook;
+elseif (Mã giao dịch\nđã ghi nhận?) then (có)
+  :Không ghi nhận tiền lần hai;
+elseif (Khớp yêu cầu WAITING_TRANSFER,\nđúng mã tham chiếu và số tiền?) then (có)
+  :Lưu webhook PROCESSED, ghi nhận thanh toán\n(kèm ngày kinh doanh), PAID;
+  :Hóa đơn PAID, đơn CLOSED,\nphiên CLOSED, bàn AVAILABLE;
+  :Đồng bộ kết quả tới POS\nvà điện thoại Waiter;
+else (không)
+  :Lưu webhook MISMATCH\nhoặc AFTER_CANCEL,\nkhông đổi hóa đơn;
+  |Cashier|
+  :Đối chiếu ngoại lệ;
+endif
+stop
+@enduml

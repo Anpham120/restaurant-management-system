@@ -1,0 +1,29 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Đặt giữ nguyên liệu khi POS chấp nhận món
+
+|Order Coordinator (POS)|
+start
+:Chấp nhận dòng món PENDING;
+|Hệ thống|
+:Khóa dòng món;
+if (Dòng món còn PENDING?) then (không)
+  :Trả lại kết quả đã xử lý,\nkhông đặt giữ lần hai;
+else (có)
+  :Lấy công thức của món trong thực đơn ngày,\nnhu cầu = định lượng × số suất;
+  :Khóa các lô của nguyên liệu liên quan;
+  if (Mọi nguyên liệu có\nkhả dụng ≥ nhu cầu?) then (có)
+    :Phân bổ theo FEFO từ các lô\nsử dụng được (hạn sớm dùng trước);
+    :Tạo đặt giữ ACTIVE theo từng lô,\ntăng lượng đặt giữ của lô;
+    :Dòng món ACCEPTED;
+  else (không)
+    :Không đặt giữ phần nào;
+    :Dòng món REJECTED (thiếu nguyên liệu),\nhoàn suất giữ tạm;
+  endif
+  note right: Toàn bộ trong một transaction
+  :Tính lại khả dụng, đồng bộ POS / Mobile;
+endif
+|Order Coordinator (POS)|
+:Nhận kết quả duyệt;
+stop
+@enduml

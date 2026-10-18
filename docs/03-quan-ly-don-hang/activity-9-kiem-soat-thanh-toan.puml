@@ -1,0 +1,37 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Kiểm soát trước thanh toán
+
+|Waiter|
+|Cashier|
+|Hệ thống|
+|Waiter|
+start
+:Gửi yêu cầu thanh toán;
+|Hệ thống|
+:Tính tổng hóa đơn theo giá lúc đặt\n(bỏ món CANCELLED, REJECTED);
+if (Còn món PENDING, ACCEPTED,\nIN_KITCHEN hoặc COOKING?) then (có)
+  :Báo Cashier các món còn chờ;
+  |Cashier|
+  :Phối hợp POS: chờ món xong\nhoặc hủy hợp lệ theo trạng thái;
+else (không)
+endif
+|Hệ thống|
+:Yêu cầu REQUESTED,\nhóa đơn PAYMENT_PENDING,\nkhóa sửa đơn âm thầm;
+|Cashier|
+:Duyệt yêu cầu thanh toán;
+|Hệ thống|
+if (Đơn cần thay đổi khi yêu cầu\nđang hoạt động?) then (có)
+  :Chặn thay đổi;
+  |Cashier|
+  :Hủy yêu cầu chưa PAID,\nghi lý do (CANCELLED);
+  |Hệ thống|
+  :Hóa đơn về DRAFT,\ngiữ nguyên đơn hàng;
+  |Waiter|
+  :Gửi lại yêu cầu với tổng mới;
+else (không)
+  |Hệ thống|
+  :Tiếp tục thanh toán\nQR hoặc tiền mặt;
+endif
+stop
+@enduml

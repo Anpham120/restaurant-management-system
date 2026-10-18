@@ -1,0 +1,24 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Báo cáo hoạt động kinh doanh
+
+|Manager|
+|Hệ thống|
+|Manager|
+start
+:Mở màn hình "Báo cáo";
+:Chọn báo cáo và kỳ\n(ngày hoặc khoảng ngày kinh doanh);
+|Hệ thống|
+if (Báo cáo?) then (A: doanh thu)
+  :Tổng hợp payments theo ngày kinh doanh và\nphương thức: QR, tiền mặt, số hóa đơn, tổng đã thu;
+elseif (B: kế hoạch và thực bán?) then (có)
+  :Lấy quota_total của daily_menu_items,\nthực bán = tổng số lượng dòng món READY\n(không tính CANCELLED, REJECTED),\nđang xử lý hiển thị riêng;
+else (C: nguyên liệu)
+  :Giá trị nguyên liệu đã nhập (phiếu CONFIRMED),\nlượng tiêu hao theo định mức (CONSUMPTION),\nnguyên liệu tồn thấp, chênh lệch kiểm kê;
+endif
+:Hiển thị báo cáo, mỗi số truy về được\ngiao dịch hoặc nghiệp vụ nguồn;
+note right: Không tính lợi nhuận,\nkhông sửa dữ liệu gốc
+|Manager|
+:Xem báo cáo, cân nhắc điều chỉnh hạn mức\ncác ngày sau (thao tác ở phân hệ 2);
+stop
+@enduml

@@ -1,0 +1,29 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Quản lý hồ sơ nhân viên
+
+|Manager|
+|Hệ thống|
+|Manager|
+start
+:Mở màn hình "Hồ sơ nhân viên";
+:Tìm kiếm, lọc nhân viên\n(mã, tên, bộ phận, trạng thái);
+|Hệ thống|
+:Hiển thị danh sách nhân viên;
+|Manager|
+if (Thêm mới hoặc sửa hồ sơ?) then (có)
+  :Chọn "Thêm mới" hoặc\nchọn nhân viên cần sửa;
+  repeat
+    :Nhập hoặc chỉnh sửa thông tin hồ sơ;
+    |Hệ thống|
+    :Kiểm tra: trường bắt buộc, định dạng,\nmã nhân viên không trùng;
+  repeat while (Thiếu hoặc không hợp lệ?) is (có: báo lỗi,\ngiữ dữ liệu đã nhập) not (không)
+  |Hệ thống|
+  :Lưu hồ sơ\n(thêm mới: trạng thái "Đang làm");
+  note right: Đổi trạng thái làm việc\nxem sơ đồ riêng (UC04)
+else (không)
+endif
+|Manager|
+:Xem kết quả;
+stop
+@enduml

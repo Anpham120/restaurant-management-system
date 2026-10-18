@@ -1,0 +1,42 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Ghi nhận tiêu hao khi bắt đầu chế biến
+
+|Bếp|
+|Order Coordinator (POS)|
+|Hệ thống|
+|Bếp|
+start
+:Bắt đầu nấu món đã nhận phiếu,\nbáo POS qua bộ đàm;
+|Order Coordinator (POS)|
+:Ghi nhận bắt đầu chế biến;
+|Hệ thống|
+:Khóa dòng món;
+if (Dòng món còn IN_KITCHEN?) then (không)
+  :Trả lại kết quả đã xử lý,\nkhông trừ kho lần hai;
+else (có)
+  :Khóa các lô đã đặt giữ;
+  :Dọn đặt giữ trên lô hỏng hoặc hết hạn\n(xem sơ đồ 4.10)|
+  :Tính phần nguyên liệu còn thiếu và thử\nphân bổ lại theo FEFO từ các lô\nhợp lệ khác (tất cả hoặc không);
+  if (Thiếu nguyên liệu?) then (có)
+    :Giữ IN_KITCHEN, không tiêu hao,\nkhông làm tồn âm;
+    :Đánh dấu ngoại lệ thiếu nguyên liệu,\ntính lại khả dụng, thông báo POS;
+    note right: Không tự hủy món đã chuyển bếp
+    |Order Coordinator (POS)|
+    :Liên hệ bếp qua bộ đàm,\nquyết định xử lý tiếp;
+    |Bếp|
+    :Phản hồi: chờ nguyên liệu bổ sung\nrồi ghi nhận lại, hoặc dừng món;
+    stop
+  else (không)
+    |Hệ thống|
+    :Đặt giữ ACTIVE → CONSUMED,\ngiảm tồn và lượng đặt giữ của lô;
+    :Ghi biến động CONSUMPTION\n(một lần cho mỗi dòng món và lô);
+    :Dòng món COOKING, bỏ cờ ngoại lệ;
+    note right: Toàn bộ trong một transaction
+    :Tính lại khả dụng, đồng bộ POS / Mobile;
+  endif
+endif
+|Order Coordinator (POS)|
+:Nhận kết quả;
+stop
+@enduml

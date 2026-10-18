@@ -1,0 +1,32 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Theo dõi doanh thu thực thu
+
+|Manager / Cashier|
+|Hệ thống|
+|Manager / Cashier|
+start
+:Mở màn hình "Doanh thu thực thu";
+:Chọn ngày kinh doanh;
+|Hệ thống|
+:Lấy các khoản thanh toán của ngày kinh doanh\n(bảng payments, chỉ giao dịch PAID);
+note right
+  Doanh thu là tổng payments.amount, tức số tiền
+  nhà hàng thực giữ, đã trừ tiền thừa. Webhook gửi
+  lặp không tạo thêm khoản thanh toán vì mã
+  giao dịch là duy nhất.
+end note
+:Tổng hợp theo phương thức QR và tiền mặt:\nsố tiền, số hóa đơn đã thanh toán;
+:Tính tổng tiền đã thu trong ngày;
+if (Còn yêu cầu thanh toán chưa PAID?) then (có)
+  :Hiển thị riêng số đang chờ,\nkhông cộng vào tiền đã thu;
+else (không)
+endif
+|Manager / Cashier|
+:Xem kết quả;
+if (Cần xem nguồn?) then (có)
+  :Chọn một dòng để truy về\nhóa đơn và đơn hàng;
+else (không)
+endif
+stop
+@enduml

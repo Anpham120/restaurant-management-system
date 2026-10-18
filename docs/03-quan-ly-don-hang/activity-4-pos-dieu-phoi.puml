@@ -1,0 +1,35 @@
+@startuml
+!include ../_style.puml
+title Sơ đồ hoạt động – Tiếp nhận và điều phối tại POS
+
+|Order Coordinator (POS)|
+start
+:Nhận đợt gọi món mới theo thời gian thực\n(các dòng món ở trạng thái PENDING);
+repeat
+  :Chọn một dòng món chờ duyệt;
+  :Trao đổi với bếp qua bộ đàm nếu cần;
+  if (Chấp nhận cả dòng món?) then (không)
+    :Nhập lý do từ chối;
+    |Hệ thống|
+    :Chuyển dòng sang REJECTED và lưu lý do;
+    :Hoàn suất đã giữ tạm;
+  else (có)
+    |Hệ thống|
+    :Kiểm tra và đặt giữ nguyên liệu;
+    if (Đặt giữ thành công?) then (không)
+      :Chuyển dòng sang REJECTED\nvới lý do thiếu nguyên liệu;
+      :Hoàn suất đã giữ tạm;
+    else (có)
+      :Chuyển dòng sang ACCEPTED\nvà xác nhận số suất;
+    endif
+  endif
+  |Order Coordinator (POS)|
+repeat while (Còn dòng chờ duyệt?) is (có) not (không)
+:Chọn các món ACCEPTED cần chuyển bếp\n(có thể chọn nhiều món cùng lúc);
+|Hệ thống|
+:Chuyển các dòng sang IN_KITCHEN\nvà tạo phiếu bếp;
+note right: Core mặc định in phiếu\nvà bàn giao bếp thành công
+|Bếp|
+:Nhận phiếu bếp;
+stop
+@enduml
