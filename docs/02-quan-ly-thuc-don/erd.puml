@@ -7,6 +7,14 @@ skinparam nodesep 50
 skinparam ranksep 55
 title ERD – Phân hệ 2: Quản lý thực đơn
 
+entity "daily_menus" as daily_menus {
+  * id : bigint <<PK>>
+  --
+  * business_date : date <<UK>>
+  * status : varchar(20)
+  published_at : timestamptz
+}
+
 entity "menu_categories" as menu_categories {
   * id : bigint <<PK>>
   --
@@ -23,6 +31,8 @@ entity "menu_items" as menu_items {
   * price : decimal(12,2)
   image_url : varchar(255)
   * is_active : boolean
+  ..
+  CHECK price >= 0
 }
 
 entity "recipes" as recipes {
@@ -33,6 +43,9 @@ entity "recipes" as recipes {
   * is_current : boolean
   ..
   UK (menu_item_id, version)
+  UK (id, menu_item_id)
+  PARTIAL UK (menu_item_id) WHERE is_current
+  CHECK version >= 1
 }
 
 entity "recipe_ingredients" as recipe_ingredients {
@@ -41,14 +54,9 @@ entity "recipe_ingredients" as recipe_ingredients {
   * recipe_id : bigint <<FK>>
   * ingredient_id : bigint <<FK>>
   * quantity_per_serving : decimal(12,3)
-}
-
-entity "daily_menus" as daily_menus {
-  * id : bigint <<PK>>
-  --
-  * business_date : date <<UK>>
-  * status : varchar(20)
-  published_at : timestamptz
+  ..
+  UK (recipe_id, ingredient_id)
+  CHECK quantity_per_serving > 0
 }
 
 entity "daily_menu_items" as daily_menu_items {
@@ -62,28 +70,33 @@ entity "daily_menu_items" as daily_menu_items {
   pause_reason : varchar(255)
   ..
   UK (daily_menu_id, menu_item_id)
+  FK (recipe_id, menu_item_id) → recipes (id, menu_item_id)
+  CHECK quota_total >= 0
 }
 
-entity "ingredients" as ingredients {
+entity "ingredients" as ingredients #line.dashed {
   * id : bigint <<PK>>
   --
   * name : varchar(100) <<UK>>
   * base_unit : varchar(20)
-  * min_quantity : decimal(12,3)
-  * is_expiry_tracked : boolean
-  * is_active : boolean
 }
 
-entity "order_items" as order_items {
+entity "inventory_batches" as inventory_batches #line.dashed {
   * id : bigint <<PK>>
   --
-  * order_batch_id : bigint <<FK>>
+  * ingredient_id : bigint <<FK>>
+  expiry_date : date
+  * quantity_on_hand : decimal(12,3)
+  * reserved_quantity : decimal(12,3)
+  * is_usable : boolean
+}
+
+entity "order_items" as order_items #line.dashed {
+  * id : bigint <<PK>>
+  --
   * daily_menu_item_id : bigint <<FK>>
   * quantity : int
-  * unit_price : decimal(12,2)
   * status : varchar(20)
-  * has_stock_exception : boolean
-  note : varchar(255)
 }
 
 menu_categories ||--o{ menu_items : contains
@@ -94,10 +107,5 @@ daily_menus ||--o{ daily_menu_items : includes
 menu_items ||--o{ daily_menu_items : appears_in
 recipes ||--o{ daily_menu_items : applied_to
 daily_menu_items ||--o{ order_items : selected_from
-
-legend right
-  * bắt buộc, PK khóa chính, FK khóa ngoại, UK duy nhất
-  ingredients (phân hệ 4) và order_items (phân hệ 3) vẽ đủ cột để thấy liên kết.
-  Khóa ngoại trỏ ra ngoài sơ đồ này: xem ERD tổng thể.
-endlegend
+ingredients ||--o{ inventory_batches : stored_in
 @enduml

@@ -15,7 +15,7 @@ repeat
   :Đánh dấu kết quả từng dòng (mặc định chưa chọn):\n– Có mặt đúng lịch: chọn nhiều dòng, xác nhận hàng loạt\n– Vắng mặt: xử lý riêng, ghi chú nếu có\n– Làm khác giờ: xử lý riêng, nhập giờ vào và giờ ra thực tế;
   :Bấm "Xác nhận";
   |Hệ thống|
-  :Kiểm tra toàn bộ các dòng đã chọn:\n– phân ca còn SCHEDULED và chưa có chấm công\n– ca đã bắt đầu\n– giờ ra sau giờ vào, không ở tương lai (kể cả ca qua đêm);
+  :Kiểm tra toàn bộ các dòng đã chọn:\n– phân ca còn SCHEDULED và chưa có chấm công\n– ca đã bắt đầu (Có mặt đúng lịch: ca đã kết thúc)\n– giờ ra sau giờ vào, không ở tương lai (kể cả ca qua đêm);
 repeat while (Có dòng không hợp lệ?) is (có: báo lỗi từng dòng,\nkhông lưu dòng nào) not (không)
 |Hệ thống|
 :Trong một transaction: lưu chấm công từng dòng\nkèm người xác nhận và thời điểm;

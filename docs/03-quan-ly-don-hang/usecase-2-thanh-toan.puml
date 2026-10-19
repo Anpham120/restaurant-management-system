@@ -9,31 +9,27 @@ actor "Waiter\n(Phục vụ)" as Waiter
 actor "Cashier\n(Thu ngân)" as Cashier
 actor "Cổng thanh toán\n(SePay)" as Pay
 
-rectangle "3.5 Hóa đơn & thanh toán tại bàn" {
-  usecase "UC19\nGửi yêu cầu thanh toán" as UC19
-  usecase "UC20\nDuyệt yêu cầu thanh toán" as UC20
-  usecase "UC21\nHiển thị mã QR cho khách" as UC21
-  usecase "UC22\nXác nhận thanh toán QR\nbằng webhook" as UC22
-  usecase "UC23\nGiám sát và đối chiếu\ngiao dịch QR" as UC23
-  usecase "UC24\nThu tiền mặt tại bàn" as UC24
-  usecase "UC25\nXác nhận nhận tiền mặt\nvà giao tiền thừa" as UC25
-  usecase "UC26\nHủy yêu cầu thanh toán" as UC26
+rectangle "Restaurant Core – Phân hệ 3: Quản lý đơn hàng" {
+  package "3.5 Hóa đơn & thanh toán tại bàn" #FFFFFF;line.dashed {
+    usecase "UC19\nGửi yêu cầu thanh toán" as UC19
+    usecase "UC20\nDuyệt yêu cầu thanh toán" as UC20
+    usecase "UC21\nHiển thị mã QR cho khách" as UC21
+    usecase "UC22\nXác nhận thanh toán QR\nbằng webhook" as UC22
+    usecase "UC23\nGiám sát và đối chiếu\ngiao dịch QR" as UC23
+    usecase "UC24\nThu tiền mặt tại bàn" as UC24
+    usecase "UC25\nXác nhận nhận tiền mặt\nvà giao tiền thừa" as UC25
+    usecase "UC26\nHủy yêu cầu thanh toán" as UC26
+  }
 }
 
-Waiter --> UC19
-Waiter --> UC21
-Waiter --> UC24
+Waiter -- UC19
+Waiter -- UC21
+Waiter -- UC24
 
-Cashier --> UC20
-Cashier --> UC23
-Cashier --> UC25
-Cashier --> UC26
+Cashier -- UC20
+Cashier -- UC23
+Cashier -- UC25
+Cashier -- UC26
 
-UC22 <-- Pay
-
-legend bottom
-  Cổng thanh toán (SePay) là hệ thống bên ngoài, gửi webhook về backend khi có giao dịch.
-  Khách hàng không dùng phần mềm: khách thanh toán tại bàn thông qua Waiter.
-  Kiểm soát trước thanh toán và đóng hóa đơn khi PAID là xử lý nội bộ.
-endlegend
+UC22 -- Pay
 @enduml

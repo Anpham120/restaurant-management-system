@@ -3,7 +3,7 @@
 hide circle
 set separator none
 skinparam linetype ortho
-skinparam nodesep 50
+skinparam nodesep 85
 skinparam ranksep 55
 title ERD – Phân hệ 4: Quản lý kho & nguyên liệu
 
@@ -15,6 +15,44 @@ entity "ingredients" as ingredients {
   * min_quantity : decimal(12,3)
   * is_expiry_tracked : boolean
   * is_active : boolean
+  ..
+  CHECK min_quantity >= 0
+}
+
+entity "recipes" as recipes #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * version : int
+}
+
+entity "recipe_ingredients" as recipe_ingredients #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * recipe_id : bigint <<FK>>
+  * ingredient_id : bigint <<FK>>
+  * quantity_per_serving : decimal(12,3)
+}
+
+entity "daily_menu_items" as daily_menu_items #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * recipe_id : bigint <<FK>>
+}
+
+entity "order_items" as order_items #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * daily_menu_item_id : bigint <<FK>>
+  * quantity : int
+  * status : varchar(20)
+  * has_stock_exception : boolean
+}
+
+entity "employees" as employees #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * employee_code : varchar(20) <<UK>>
+  * full_name : varchar(100)
 }
 
 entity "stock_receipts" as stock_receipts {
@@ -26,6 +64,8 @@ entity "stock_receipts" as stock_receipts {
   * created_at : timestamptz
   confirmed_by_id : bigint <<FK>>
   confirmed_at : timestamptz
+  ..
+  CHECK CONFIRMED: bắt buộc confirmed_by_id, confirmed_at
 }
 
 entity "stock_receipt_items" as stock_receipt_items {
@@ -40,6 +80,11 @@ entity "stock_receipt_items" as stock_receipt_items {
   * unit_price : decimal(12,2)
   lot_code : varchar(50)
   expiry_date : date
+  ..
+  UK (id, ingredient_id)
+  CHECK input_quantity > 0 AND conversion_factor > 0
+  CHECK unit_price >= 0
+  CHECK quantity = ROUND(input_quantity * conversion_factor, 3)
 }
 
 entity "inventory_batches" as inventory_batches {
@@ -57,22 +102,10 @@ entity "inventory_batches" as inventory_batches {
   unusable_marked_by_id : bigint <<FK>>
   unusable_marked_at : timestamptz
   ..
+  FK (stock_receipt_item_id, ingredient_id) → stock_receipt_items (id, ingredient_id)
   CHECK quantity_on_hand >= 0
-}
-
-entity "stock_movements" as stock_movements {
-  * id : bigint <<PK>>
-  --
-  * inventory_batch_id : bigint <<FK>>
-  * movement_type : varchar(20)
-  * quantity_delta : decimal(12,3)
-  * balance_after : decimal(12,3)
-  order_item_id : bigint <<FK>>
-  stock_count_item_id : bigint <<FK, UK>>
-  * created_at : timestamptz
-  ..
-  UK (inventory_batch_id) khi RECEIPT
-  UK (order_item_id, inventory_batch_id)
+  CHECK reserved_quantity >= 0
+  CHECK NOT is_usable: bắt buộc unusable_reason
 }
 
 entity "stock_reservations" as stock_reservations {
@@ -86,7 +119,27 @@ entity "stock_reservations" as stock_reservations {
   * created_at : timestamptz
   closed_at : timestamptz
   ..
-  UK (order_item_id, inventory_batch_id) khi ACTIVE
+  PARTIAL UK (order_item_id, inventory_batch_id) WHERE status = ACTIVE
+  CHECK quantity > 0
+  CHECK RELEASED: bắt buộc release_reason
+}
+
+entity "stock_movements" as stock_movements {
+  * id : bigint <<PK>>
+  --
+  * inventory_batch_id : bigint <<FK>>
+  * movement_type : varchar(20)
+  * quantity_delta : decimal(12,3)
+  * balance_after : decimal(12,3)
+  order_item_id : bigint <<FK>>
+  stock_count_item_id : bigint <<FK, UK>>
+  * created_at : timestamptz
+  ..
+  PARTIAL UK (inventory_batch_id) WHERE movement_type = RECEIPT
+  PARTIAL UK (order_item_id, inventory_batch_id) WHERE movement_type = CONSUMPTION
+  CHECK quantity_delta <> 0
+  CHECK balance_after >= 0
+  CHECK nguồn khớp movement_type
 }
 
 entity "stock_counts" as stock_counts {
@@ -97,6 +150,8 @@ entity "stock_counts" as stock_counts {
   * created_at : timestamptz
   confirmed_by_id : bigint <<FK>>
   confirmed_at : timestamptz
+  ..
+  CHECK CONFIRMED: bắt buộc confirmed_by_id, confirmed_at
 }
 
 entity "stock_count_items" as stock_count_items {
@@ -110,65 +165,8 @@ entity "stock_count_items" as stock_count_items {
   reason : varchar(255)
   ..
   UK (stock_count_id, inventory_batch_id)
-}
-
-entity "employees" as employees {
-  * id : bigint <<PK>>
-  --
-  * employee_code : varchar(20) <<UK>>
-  * full_name : varchar(100)
-  gender : varchar(10)
-  date_of_birth : date
-  * phone : varchar(15)
-  email : varchar(100)
-  address : varchar(255)
-  * hire_date : date
-  end_date : date
-  * work_status : varchar(20)
-  * department_id : bigint <<FK>>
-}
-
-entity "recipes" as recipes {
-  * id : bigint <<PK>>
-  --
-  * menu_item_id : bigint <<FK>>
-  * version : int
-  * is_current : boolean
-  ..
-  UK (menu_item_id, version)
-}
-
-entity "recipe_ingredients" as recipe_ingredients {
-  * id : bigint <<PK>>
-  --
-  * recipe_id : bigint <<FK>>
-  * ingredient_id : bigint <<FK>>
-  * quantity_per_serving : decimal(12,3)
-}
-
-entity "daily_menu_items" as daily_menu_items {
-  * id : bigint <<PK>>
-  --
-  * daily_menu_id : bigint <<FK>>
-  * menu_item_id : bigint <<FK>>
-  * recipe_id : bigint <<FK>>
-  * quota_total : int
-  * is_paused : boolean
-  pause_reason : varchar(255)
-  ..
-  UK (daily_menu_id, menu_item_id)
-}
-
-entity "order_items" as order_items {
-  * id : bigint <<PK>>
-  --
-  * order_batch_id : bigint <<FK>>
-  * daily_menu_item_id : bigint <<FK>>
-  * quantity : int
-  * unit_price : decimal(12,2)
-  * status : varchar(20)
-  * has_stock_exception : boolean
-  note : varchar(255)
+  CHECK actual_quantity >= 0
+  CHECK difference = actual_quantity - book_quantity
 }
 
 employees |o--o{ stock_receipts : confirmed_by
@@ -189,10 +187,4 @@ order_items |o--o{ stock_movements : consumed_by
 stock_counts ||--o{ stock_count_items : contains
 inventory_batches ||--o{ stock_count_items : counted_in
 stock_count_items |o--o| stock_movements : adjusted_by
-
-legend right
-  * bắt buộc, PK khóa chính, FK khóa ngoại, UK duy nhất
-  Bảng của phân hệ 1, 2, 3 vẽ đủ cột để thấy liên kết; khóa ngoại trỏ ra ngoài sơ đồ này: xem ERD tổng thể.
-  Số lượng theo đơn vị cơ sở của nguyên liệu, decimal(12,3).
-endlegend
 @enduml

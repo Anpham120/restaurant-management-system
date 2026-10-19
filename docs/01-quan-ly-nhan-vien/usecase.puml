@@ -65,12 +65,4 @@ UC15 ..> UC13 : <<include>>
 UC16 ..> UC13 : <<include>>
 UC17 <.. UC18 : <<extend>>
 UC17 <.. UC19 : <<extend>>
-
-legend bottom
-  Khung nét liền là ranh giới hệ thống; khung nét đứt chỉ nhóm chức năng, không phải hệ thống riêng.
-  Manager là actor duy nhất, chỉ dùng các chức năng trong khung: không xóa dữ liệu, không tính lương,
-  mọi điều chỉnh công phải có lý do. Bếp không phải actor: Manager xác nhận công thay. Điều kiện tiên quyết: đã đăng nhập.
-  «include»: UC13 luôn là bước đầu của UC14, UC15, UC16. «extend»: UC18 khi cần sửa công, UC19 khi chọn xuất Excel, mở rộng UC17.
-  UC13, UC18, UC19 do Manager thực hiện qua UC chính nên không vẽ thêm đường nối actor.
-endlegend
 @enduml

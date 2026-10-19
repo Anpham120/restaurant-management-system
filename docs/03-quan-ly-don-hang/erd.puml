@@ -3,7 +3,7 @@
 hide circle
 set separator none
 skinparam linetype ortho
-skinparam nodesep 50
+skinparam nodesep 85
 skinparam ranksep 55
 title ERD – Phân hệ 3: Quản lý đơn hàng
 
@@ -13,6 +13,8 @@ entity "dining_tables" as dining_tables {
   * code : varchar(20) <<UK>>
   * capacity : int
   * status : varchar(20)
+  ..
+  CHECK capacity > 0
 }
 
 entity "table_sessions" as table_sessions {
@@ -22,12 +24,14 @@ entity "table_sessions" as table_sessions {
   * opened_at : timestamptz
   closed_at : timestamptz
   * status : varchar(20)
+  ..
+  PARTIAL UK (dining_table_id) WHERE status = OPEN
 }
 
 entity "orders" as orders {
   * id : bigint <<PK>>
   --
-  * table_session_id : bigint <<FK>>
+  * table_session_id : bigint <<FK, UK>>
   * status : varchar(20)
 }
 
@@ -50,6 +54,8 @@ entity "order_items" as order_items {
   * status : varchar(20)
   * has_stock_exception : boolean
   note : varchar(255)
+  ..
+  CHECK quantity > 0 AND unit_price >= 0
 }
 
 entity "order_item_events" as order_item_events {
@@ -67,9 +73,11 @@ entity "order_item_events" as order_item_events {
 entity "invoices" as invoices {
   * id : bigint <<PK>>
   --
-  * order_id : bigint <<FK>>
+  * order_id : bigint <<FK, UK>>
   * total : decimal(12,2)
   * status : varchar(20)
+  ..
+  CHECK total >= 0
 }
 
 entity "payment_requests" as payment_requests {
@@ -86,17 +94,25 @@ entity "payment_requests" as payment_requests {
   * status : varchar(30)
   payment_reference : varchar(64)
   cancel_reason : varchar(255)
+  ..
+  PARTIAL UK (invoice_id) WHERE status <> CANCELLED
+  CHECK amount_due >= 0
+  CHECK cash_received, cash_counted, change_amount >= 0
+  CHECK change_amount = cash_received - amount_due
 }
 
 entity "payments" as payments {
   * id : bigint <<PK>>
   --
-  * payment_request_id : bigint <<FK>>
+  * payment_request_id : bigint <<FK, UK>>
   provider_transaction_code : varchar(64) <<UK>>
   * amount : decimal(12,2)
   * method : varchar(20)
   * paid_at : timestamptz
   * business_date : date
+  ..
+  CHECK amount > 0
+  CHECK provider_transaction_code bắt buộc khi QR, trống khi CASH
 }
 
 entity "payment_webhook_events" as payment_webhook_events {
@@ -111,42 +127,35 @@ entity "payment_webhook_events" as payment_webhook_events {
   raw_payload : text
 }
 
-entity "employees" as employees {
+entity "employees" as employees #line.dashed {
   * id : bigint <<PK>>
   --
   * employee_code : varchar(20) <<UK>>
   * full_name : varchar(100)
-  gender : varchar(10)
-  date_of_birth : date
-  * phone : varchar(15)
-  email : varchar(100)
-  address : varchar(255)
-  * hire_date : date
-  end_date : date
-  * work_status : varchar(20)
-  * department_id : bigint <<FK>>
 }
 
-entity "daily_menu_items" as daily_menu_items {
+entity "daily_menu_items" as daily_menu_items #line.dashed {
   * id : bigint <<PK>>
   --
   * daily_menu_id : bigint <<FK>>
-  * menu_item_id : bigint <<FK>>
-  * recipe_id : bigint <<FK>>
   * quota_total : int
   * is_paused : boolean
-  pause_reason : varchar(255)
-  ..
-  UK (daily_menu_id, menu_item_id)
+}
+
+entity "daily_menus" as daily_menus #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * business_date : date <<UK>>
+  * status : varchar(20)
 }
 
 dining_tables ||--o{ table_sessions : hosts
-table_sessions ||--o{ orders : contains
+table_sessions ||--o| orders : contains
 orders ||--o{ order_batches : includes
 order_batches ||--o{ order_items : contains
 daily_menu_items ||--o{ order_items : selected_from
 order_items ||--o{ order_item_events : logs
-orders ||--o{ invoices : billed_by
+orders ||--o| invoices : billed_by
 invoices ||--o{ payment_requests : receives
 payment_requests ||--o| payments : completes
 payment_requests |o--o{ payment_webhook_events : notified_by
@@ -154,10 +163,5 @@ employees ||--o{ order_batches : submits
 employees ||--o{ payment_requests : requests
 employees |o--o{ payment_requests : approves
 employees ||--o{ order_item_events : performs
-
-legend right
-  * bắt buộc, PK khóa chính, FK khóa ngoại, UK duy nhất
-  employees (phân hệ 1) và daily_menu_items (phân hệ 2) vẽ đủ cột để thấy liên kết.
-  Khóa ngoại trỏ ra ngoài sơ đồ này: xem ERD tổng thể.
-endlegend
+daily_menus ||--o{ daily_menu_items : includes
 @enduml

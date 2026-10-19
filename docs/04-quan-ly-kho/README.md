@@ -155,21 +155,23 @@ Phân hệ có 16 use case; Manager là actor chính. Điều kiện tiên quy�
 | UC01 | Thêm nguyên liệu | Manager | Nhập tên (duy nhất), đơn vị cơ sở, ngưỡng tồn tối thiểu, có theo dõi hạn dùng hay không; mặc định đang sử dụng (INV-01) |
 | UC02 | Sửa nguyên liệu | Manager | Sửa tên, ngưỡng, cờ theo dõi hạn dùng; không đổi đơn vị cơ sở khi đã có lô, phiếu nhập hoặc công thức (INV-02) |
 | UC03 | Tìm kiếm nguyên liệu | Manager | Tìm theo tên, trạng thái sử dụng; kèm tồn khả dụng |
-| UC04 | Bật / tắt sử dụng nguyên liệu | Manager | Cảnh báo nếu nguyên liệu có trong công thức hiện hành; không xóa vật lý (INV-02) |
+| UC04 | Bật hoặc tắt sử dụng nguyên liệu | Manager | Cảnh báo nếu nguyên liệu có trong công thức hiện hành; không xóa vật lý (INV-02) |
 | UC05 | Lập phiếu nhập kho | Manager | Tạo phiếu `DRAFT`, thêm nhiều dòng: nguyên liệu, số lượng, đơn vị nhập, hệ số quy đổi, đơn giá, số lô, hạn sử dụng; kiểm tra đơn vị tương thích, hệ số lớn hơn 0, hạn dùng của nguyên liệu theo dõi hạn; quy đổi về đơn vị cơ sở (INV-03) |
 | UC06 | Xác nhận phiếu nhập kho | Manager | `DRAFT` → `CONFIRMED`: mỗi dòng tạo lô, cộng tồn, ghi `RECEIPT`, giữ nguyên số liệu quy đổi lịch sử; phân hệ 2 tính lại khả dụng (INV-04) |
 | UC07 | Xem tồn kho theo nguyên liệu | Manager | Tồn sổ sách, tồn sử dụng được, đang đặt giữ, khả dụng; đánh dấu nguyên liệu dưới ngưỡng hoặc thiếu so với đặt giữ (INV-06) |
 | UC08 | Xem tồn theo lô | Manager | Mở rộng UC07: từng lô theo FEFO với tồn, đặt giữ, hạn dùng, tình trạng (dùng được, hết hạn, không đạt) |
 | UC09 | Xem lịch sử biến động và đặt giữ | Manager | Nhập, tiêu hao theo dòng món, điều chỉnh kiểm kê; đặt giữ theo trạng thái (INV-07) |
-| UC10 | Đặt giữ nguyên liệu khi POS duyệt món | Order Coordinator | Kích hoạt khi POS duyệt dòng món: tính nhu cầu theo công thức, kiểm tra mọi nguyên liệu, đặt giữ theo FEFO rồi `ACCEPTED`; thiếu thì không đặt giữ phần nào và `REJECTED` (INV-08 đến INV-10) |
-| UC11 | Ghi nhận tiêu hao khi bắt đầu chế biến | Order Coordinator | Kích hoạt khi POS ghi nhận `COOKING`: kiểm tra lô đã giữ, phân bổ lại theo FEFO nếu lô không dùng được; đủ thì đặt giữ → tiêu hao, giảm tồn lô, ghi `CONSUMPTION`, đúng một lần; không đủ thì giữ `IN_KITCHEN` và đánh dấu ngoại lệ (INV-11, INV-19, INV-20) |
-| UC12 | Giải phóng đặt giữ khi hủy hoặc sửa món | Order Coordinator | Kích hoạt khi hủy hợp lệ trước `COOKING` hoặc sửa số lượng: `ACTIVE` → `RELEASED`; sửa thì đặt giữ lại, thiếu thì giữ số cũ (INV-12) |
+| UC10 | Đặt giữ nguyên liệu theo món | Order Coordinator | Kích hoạt khi POS duyệt dòng món: tính nhu cầu theo công thức, kiểm tra mọi nguyên liệu, đặt giữ theo FEFO rồi `ACCEPTED`; thiếu thì không đặt giữ phần nào và `REJECTED` (INV-08 đến INV-10) |
+| UC11 | Ghi nhận tiêu hao nguyên liệu | Order Coordinator | Kích hoạt khi POS ghi nhận `COOKING`: kiểm tra lô đã giữ, phân bổ lại theo FEFO nếu lô không dùng được; đủ thì đặt giữ → tiêu hao, giảm tồn lô, ghi `CONSUMPTION`, đúng một lần; không đủ thì giữ `IN_KITCHEN` và đánh dấu ngoại lệ (INV-11, INV-19, INV-20) |
+| UC12 | Giải phóng đặt giữ nguyên liệu | Order Coordinator | Kích hoạt khi hủy hợp lệ trước `COOKING` hoặc sửa số lượng: `ACTIVE` → `RELEASED`; sửa thì đặt giữ lại, thiếu thì giữ số cũ (INV-12) |
 | UC13 | Lập phiếu kiểm kê | Manager | Chọn nguyên liệu hoặc lô, xem tồn sổ sách, nhập số thực tế, hệ thống tính chênh lệch, nhập lý do (INV-14) |
 | UC14 | Xác nhận kiểm kê và điều chỉnh tồn | Manager | `DRAFT` → `CONFIRMED`: ghi `ADJUSTMENT`, cập nhật tồn; cảnh báo nếu thiếu so với đặt giữ (INV-14, INV-15) |
 | UC15 | Đánh dấu lô không đạt chất lượng | Manager | Đặt `is_usable = false` kèm lý do, lưu người và thời điểm; lô bị loại khỏi tồn sử dụng được; hệ thống giải phóng đặt giữ trên lô và đặt giữ lại từ lô khác theo FEFO (INV-06, INV-17, INV-19) |
 | UC16 | Xem cảnh báo nguyên liệu | Manager, Order Coordinator | Các cảnh báo ở INV-16, kể cả dòng món ngoại lệ thiếu nguyên liệu; POS xem để xử lý món đã chấp nhận hoặc đã chuyển bếp khi thiếu nguyên liệu |
 
 Chỉ có một quan hệ UC08 «extend» UC07 vì xem chi tiết theo lô là phần mở rộng tùy chọn của xem tồn tổng. Các xử lý khác (tính lại khả dụng, đồng bộ POS / Mobile) là xử lý nội bộ, mô tả trong sơ đồ hoạt động.
+
+**Ranh giới hệ thống:** khung nét liền "Restaurant Core – Phân hệ 4" là ranh giới hệ thống; các khung nét đứt chỉ nhóm use case theo chức năng, không phải hệ thống riêng. Actor đứng ngoài khung và nối với use case bằng đường liên kết không mũi tên. Tên UC10 đến UC12 mô tả việc kho làm; thời điểm kích hoạt (POS duyệt món, bắt đầu chế biến, hủy hoặc sửa món) nằm ở cột mô tả.
 
 ## 4. Sơ đồ hoạt động
 
@@ -189,7 +191,7 @@ Chỉ có một quan hệ UC08 «extend» UC07 vì xem chi tiết theo lô là p
 ![Sơ đồ hoạt động quản lý danh mục nguyên liệu](activity-1-danh-muc.png)
 
 - Thêm và sửa dùng chung biểu mẫu: tên, đơn vị cơ sở, ngưỡng tồn tối thiểu, có theo dõi hạn dùng hay không; kiểm tra tên không trùng, ngưỡng không âm, không đổi đơn vị cơ sở khi đã có lô, phiếu nhập hoặc công thức.
-- Bật / tắt sử dụng chỉ đổi trạng thái; có cảnh báo nếu nguyên liệu nằm trong công thức hiện hành (INV-02).
+- Bật hoặc tắt sử dụng chỉ đổi trạng thái; có cảnh báo nếu nguyên liệu nằm trong công thức hiện hành (INV-02).
 
 ### 4.2 Nhập kho theo lô
 
@@ -270,19 +272,19 @@ Chỉ có một quan hệ UC08 «extend» UC07 vì xem chi tiết theo lô là p
 
 ![ERD phân hệ 4](erd.png)
 
-Phân hệ sở hữu 8 bảng. Các bảng của phân hệ 1, 2, 3 liên kết với kho được vẽ đủ cột để thấy rõ liên kết; đó là cùng một bảng trong cơ sở dữ liệu chung, định nghĩa gốc nằm ở phân hệ sở hữu, phân hệ 4 không tạo bảng mới. Khóa ngoại trỏ ra ngoài sơ đồ này (ví dụ `order_items.order_batch_id`, `daily_menu_items.menu_item_id`) xem ở [ERD tổng thể](../erd-tong-the.png).
+Phân hệ sở hữu 8 bảng, vẽ viền liền, đủ cột và ràng buộc. Bảng của phân hệ 1, 2, 3 liên kết với kho vẽ viền nét đứt và chỉ hiện khóa cùng các cột phân hệ 4 dùng; đó là cùng một bảng trong cơ sở dữ liệu chung, định nghĩa đầy đủ ở README phân hệ sở hữu và [ERD tổng thể](../erd-tong-the.png); phân hệ 4 không tạo bảng mới. Mọi đường nối có chân chim là khóa ngoại thật, bản số theo NOT NULL và UNIQUE của cột khóa ngoại.
 
 **Quy ước toàn hệ thống:** tên bảng và cột `snake_case`, tên bảng số nhiều; khóa chính `id BIGINT`; khóa ngoại `<thực thể>_id BIGINT`; chỉ khóa ngoại mới có hậu tố `_id`. Cột chỉ người thực hiện mang tên vai trò (`confirmed_by_id`, `unusable_marked_by_id`) và tham chiếu `employees.id`. Thời điểm dùng `TIMESTAMPTZ`, ngày dùng `DATE`; tiền dùng `DECIMAL(12,2)`, số lượng dùng `DECIMAL(12,3)`, không dùng `FLOAT` hay `DOUBLE`.
 
 **Bảng của phân hệ khác trong ERD:**
 
-| Bảng | Phân hệ sở hữu | Vai trò đối với kho |
-| --- | --- | --- |
-| employees | 1 – Nhân viên | Người xác nhận phiếu nhập, phiếu kiểm kê, người đánh dấu lô |
-| recipes | 2 – Thực đơn | Công thức áp dụng cho món trong thực đơn ngày |
-| recipe_ingredients | 2 – Thực đơn | Định lượng nguyên liệu cho một suất, nguồn tính nhu cầu đặt giữ |
-| daily_menu_items | 2 – Thực đơn | Từ dòng món tìm công thức (`recipe_id`) |
-| order_items | 3 – Đơn hàng | Dòng món được đặt giữ, tiêu hao; số lượng, trạng thái; cờ ngoại lệ thiếu nguyên liệu `has_stock_exception` do kho ghi |
+| Bảng | Phân hệ sở hữu | Vai trò đối với kho | Cột hiện trong ERD |
+| --- | --- | --- | --- |
+| employees | 1 – Nhân viên | Người xác nhận phiếu nhập, phiếu kiểm kê, người đánh dấu lô | `id`, `employee_code`, `full_name` |
+| recipes | 2 – Thực đơn | Công thức áp dụng cho món trong thực đơn ngày | `id`, `version` |
+| recipe_ingredients | 2 – Thực đơn | Định lượng nguyên liệu cho một suất, nguồn tính nhu cầu đặt giữ | `id`, `recipe_id`, `ingredient_id`, `quantity_per_serving` |
+| daily_menu_items | 2 – Thực đơn | Từ dòng món tìm công thức (`recipe_id`) | `id`, `recipe_id` |
+| order_items | 3 – Đơn hàng | Dòng món được đặt giữ, tiêu hao; số lượng, trạng thái; cờ ngoại lệ thiếu nguyên liệu `has_stock_exception` do kho ghi | `id`, `daily_menu_item_id`, `quantity`, `status`, `has_stock_exception` |
 
 Từ điển dữ liệu đầy đủ của các bảng này nằm ở README phân hệ sở hữu.
 
@@ -313,15 +315,15 @@ Quan hệ giữa các bảng của phân hệ khác cũng được vẽ, giữ n
 | --- | --- |
 | ingredients | UNIQUE (`name`); CHECK `min_quantity` ≥ 0; INDEX (`is_active`) |
 | stock_receipts | CHECK `status` thuộc (`DRAFT`, `CONFIRMED`); `confirmed_by_id` và `confirmed_at` bắt buộc khi `CONFIRMED`; INDEX (`status`, `created_at`) |
-| stock_receipt_items | CHECK `input_quantity` > 0, `conversion_factor` > 0, `unit_price` ≥ 0; CHECK `quantity` = `input_quantity` × `conversion_factor`; `expiry_date` bắt buộc và chưa qua khi nguyên liệu có `is_expiry_tracked` (kiểm tra ở backend lúc thêm dòng); đơn vị nhập cùng nhóm đơn vị với `base_unit` (kiểm tra ở backend theo danh sách nhóm cấu hình chung); INDEX (`stock_receipt_id`), INDEX (`ingredient_id`) |
-| inventory_batches | UNIQUE (`stock_receipt_item_id`); CHECK `quantity_on_hand` ≥ 0 và `reserved_quantity` ≥ 0; INDEX (`ingredient_id`, `expiry_date`, `received_at`) cho FEFO; INDEX (`expiry_date`) cho cảnh báo hạn dùng |
+| stock_receipt_items | CHECK `input_quantity` > 0, `conversion_factor` > 0, `unit_price` ≥ 0; CHECK `quantity` = ROUND(`input_quantity` × `conversion_factor`, 3) (tích của hai số 3 chữ số thập phân có 6 chữ số, phải làm tròn về `decimal(12,3)` thì CHECK mới đúng); UNIQUE (`id`, `ingredient_id`) làm đích khóa ngoại ghép của `inventory_batches`; `expiry_date` bắt buộc và chưa qua khi nguyên liệu có `is_expiry_tracked` (kiểm tra ở backend lúc thêm dòng); đơn vị nhập cùng nhóm đơn vị với `base_unit` (kiểm tra ở backend theo danh sách nhóm cấu hình chung); INDEX (`stock_receipt_id`), INDEX (`ingredient_id`) |
+| inventory_batches | UNIQUE (`stock_receipt_item_id`); FK ghép (`stock_receipt_item_id`, `ingredient_id`) → `stock_receipt_items` (`id`, `ingredient_id`): lô cùng nguyên liệu với dòng phiếu tạo ra nó; CHECK `quantity_on_hand` ≥ 0 và `reserved_quantity` ≥ 0; INDEX (`ingredient_id`, `expiry_date`, `received_at`) cho FEFO; INDEX (`expiry_date`) cho cảnh báo hạn dùng |
 | stock_movements | CHECK `movement_type` thuộc (`RECEIPT`, `CONSUMPTION`, `ADJUSTMENT`); CHECK `quantity_delta` ≠ 0 và `balance_after` ≥ 0; CHECK nguồn khớp loại (`CONSUMPTION` có `order_item_id` và `quantity_delta` < 0; `ADJUSTMENT` có `stock_count_item_id`; `RECEIPT` không có hai nguồn này); UNIQUE (`order_item_id`, `inventory_batch_id`); UNIQUE (`stock_count_item_id`); UNIQUE (`inventory_batch_id`) khi `RECEIPT`; INDEX (`inventory_batch_id`, `created_at`) |
 | stock_reservations | CHECK `quantity` > 0; CHECK `status` thuộc (`ACTIVE`, `CONSUMED`, `RELEASED`); `closed_at` bắt buộc khi `CONSUMED` hoặc `RELEASED`; `release_reason` bắt buộc khi `RELEASED` và thuộc (`ITEM_CANCELLED`, `ITEM_EDITED`, `LOT_UNAVAILABLE`); UNIQUE (`order_item_id`, `inventory_batch_id`) khi `ACTIVE`; INDEX (`order_item_id`, `status`), INDEX (`inventory_batch_id`, `status`) |
 | stock_counts | CHECK `status` thuộc (`DRAFT`, `CONFIRMED`); `confirmed_by_id` và `confirmed_at` bắt buộc khi `CONFIRMED` |
 | stock_count_items | UNIQUE (`stock_count_id`, `inventory_batch_id`); CHECK `actual_quantity` ≥ 0; CHECK `difference` = `actual_quantity` − `book_quantity`; `reason` bắt buộc khi `difference` ≠ 0 |
 
 - Không có CHECK `reserved_quantity` ≤ `quantity_on_hand`: sau khi kiểm kê giảm, lượng đã đặt giữ trên lô còn dùng được có thể lớn hơn tồn; đó là tình huống "thiếu so với đặt giữ" cần cảnh báo (INV-15). Lô không đạt chất lượng hoặc hết hạn không giữ đặt giữ `ACTIVE` (INV-19).
-- Ràng buộc "khi ..." là chỉ mục duy nhất một phần (PostgreSQL). Với MySQL dùng cột sinh hoặc kiểm tra dưới khóa dòng trong transaction.
+- Ràng buộc "khi ..." là chỉ mục duy nhất một phần của PostgreSQL (`CREATE UNIQUE INDEX ... WHERE ...`); ERD ghi dạng `PARTIAL UK (...) WHERE ...`.
 - Chống ghi trùng: một dòng phiếu nhập chỉ tạo một lô (UNIQUE `stock_receipt_item_id`), một lô chỉ một biến động `RECEIPT`; một lần bắt đầu chế biến chỉ trừ kho một lần cho mỗi lô (UNIQUE `order_item_id`, `inventory_batch_id`); một dòng kiểm kê chỉ điều chỉnh một lần (UNIQUE `stock_count_item_id`).
 
 ### Từ điển dữ liệu
@@ -359,17 +361,18 @@ Quan hệ giữa các bảng của phân hệ khác cũng được vẽ, giữ n
 | input_quantity | decimal(12,3) | bắt buộc, > 0 | Số lượng theo đơn vị nhập, ví dụ 5 |
 | input_unit | varchar(20) | bắt buộc | Đơn vị nhập, ví dụ kg; cùng nhóm đơn vị với đơn vị cơ sở của nguyên liệu |
 | conversion_factor | decimal(12,3) | bắt buộc, > 0 | Hệ số quy đổi sang đơn vị cơ sở, ví dụ 1.000; lưu trên từng dòng, giữ nguyên làm lịch sử sau khi phiếu `CONFIRMED` |
-| quantity | decimal(12,3) | bắt buộc | Số lượng theo đơn vị cơ sở = `input_quantity` × `conversion_factor`, ví dụ 5.000 g |
+| quantity | decimal(12,3) | bắt buộc | Số lượng theo đơn vị cơ sở = ROUND(`input_quantity` × `conversion_factor`, 3), ví dụ 5.000 g |
 | unit_price | decimal(12,2) | bắt buộc, ≥ 0 | Đơn giá theo đơn vị nhập; giá trị dòng = `input_quantity` × `unit_price` (giá trị hàng nhập, không phải tiền đã chi); chỉ lưu tham khảo, không hạch toán giá vốn |
 | lot_code | varchar(50) | | Số lô của nhà cung cấp |
 | expiry_date | date | | Hạn sử dụng; bắt buộc khi nguyên liệu có `is_expiry_tracked`, trống nếu không có |
+| (id, ingredient_id) | | UK | Đích của khóa ngoại ghép từ `inventory_batches`; `id` đã duy nhất nên không giới hạn thêm dữ liệu |
 
 **inventory_batches** – Lô nguyên liệu
 
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã lô |
-| ingredient_id | bigint | FK → ingredients, bắt buộc | Nguyên liệu |
+| ingredient_id | bigint | FK → ingredients, bắt buộc | Nguyên liệu; trùng nguyên liệu của dòng phiếu tạo ra lô (khóa ngoại ghép bên dưới) |
 | stock_receipt_item_id | bigint | FK → stock_receipt_items, UK, bắt buộc | Dòng phiếu nhập tạo ra lô (một dòng một lô) |
 | lot_code | varchar(50) | | Số lô, sao từ dòng phiếu khi xác nhận |
 | expiry_date | date | | Hạn sử dụng, sao từ dòng phiếu khi xác nhận để truy vấn FEFO và cảnh báo không cần nối bảng |
@@ -380,6 +383,7 @@ Quan hệ giữa các bảng của phân hệ khác cũng được vẽ, giữ n
 | unusable_reason | varchar(255) | | Lý do đánh dấu; bắt buộc khi `is_usable = false` |
 | unusable_marked_by_id | bigint | FK → employees | Người đánh dấu |
 | unusable_marked_at | timestamptz | | Thời điểm đánh dấu |
+| (stock_receipt_item_id, ingredient_id) | | FK → stock_receipt_items (id, ingredient_id) | Khóa ngoại ghép: lô cùng nguyên liệu với dòng phiếu tạo ra nó |
 
 **stock_movements** – Lịch sử biến động kho
 
@@ -431,6 +435,32 @@ Nguồn của `RECEIPT` là dòng phiếu nhập của lô (`inventory_batches.s
 | actual_quantity | decimal(12,3) | bắt buộc, ≥ 0 | Số lượng thực tế đếm được |
 | difference | decimal(12,3) | bắt buộc | Chênh lệch = `actual_quantity` − `book_quantity` |
 | reason | varchar(255) | | Lý do chênh lệch; bắt buộc khi `difference` ≠ 0 |
+
+### Chuẩn hóa và khóa ngoại
+
+- **1NF, 2NF:** mọi cột một giá trị; mọi bảng có khóa chính một cột `id`. Các quan hệ nhiều – nhiều đi qua bảng có thuộc tính riêng: `stock_receipt_items` (phiếu nhập – nguyên liệu), `stock_reservations` (dòng món – lô), `stock_count_items` (phiếu kiểm kê – lô).
+- **3NF:** dữ liệu của thực thể khác chỉ tham chiếu bằng khóa ngoại. Các cột dưới đây là số tính sẵn, bản chụp hoặc bản sao có kiểm soát; không coi là vi phạm vì có lý do nghiệp vụ và cơ chế giữ nhất quán:
+
+| Thuộc tính | Loại | Vì sao giữ | Kiểm soát |
+| --- | --- | --- | --- |
+| `inventory_batches.quantity_on_hand` | Số dư tính sẵn | Bằng tổng `quantity_delta` của `stock_movements` của lô; lưu để khóa dòng và kiểm tra tồn trong transaction mà không cộng lại lịch sử | Mọi thay đổi tồn ghi biến động trong cùng transaction (INV-07); CHECK ≥ 0; đối chiếu được bằng truy vấn tổng |
+| `inventory_batches.reserved_quantity` | Số dư tính sẵn | Bằng tổng `quantity` của đặt giữ `ACTIVE` trên lô | Cập nhật cùng transaction với đặt giữ, tiêu hao, giải phóng (INV-13); CHECK ≥ 0 |
+| `stock_movements.balance_after` | Bản chụp | Tồn của lô ngay sau biến động, để tra lịch sử | CHECK ≥ 0; biến động không sửa |
+| `stock_receipt_items.quantity` | Suy ra | = `input_quantity` × `conversion_factor` theo đơn vị cơ sở; lưu vì cấu hình quy đổi về sau không được làm đổi số đã nhập (INV-04) | CHECK `quantity` = ROUND(`input_quantity` × `conversion_factor`, 3) |
+| `stock_count_items.book_quantity`, `difference` | Bản chụp, suy ra | Tồn sổ sách lúc kiểm và chênh lệch | CHECK `difference` = `actual_quantity` − `book_quantity` |
+| `inventory_batches.ingredient_id` | Bản sao | Trùng nguyên liệu của dòng phiếu (phụ thuộc bắc cầu qua `stock_receipt_item_id`); giữ cho chỉ mục FEFO (`ingredient_id`, `expiry_date`, `received_at`) | Khóa ngoại ghép (`stock_receipt_item_id`, `ingredient_id`) → `stock_receipt_items` (`id`, `ingredient_id`) |
+| `inventory_batches.lot_code`, `expiry_date` | Bản sao | Sao từ dòng phiếu khi xác nhận để truy vấn FEFO không cần nối bảng | Dòng phiếu `CONFIRMED` không sửa được (INV-04) nên bản sao không lệch |
+
+- Mọi khóa ngoại `ON DELETE RESTRICT`: nguyên liệu, lô, phiếu đã phát sinh không bị xóa cứng (INV-02); nhập sai thì điều chỉnh bằng kiểm kê có lý do.
+
+```sql
+-- Khóa ngoại ghép và CHECK số lượng quy đổi (PostgreSQL)
+ALTER TABLE stock_receipt_items ADD CONSTRAINT uq_stock_receipt_items_id_ingredient UNIQUE (id, ingredient_id);
+ALTER TABLE stock_receipt_items ADD CONSTRAINT ck_stock_receipt_items_quantity
+  CHECK (quantity = ROUND(input_quantity * conversion_factor, 3));
+ALTER TABLE inventory_batches ADD CONSTRAINT fk_inventory_batches_receipt_item_ingredient
+  FOREIGN KEY (stock_receipt_item_id, ingredient_id) REFERENCES stock_receipt_items (id, ingredient_id) ON DELETE RESTRICT;
+```
 
 ## 6. Transaction và đồng thời
 

@@ -21,7 +21,7 @@ if (Thao tác?) then (Thêm / Sửa)
   else (không)
     :Báo lỗi, yêu cầu nhập lại;
   endif
-else (Bật / tắt)
+else (Bật hoặc tắt)
   :Cảnh báo nếu nguyên liệu có trong\ncông thức hiện hành;
   :Cập nhật trạng thái sử dụng;
   note right

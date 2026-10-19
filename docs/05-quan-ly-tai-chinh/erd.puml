@@ -1,0 +1,166 @@
+@startuml
+!include ../_style.puml
+hide circle
+set separator none
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 55
+title ERD – Phân hệ 5: Quản lý tài chính
+
+entity "employees" as employees #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * employee_code : varchar(20) <<UK>>
+  * full_name : varchar(100)
+}
+
+entity "stock_receipts" as stock_receipts #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * status : varchar(20)
+  confirmed_at : timestamptz
+}
+
+entity "operating_expenses" as operating_expenses {
+  * id : bigint <<PK>>
+  --
+  * business_date : date
+  * category : varchar(30)
+  * description : varchar(255)
+  * amount : decimal(12,2)
+  * payment_method : varchar(20)
+  * fund_source : varchar(20)
+  stock_receipt_id : bigint <<FK>>
+  * recorded_by_id : bigint <<FK>>
+  * paid_at : timestamptz
+  * created_at : timestamptz
+  * status : varchar(20)
+  void_reason : varchar(255)
+  voided_by_id : bigint <<FK>>
+  voided_at : timestamptz
+  ..
+  CHECK amount > 0
+  CHECK fund_source = COUNTER chỉ khi payment_method = CASH
+  CHECK stock_receipt_id chỉ khi category = INGREDIENT
+  CHECK VOIDED: bắt buộc void_reason, voided_by_id, voided_at
+}
+
+entity "daily_cash_reconciliations" as daily_cash_reconciliations {
+  * id : bigint <<PK>>
+  --
+  * business_date : date
+  * version : int
+  * status : varchar(20)
+  * opening_cash : decimal(12,2)
+  * cash_sales : decimal(12,2)
+  * cash_expenses : decimal(12,2)
+  * expected_cash : decimal(12,2)
+  * actual_cash : decimal(12,2)
+  * difference : decimal(12,2)
+  reason : varchar(255)
+  revision_reason : varchar(255)
+  * reconciled_by_id : bigint <<FK>>
+  * reconciled_at : timestamptz
+  ..
+  UK (business_date, version)
+  PARTIAL UK (business_date) WHERE status = CURRENT
+  CHECK opening_cash >= 0 AND actual_cash >= 0
+  CHECK version >= 1
+  CHECK expected_cash = opening_cash + cash_sales - cash_expenses
+  CHECK difference = actual_cash - expected_cash
+  CHECK difference <> 0: bắt buộc reason
+}
+
+entity "payments" as payments #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * payment_request_id : bigint <<FK, UK>>
+  * amount : decimal(12,2)
+  * method : varchar(20)
+  * paid_at : timestamptz
+  * business_date : date
+}
+
+entity "payment_requests" as payment_requests #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * invoice_id : bigint <<FK>>
+  * method : varchar(20)
+  * status : varchar(30)
+}
+
+entity "payment_webhook_events" as payment_webhook_events #line.dashed {
+  * id : bigint <<PK>>
+  --
+  payment_request_id : bigint <<FK>>
+  * amount : decimal(12,2)
+  * processing_result : varchar(20)
+  * received_at : timestamptz
+}
+
+entity "invoices" as invoices #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * order_id : bigint <<FK, UK>>
+  * total : decimal(12,2)
+  * status : varchar(20)
+}
+
+entity "orders" as orders #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * status : varchar(20)
+}
+
+entity "order_batches" as order_batches #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * order_id : bigint <<FK>>
+}
+
+entity "order_items" as order_items #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * order_batch_id : bigint <<FK>>
+  * daily_menu_item_id : bigint <<FK>>
+  * quantity : int
+  * unit_price : decimal(12,2)
+  * status : varchar(20)
+}
+
+entity "daily_menu_items" as daily_menu_items #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * daily_menu_id : bigint <<FK>>
+  * menu_item_id : bigint <<FK>>
+  * quota_total : int
+}
+
+entity "daily_menus" as daily_menus #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * business_date : date <<UK>>
+}
+
+entity "menu_items" as menu_items #line.dashed {
+  * id : bigint <<PK>>
+  --
+  * name : varchar(100)
+}
+
+employees ||--o{ operating_expenses : recorded_by
+employees |o--o{ operating_expenses : voided_by
+stock_receipts |o--o{ operating_expenses : paid_by
+employees ||--o{ daily_cash_reconciliations : reconciled_by
+daily_menu_items ||--o{ order_items : selected_from
+daily_menus ||--o{ daily_menu_items : includes
+menu_items ||--o{ daily_menu_items : appears_in
+orders ||--o{ order_batches : includes
+order_batches ||--o{ order_items : contains
+orders ||--o| invoices : billed_by
+invoices ||--o{ payment_requests : receives
+payment_requests ||--o| payments : completes
+payment_requests |o--o{ payment_webhook_events : notified_by
+daily_cash_reconciliations ..> payments : "cash_sales\n(không phải FK)"
+daily_cash_reconciliations ..> operating_expenses : "cash_expenses\n(không phải FK)"
+@enduml

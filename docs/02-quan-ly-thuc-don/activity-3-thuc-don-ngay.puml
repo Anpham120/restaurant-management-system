@@ -16,17 +16,27 @@ repeat
   |Manager|
   :Chọn món và nhập hạn mức suất;
   |Hệ thống|
-  :Tính nhu cầu nguyên liệu\nvà đối chiếu tồn kho;
-  if (Đủ nguyên liệu cho\nkế hoạch cả ngày?) then (không)
-    :Hiển thị cảnh báo thiếu nguyên liệu;
+  :Kiểm tra: món đang kinh doanh và có\ncông thức hiện hành, hạn mức không âm,\nkhông trùng món;
+  if (Hợp lệ?) then (không)
+    :Báo lỗi, giữ nguyên bản nháp;
   else (có)
-    :Hiển thị kế hoạch đủ nguyên liệu;
+    :Tính nhu cầu nguyên liệu\nvà đối chiếu tồn kho;
+    if (Đủ nguyên liệu cho\nkế hoạch cả ngày?) then (không)
+      :Hiển thị cảnh báo thiếu nguyên liệu;
+    else (có)
+      :Hiển thị kế hoạch đủ nguyên liệu;
+    endif
   endif
   |Manager|
-repeat while (Điều chỉnh suất hoặc\nbổ sung kho trước?) is (có) not (không)
+repeat while (Điều chỉnh suất, sửa lỗi\nhoặc bổ sung kho trước?) is (có) not (không)
 :Xác nhận công bố;
 note right: Được công bố dù còn\ncảnh báo thiếu nguyên liệu
 |Hệ thống|
+if (Bản nháp còn hợp lệ?) then (không)
+  :Từ chối công bố, báo lỗi;
+  stop
+else (có)
+endif
 :Chuyển sang PUBLISHED,\nkhông đặt giữ nguyên liệu;
 :Đồng bộ thực đơn tới POS và Mobile;
 |POS / Mobile|

@@ -1,6 +1,6 @@
-# Phân hệ 5 – Quản lý thu chi & đối soát cuối ngày (RMS Core)
+# Phân hệ 5 – Quản lý tài chính (RMS Core)
 
-Tên chính thức: **Quản lý thu chi & đối soát cuối ngày (Financial Operations)**. Tài liệu phân tích gồm sơ đồ use case, sơ đồ hoạt động và ERD; nguồn sơ đồ là các file `.puml` (PlantUML) cùng thư mục, ảnh `.png` được render từ các file đó. Phân hệ 5 không tạo module thanh toán hay kho mới: doanh thu, tra cứu và báo cáo đọc dữ liệu của phân hệ 2, 3, 4; chỉ hai bảng nghiệp vụ mới là `operating_expenses` và `daily_cash_reconciliations`.
+Tên chính thức: **Quản lý tài chính (Financial Management)**: theo dõi doanh thu thực thu, ghi nhận khoản chi vận hành, đối soát tiền mặt cuối ngày, tra cứu giao dịch và báo cáo hoạt động kinh doanh. Tài liệu phân tích gồm sơ đồ use case, sơ đồ hoạt động và ERD; nguồn sơ đồ là các file `.puml` (PlantUML) cùng thư mục, ảnh `.png` được render từ các file đó. Phân hệ 5 không tạo module thanh toán hay kho mới: doanh thu, tra cứu và báo cáo đọc dữ liệu của phân hệ 2, 3, 4; chỉ hai bảng nghiệp vụ mới là `operating_expenses` và `daily_cash_reconciliations`.
 
 Công nghệ dự kiến: Spring Boot REST API, WebSocket, Web responsive. Demo bằng 1 laptop và 1–2 điện thoại, không cần thiết bị chuyên dụng.
 
@@ -153,6 +153,8 @@ Phân hệ có 13 use case. Manager và Cashier là hai actor; không có actor 
 
 Chỉ có hai quan hệ «extend»: UC03 mở rộng UC02 và UC06 mở rộng UC05, vì liên kết phiếu nhập và đối soát lại đều là phần tùy chọn của luồng chính. Chống thống kê trùng, kiểm tra dữ liệu đổi sau đối soát và tính tổng hợp là xử lý nội bộ, mô tả trong sơ đồ hoạt động.
 
+**Ranh giới hệ thống:** khung nét liền "Restaurant Core – Phân hệ 5" là ranh giới hệ thống; các khung nét đứt chỉ nhóm use case theo chức năng, không phải hệ thống riêng. Actor đứng ngoài khung và nối với use case bằng đường liên kết không mũi tên. UC03 và UC06 do cùng actor của UC02 và UC05 thực hiện nên không vẽ thêm đường nối actor.
+
 ## 4. Sơ đồ hoạt động
 
 | Chức năng | Sơ đồ |
@@ -211,21 +213,36 @@ Chỉ có hai quan hệ «extend»: UC03 mở rộng UC02 và UC06 mở rộng U
 
 ![ERD phân hệ 5](erd.png)
 
-Phân hệ sở hữu 2 bảng. Các bảng của phân hệ 1, 2, 3, 4 liên kết với thu chi được vẽ đủ cột để thấy rõ liên kết; đó là cùng một bảng trong cơ sở dữ liệu chung, định nghĩa gốc nằm ở phân hệ sở hữu, phân hệ 5 không tạo bảng mới nào khác. Khóa ngoại trỏ ra ngoài sơ đồ này (ví dụ `payments.payment_request_id`) xem ở [ERD tổng thể](../erd-tong-the.png). Mũi tên nét đứt là dữ liệu được tổng hợp theo ngày kinh doanh (chỉ đọc), không phải khóa ngoại. Tra cứu 5.4 và báo cáo 5.5 không có bảng riêng, đọc trực tiếp bảng của phân hệ 2, 3, 4.
+Phân hệ sở hữu 2 bảng, vẽ viền liền, đủ cột và ràng buộc. Bảng của phân hệ 1, 2, 3, 4 vẽ viền nét đứt và chỉ hiện khóa cùng các cột phân hệ 5 dùng; đó là cùng một bảng trong cơ sở dữ liệu chung, định nghĩa đầy đủ ở README phân hệ sở hữu và [ERD tổng thể](../erd-tong-the.png); phân hệ 5 không tạo bảng mới nào khác. Tra cứu 5.4 và báo cáo 5.5 không có bảng riêng, đọc trực tiếp bảng của phân hệ 2, 3, 4.
+
+ERD có ba loại liên kết, phân biệt rõ:
+
+1. **Khóa ngoại thật** (đường chân chim): `operating_expenses` → `employees`, `stock_receipts`; `daily_cash_reconciliations` → `employees`.
+2. **Đường truy xuất qua bảng trung gian** (mỗi đoạn là khóa ngoại thật giữa các bảng của phân hệ 2, 3): `payments` → `payment_requests` → `invoices` → `orders` ← `order_batches` ← `order_items` → `daily_menu_items` → `daily_menus`, `menu_items`; `payment_webhook_events` → `payment_requests`. Đường này cho phân hệ 5 tổng hợp giao dịch `PAID`, truy từ khoản thanh toán về hóa đơn và các món đã bán (UC08, FIN-15), tính thực bán theo món (UC12) và lấy ngày kinh doanh của thực đơn. Không có khóa ngoại trực tiếp giữa `order_items` và `payments`: hai bảng đã nối gián tiếp qua đơn và hóa đơn.
+3. **Liên kết tổng hợp** (mũi tên nét đứt, nhãn ghi "không phải FK"): `daily_cash_reconciliations.cash_sales` tổng hợp từ `payments`, `cash_expenses` tổng hợp từ `operating_expenses` theo `business_date`. Đây là phụ thuộc số liệu, không có cột khóa ngoại.
+
+Báo cáo C (tình hình nguyên liệu) đọc bảng kho `stock_receipt_items`, `stock_movements`, `inventory_batches`, `ingredients`, `stock_counts`, `stock_count_items` theo đường khóa ngoại của phân hệ 4; các bảng này không vẽ lại ở đây, xem [ERD phân hệ 4](../04-quan-ly-kho/erd.png).
 
 **Quy ước toàn hệ thống:** tên bảng và cột `snake_case`, tên bảng số nhiều; khóa chính `id BIGINT`; khóa ngoại `<thực thể>_id BIGINT`; chỉ khóa ngoại mới có hậu tố `_id`. Cột chỉ người thực hiện mang tên vai trò và tham chiếu `employees.id`: dùng `recorded_by_id`, `voided_by_id`, `reconciled_by_id` (không dùng `recorded_by`, `reconciled_by`). Thời điểm dùng `TIMESTAMPTZ`, ngày dùng `DATE`; tiền dùng `DECIMAL(12,2)`, không dùng `FLOAT` hay `DOUBLE`.
 
 **Bảng của phân hệ khác trong ERD:**
 
-| Bảng | Phân hệ sở hữu | Vai trò đối với phân hệ 5 |
-| --- | --- | --- |
-| employees | 1 – Nhân viên | Người ghi chi, người hủy chi, người đối soát |
-| stock_receipts | 4 – Kho | Phiếu nhập liên kết với khoản chi |
-| daily_menu_items | 2 – Thực đơn | Số suất kế hoạch (`quota_total`) cho báo cáo B |
-| order_items | 3 – Đơn hàng | Số suất thực bán cho báo cáo B |
-| payments | 3 – Đơn hàng | Nguồn doanh thu và `cash_sales` (`amount`, `method`, `business_date`) |
+| Bảng | Phân hệ sở hữu | Vai trò đối với phân hệ 5 | Cột hiện trong ERD |
+| --- | --- | --- | --- |
+| employees | 1 – Nhân viên | Người ghi chi, người hủy chi, người đối soát | `id`, `employee_code`, `full_name` |
+| stock_receipts | 4 – Kho | Phiếu nhập liên kết với khoản chi | `id`, `status`, `confirmed_at` |
+| payments | 3 – Đơn hàng | Nguồn doanh thu và `cash_sales` | `id`, `payment_request_id`, `amount`, `method`, `paid_at`, `business_date` |
+| payment_requests | 3 – Đơn hàng | Yêu cầu chưa `PAID` hiển thị riêng; nối khoản thanh toán với hóa đơn | `id`, `invoice_id`, `method`, `status` |
+| payment_webhook_events | 3 – Đơn hàng | Giao dịch QR bất thường (`MISMATCH`, `AFTER_CANCEL`) cho UC09 | `id`, `payment_request_id`, `amount`, `processing_result`, `received_at` |
+| invoices | 3 – Đơn hàng | Hóa đơn của khoản thanh toán; số hóa đơn đã thanh toán | `id`, `order_id`, `total`, `status` |
+| orders | 3 – Đơn hàng | Đơn tổng nối hóa đơn với các đợt gọi món | `id`, `status` |
+| order_batches | 3 – Đơn hàng | Đợt gọi món nối đơn với dòng món | `id`, `order_id` |
+| order_items | 3 – Đơn hàng | Số suất thực bán, đang xử lý cho báo cáo B; số lượng và đơn giá của món đã bán | `id`, `order_batch_id`, `daily_menu_item_id`, `quantity`, `unit_price`, `status` |
+| daily_menu_items | 2 – Thực đơn | Số suất kế hoạch (`quota_total`) cho báo cáo B | `id`, `daily_menu_id`, `menu_item_id`, `quota_total` |
+| daily_menus | 2 – Thực đơn | Ngày kinh doanh của thực đơn | `id`, `business_date` |
+| menu_items | 2 – Thực đơn | Tên món trong báo cáo | `id`, `name` |
 
-Từ điển dữ liệu đầy đủ của các bảng này nằm ở README phân hệ sở hữu.
+Từ điển dữ liệu đầy đủ của các bảng này nằm ở README phân hệ sở hữu. Cột khóa ngoại không dùng ở phân hệ 5 (ví dụ `order_batches.waiter_id`, `payment_requests.cashier_id`) không hiện trong ERD này.
 
 **Quan hệ:**
 
@@ -235,8 +252,20 @@ Từ điển dữ liệu đầy đủ của các bảng này nằm ở README ph
 | employees 0..1 – N operating_expenses | `operating_expenses.voided_by_id` | voided_by |
 | stock_receipts 0..1 – N operating_expenses | `operating_expenses.stock_receipt_id` | paid_by |
 | employees 1 – N daily_cash_reconciliations | `daily_cash_reconciliations.reconciled_by_id` | reconciled_by |
-| employees 0..1 – N stock_receipts | `stock_receipts.confirmed_by_id` | confirmed_by |
+
+Khóa ngoại giữa các bảng tham chiếu vẽ trong ERD (giữ nhãn của phân hệ sở hữu):
+
+| Quan hệ | Khóa ngoại | Nhãn |
+| --- | --- | --- |
+| payment_requests 1 – 0..1 payments | `payments.payment_request_id` | completes |
+| payment_requests 0..1 – N payment_webhook_events | `payment_webhook_events.payment_request_id` | notified_by |
+| invoices 1 – N payment_requests | `payment_requests.invoice_id` | receives |
+| orders 1 – 0..1 invoices | `invoices.order_id` | billed_by |
+| orders 1 – N order_batches | `order_batches.order_id` | includes |
+| order_batches 1 – N order_items | `order_items.order_batch_id` | contains |
 | daily_menu_items 1 – N order_items | `order_items.daily_menu_item_id` | selected_from |
+| daily_menus 1 – N daily_menu_items | `daily_menu_items.daily_menu_id` | includes |
+| menu_items 1 – N daily_menu_items | `daily_menu_items.menu_item_id` | appears_in |
 
 Liên kết tổng hợp (không phải khóa ngoại): `daily_cash_reconciliations.cash_sales` lấy từ `payments` theo `business_date` và `method = CASH`; `daily_cash_reconciliations.cash_expenses` lấy từ `operating_expenses` theo `business_date`, `CASH`, `COUNTER`, `RECORDED`.
 
@@ -249,7 +278,7 @@ Liên kết tổng hợp (không phải khóa ngoại): `daily_cash_reconciliati
 
 - Ngăn bản đối soát trùng: UNIQUE (`business_date`, `version`) không cho hai bản cùng phiên bản; UNIQUE một bản `CURRENT` mỗi ngày không cho hai bản hiện hành. Hai Cashier đối soát lại cùng lúc thì chỉ một bản mới được tạo.
 - Ngăn ghi sai ngày kinh doanh: backend chỉ nhận ngày có thực đơn ngày (`daily_menus.business_date`) và không ở tương lai cho đối soát; ngày kinh doanh của khoản chi không ở tương lai.
-- Ràng buộc "khi ..." là chỉ mục duy nhất hoặc kiểm tra có điều kiện (PostgreSQL). Với MySQL dùng cột sinh hoặc kiểm tra dưới khóa dòng trong transaction.
+- Ràng buộc "khi ..." là chỉ mục duy nhất một phần hoặc kiểm tra có điều kiện của PostgreSQL; ERD ghi dạng `PARTIAL UK (...) WHERE ...`.
 - Bản đối soát bất biến: ứng dụng chỉ được cập nhật cột `status` của bản cũ khi tạo phiên bản mới, trong cùng transaction.
 
 ### Từ điển dữ liệu
@@ -294,6 +323,54 @@ Liên kết tổng hợp (không phải khóa ngoại): `daily_cash_reconciliati
 | reconciled_at | timestamptz | bắt buộc | Thời điểm lưu bản đối soát |
 
 Các cột `status`, `void_reason`, `voided_by_id`, `voided_at` của `operating_expenses` và `version`, `status`, `revision_reason` của `daily_cash_reconciliations` là phần bổ sung ngoài danh sách dự kiến, để hủy khoản chi nhập sai và đối soát lại có lưu vết mà không tạo hệ thống quản lý quỹ.
+
+### Chuẩn hóa và khóa ngoại
+
+- **1NF, 2NF:** mọi cột một giá trị; hai bảng có khóa chính một cột `id`.
+- **3NF:** không có bảng doanh thu riêng (FIN-02): doanh thu luôn tổng hợp từ `payments`, nên không lưu trùng dữ liệu giao dịch. Các cột dưới đây là bản chụp hoặc giá trị suy ra có kiểm soát:
+
+| Thuộc tính | Vì sao giữ | Kiểm soát |
+| --- | --- | --- |
+| `daily_cash_reconciliations.cash_sales`, `cash_expenses` | Bản chụp tổng hợp tại lúc đối soát; cần để so với dữ liệu hiện tại, phát hiện "cần kiểm tra lại" (FIN-10) và giữ số liệu của từng phiên bản | Ghi một lần; bản đối soát bất biến, thay đổi bằng phiên bản mới |
+| `daily_cash_reconciliations.expected_cash`, `difference` | Suy ra từ các cột cùng dòng; lưu để lịch sử đối soát hiện đúng số đã chốt | CHECK `expected_cash` = `opening_cash` + `cash_sales` − `cash_expenses`; CHECK `difference` = `actual_cash` − `expected_cash` |
+| `operating_expenses.business_date` | Không suy ra từ `paid_at`: ngày kinh doanh có thể kéo dài qua nửa đêm (FIN-12) | Backend chỉ nhận ngày có thực đơn ngày, không ở tương lai |
+
+- `operating_expenses.stock_receipt_id` là khóa ngoại tùy chọn, không UNIQUE: một phiếu nhập có thể có nhiều khoản chi (trả nhiều lần); khoản chi không phải nguyên liệu để trống (CHECK theo `category`).
+- Mọi khóa ngoại `ON DELETE RESTRICT`; khoản chi không xóa mà chuyển `VOIDED` (FIN-11).
+
+### Truy vấn mẫu theo đường truy xuất
+
+Hai truy vấn PostgreSQL dưới đây chỉ dùng khóa ngoại có trong ERD, minh họa cách phân hệ 5 đọc dữ liệu của phân hệ 2, 3 mà không cần bảng hay khóa ngoại mới (tham số dạng `:tên`).
+
+```sql
+-- Báo cáo B: kế hoạch số suất so với thực bán theo món và ngày kinh doanh (FIN-13)
+SELECT dm.business_date, mi.name AS mon, dmi.quota_total AS ke_hoach,
+       COALESCE(SUM(oi.quantity) FILTER (WHERE oi.status = 'READY'), 0) AS thuc_ban,
+       COALESCE(SUM(oi.quantity) FILTER (WHERE oi.status IN ('ACCEPTED', 'IN_KITCHEN', 'COOKING')), 0) AS dang_xu_ly
+FROM daily_menu_items dmi
+JOIN daily_menus dm ON dm.id = dmi.daily_menu_id
+JOIN menu_items mi ON mi.id = dmi.menu_item_id
+LEFT JOIN order_items oi ON oi.daily_menu_item_id = dmi.id
+WHERE dm.business_date BETWEEN :tu_ngay AND :den_ngay
+GROUP BY dm.business_date, mi.name, dmi.quota_total
+ORDER BY dm.business_date, mi.name;
+
+-- Truy xuất khoản thanh toán của một ngày về hóa đơn và các món đã bán (FIN-15);
+-- tổng thanh_tien của một hóa đơn bằng invoices.total và payments.amount, gộp theo món cho doanh thu theo món
+SELECT p.business_date, p.method, i.id AS invoice_id, mi.name AS mon,
+       SUM(oi.quantity) AS so_luong, SUM(oi.quantity * oi.unit_price) AS thanh_tien
+FROM payments p
+JOIN payment_requests pr ON pr.id = p.payment_request_id
+JOIN invoices i ON i.id = pr.invoice_id
+JOIN order_batches ob ON ob.order_id = i.order_id
+JOIN order_items oi ON oi.order_batch_id = ob.id
+JOIN daily_menu_items dmi ON dmi.id = oi.daily_menu_item_id
+JOIN menu_items mi ON mi.id = dmi.menu_item_id
+WHERE p.business_date = :ngay
+  AND oi.status NOT IN ('CANCELLED', 'REJECTED')
+GROUP BY p.business_date, p.method, i.id, mi.name
+ORDER BY i.id, mi.name;
+```
 
 ## 6. Quy tắc tổng hợp báo cáo
 
@@ -412,7 +489,7 @@ Thiết bị: 1 laptop, 1–2 điện thoại. Dữ liệu chuẩn bị từ b�
 Cần Java và Graphviz. `plantuml.jar` có sẵn trong extension VS Code `jebbs.plantuml` (thư mục `%USERPROFILE%\.vscode\extensions\jebbs.plantuml-<phiên bản>\`). Chạy từ thư mục gốc dự án:
 
 ```powershell
-java "-DPLANTUML_LIMIT_SIZE=8192" -jar "<đường dẫn plantuml.jar>" -charset UTF-8 -failfast2 -tpng docs\05-quan-ly-thu-chi-doi-soat\*.puml
+java "-DPLANTUML_LIMIT_SIZE=8192" -jar "<đường dẫn plantuml.jar>" -charset UTF-8 -failfast2 -tpng docs\05-quan-ly-tai-chinh\*.puml
 ```
 
 Hoặc mở file `.puml` trong VS Code và nhấn Alt+D để xem trước. Style đen trắng dùng chung nằm ở `docs/_style.puml`.

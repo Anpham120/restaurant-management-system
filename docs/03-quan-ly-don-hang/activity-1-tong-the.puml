@@ -10,10 +10,14 @@ repeat
   :Chọn món trên điện thoại;
   :Gửi đơn đến POS;
   |Order Coordinator (POS)|
-  :Duyệt từng dòng món;
-  :Chuyển món đã duyệt xuống bếp;
+  :Duyệt hoặc từ chối từng dòng món;
+  :Chuyển các món ACCEPTED xuống bếp;
   |Bếp|
-  :Nhận phiếu và chế biến;
+  :Nhận phiếu, bắt đầu chế biến, báo POS;
+  |Order Coordinator (POS)|
+  :Ghi nhận COOKING, kho tiêu hao đúng một lần;
+  |Bếp|
+  :Hoàn thành món, báo POS;
   |Order Coordinator (POS)|
   :Cập nhật món sẵn sàng (READY);
   :Gọi phục vụ qua bộ đàm;
@@ -28,12 +32,17 @@ repeat while (Khách gọi thêm món?) is (có) not (không)
 if (Phương thức thanh toán?) then (QR)
   :Hiển thị QR, khách chuyển khoản;
   |Hệ thống|
-  :Nhận webhook xác nhận\ngiao dịch thành công;
+  :Kiểm tra webhook và đối chiếu giao dịch;
+  if (Chưa có xác nhận hợp lệ?) then (có)
+    :Giữ hóa đơn chờ, không đóng bàn;
+    stop
+  else (không)
+  endif
 else (Tiền mặt)
   |Waiter|
   :Thu tiền mặt tại bàn\nvà mang về quầy;
   |Cashier|
-  :Xác nhận đã nhận tiền mặt;
+  :Kiểm đếm, xử lý tiền thừa\nrồi xác nhận đã nhận tiền mặt;
 endif
 |Hệ thống|
 :Hóa đơn PAID, đơn CLOSED;

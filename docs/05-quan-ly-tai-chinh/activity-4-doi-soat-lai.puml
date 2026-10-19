@@ -26,7 +26,7 @@ if (Đếm lại hoặc cần cập nhật?) then (có)
     |Hệ thống|
   else (không)
   endif
-  :Tạo phiên bản mới (CURRENT), bản cũ thành SUPERSEDED\nvà giữ nguyên số liệu cũ, lưu người và thời điểm;
+  :Trong một transaction: tạo phiên bản mới (CURRENT),\nbản cũ thành SUPERSEDED và giữ nguyên số liệu cũ,\nlưu người và thời điểm;
 else (không)
 endif
 |Manager|

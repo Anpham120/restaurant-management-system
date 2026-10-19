@@ -147,11 +147,4 @@ shift_assignments ||--o| attendances : confirmed_as
 attendances ||-right-o{ attendance_adjustments : logs
 employees ||--o{ attendances : confirmed_by
 employees ||-down-o{ attendance_adjustments : adjusted_by
-
-legend right
-  * bắt buộc, PK khóa chính, FK khóa ngoại, UK duy nhất
-  cancelled_by_id, confirmed_by_id, adjusted_by_id tham chiếu employees.id
-  Mọi khóa ngoại ON DELETE RESTRICT: không xóa cứng dữ liệu đã có lịch sử.
-  Các phân hệ khác tham chiếu employees: xem ERD tổng thể.
-endlegend
 @enduml

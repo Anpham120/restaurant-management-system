@@ -14,6 +14,9 @@ if (Còn món PENDING, ACCEPTED,\nIN_KITCHEN hoặc COOKING?) then (có)
   :Báo Cashier các món còn chờ;
   |Cashier|
   :Phối hợp POS: chờ món xong\nhoặc hủy hợp lệ theo trạng thái;
+  |Hệ thống|
+  :Giữ yêu cầu ở REQUESTED, chưa duyệt,\nchưa phát QR hay thu tiền;
+  stop
 else (không)
 endif
 |Hệ thống|

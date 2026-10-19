@@ -162,7 +162,7 @@ Không bao giờ đóng thanh toán tiền mặt trước khi Cashier xác nhậ
 | ORD-07 | Không được giữ suất, đặt giữ hay trừ nguyên liệu hai lần cho cùng một dòng món |
 | ORD-08 | Giá món trên đơn được giữ theo giá lúc đặt |
 | ORD-09 | Khi yêu cầu thanh toán đang hoạt động (hóa đơn `PAYMENT_PENDING`), không được âm thầm thay đổi đơn và hóa đơn |
-| ORD-10 | Thu ngân phải giải quyết các món còn chờ trước khi hoàn tất hóa đơn |
+| ORD-10 | Thu ngân phải giải quyết các món còn chờ (hoàn thành hoặc hủy hợp lệ) trước khi duyệt và hoàn tất hóa đơn; trong lúc đó yêu cầu giữ ở `REQUESTED` |
 | ORD-11 | Hủy ngoại lệ món `IN_KITCHEN` chỉ khi POS liên hệ bếp và được xác nhận món chưa chế biến, phiếu đã được xử lý; lưu lý do, người thao tác, thời gian và `kitchen_confirmed`; hoàn suất và giải phóng nguyên liệu đặt giữ |
 | ORD-12 | Món `COOKING` hoặc `READY` không được hủy trên POS và không tự động hoàn nguyên liệu; khách muốn hủy sau khi đã chế biến do Manager xử lý ngoại lệ, Core không hoàn tiền hay tái nhập kho tự động |
 | ORD-13 | Mỗi lần gửi đơn mang `request_key` duy nhất; gửi lặp không tạo đợt gọi món mới |
@@ -220,6 +220,8 @@ Phân hệ có 26 use case nên chia hai sơ đồ: 1/2 vận hành đơn hàng 
 
 Hai sơ đồ không dùng quan hệ «include» hay «extend»: chống gửi trùng, giữ suất, cảnh báo chờ lâu, kiểm soát trước thanh toán và đóng hóa đơn khi `PAID` là xử lý nội bộ của hệ thống, được mô tả trong cột mô tả ở trên và trong sơ đồ hoạt động.
 
+**Ranh giới hệ thống:** khung nét liền "Restaurant Core – Phân hệ 3" là ranh giới hệ thống; các khung nét đứt chỉ nhóm use case theo chức năng, không phải hệ thống riêng. Cổng thanh toán (SePay) là hệ thống bên ngoài nên đứng ngoài khung; mọi actor nối với use case bằng đường liên kết không mũi tên.
+
 ## 4. Sơ đồ hoạt động
 
 | Nhóm chức năng | Sơ đồ |
@@ -238,15 +240,17 @@ Hai sơ đồ không dùng quan hệ «include» hay «extend»: chống gửi t
 
 - Từ khi khách đến, mở bàn, gọi món, chế biến, trả món đến thanh toán và kết thúc phiên.
 - Vòng lặp "khách gọi thêm món" tạo một đợt gọi món mới trong cùng phiên.
-- Thanh toán rẽ nhánh: QR do webhook xác nhận, tiền mặt do thu ngân xác nhận.
+- POS ghi nhận bắt đầu chế biến (`COOKING`) để kho tiêu hao đúng một lần (ORD-06).
+- Thanh toán rẽ nhánh: QR do webhook xác nhận (chưa có xác nhận hợp lệ thì hóa đơn chờ, chưa đóng bàn), tiền mặt do thu ngân xác nhận.
 
 ### 4.2 Quản lý bàn và phiên phục vụ
 
 ![Sơ đồ hoạt động quản lý bàn và phiên phục vụ](activity-2-ban-phien.png)
 
-- Mở bàn: chỉ khi bàn `AVAILABLE` (ORD-01); tạo phiên `OPEN`, đơn `OPEN`, hóa đơn `DRAFT`, bàn `OCCUPIED`.
+- Mở bàn: chỉ khi bàn `AVAILABLE` và chưa có phiên `OPEN` (ORD-01); tạo phiên `OPEN`, đơn `OPEN`, hóa đơn `DRAFT`, bàn `OCCUPIED`.
 - Chuyển bàn: chỉ sang bàn `AVAILABLE` và khi chưa có yêu cầu thanh toán đang hoạt động; giữ nguyên đơn, lịch sử món và đồng bộ POS (ORD-15).
-- Kết thúc phiên: hóa đơn `PAID` thì đơn `CLOSED`; không có khoản phải thanh toán và mọi món đã hủy / từ chối hợp lệ thì đơn `CANCELLED`; phiên `CLOSED`, bàn `AVAILABLE` (ORD-17).
+- Hóa đơn `PAID`: hệ thống tự đóng đơn (`CLOSED`) và phiên, trả bàn `AVAILABLE` ngay khi ghi nhận thanh toán, Waiter không phải thao tác (ORD-17).
+- Kết thúc phiên do Waiter thực hiện chỉ khi không có khoản phải thanh toán và mọi món đã hủy / từ chối hợp lệ: đơn `CANCELLED`, phiên `CLOSED`, bàn `AVAILABLE` (ORD-17).
 
 ### 4.3 Gọi món và gửi đơn
 
@@ -288,7 +292,8 @@ Hai sơ đồ không dùng quan hệ «include» hay «extend»: chống gửi t
 ![Sơ đồ hoạt động thanh toán tiền mặt](activity-7-thanh-toan-tien-mat.png)
 
 - Theo đúng 11 bước của luồng chuẩn ở mục 2.4.
-- Điều kiện "Thu ngân đã nhận đủ tiền bàn giao và xử lý tiền thừa?": có thì Cashier xác nhận, hệ thống mới `PAID`, đóng hóa đơn, ghi nhận doanh thu, đóng phiên; không thì giữ `WAITING_CASH_HANDOVER` để đối chiếu (PAY-03).
+- Waiter nhập số tiền khách đưa (`cash_received`); hệ thống kiểm tra `cash_received` ≥ `amount_due`, thiếu thì báo thu thêm và nhập lại; đủ thì tính tiền thừa (`change_amount`).
+- Điều kiện "Số đếm khớp số bàn giao và đủ trả hóa đơn?": có thì Cashier đưa tiền thừa cho Waiter (nếu có) và xác nhận, hệ thống mới `PAID`, đóng hóa đơn, ghi nhận doanh thu, đóng phiên; không thì giữ `WAITING_CASH_HANDOVER` để đối chiếu (PAY-03).
 
 ### 4.8 Hủy hoặc sửa món theo trạng thái
 
@@ -304,14 +309,14 @@ Hai sơ đồ không dùng quan hệ «include» hay «extend»: chống gửi t
 ![Sơ đồ hoạt động kiểm soát trước thanh toán](activity-9-kiem-soat-thanh-toan.png)
 
 - Hệ thống tính tổng theo giá lúc đặt, bỏ món `CANCELLED` và `REJECTED`.
-- Còn món chưa xong thì báo Cashier phối hợp POS giải quyết trước khi hoàn tất hóa đơn (ORD-10).
+- Còn món chưa xong thì báo Cashier phối hợp POS giải quyết; yêu cầu giữ ở `REQUESTED`, chưa duyệt, chưa phát QR hay thu tiền cho đến khi các món được xử lý (ORD-10).
 - Khi yêu cầu đang hoạt động, hóa đơn `PAYMENT_PENDING` và mọi thay đổi đơn bị chặn; Cashier hủy yêu cầu chưa `PAID` có ghi lý do, hóa đơn về `DRAFT`, Waiter gửi lại với tổng mới (ORD-09, PAY-06).
 
 ## 5. ERD
 
 ![ERD phân hệ 3](erd.png)
 
-Phân hệ sở hữu 10 bảng. `employees` (phân hệ 1) và `daily_menu_items` (phân hệ 2) được vẽ đủ cột để thấy rõ liên kết; đó là cùng một bảng trong cơ sở dữ liệu chung, định nghĩa gốc nằm ở phân hệ sở hữu. Khóa ngoại trỏ ra ngoài sơ đồ này (ví dụ `daily_menu_items.daily_menu_id`) xem ở [ERD tổng thể](../erd-tong-the.png). Đây là ERD mức nghiệp vụ, chưa phải toàn bộ schema triển khai.
+Phân hệ sở hữu 10 bảng, vẽ viền liền, đủ cột và ràng buộc. Bảng của phân hệ khác vẽ viền nét đứt và chỉ hiện khóa cùng các cột phân hệ 3 dùng: `employees` (phân hệ 1), `daily_menu_items` và `daily_menus` (phân hệ 2). Đó là cùng một bảng trong cơ sở dữ liệu chung, định nghĩa đầy đủ ở README phân hệ sở hữu và [ERD tổng thể](../erd-tong-the.png). Mọi đường nối có chân chim là khóa ngoại thật, bản số theo NOT NULL và UNIQUE của cột khóa ngoại. Đây là ERD mức nghiệp vụ, chưa phải toàn bộ schema triển khai.
 
 **Quy ước toàn hệ thống:** tên bảng và cột `snake_case`, tên bảng số nhiều; khóa chính `id BIGINT`; khóa ngoại `<thực thể>_id BIGINT` (ví dụ `order_batch_id`), không dùng lẫn `INT` cho khóa liên kết; chỉ khóa ngoại mới có hậu tố `_id` (mã giao dịch SePay là `provider_transaction_code`). Cột chỉ người thực hiện mang tên vai trò (`waiter_id`, `cashier_id`, `actor_id`) và tham chiếu `employees.id` của phân hệ 1. Thời điểm dùng `TIMESTAMPTZ`; tiền dùng `DECIMAL(12,2)`, không dùng `FLOAT` hay `DOUBLE`.
 
@@ -320,12 +325,12 @@ Phân hệ sở hữu 10 bảng. `employees` (phân hệ 1) và `daily_menu_item
 | Quan hệ | Khóa ngoại | Nhãn |
 | --- | --- | --- |
 | dining_tables 1 – N table_sessions | `table_sessions.dining_table_id` | hosts |
-| table_sessions 1 – N orders | `orders.table_session_id` | contains |
+| table_sessions 1 – 0..1 orders | `orders.table_session_id` | contains |
 | orders 1 – N order_batches | `order_batches.order_id` | includes |
 | order_batches 1 – N order_items | `order_items.order_batch_id` | contains |
 | daily_menu_items 1 – N order_items | `order_items.daily_menu_item_id` | selected_from |
 | order_items 1 – N order_item_events | `order_item_events.order_item_id` | logs |
-| orders 1 – N invoices | `invoices.order_id` | billed_by |
+| orders 1 – 0..1 invoices | `invoices.order_id` | billed_by |
 | invoices 1 – N payment_requests | `payment_requests.invoice_id` | receives |
 | payment_requests 1 – 0..1 payments | `payments.payment_request_id` | completes |
 | payment_requests 0..1 – N payment_webhook_events | `payment_webhook_events.payment_request_id` | notified_by |
@@ -336,11 +341,28 @@ Phân hệ sở hữu 10 bảng. `employees` (phân hệ 1) và `daily_menu_item
 
 `order_items` chỉ liên kết với đơn qua `order_batch_id`, không có thêm cột `order_id`.
 
+Bản số `1 – 0..1` của `orders` và `invoices` là đúng theo ràng buộc cơ sở dữ liệu: `orders.table_session_id` và `invoices.order_id` là NOT NULL và UNIQUE, nên mỗi đơn có đúng một phiên, mỗi phiên có tối đa một đơn (tương tự hóa đơn). Việc "phiên luôn có đơn, đơn luôn có hóa đơn" do ứng dụng bảo đảm: đơn tạo cùng phiên, hóa đơn `DRAFT` tạo cùng đơn trong một transaction (mục 2.2); khóa ngoại không ép được phía bắt buộc này.
+
+ERD còn vẽ khóa ngoại giữa hai bảng tham chiếu của phân hệ 2: `daily_menus` 1 – N `daily_menu_items` (`daily_menu_items.daily_menu_id`, nhãn includes). Đây là đường lấy ngày kinh doanh cho `payments.business_date` (PAY-09): `payments` → `payment_requests` → `invoices` → `orders` → `order_batches` → `order_items` → `daily_menu_items` → `daily_menus`.
+
+### Bảng của phân hệ khác trong ERD
+
+| Bảng | Phân hệ sở hữu | Vai trò đối với đơn hàng | Cột hiện trong ERD |
+| --- | --- | --- | --- |
+| employees | 1 – Nhân viên | Người gửi đợt gọi món, người gửi và người duyệt yêu cầu thanh toán, người thao tác trên dòng món | `id`, `employee_code`, `full_name` |
+| daily_menu_items | 2 – Thực đơn | Món trong thực đơn ngày mà dòng món chọn; hạn mức và cờ tạm ngừng khi nhận món | `id`, `daily_menu_id`, `quota_total`, `is_paused` |
+| daily_menus | 2 – Thực đơn | Ngày kinh doanh gán cho khoản thanh toán (PAY-09) | `id`, `business_date`, `status` |
+
+Từ điển dữ liệu đầy đủ của các bảng này nằm ở README phân hệ 1 và 2.
+
 **Ràng buộc dữ liệu:**
 
-- `dining_tables.code` duy nhất; mỗi bàn tối đa một phiên `OPEN` (ORD-01).
+- `dining_tables.code` duy nhất; mỗi bàn tối đa một phiên `OPEN`: chỉ mục duy nhất một phần (`table_sessions.dining_table_id`) khi `status` = `OPEN` (ORD-01).
+- Mỗi phiên một đơn tổng (`orders.table_session_id` duy nhất) và mỗi đơn một hóa đơn (`invoices.order_id` duy nhất): Core không chia hóa đơn.
 - `order_batches.request_key` duy nhất (ORD-13).
-- Mỗi hóa đơn tối đa một yêu cầu thanh toán đang hoạt động; mỗi yêu cầu tối đa một khoản thanh toán.
+- Mỗi hóa đơn tối đa một yêu cầu thanh toán chưa `CANCELLED`: chỉ mục duy nhất một phần (`payment_requests.invoice_id`) khi `status` ≠ `CANCELLED`; mỗi yêu cầu tối đa một khoản thanh toán (`payments.payment_request_id` duy nhất).
+- CHECK `dining_tables.capacity` > 0; `order_items.quantity` > 0 và `unit_price` ≥ 0; `invoices.total` ≥ 0; `payment_requests.amount_due` ≥ 0, `cash_received`, `cash_counted`, `change_amount` ≥ 0 khi có giá trị và `change_amount` = `cash_received` − `amount_due`; `payments.amount` > 0.
+- `payments.provider_transaction_code` bắt buộc khi `method` = `QR`, trống khi `CASH` (CHECK).
 - `payments.provider_transaction_code` và `payment_webhook_events.provider_transaction_code` duy nhất: webhook gửi lại không ghi nhận tiền hai lần (PAY-05).
 - INDEX (`payments.business_date`, `payments.method`) phục vụ tổng hợp thu theo ngày kinh doanh và phương thức (phân hệ 5).
 
@@ -354,7 +376,7 @@ Kiểu dữ liệu và độ dài ở mức tổng quát, chọn lại khi tri�
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã bàn |
 | code | varchar(20) | UK, bắt buộc | Mã hiển thị, ví dụ B05 |
-| capacity | int | bắt buộc | Sức chứa |
+| capacity | int | bắt buộc, > 0 | Sức chứa |
 | status | varchar(20) | bắt buộc | AVAILABLE, OCCUPIED |
 
 **table_sessions** – Phiên phục vụ
@@ -372,7 +394,7 @@ Kiểu dữ liệu và độ dài ở mức tổng quát, chọn lại khi tri�
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã đơn |
-| table_session_id | bigint | FK → table_sessions, bắt buộc | Phiên phục vụ |
+| table_session_id | bigint | FK → table_sessions, UK, bắt buộc | Phiên phục vụ; mỗi phiên một đơn tổng |
 | status | varchar(20) | bắt buộc | OPEN, CLOSED, CANCELLED |
 
 **order_batches** – Đợt gọi món
@@ -393,7 +415,7 @@ Kiểu dữ liệu và độ dài ở mức tổng quát, chọn lại khi tri�
 | order_batch_id | bigint | FK → order_batches, bắt buộc | Đợt gọi món |
 | daily_menu_item_id | bigint | FK → daily_menu_items, bắt buộc | Món trong thực đơn ngày (phân hệ 2) |
 | quantity | int | bắt buộc | Số lượng; duyệt hoặc hủy theo cả dòng |
-| unit_price | decimal(12,2) | bắt buộc | Giá tại lúc đặt (ORD-08) |
+| unit_price | decimal(12,2) | bắt buộc, ≥ 0 | Giá tại lúc đặt, bản chụp của `menu_items.price` (ORD-08) |
 | status | varchar(20) | bắt buộc | PENDING, ACCEPTED, IN_KITCHEN, COOKING, READY, CANCELLED, REJECTED |
 | has_stock_exception | boolean | bắt buộc, mặc định false | `true` khi kho không cấp đủ nguyên liệu cho dòng món `ACCEPTED` hoặc `IN_KITCHEN` (lô đã giữ hỏng, hết hạn hoặc không còn khả dụng và không phân bổ lại đủ); POS xử lý (ORD-18). Do kho ghi cùng transaction với đặt giữ, về `false` khi dòng món sang `COOKING`, được đặt giữ lại đủ hoặc bị hủy |
 | note | varchar(255) | | Ghi chú món |
@@ -416,8 +438,8 @@ Kiểu dữ liệu và độ dài ở mức tổng quát, chọn lại khi tri�
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã hóa đơn |
-| order_id | bigint | FK → orders, bắt buộc | Đơn tổng |
-| total | decimal(12,2) | bắt buộc | Tổng tiền |
+| order_id | bigint | FK → orders, UK, bắt buộc | Đơn tổng; mỗi đơn một hóa đơn |
+| total | decimal(12,2) | bắt buộc, ≥ 0 | Tổng tiền các dòng món chưa hủy, chưa bị từ chối; tính lại khi dòng món đổi lúc `DRAFT`, giữ nguyên khi `PAYMENT_PENDING` (ORD-09) |
 | status | varchar(20) | bắt buộc | DRAFT, PAYMENT_PENDING, PAID |
 
 **payment_requests** – Yêu cầu thanh toán
@@ -428,10 +450,10 @@ Kiểu dữ liệu và độ dài ở mức tổng quát, chọn lại khi tri�
 | invoice_id | bigint | FK → invoices, bắt buộc | Hóa đơn |
 | waiter_id | bigint | FK → employees, bắt buộc | Người gửi yêu cầu |
 | cashier_id | bigint | FK → employees | Thu ngân duyệt (trống cho đến khi duyệt) |
-| amount_due | decimal(12,2) | bắt buộc | Số tiền phải thu |
-| cash_received | decimal(12,2) | | Số tiền phục vụ khai báo đã nhận từ khách (tiền mặt) |
-| cash_counted | decimal(12,2) | | Số tiền thu ngân thực tế đếm được (tiền mặt) |
-| change_amount | decimal(12,2) | | Số tiền phải trả lại khách (tiền mặt) |
+| amount_due | decimal(12,2) | bắt buộc, ≥ 0 | Số tiền phải thu, bản chụp `invoices.total` lúc gửi yêu cầu |
+| cash_received | decimal(12,2) | ≥ 0 | Số tiền phục vụ khai báo đã nhận từ khách (tiền mặt) |
+| cash_counted | decimal(12,2) | ≥ 0 | Số tiền thu ngân thực tế đếm được (tiền mặt) |
+| change_amount | decimal(12,2) | ≥ 0, = `cash_received` − `amount_due` | Số tiền phải trả lại khách (tiền mặt) |
 | method | varchar(20) | bắt buộc | QR hoặc CASH |
 | status | varchar(30) | bắt buộc | REQUESTED, APPROVED, WAITING_TRANSFER, WAITING_CASH_HANDOVER, PAID, CANCELLED |
 | payment_reference | varchar(64) | | Mã tham chiếu hóa đơn gắn trong QR để khớp webhook |
@@ -442,8 +464,8 @@ Kiểu dữ liệu và độ dài ở mức tổng quát, chọn lại khi tri�
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã thanh toán |
-| payment_request_id | bigint | FK → payment_requests, bắt buộc | Yêu cầu thanh toán |
-| provider_transaction_code | varchar(64) | UK | Mã giao dịch của SePay (trống với tiền mặt, PAY-05) |
+| payment_request_id | bigint | FK → payment_requests, UK, bắt buộc | Yêu cầu thanh toán; mỗi yêu cầu tối đa một khoản thanh toán |
+| provider_transaction_code | varchar(64) | UK; bắt buộc khi `QR`, trống khi `CASH` | Mã giao dịch của SePay (PAY-05) |
 | amount | decimal(12,2) | bắt buộc | Số tiền nhà hàng thực giữ lại, đã trừ tiền thừa (bằng `amount_due`, không phải số khách đưa) |
 | method | varchar(20) | bắt buộc | QR hoặc CASH |
 | paid_at | timestamptz | bắt buộc | Thời điểm thanh toán thành công |
@@ -462,6 +484,23 @@ Kiểu dữ liệu và độ dài ở mức tổng quát, chọn lại khi tri�
 | received_at | timestamptz | bắt buộc | Thời điểm nhận webhook |
 | raw_payload | text | | Nội dung webhook gốc để đối chiếu |
 
+### Chuẩn hóa và khóa ngoại
+
+- **1NF, 2NF:** mọi cột một giá trị (nhiều món là nhiều dòng `order_items`, nhiều lần gọi món là nhiều dòng `order_batches`); mọi bảng có khóa chính một cột `id` nên không có phụ thuộc vào một phần khóa.
+- `table_sessions`, `orders`, `invoices` tách riêng dù quan hệ 1 – 0..1: mỗi bảng có vòng đời và trạng thái riêng (phiên theo bàn, đơn theo món, hóa đơn theo thanh toán); gộp lại sẽ trộn dữ liệu nhiều thực thể. `order_item_events` và `payment_webhook_events` là nhật ký, mỗi dòng một sự kiện, không chép lại dữ liệu bảng gốc ngoài khóa ngoại.
+- **3NF:** dữ liệu của thực thể khác chỉ tham chiếu bằng khóa ngoại. Các cột dưới đây trông như dư thừa nhưng là bản chụp hoặc số đã chốt có chủ đích:
+
+| Thuộc tính | Vì sao giữ | Kiểm soát |
+| --- | --- | --- |
+| `order_items.unit_price` | Bản chụp giá lúc đặt; `menu_items.price` có thể đổi sau đó nên không phụ thuộc bắc cầu (ORD-08) | Ghi một lần khi tạo dòng món; CHECK ≥ 0 |
+| `invoices.total` | Tổng tiền các dòng món hợp lệ của đơn; lưu để chốt số tiền khi gửi yêu cầu thanh toán và giữ nguyên khi `PAID` | Backend tính lại trong cùng transaction khi dòng món đổi lúc `DRAFT`; không đổi khi `PAYMENT_PENDING` (ORD-09); CHECK ≥ 0 |
+| `payment_requests.amount_due` | Bản chụp `invoices.total` lúc gửi yêu cầu | Hóa đơn bị khóa khi có yêu cầu đang hoạt động; CHECK ≥ 0 |
+| `payment_requests.change_amount` | Suy ra từ `cash_received` − `amount_due`; lưu để đối chiếu bàn giao tiền thừa | CHECK `change_amount` = `cash_received` − `amount_due` |
+| `payments.amount`, `payments.method` | Bản sao số tiền và phương thức của yêu cầu tại lúc ghi nhận `PAID`; `payments` là sổ thu không sửa, phân hệ 5 tổng hợp theo (`business_date`, `method`) không cần nối bảng | Ghi trong cùng transaction với `PAID` sau khi kiểm tra số tiền (PAY-02, PAY-03); không sửa sau khi ghi |
+| `payments.business_date` | Ngày kinh doanh lấy từ thực đơn ngày của các dòng món (PAY-09), không suy ra từ `paid_at` | Gán một lần khi ghi nhận, không đổi |
+
+- Mọi khóa ngoại `ON DELETE RESTRICT`: bàn, phiên, đơn, hóa đơn và giao dịch đã phát sinh không bị xóa cứng; hủy bằng trạng thái (`CANCELLED`, `REJECTED`) và lưu vết ở `order_item_events`.
+
 ## 6. Kịch bản demo
 
 Demo trọn vòng đời đơn hàng, không cần POS vật lý. Thiết bị: 1–2 laptop, 1–2 điện thoại; giao tiếp bếp bằng lời mô phỏng bộ đàm.
@@ -479,7 +518,7 @@ Demo trọn vòng đời đơn hàng, không cần POS vật lý. Thiết bị: 
 
 ## 7. Giả định còn lại
 
-1. Core không chia hóa đơn nên mỗi phiên có một đơn tổng và một hóa đơn, dù quan hệ được vẽ 1 – N theo bản gốc. Đơn và hóa đơn `DRAFT` được tạo ngay khi mở phiên.
+1. Core không chia hóa đơn nên mỗi phiên có một đơn tổng và một hóa đơn; ERD vẽ quan hệ 1 – 1 và có ràng buộc duy nhất tương ứng. Khi phiên bản sau chia hóa đơn, bỏ ràng buộc duy nhất của `invoices.order_id`. Đơn và hóa đơn `DRAFT` được tạo ngay khi mở phiên.
 2. Core chỉ tích hợp một cổng thanh toán (SePay) nên `provider_transaction_code` duy nhất trên toàn bảng; khi thêm cổng khác, ràng buộc mở rộng thành (cổng, mã giao dịch).
 3. Webhook `MISMATCH` hoặc `AFTER_CANCEL` chỉ được lưu để đối chiếu; hoàn tiền cho khách nằm ngoài Core.
 

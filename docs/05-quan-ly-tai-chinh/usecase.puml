@@ -1,0 +1,62 @@
+@startuml
+!include ../_style.puml
+left to right direction
+skinparam nodesep 40
+skinparam ranksep 80
+title Sơ đồ use case – Phân hệ 5: Quản lý tài chính
+
+actor "Manager\n(Quản lý)" as Manager
+actor "Cashier\n(Thu ngân)" as Cashier
+
+rectangle "Restaurant Core – Phân hệ 5: Quản lý tài chính" {
+  package "5.1 Theo dõi doanh thu thực thu" #FFFFFF;line.dashed {
+    usecase "UC01\nXem doanh thu thực thu\ntheo ngày kinh doanh" as UC01
+  }
+
+  package "5.2 Ghi nhận khoản chi vận hành" #FFFFFF;line.dashed {
+    usecase "UC02\nGhi nhận khoản chi" as UC02
+    usecase "UC03\nLiên kết khoản chi\nvới phiếu nhập kho" as UC03
+    usecase "UC04\nHủy khoản chi nhập sai" as UC04
+  }
+
+  package "5.3 Đối soát tiền mặt cuối ngày" #FFFFFF;line.dashed {
+    usecase "UC05\nĐối soát tiền mặt\ncuối ngày" as UC05
+    usecase "UC06\nĐối soát lại khi đếm lại\nhoặc dữ liệu thay đổi" as UC06
+    usecase "UC07\nXem lịch sử đối soát" as UC07
+  }
+
+  package "5.4 Tra cứu và kiểm tra giao dịch" #FFFFFF;line.dashed {
+    usecase "UC08\nTra cứu giao dịch thanh toán" as UC08
+    usecase "UC09\nXem giao dịch QR bất thường" as UC09
+    usecase "UC10\nTra cứu khoản chi" as UC10
+  }
+
+  package "5.5 Báo cáo hoạt động kinh doanh" #FFFFFF;line.dashed {
+    usecase "UC11\nBáo cáo doanh thu theo ngày\nvà phương thức thanh toán" as UC11
+    usecase "UC12\nBáo cáo kế hoạch số suất\nso với thực bán" as UC12
+    usecase "UC13\nBáo cáo tình hình\nnguyên liệu" as UC13
+  }
+}
+
+Manager -- UC01
+Manager -- UC02
+Manager -- UC04
+Manager -- UC07
+Manager -- UC08
+Manager -- UC09
+Manager -- UC10
+Manager -- UC11
+Manager -- UC12
+Manager -- UC13
+
+UC01 -- Cashier
+UC02 -- Cashier
+UC05 -- Cashier
+UC07 -- Cashier
+UC08 -- Cashier
+UC09 -- Cashier
+UC10 -- Cashier
+
+UC03 .[norank].> UC02 : <<extend>>
+UC06 .[norank].> UC05 : <<extend>>
+@enduml

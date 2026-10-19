@@ -9,57 +9,54 @@ actor "Manager\n(Quản lý)" as Manager
 actor "Waiter\n(Phục vụ)" as Waiter
 actor "Order Coordinator\n(POS điều phối)" as Coord
 
-rectangle "1. Quản lý danh mục món ăn" {
-  usecase "UC01\nThêm món ăn" as UC01
-  usecase "UC02\nSửa món ăn\n(giá bán, hình ảnh)" as UC02
-  usecase "UC03\nQuản lý loại món" as UC03
-  usecase "UC04\nBật / tắt kinh doanh món" as UC04
+rectangle "Restaurant Core – Phân hệ 2: Quản lý thực đơn" {
+  package "1. Quản lý danh mục món ăn" #FFFFFF;line.dashed {
+    usecase "UC01\nThêm món ăn" as UC01
+    usecase "UC02\nSửa món ăn\n(giá bán, hình ảnh)" as UC02
+    usecase "UC03\nThêm hoặc sửa loại món" as UC03
+    usecase "UC04\nBật hoặc tắt\nkinh doanh món" as UC04
+  }
+
+  package "2. Quản lý công thức định lượng" #FFFFFF;line.dashed {
+    usecase "UC05\nKhai báo công thức món" as UC05
+    usecase "UC06\nCập nhật công thức\n(tạo phiên bản mới)" as UC06
+  }
+
+  package "3. Quản lý thực đơn hằng ngày" #FFFFFF;line.dashed {
+    usecase "UC07\nLập thực đơn ngày" as UC07
+    usecase "UC08\nSao chép thực đơn\nngày trước" as UC08
+    usecase "UC09\nCông bố thực đơn ngày" as UC09
+    usecase "UC10\nĐóng thực đơn ngày" as UC10
+  }
+
+  package "4. Tính nguyên liệu & suất khả dụng" #FFFFFF;line.dashed {
+    usecase "UC11\nXem cảnh báo nguyên liệu" as UC11
+  }
+
+  package "5. Quản lý trạng thái bán" #FFFFFF;line.dashed {
+    usecase "UC12\nXem món đang bán\nvà số suất còn nhận" as UC12
+    usecase "UC13\nTạm ngừng bán món" as UC13
+    usecase "UC14\nMở bán lại món" as UC14
+  }
 }
 
-rectangle "2. Quản lý công thức định lượng" {
-  usecase "UC05\nKhai báo công thức món" as UC05
-  usecase "UC06\nCập nhật công thức\n(tạo phiên bản mới)" as UC06
-}
+Manager -- UC01
+Manager -- UC02
+Manager -- UC03
+Manager -- UC04
+Manager -- UC05
+Manager -- UC06
+Manager -- UC07
+Manager -- UC08
+Manager -- UC09
+Manager -- UC10
+Manager -- UC11
 
-rectangle "3. Quản lý thực đơn hằng ngày" {
-  usecase "UC07\nLập thực đơn ngày" as UC07
-  usecase "UC08\nSao chép thực đơn\nngày trước" as UC08
-  usecase "UC09\nCông bố thực đơn ngày" as UC09
-  usecase "UC10\nĐóng thực đơn ngày" as UC10
-}
+UC12 -- Waiter
+UC12 -- Coord
+UC13 -- Coord
+UC14 -- Coord
+UC11 -[hidden]- Waiter
 
-rectangle "4. Tính nguyên liệu & suất khả dụng" {
-  usecase "UC11\nXem cảnh báo nguyên liệu" as UC11
-}
-
-rectangle "5. Quản lý trạng thái bán" {
-  usecase "UC12\nXem món đang bán\nvà số suất còn nhận" as UC12
-  usecase "UC13\nTạm ngừng bán món" as UC13
-  usecase "UC14\nMở bán lại món" as UC14
-}
-
-Manager --> UC01
-Manager --> UC02
-Manager --> UC03
-Manager --> UC04
-Manager --> UC05
-Manager --> UC06
-Manager --> UC07
-Manager --> UC08
-Manager --> UC09
-Manager --> UC10
-Manager --> UC11
-
-UC12 <-- Waiter
-UC12 <-- Coord
-UC13 <-- Coord
-UC14 <-- Coord
-
-UC08 ..> UC07 : <<extend>>
-
-legend bottom
-  Tính nhu cầu nguyên liệu, số suất khả dụng, giữ suất, tự động khóa hoặc mở món
-  và đồng bộ tới POS, Mobile là xử lý nội bộ, mô tả trong sơ đồ hoạt động.
-  Bếp không phải actor: bếp báo qua bộ đàm, POS cập nhật. Điều kiện tiên quyết: đã đăng nhập.
-endlegend
+UC08 .[norank].> UC07 : <<extend>>
 @enduml

@@ -7,11 +7,12 @@ start
 :Mở màn hình "Sơ đồ bàn";
 |Hệ thống|
 :Hiển thị các bàn và trạng thái;
+note right: Hóa đơn PAID: hệ thống tự đóng đơn\nvà phiên, trả bàn AVAILABLE
 |Waiter|
 :Chọn bàn hoặc phiên và thao tác;
 |Hệ thống|
 if (Mở bàn?) then (có)
-  if (Bàn AVAILABLE?) then (có)
+  if (Bàn AVAILABLE và chưa có phiên OPEN?) then (có)
     :Tạo phiên OPEN, đơn OPEN\nvà hóa đơn DRAFT;
     :Bàn chuyển OCCUPIED;
   else (không)
@@ -25,10 +26,7 @@ elseif (Chuyển bàn?) then (có)
     :Từ chối chuyển bàn;
   endif
 else (Kết thúc phiên)
-  if (Hóa đơn PAID?) then (có)
-    :Đơn CLOSED;
-    :Phiên CLOSED, bàn AVAILABLE;
-  elseif (Không có khoản phải thanh toán,\nmọi món đã hủy / từ chối hợp lệ?) then (có)
+  if (Không có khoản phải thanh toán,\nmọi món đã hủy / từ chối hợp lệ?) then (có)
     :Đơn CANCELLED;
     :Phiên CLOSED, bàn AVAILABLE;
   else (không)

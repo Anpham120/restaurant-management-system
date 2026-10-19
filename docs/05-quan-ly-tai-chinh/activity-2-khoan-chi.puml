@@ -25,8 +25,9 @@ if (Thao tác?) then (Ghi khoản chi)
   endif
 else (Hủy khoản chi nhập sai)
   |Manager / Cashier|
-  :Manager chọn khoản chi,\nnhập lý do hủy;
+  :Chỉ Manager chọn khoản chi nhập sai,\nnhập lý do hủy;
   |Hệ thống|
+  :Kiểm tra quyền Manager, chỉ hủy bản ghi nhập sai\n(không thay cho hoàn tiền thực tế);
   :Khoản chi VOIDED, giữ bản ghi,\nlưu người, thời điểm và lý do;
   if (Ngày đã có bản đối soát hiện hành?) then (có)
     :Giữ nguyên bản đối soát,\nđánh dấu "cần kiểm tra lại";

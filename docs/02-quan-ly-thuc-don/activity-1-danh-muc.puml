@@ -23,7 +23,7 @@ if (Chọn thao tác) then (Thêm / sửa món)
     :Kiểm tra dữ liệu bắt buộc\nvà giá bán hợp lệ;
   repeat while (Dữ liệu không hợp lệ?) is (có, báo lỗi) not (không)
   :Lưu món ăn;
-else (Bật / tắt kinh doanh)
+else (Bật hoặc tắt kinh doanh)
   |Manager|
   :Chọn món và trạng thái\nkinh doanh mới;
   |Hệ thống|

@@ -243,7 +243,8 @@ INSERT INTO ids VALUES
     ('A3', pg_temp.assign('T002', 'T-Ca sáng', '2026-03-11 08:00+07', '2026-03-11 12:00+07')),
     ('A4', pg_temp.assign('T005', 'T-Ca đêm',  '2026-03-12 22:00+07', '2026-03-13 06:00+07', 30)),
     ('A5', pg_temp.assign('T002', 'T-Ca sáng', '2026-03-13 08:00+07', '2026-03-13 12:00+07')),
-    ('A6', pg_temp.assign('T007', 'T-Ca sáng', '2026-03-14 08:00+07', '2026-03-14 12:00+07'));
+    ('A6', pg_temp.assign('T007', 'T-Ca sáng', '2026-03-14 08:00+07', '2026-03-14 12:00+07')),
+    ('A7', pg_temp.assign('T007', 'T-Ca sáng', '2026-03-21 08:00+07', '2026-03-21 12:00+07'));
 
 -- Dữ liệu chấm công không hợp lệ trên A5 (không dòng nào được lưu)
 SELECT pg_temp.expect('CC-01', 'Có mặt đúng lịch không lưu giờ thực tế', '23514 ck_attendances_times',
@@ -279,7 +280,7 @@ SELECT pg_temp.expect('CC-10', 'Xác nhận có mặt hàng loạt (A1, A4) tron
        FROM shift_assignments sa
        WHERE sa.id IN (pg_temp.aid('A1'), pg_temp.aid('A4'))
          AND sa.status = 'SCHEDULED'
-         AND sa.scheduled_start_at <= TIMESTAMPTZ '2026-03-20 09:00+07'$q$);
+         AND sa.scheduled_end_at <= TIMESTAMPTZ '2026-03-20 09:00+07'$q$);
 SELECT pg_temp.assert_eq('CC-11', 'Phút công nhận: ca sáng 240; ca đêm 480 − nghỉ 30 = 450', '240/450',
     (SELECT (SELECT worked_minutes FROM attendances WHERE shift_assignment_id = pg_temp.aid('A1')) || '/' ||
             (SELECT worked_minutes FROM attendances WHERE shift_assignment_id = pg_temp.aid('A4'))));
@@ -301,6 +302,15 @@ SELECT pg_temp.expect('CC-15', 'Xác nhận hàng loạt (A1 đã xác nhận, A
        WHERE sa.id IN (pg_temp.aid('A6'), pg_temp.aid('A1')) ORDER BY (sa.id = pg_temp.aid('A6')) DESC$q$);
 SELECT pg_temp.assert_eq('CC-16', 'A6 không được lưu sau khi cả lô bị từ chối', '0',
     (SELECT count(*)::text FROM attendances WHERE shift_assignment_id = pg_temp.aid('A6')));
+
+-- Có mặt đúng lịch chỉ khi ca đã kết thúc: ca A7 (21/03) chưa kết thúc tại thời điểm xác nhận 20/03
+SELECT pg_temp.expect('CC-17', 'Câu lệnh hàng loạt có điều kiện "ca đã kết thúc" chạy được với ca A7 chưa kết thúc', 'OK',
+    $q$INSERT INTO attendances (shift_assignment_id, attendance_status, worked_minutes, confirmed_by_id)
+       SELECT sa.id, 'PRESENT', 240, pg_temp.emp('T003') FROM shift_assignments sa
+       WHERE sa.id = pg_temp.aid('A7') AND sa.status = 'SCHEDULED'
+         AND sa.scheduled_end_at <= TIMESTAMPTZ '2026-03-20 09:00+07'$q$);
+SELECT pg_temp.assert_eq('CC-18', 'Ca chưa kết thúc không được chèn dòng chấm công nào', '0',
+    (SELECT count(*)::text FROM attendances WHERE shift_assignment_id = pg_temp.aid('A7')));
 
 -- Bảng công: view tổng hợp theo ngày
 SELECT pg_temp.assert_eq('TS-01', 'Ngày 10/03 của T002 có hai ca nhưng chỉ một dòng bảng công', '1',

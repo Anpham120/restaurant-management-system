@@ -8,67 +8,60 @@ title Sơ đồ use case – Phân hệ 4: Quản lý kho & nguyên liệu
 actor "Manager\n(Quản lý)" as Manager
 actor "Order Coordinator\n(POS điều phối)" as Coord
 
-rectangle "4.1 Danh mục nguyên liệu" {
-  usecase "UC01\nThêm nguyên liệu" as UC01
-  usecase "UC02\nSửa nguyên liệu" as UC02
-  usecase "UC03\nTìm kiếm nguyên liệu" as UC03
-  usecase "UC04\nBật / tắt sử dụng\nnguyên liệu" as UC04
+rectangle "Restaurant Core – Phân hệ 4: Quản lý kho & nguyên liệu" {
+  package "4.1 Danh mục nguyên liệu" #FFFFFF;line.dashed {
+    usecase "UC01\nThêm nguyên liệu" as UC01
+    usecase "UC02\nSửa nguyên liệu" as UC02
+    usecase "UC03\nTìm kiếm nguyên liệu" as UC03
+    usecase "UC04\nBật hoặc tắt sử dụng\nnguyên liệu" as UC04
+  }
+
+  package "4.2 Nhập kho" #FFFFFF;line.dashed {
+    usecase "UC05\nLập phiếu nhập kho" as UC05
+    usecase "UC06\nXác nhận phiếu nhập kho" as UC06
+  }
+
+  package "4.3 Theo dõi tồn kho" #FFFFFF;line.dashed {
+    usecase "UC07\nXem tồn kho\ntheo nguyên liệu" as UC07
+    usecase "UC08\nXem tồn theo lô" as UC08
+    usecase "UC09\nXem lịch sử biến động\nvà đặt giữ" as UC09
+  }
+
+  package "4.4 Đặt giữ và tiêu hao nguyên liệu" #FFFFFF;line.dashed {
+    usecase "UC10\nĐặt giữ nguyên liệu theo món" as UC10
+    usecase "UC11\nGhi nhận tiêu hao nguyên liệu" as UC11
+    usecase "UC12\nGiải phóng đặt giữ nguyên liệu" as UC12
+  }
+
+  package "4.5 Kiểm kê và điều chỉnh" #FFFFFF;line.dashed {
+    usecase "UC13\nLập phiếu kiểm kê" as UC13
+    usecase "UC14\nXác nhận kiểm kê\nvà điều chỉnh tồn" as UC14
+    usecase "UC15\nĐánh dấu lô\nkhông đạt chất lượng" as UC15
+  }
+
+  package "4.6 Cảnh báo nguyên liệu" #FFFFFF;line.dashed {
+    usecase "UC16\nXem cảnh báo nguyên liệu" as UC16
+  }
 }
 
-rectangle "4.2 Nhập kho" {
-  usecase "UC05\nLập phiếu nhập kho" as UC05
-  usecase "UC06\nXác nhận phiếu nhập kho" as UC06
-}
+Manager -- UC01
+Manager -- UC02
+Manager -- UC03
+Manager -- UC04
+Manager -- UC05
+Manager -- UC06
+Manager -- UC07
+Manager -- UC08
+Manager -- UC09
+Manager -- UC13
+Manager -- UC14
+Manager -- UC15
+Manager -- UC16
 
-rectangle "4.3 Theo dõi tồn kho" {
-  usecase "UC07\nXem tồn kho\ntheo nguyên liệu" as UC07
-  usecase "UC08\nXem tồn theo lô" as UC08
-  usecase "UC09\nXem lịch sử biến động\nvà đặt giữ" as UC09
-}
+UC10 -- Coord
+UC11 -- Coord
+UC12 -- Coord
+UC16 -- Coord
 
-rectangle "4.4 Đặt giữ và tiêu hao (tự động)" {
-  usecase "UC10\nĐặt giữ nguyên liệu\nkhi POS duyệt món" as UC10
-  usecase "UC11\nGhi nhận tiêu hao khi\nbắt đầu chế biến" as UC11
-  usecase "UC12\nGiải phóng đặt giữ khi\nhủy hoặc sửa món" as UC12
-}
-
-rectangle "4.5 Kiểm kê và điều chỉnh" {
-  usecase "UC13\nLập phiếu kiểm kê" as UC13
-  usecase "UC14\nXác nhận kiểm kê\nvà điều chỉnh tồn" as UC14
-  usecase "UC15\nĐánh dấu lô\nkhông đạt chất lượng" as UC15
-}
-
-rectangle "4.6 Cảnh báo nguyên liệu" {
-  usecase "UC16\nXem cảnh báo nguyên liệu" as UC16
-}
-
-Manager --> UC01
-Manager --> UC02
-Manager --> UC03
-Manager --> UC04
-Manager --> UC05
-Manager --> UC06
-Manager --> UC07
-Manager --> UC08
-Manager --> UC09
-Manager --> UC13
-Manager --> UC14
-Manager --> UC15
-Manager --> UC16
-
-UC10 <-- Coord
-UC11 <-- Coord
-UC12 <-- Coord
-UC16 <-- Coord
-
-UC08 ..> UC07 : <<extend>>
-UC09 -[hidden]down-> UC10
-UC12 -[hidden]down-> UC13
-UC15 -[hidden]down-> UC16
-
-legend bottom
-  UC10 đến UC12 kích hoạt khi POS thao tác ở phân hệ 3 (duyệt món, bắt đầu chế biến, hủy hoặc sửa món);
-  hệ thống tự thực hiện trong một transaction, không phải actor. Bếp không phải actor: bếp báo qua bộ đàm.
-  Điều kiện tiên quyết: đã đăng nhập.
-endlegend
+UC08 .[norank].> UC07 : <<extend>>
 @enduml
