@@ -3,8 +3,8 @@
 hide circle
 set separator none
 skinparam linetype ortho
-skinparam nodesep 50
-skinparam ranksep 55
+skinparam nodesep 65
+skinparam ranksep 75
 title ERD – Phân hệ 1: Quản lý nhân viên
 
 entity "departments" as departments {
@@ -27,6 +27,8 @@ entity "employees" as employees {
   end_date : date
   * work_status : varchar(20)
   * department_id : bigint <<FK>>
+  ..
+  CHECK work_status IN (ACTIVE, ON_LEAVE, RESIGNED)
 }
 
 entity "accounts" as accounts {
@@ -37,6 +39,8 @@ entity "accounts" as accounts {
   * password_hash : varchar(255)
   * must_change_password : boolean
   * account_status : varchar(20)
+  ..
+  CHECK account_status IN (ACTIVE, LOCKED, SUSPENDED, DISABLED)
 }
 
 entity "roles" as roles {
@@ -99,6 +103,7 @@ entity "shift_assignments" as shift_assignments {
   cancelled_by_id : bigint <<FK>>
   cancelled_at : timestamptz
   ..
+  CHECK status IN (SCHEDULED, CANCELLED)
   CHECK scheduled_end_at > scheduled_start_at
   CHECK 0 ≤ scheduled_break_minutes ≤ thời lượng
   EXCLUDE (employee_id =, khoảng thời gian &&) khi SCHEDULED
@@ -115,6 +120,8 @@ entity "attendances" as attendances {
   note : varchar(255)
   * confirmed_by_id : bigint <<FK>>
   * confirmed_at : timestamptz
+  ..
+  CHECK attendance_status IN (PRESENT, ABSENT, DIFFERENT_HOURS)
 }
 
 entity "attendance_adjustments" as attendance_adjustments {
@@ -132,6 +139,8 @@ entity "attendance_adjustments" as attendance_adjustments {
   * reason : varchar(255)
   * adjusted_by_id : bigint <<FK>>
   * adjusted_at : timestamptz
+  ..
+  CHECK old_status, new_status IN (PRESENT, ABSENT, DIFFERENT_HOURS)
 }
 
 departments ||--o{ employees : has

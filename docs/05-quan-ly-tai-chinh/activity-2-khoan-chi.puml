@@ -10,11 +10,16 @@ start
 if (Thao tác?) then (Ghi khoản chi)
   :Nhập ngày kinh doanh, loại, nội dung, số tiền,\nphương thức, nguồn tiền, thời điểm đã chi;
   if (Chi trả cho phiếu nhập kho?) then (có)
-    :Chọn phiếu nhập kho liên quan;
+    :Chọn phiếu nhập kho liên quan\n(xác nhận phiếu không tự sinh khoản chi);
   else (không)
   endif
+  :Lưu (mỗi lần gửi mang một request_key);
   |Hệ thống|
-  if (Hợp lệ: số tiền > 0, đã thực trả,\nchi từ quầy phải là tiền mặt,\nCashier chỉ chi tiền mặt từ quầy?) then (không)
+  if (request_key đã được ghi?) then (có)
+    :Gửi lặp: trả lại khoản chi đã ghi,\nkhông tạo khoản chi thứ hai;
+  elseif (Phiếu nhập đã có khoản chi\ncòn hiệu lực (chưa VOIDED)?) then (có)
+    :Từ chối: mỗi phiếu nhập tối đa một khoản chi\ncòn hiệu lực; ghi sai thì hủy khoản cũ rồi ghi lại;
+  elseif (Hợp lệ: số tiền > 0, đã thực trả,\nchi từ quầy phải là tiền mặt,\nCashier chỉ chi tiền mặt từ quầy?) then (không)
     :Từ chối, báo lỗi;
   else (có)
     :Lưu khoản chi RECORDED, lưu người ghi\nvà thời điểm, không đổi phiếu nhập kho;
@@ -28,7 +33,7 @@ else (Hủy khoản chi nhập sai)
   :Chỉ Manager chọn khoản chi nhập sai,\nnhập lý do hủy;
   |Hệ thống|
   :Kiểm tra quyền Manager, chỉ hủy bản ghi nhập sai\n(không thay cho hoàn tiền thực tế);
-  :Khoản chi VOIDED, giữ bản ghi,\nlưu người, thời điểm và lý do;
+  :Khoản chi VOIDED, giữ bản ghi,\nlưu người, thời điểm và lý do;\nphiếu nhập liên kết (nếu có) được ghi khoản chi mới;
   if (Ngày đã có bản đối soát hiện hành?) then (có)
     :Giữ nguyên bản đối soát,\nđánh dấu "cần kiểm tra lại";
   else (không)

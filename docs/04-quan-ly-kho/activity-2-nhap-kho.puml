@@ -14,8 +14,10 @@ repeat
     :Báo lỗi dòng phiếu;
   elseif (Nguyên liệu theo dõi hạn dùng\nmà thiếu hạn hoặc hạn đã qua?) then (có)
     :Báo lỗi dòng phiếu;
+  elseif (Trùng nguyên liệu, số lô và hạn dùng\nvới một dòng đã có trong phiếu?) then (có)
+    :Báo trùng lô, sửa số lượng\nở dòng đã có;
   else (hợp lệ)
-    :Lưu dòng vào phiếu nháp\n(chưa thay đổi tồn);
+    :Lưu dòng vào phiếu nháp (chưa thay đổi tồn);\ncùng nguyên liệu khác lô hoặc hạn dùng\nlà dòng riêng, sau này thành lô riêng;
   endif
   |Manager|
 repeat while (Thêm dòng khác?) is (có) not (không)
@@ -23,7 +25,7 @@ repeat while (Thêm dòng khác?) is (có) not (không)
 |Hệ thống|
 if (Phiếu còn DRAFT và\ncó ít nhất một dòng?) then (có)
   :Mỗi dòng tạo một lô, cộng tồn,\nghi biến động RECEIPT;
-  :Phiếu CONFIRMED, lưu người và thời điểm\nxác nhận; giữ nguyên dòng phiếu\n(kể cả hệ số quy đổi);
+  :Phiếu CONFIRMED, lưu người và thời điểm\nxác nhận; giữ nguyên dòng phiếu\n(kể cả hệ số quy đổi); không tự tạo khoản chi;
   note right: Cùng một transaction
   :Phân hệ Thực đơn tính lại khả dụng,\nđồng bộ POS / Mobile;
 else (không)

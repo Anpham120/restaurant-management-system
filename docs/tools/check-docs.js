@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Kiểm tra ERD PlantUML của Restaurant Core (RMS) và tài liệu đi kèm.
+// Kiểm tra nhất quán tài liệu Restaurant Core (RMS): ERD PlantUML, use case, sơ đồ hoạt động, README, báo cáo tổng hợp.
 //
 // Cách chạy (từ thư mục gốc dự án, cần Node.js 18+, không cần cài thêm gói):
-//   node docs/tools/check-erd.js            # kiểm tra thư mục docs cạnh công cụ
-//   node docs/tools/check-erd.js <docs>     # kiểm tra thư mục docs khác
+//   node docs/tools/check-docs.js           # kiểm tra thư mục docs cạnh công cụ
+//   node docs/tools/check-docs.js <docs>    # kiểm tra thư mục docs khác
 // Mã thoát 1 khi có LỖI; CẢNH BÁO và THÔNG TIN không làm hỏng lệnh.
 //
 // Nội dung kiểm tra:
@@ -20,7 +20,15 @@
 //   6. README: từ điển dữ liệu khớp ERD (cột, kiểu, bắt buộc, FK, UK); bảng "Bảng của phân hệ khác trong ERD"
 //      khớp các bảng nét đứt; UK ghép và FK ghép được nhắc trong README; danh sách sở hữu ở docs/README.md.
 //   7. Ảnh: mỗi .puml có .png; nguồn nhúng trong PNG khớp tệp .puml và _style.puml hiện tại; link ảnh hợp lệ.
-//   8. Sơ đồ hoạt động, use case: tên snake_case phải là bảng hoặc cột có thật; mã IN HOA phải có trong README.
+//   8. Sơ đồ hoạt động, use case: tên snake_case phải là bảng hoặc cột có thật; mã IN HOA phải là giá trị trạng thái
+//      đã khai báo (mục 10) hoặc từ viết tắt đã biết.
+//   9. Use case: bảng use case README khớp sơ đồ use case (mã, tên, actor kể cả qua «include»/«extend») và số
+//      "Phân hệ có N use case"; báo cáo tổng hợp khớp README (bảng theo nhóm, bảng thống kê, cột use case của actor).
+//  10. Trạng thái và PostgreSQL: mọi cột varchar tên *status, *type, *method, *result, *category, *source có
+//      "CHECK cột IN (...)" trong ERD; tập giá trị khớp tuyệt đối bảng "Tập giá trị trạng thái" (enum Java) ở
+//      docs/README.md, từ điển dữ liệu README và lược đồ viết tay phân hệ 1; lược đồ phân hệ 2–5 sinh bằng
+//      gen-schema.js phải khớp ERD và README; truy vấn mẫu có tham số trong README phân hệ 2–5 phải có nguyên văn
+//      trong database/test-lien-phan-he.sql.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -139,7 +147,7 @@ for (const mod of moduleDirs) for (const e of ERD[mod].entities.values()) {
 }
 
 // ---------------------------------------------------------------- 2. khóa
-const UK_RE = /^UK \(([^)]+)\)$/;
+const UK_RE = /^UK \(([^)]+)\)(?: NULLS NOT DISTINCT)?$/;
 const PUK_RE = /^PARTIAL UK \(([^)]+)\) WHERE .+$/;
 const CFK_RE = /^FK \(([^)]+)\) → (\w+) \(([^)]+)\)$/;
 const splitCols = (s) => s.split(',').map((x) => x.trim());
@@ -342,7 +350,7 @@ function parseDictionary(md) {
     const cells = line.split('|').slice(1, -1).map((s) => s.trim());
     if (cells.length < 3 || cells[0] === 'Cột' || /^-+$/.test(cells[0])) continue;
     if (cells[0].startsWith('(')) current.composite.push({ text: cells[0], cons: cells[2] });
-    else current.cols.set(cells[0].replace(/`/g, ''), { type: cells[1], cons: cells[2] });
+    else current.cols.set(cells[0].replace(/`/g, ''), { type: cells[1], cons: cells[2], desc: cells[3] || '' });
   }
   return tables;
 }
@@ -456,19 +464,219 @@ for (const md of [rootReadme, path.join(DOCS, 'bao-cao-tong-hop.md'), ...moduleD
   for (const m of read(md).matchAll(/!\[[^\]]*\]\(([^)]+\.png)\)/g)) if (!fs.existsSync(path.join(path.dirname(md), m[1]))) err(`${rel(md)}: link ảnh hỏng ${m[1]}`);
 }
 
+// ---------------------------------------------------------------- 10. tập giá trị trạng thái và lược đồ PostgreSQL
+// (đặt trước mục 8 vì mục 8 dùng tập giá trị để kiểm tra mã IN HOA trong sơ đồ)
+const IN_RE = /^CHECK ([a-z_]+(?:, [a-z_]+)*) IN \(([^)]*)\)$/;
+const ENUMS = new Map(); // "bảng.cột" -> giá trị trong CHECK ... IN (...) của ERD
+const sameSet = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
+for (const [name, def] of GLOBAL) {
+  for (const n of def.notes) {
+    const m = n.match(IN_RE);
+    if (!m) continue;
+    const vals = splitCols(m[2]);
+    if (vals.some((v) => !/^[A-Z][A-Z0-9_]*$/.test(v)) || new Set(vals).size !== vals.length) err(`${name}: "${n}" phải là danh sách mã IN HOA không lặp`);
+    for (const c of splitCols(m[1])) {
+      const col = def.cols.find((x) => x.name === c);
+      if (!col) { err(`${name}: "${n}" dùng cột không có: ${c}`); continue; }
+      if (!/^varchar\(/.test(col.type)) err(`${name}.${c}: CHECK ... IN chỉ dùng cho cột varchar`);
+      ENUMS.set(`${name}.${c}`, vals);
+    }
+  }
+  for (const c of def.cols) {
+    if (/^varchar\(/.test(c.type) && /(^|_)(status|type|method|result|category|source)$/.test(c.name) && !ENUMS.has(`${name}.${c.name}`)) {
+      err(`${name}.${c.name}: cột trạng thái thiếu ràng buộc "CHECK ${c.name} IN (...)" trong ERD`);
+    }
+  }
+}
+// Bảng "Tập giá trị trạng thái" (enum Java dự kiến | cột | giá trị) ở docs/README.md (bắt buộc) và báo cáo tổng hợp (nếu có)
+const DERIVED = new Set(); // giá trị suy ra, không lưu (ví dụ khả dụng của món)
+for (const [file, required] of [[rootReadme, true], [path.join(DOCS, 'bao-cao-tong-hop.md'), false]]) {
+  if (!fs.existsSync(file)) continue;
+  const text = read(file);
+  const at = text.search(/^#+ Tập giá trị trạng thái|^\*\*Tập giá trị trạng thái\*\*/m);
+  if (at < 0) { if (required) err(`${rel(file)}: thiếu mục "Tập giá trị trạng thái"`); continue; }
+  const listed = new Set();
+  const rows = text.slice(at).split(/\n(?=#)/)[0];
+  for (const m of rows.matchAll(/^\| `(\w+)` \| ([^|]+) \| ([^|]+) \|$/gm)) {
+    const vals = [...m[3].matchAll(/`([A-Z][A-Z0-9_]*)`/g)].map((x) => x[1]);
+    const cols = [...m[2].matchAll(/`([a-z_]+\.[a-z_]+)`/g)].map((x) => x[1]);
+    if (!cols.length) { vals.forEach((v) => DERIVED.add(v)); continue; }
+    for (const c of cols) {
+      listed.add(c);
+      if (!ENUMS.has(c)) err(`${rel(file)}: enum ${m[1]} gắn ${c} nhưng ERD không có CHECK ... IN cho cột này`);
+      else if (!sameSet(ENUMS.get(c), vals)) err(`${rel(file)}: enum ${m[1]} [${vals}] khác CHECK của ${c} trong ERD [${ENUMS.get(c)}]`);
+    }
+  }
+  for (const c of ENUMS.keys()) if (!listed.has(c)) err(`${rel(file)}: ${c} có CHECK ... IN trong ERD nhưng thiếu ở bảng "Tập giá trị trạng thái"`);
+}
+// Từ điển dữ liệu README phân hệ sở hữu: cột Ràng buộc ghi CHECK, mô tả liệt kê đúng tập giá trị (bỏ phần trong ngoặc)
+for (const mod of moduleDirs) {
+  const readme = path.join(DOCS, mod, 'README.md');
+  if (!fs.existsSync(readme)) continue;
+  const dict = parseDictionary(read(readme));
+  for (const [key, vals] of ENUMS) {
+    const [t, c] = key.split('.');
+    const r = OWNER.get(t) === mod && dict.get(t) && dict.get(t).cols.get(c);
+    if (!r) continue; // bảng của phân hệ khác, hoặc thiếu cột (đã báo ở mục 6)
+    if (!/(^|[ ,;])CHECK([ ,;]|$)/.test(r.cons)) err(`${mod}: từ điển ${key} cần ghi "CHECK" ở cột Ràng buộc`);
+    const words = [...new Set(r.desc.replace(/\([^)]*\)/g, ' ').match(/\b[A-Z][A-Z0-9_]+\b/g) || [])];
+    if (!sameSet(words, vals)) err(`${mod}: từ điển ${key} liệt kê [${words}], ERD CHECK [${vals}]`);
+  }
+}
+// Lược đồ viết tay của phân hệ 1: CHECK (cột IN (...)) khớp ERD
+const schema1 = path.join(DOCS, '01-quan-ly-nhan-vien', 'schema-postgresql.sql');
+if (fs.existsSync(schema1)) {
+  const found = new Map();
+  for (const t of read(schema1).matchAll(/^CREATE TABLE (\w+) \(\n([\s\S]*?)\n\);/gm)) {
+    for (const m of t[2].matchAll(/CHECK \((\w+) IN \(([^)]*)\)\)/g)) found.set(`${t[1]}.${m[1]}`, splitCols(m[2]).map((v) => v.replace(/'/g, '')));
+  }
+  for (const [key, vals] of ENUMS) {
+    if (!(OWNER.get(key.split('.')[0]) || '').startsWith('01-')) continue;
+    if (!found.has(key)) err(`${rel(schema1)}: thiếu CHECK (${key.split('.')[1]} IN (...)) cho ${key}`);
+    else if (!sameSet(found.get(key), vals)) err(`${rel(schema1)}: ${key} [${found.get(key)}] khác ERD [${vals}]`);
+  }
+}
+// Lược đồ phân hệ 2–5 sinh từ ERD và README (gen-schema.js) phải còn mới; truy vấn mẫu README có nguyên văn trong bộ test
+const gen = require('./gen-schema.js');
+const generated = gen.generate(DOCS);
+for (const p of generated.problems) err(`lược đồ phân hệ 2–5: ${p}`);
+if (!fs.existsSync(generated.file)) err(`${rel(generated.file)}: chưa có, chạy node docs/tools/gen-schema.js`);
+else if (read(generated.file) !== generated.sql) err(`${rel(generated.file)}: không khớp ERD và README hiện tại, chạy node docs/tools/gen-schema.js`);
+const crossTest = path.join(DOCS, 'database', 'test-lien-phan-he.sql');
+if (!fs.existsSync(crossTest)) err(`${rel(crossTest)}: chưa có bộ kiểm thử liên phân hệ`);
+else {
+  const testText = read(crossTest).replace(/\s+/g, ' ');
+  for (const mod of moduleDirs.filter((m) => !m.startsWith('01-') && fs.existsSync(path.join(DOCS, m, 'README.md')))) {
+    for (const block of read(path.join(DOCS, mod, 'README.md')).matchAll(/```sql\n([\s\S]*?)```/g)) {
+      for (const stmt of gen.splitSql(block[1])) {
+        const body = stmt.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n').trim().replace(/;$/, '');
+        if (!/(^|[^:]):[a-z_]+/.test(body.replace(/'[^']*'/g, ''))) continue; // chỉ truy vấn có tham số :tên
+        if (!testText.includes(body.replace(/\s+/g, ' '))) err(`${mod}/README.md: truy vấn mẫu "${body.split('\n')[0].slice(0, 60)}…" chưa có nguyên văn trong ${rel(crossTest)}`);
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------- 8. sơ đồ hoạt động và use case
 const allCols = new Set();
 for (const def of GLOBAL.values()) for (const c of def.cols) allCols.add(c.name);
-const readmeText = moduleDirs.map((m) => (fs.existsSync(path.join(DOCS, m, 'README.md')) ? read(path.join(DOCS, m, 'README.md')) : '')).join('\n');
-const knownUpper = new Set(readmeText.match(/\b[A-Z][A-Z0-9_]{2,}\b/g) || []);
+const ENUM_VALUES = new Set([...[...ENUMS.values()].flat(), ...DERIVED]);
+const ACRONYMS = new Set(['POS', 'FEFO', 'RBAC', 'EXCLUDE']); // viết tắt, từ khóa SQL dùng trong sơ đồ, không phải trạng thái
 for (const mod of moduleDirs) for (const f of fs.readdirSync(path.join(DOCS, mod)).filter((x) => /^(activity|usecase).*\.puml$/.test(x))) {
   const src = read(path.join(DOCS, mod, f)).replace(/^\s*'.*$/gm, '').replace(/\\n/g, ' ').replace(/#[0-9A-Fa-f]{3,8}\b/g, ' ').replace(/^\s*(skinparam|!include|@start|@end|title).*$/gm, '');
   for (const t of new Set(src.match(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g) || [])) if (!GLOBAL.has(t) && !allCols.has(t)) warn(`${mod}/${f}: "${t}" không phải tên bảng hay cột trong ERD`);
-  for (const t of new Set(src.match(/\b[A-Z][A-Z0-9_]{2,}\b/g) || [])) if (!knownUpper.has(t) && !/^UC\d+$/.test(t)) warn(`${mod}/${f}: mã "${t}" không xuất hiện trong README nào`);
+  for (const t of new Set(src.match(/\b[A-Z][A-Z0-9_]+\b/g) || [])) {
+    if (!/^UC\d+$/.test(t) && !ENUM_VALUES.has(t) && !ACRONYMS.has(t)) err(`${mod}/${f}: mã "${t}" không thuộc tập giá trị trạng thái nào (docs/README.md) và không phải từ viết tắt đã biết`);
+  }
+}
+
+// ---------------------------------------------------------------- 9. use case: README, sơ đồ use case, báo cáo tổng hợp
+const normName = (s) => s.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, ' ').replace(/\s+/g, ' ').trim();
+const UC_ROW = /^\| (UC\d\d) \| (?!«)([^|]+?) \| ([^|]+?) \| ([^|]*?) \|$/gm;
+const UCS = {}; // phân hệ -> Map(mã -> { name, actors: Set })
+for (const mod of moduleDirs) {
+  const dir = path.join(DOCS, mod);
+  const readme = path.join(dir, 'README.md');
+  if (!fs.existsSync(readme)) continue;
+  const md = read(readme);
+  const rows = new Map();
+  for (const m of md.matchAll(UC_ROW)) if (!rows.has(m[1])) rows.set(m[1], { name: m[2].trim(), actorText: m[3].trim() });
+  // actor ghi "(theo UCxx)" thì lấy actor của use case gốc
+  for (const r of rows.values()) {
+    const ref = r.actorText.match(/^\(theo (UC\d\d)\)$/);
+    r.ref = ref ? ref[1] : null;
+    r.actors = ref ? null : new Set(r.actorText.split(',').map((s) => s.trim()));
+  }
+  for (const r of rows.values()) if (r.ref) r.actors = new Set((rows.get(r.ref) || {}).actors || []);
+  UCS[mod] = rows;
+  const claimed = md.match(/Phân hệ có (\d+) use case/);
+  if (claimed && Number(claimed[1]) !== rows.size) err(`${mod}: README ghi ${claimed[1]} use case, bảng use case có ${rows.size}`);
+  // sơ đồ use case
+  const ucPuml = new Map();
+  const linked = new Map();
+  const rels = [];
+  for (const f of fs.readdirSync(dir).filter((x) => /^usecase.*\.puml$/.test(x))) {
+    const src = read(path.join(dir, f));
+    const actorName = {};
+    for (const m of src.matchAll(/^actor "([^"]+)" as (\w+)/gm)) actorName[m[2]] = m[1].replace(/\\n/g, ' ');
+    for (const m of src.matchAll(/usecase "(UC\d\d)\\n([^"]+)" as (UC\d\d)/g)) ucPuml.set(m[1], m[2].replace(/\\n/g, ' '));
+    const link = (uc, a) => { if (!linked.has(uc)) linked.set(uc, new Set()); linked.get(uc).add(actorName[a] || a); };
+    for (const m of src.matchAll(/^(\w+) -+ (UC\d\d)$/gm)) link(m[2], m[1]);
+    for (const m of src.matchAll(/^(UC\d\d) -+ (\w+)$/gm)) link(m[1], m[2]);
+    for (const m of src.matchAll(/^(UC\d\d) \.[^ ]*> (UC\d\d) : <<(include|extend)>>$/gm)) rels.push({ src: m[1], dst: m[2], type: m[3] });
+    for (const m of src.matchAll(/^(UC\d\d) <\.[^ ]* (UC\d\d) : <<(include|extend)>>$/gm)) rels.push({ src: m[2], dst: m[1], type: m[3] }); // viết ngược chiều
+  }
+  if (!ucPuml.size) continue;
+  // use case mở rộng hoặc được bao gồm do actor của use case chính thực hiện
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const r of rels) {
+      const from = r.type === 'include' ? r.src : r.dst;
+      const to = r.type === 'include' ? r.dst : r.src;
+      for (const a of linked.get(from) || []) {
+        if (!linked.has(to)) linked.set(to, new Set());
+        if (!linked.get(to).has(a)) { linked.get(to).add(a); changed = true; }
+      }
+    }
+  }
+  for (const code of ucPuml.keys()) if (!rows.has(code)) err(`${mod}: ${code} có trong sơ đồ use case nhưng thiếu trong README`);
+  for (const [code, r] of rows) {
+    if (!ucPuml.has(code)) { err(`${mod}: ${code} có trong README nhưng thiếu trong sơ đồ use case`); continue; }
+    if (!normName(ucPuml.get(code)).startsWith(normName(r.name))) warn(`${mod}: ${code} tên README "${r.name}" khác sơ đồ "${ucPuml.get(code)}"`);
+    const drawn = [...(linked.get(code) || [])];
+    const same = drawn.length === r.actors.size && drawn.every((d) => [...r.actors].some((a) => d.startsWith(a)));
+    if (!same) err(`${mod}: ${code} actor README [${[...r.actors]}] khác sơ đồ [${drawn}]`);
+  }
+}
+// báo cáo tổng hợp: bảng use case theo nhóm, bảng thống kê, cột "Use case sử dụng" của bảng actor
+const reportMd = path.join(DOCS, 'bao-cao-tong-hop.md');
+if (fs.existsSync(reportMd)) {
+  const rep = read(reportMd);
+  const modOf = (n) => moduleDirs.find((m) => m.startsWith('0' + n + '-'));
+  const sections = rep.split(/^### Phân hệ (\d) – /m);
+  for (let i = 1; i < sections.length; i += 2) {
+    const mod = modOf(sections[i]);
+    const body = sections[i + 1].split(/^## /m)[0];
+    const readmeRows = UCS[mod];
+    if (!readmeRows) continue;
+    const got = new Map([...body.matchAll(/^\| (UC\d\d) \| ([^|]+?) \| ([^|]+?) \|$/gm)].map((m) => [m[1], { name: m[2].trim(), actors: new Set(m[3].split(',').map((s) => s.trim())) }]));
+    for (const code of got.keys()) if (!readmeRows.has(code)) err(`bao-cao-tong-hop.md: phân hệ ${sections[i]} có ${code} không còn trong README`);
+    for (const [code, r] of readmeRows) {
+      const g = got.get(code);
+      if (!g) { err(`bao-cao-tong-hop.md: phân hệ ${sections[i]} thiếu ${code}`); continue; }
+      if (!normName(g.name).startsWith(normName(r.name))) err(`bao-cao-tong-hop.md: ${code} phân hệ ${sections[i]} tên "${g.name}" khác README "${r.name}"`);
+      if ([...g.actors].sort().join() !== [...r.actors].sort().join()) err(`bao-cao-tong-hop.md: ${code} phân hệ ${sections[i]} actor [${[...g.actors]}] khác README [${[...r.actors]}]`);
+    }
+  }
+  for (const m of rep.matchAll(/^\| (\d) – [^|]+ \| (\d+) \| (\d+) \|/gm)) {
+    const mod = modOf(m[1]);
+    if (UCS[mod] && Number(m[3]) !== UCS[mod].size) err(`bao-cao-tong-hop.md: bảng thống kê ghi phân hệ ${m[1]} có ${m[3]} use case, README có ${UCS[mod].size}`);
+  }
+  // cột "Use case sử dụng" của bảng actor: khai triển dải "UC04–UC06", so với actor trong README
+  for (const m of rep.matchAll(/^\| \d \| \*\*([^*]+)\*\* \|(?:[^|]*\|){3} ([^|]*) \|/gm)) {
+    const actorCell = m[1];
+    for (const part of m[2].split('<br>')) {
+      const pm = part.trim().match(/^PH(\d): (.+)$/);
+      if (!pm) continue;
+      const mod = modOf(pm[1]);
+      const rows = UCS[mod];
+      if (!rows) continue;
+      const listed = new Set();
+      for (const item of pm[2].split(',').map((s) => s.trim())) {
+        const r = item.match(/^UC(\d\d)(?:–UC(\d\d))?$/);
+        if (!r) { warn(`bao-cao-tong-hop.md: không đọc được "${item}" ở cột use case của ${actorCell}`); continue; }
+        for (let k = Number(r[1]); k <= Number(r[2] || r[1]); k++) listed.add('UC' + String(k).padStart(2, '0'));
+      }
+      const expected = new Set([...rows].filter(([, r]) => [...r.actors].some((a) => actorCell.startsWith(a))).map(([c]) => c));
+      const missing = [...expected].filter((c) => !listed.has(c));
+      const extra = [...listed].filter((c) => !expected.has(c));
+      if (missing.length || extra.length) err(`bao-cao-tong-hop.md: bảng actor, ${actorCell} PH${pm[1]}: thiếu [${missing}], thừa [${extra}] so với README`);
+    }
+  }
 }
 
 // ---------------------------------------------------------------- báo cáo
-console.log(`Kiểm tra ERD: ${DOCS}`);
+console.log(`Kiểm tra tài liệu: ${DOCS}`);
 console.log(`Bảng: ${GLOBAL.size}; khóa ngoại: ${FKS.length} (đơn) + ${COMPOSITE.length} (ghép); sơ đồ PlantUML: ${pumls.length}\n`);
 console.log('ERD                      | bảng (liền/nét đứt) | đường FK | tổng hợp | cụm FK');
 for (const s of summary) console.log(`${s.name.padEnd(24)} | ${String(s.tables).padStart(4)} (${s.owned}/${s.refs})`.padEnd(46) + ` | ${String(s.fk).padStart(8)} | ${String(s.agg).padStart(8)} | ${String(s.comps).padStart(6)}`);

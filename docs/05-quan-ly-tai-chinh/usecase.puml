@@ -35,6 +35,7 @@ rectangle "Restaurant Core – Phân hệ 5: Quản lý tài chính" {
     usecase "UC11\nBáo cáo doanh thu theo ngày\nvà phương thức thanh toán" as UC11
     usecase "UC12\nBáo cáo kế hoạch số suất\nso với thực bán" as UC12
     usecase "UC13\nBáo cáo tình hình\nnguyên liệu" as UC13
+    usecase "UC14\nBáo cáo doanh thu\ntheo món" as UC14
   }
 }
 
@@ -48,6 +49,7 @@ Manager -- UC10
 Manager -- UC11
 Manager -- UC12
 Manager -- UC13
+Manager -- UC14
 
 UC01 -- Cashier
 UC02 -- Cashier

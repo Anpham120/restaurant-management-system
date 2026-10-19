@@ -354,6 +354,12 @@ SELECT pg_temp.expect('AD-07', 'Không xóa chấm công đã có nhật ký đi
     $q$DELETE FROM attendances WHERE shift_assignment_id = pg_temp.aid('A1')$q$);
 SELECT pg_temp.expect('AD-08', 'Không xóa phân ca đã có chấm công', '23001|23503 fk_attendances_assignment',
     $q$DELETE FROM shift_assignments WHERE id = pg_temp.aid('A1')$q$);
+SELECT pg_temp.expect('AD-09', 'Trạng thái sau điều chỉnh ngoài danh sách', '23514 ck_attendance_adjustments_new_status',
+    $q$INSERT INTO attendance_adjustments (attendance_id, old_status, new_status, old_worked_minutes, new_worked_minutes, reason, adjusted_by_id)
+       SELECT id, 'DIFFERENT_HOURS', 'LATE', 120, 120, 'thử', pg_temp.emp('T003') FROM attendances WHERE shift_assignment_id = pg_temp.aid('A1')$q$);
+SELECT pg_temp.expect('AD-10', 'Trạng thái trước điều chỉnh ngoài danh sách', '23514 ck_attendance_adjustments_old_status',
+    $q$INSERT INTO attendance_adjustments (attendance_id, old_status, new_status, old_worked_minutes, new_worked_minutes, reason, adjusted_by_id)
+       SELECT id, 'present', 'ABSENT', 120, 0, 'thử', pg_temp.emp('T003') FROM attendances WHERE shift_assignment_id = pg_temp.aid('A1')$q$);
 
 -- ===== RB: phân quyền nhiều vai trò, khóa tài khoản =====
 SELECT pg_temp.assert_eq('RB-01', 'Tài khoản hai vai trò MANAGER + CASHIER có đủ 14 quyền (hợp quyền)', '14',

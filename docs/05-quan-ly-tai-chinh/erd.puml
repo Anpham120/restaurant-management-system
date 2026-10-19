@@ -34,15 +34,22 @@ entity "operating_expenses" as operating_expenses {
   * recorded_by_id : bigint <<FK>>
   * paid_at : timestamptz
   * created_at : timestamptz
+  * request_key : varchar(64) <<UK>>
   * status : varchar(20)
   void_reason : varchar(255)
   voided_by_id : bigint <<FK>>
   voided_at : timestamptz
   ..
+  PARTIAL UK (stock_receipt_id) WHERE stock_receipt_id IS NOT NULL AND status <> VOIDED
+  CHECK category IN (INGREDIENT, SUPPLIES, TRANSPORT, OTHER)
+  CHECK payment_method IN (CASH, TRANSFER)
+  CHECK fund_source IN (COUNTER, OTHER)
+  CHECK status IN (RECORDED, VOIDED)
   CHECK amount > 0
   CHECK fund_source = COUNTER chỉ khi payment_method = CASH
   CHECK stock_receipt_id chỉ khi category = INGREDIENT
   CHECK VOIDED: bắt buộc void_reason, voided_by_id, voided_at
+  CHECK paid_at <= created_at
 }
 
 entity "daily_cash_reconciliations" as daily_cash_reconciliations {
@@ -64,11 +71,14 @@ entity "daily_cash_reconciliations" as daily_cash_reconciliations {
   ..
   UK (business_date, version)
   PARTIAL UK (business_date) WHERE status = CURRENT
-  CHECK opening_cash >= 0 AND actual_cash >= 0
+  CHECK status IN (CURRENT, SUPERSEDED)
+  CHECK opening_cash, cash_sales, cash_expenses, actual_cash >= 0
   CHECK version >= 1
   CHECK expected_cash = opening_cash + cash_sales - cash_expenses
   CHECK difference = actual_cash - expected_cash
   CHECK difference <> 0: bắt buộc reason
+  CHECK version > 1: bắt buộc revision_reason
+  TRIGGER: chỉ đổi status CURRENT → SUPERSEDED; không sửa số liệu, không xóa
 }
 
 entity "payments" as payments #line.dashed {

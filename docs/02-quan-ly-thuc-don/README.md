@@ -241,7 +241,7 @@ ERD còn vẽ khóa ngoại giữa hai bảng tham chiếu của phân hệ 4: `
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã thực đơn ngày |
 | business_date | date | UK, bắt buộc | Ngày kinh doanh; mỗi ngày một thực đơn, có thể kéo dài qua nửa đêm |
-| status | varchar(20) | bắt buộc | DRAFT, PUBLISHED, CLOSED |
+| status | varchar(20) | bắt buộc, CHECK | DRAFT, PUBLISHED, CLOSED |
 | published_at | timestamptz | | Thời điểm công bố |
 
 **daily_menu_items** – Món trong thực đơn ngày

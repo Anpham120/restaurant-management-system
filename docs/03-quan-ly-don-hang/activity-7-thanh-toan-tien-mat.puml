@@ -12,16 +12,16 @@ start
 :APPROVED, chuyển sang\nWAITING_CASH_HANDOVER;
 repeat
   |Waiter|
-  :Thu tiền tại bàn, nhập số tiền\nkhách đưa (cash_received);
+  :Thu tiền tại bàn, nhập tổng số tiền\nkhách đưa (cash_received);
   |Hệ thống|
-  :Kiểm tra cash_received ≥ amount_due;
-repeat while (Thu thiếu?) is (có: báo thu thêm) not (không)
-:Tính tiền thừa (change_amount);
+  :Lưu cash_received, tính tiền thừa\nchange_amount = max(cash_received − amount_due, 0);
+backward :Tiền thừa 0, báo số còn thiếu;\nyêu cầu chưa thể PAID, Waiter thu thêm;
+repeat while (Khách đưa thiếu\n(cash_received < amount_due)?) is (có) not (không)
 |Waiter|
 :Mang toàn bộ tiền đến quầy;
 |Cashier|
 :Kiểm đếm, nhập số tiền\nthực đếm (cash_counted);
-if (Số đếm khớp số bàn giao\nvà đủ trả hóa đơn?) then (có)
+if (cash_counted = cash_received\nvà đủ trả hóa đơn?) then (có)
   :Đưa tiền thừa cho Waiter (nếu có),\nxác nhận đã nhận tiền;
   |Hệ thống|
   :Ghi nhận thanh toán (số tiền sau khi trả\ntiền thừa, kèm ngày kinh doanh),\nyêu cầu và hóa đơn PAID;

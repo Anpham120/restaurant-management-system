@@ -26,6 +26,8 @@ entity "employees" as employees {
   end_date : date
   * work_status : varchar(20)
   * department_id : bigint <<FK>>
+  ..
+  CHECK work_status IN (ACTIVE, ON_LEAVE, RESIGNED)
 }
 
 entity "accounts" as accounts {
@@ -36,6 +38,8 @@ entity "accounts" as accounts {
   * password_hash : varchar(255)
   * must_change_password : boolean
   * account_status : varchar(20)
+  ..
+  CHECK account_status IN (ACTIVE, LOCKED, SUSPENDED, DISABLED)
 }
 
 entity "roles" as roles {
@@ -98,6 +102,7 @@ entity "shift_assignments" as shift_assignments {
   cancelled_by_id : bigint <<FK>>
   cancelled_at : timestamptz
   ..
+  CHECK status IN (SCHEDULED, CANCELLED)
   CHECK scheduled_end_at > scheduled_start_at
   CHECK 0 ≤ scheduled_break_minutes ≤ thời lượng
   EXCLUDE (employee_id =, khoảng thời gian &&) khi SCHEDULED
@@ -114,6 +119,8 @@ entity "attendances" as attendances {
   note : varchar(255)
   * confirmed_by_id : bigint <<FK>>
   * confirmed_at : timestamptz
+  ..
+  CHECK attendance_status IN (PRESENT, ABSENT, DIFFERENT_HOURS)
 }
 
 entity "attendance_adjustments" as attendance_adjustments {
@@ -131,6 +138,8 @@ entity "attendance_adjustments" as attendance_adjustments {
   * reason : varchar(255)
   * adjusted_by_id : bigint <<FK>>
   * adjusted_at : timestamptz
+  ..
+  CHECK old_status, new_status IN (PRESENT, ABSENT, DIFFERENT_HOURS)
 }
 
 entity "menu_categories" as menu_categories {
@@ -183,6 +192,8 @@ entity "daily_menus" as daily_menus {
   * business_date : date <<UK>>
   * status : varchar(20)
   published_at : timestamptz
+  ..
+  CHECK status IN (DRAFT, PUBLISHED, CLOSED)
 }
 
 entity "daily_menu_items" as daily_menu_items {
@@ -207,6 +218,7 @@ entity "dining_tables" as dining_tables {
   * capacity : int
   * status : varchar(20)
   ..
+  CHECK status IN (AVAILABLE, OCCUPIED)
   CHECK capacity > 0
 }
 
@@ -219,6 +231,8 @@ entity "table_sessions" as table_sessions {
   * status : varchar(20)
   ..
   PARTIAL UK (dining_table_id) WHERE status = OPEN
+  CHECK status IN (OPEN, CLOSED)
+  TRIGGER: dining_table_id không đổi sau khi tạo
 }
 
 entity "orders" as orders {
@@ -226,6 +240,8 @@ entity "orders" as orders {
   --
   * table_session_id : bigint <<FK, UK>>
   * status : varchar(20)
+  ..
+  CHECK status IN (OPEN, CLOSED, CANCELLED)
 }
 
 entity "order_batches" as order_batches {
@@ -248,6 +264,7 @@ entity "order_items" as order_items {
   * has_stock_exception : boolean
   note : varchar(255)
   ..
+  CHECK status IN (PENDING, ACCEPTED, IN_KITCHEN, COOKING, READY, CANCELLED, REJECTED)
   CHECK quantity > 0 AND unit_price >= 0
 }
 
@@ -261,6 +278,8 @@ entity "order_item_events" as order_item_events {
   reason : varchar(255)
   * kitchen_confirmed : boolean
   * created_at : timestamptz
+  ..
+  CHECK from_status, to_status IN (PENDING, ACCEPTED, IN_KITCHEN, COOKING, READY, CANCELLED, REJECTED)
 }
 
 entity "invoices" as invoices {
@@ -270,6 +289,7 @@ entity "invoices" as invoices {
   * total : decimal(12,2)
   * status : varchar(20)
   ..
+  CHECK status IN (DRAFT, PAYMENT_PENDING, PAID)
   CHECK total >= 0
 }
 
@@ -285,27 +305,36 @@ entity "payment_requests" as payment_requests {
   change_amount : decimal(12,2)
   * method : varchar(20)
   * status : varchar(30)
-  payment_reference : varchar(64)
+  payment_reference : varchar(64) <<UK>>
   cancel_reason : varchar(255)
   ..
   PARTIAL UK (invoice_id) WHERE status <> CANCELLED
+  CHECK method IN (QR, CASH)
+  CHECK status IN (REQUESTED, APPROVED, WAITING_TRANSFER, WAITING_CASH_HANDOVER, PAID, CANCELLED)
   CHECK amount_due >= 0
   CHECK cash_received, cash_counted, change_amount >= 0
-  CHECK change_amount = cash_received - amount_due
+  CHECK change_amount = GREATEST(cash_received - amount_due, 0)
+  CHECK change_amount có khi và chỉ khi có cash_received
+  CHECK payment_reference chỉ khi QR; bắt buộc khi QR ở WAITING_TRANSFER, PAID
+  CHECK QR: không có cash_received, cash_counted, change_amount
+  CHECK CASH đã PAID: bắt buộc cash_counted = cash_received >= amount_due
+  CHECK CANCELLED: bắt buộc cancel_reason
 }
 
 entity "payments" as payments {
   * id : bigint <<PK>>
   --
   * payment_request_id : bigint <<FK, UK>>
-  provider_transaction_code : varchar(64) <<UK>>
+  payment_webhook_event_id : bigint <<FK, UK>>
   * amount : decimal(12,2)
   * method : varchar(20)
   * paid_at : timestamptz
   * business_date : date
   ..
+  FK (payment_webhook_event_id, payment_request_id) → payment_webhook_events (id, payment_request_id)
+  CHECK method IN (QR, CASH)
   CHECK amount > 0
-  CHECK provider_transaction_code bắt buộc khi QR, trống khi CASH
+  CHECK payment_webhook_event_id bắt buộc khi QR, trống khi CASH
 }
 
 entity "payment_webhook_events" as payment_webhook_events {
@@ -318,6 +347,10 @@ entity "payment_webhook_events" as payment_webhook_events {
   * processing_result : varchar(20)
   * received_at : timestamptz
   raw_payload : text
+  ..
+  UK (id, payment_request_id)
+  CHECK processing_result IN (PROCESSED, MISMATCH, AFTER_CANCEL)
+  CHECK PROCESSED: bắt buộc payment_request_id
 }
 
 entity "ingredients" as ingredients {
@@ -342,6 +375,7 @@ entity "stock_receipts" as stock_receipts {
   confirmed_by_id : bigint <<FK>>
   confirmed_at : timestamptz
   ..
+  CHECK status IN (DRAFT, CONFIRMED)
   CHECK CONFIRMED: bắt buộc confirmed_by_id, confirmed_at
 }
 
@@ -359,6 +393,7 @@ entity "stock_receipt_items" as stock_receipt_items {
   expiry_date : date
   ..
   UK (id, ingredient_id)
+  UK (stock_receipt_id, ingredient_id, lot_code, expiry_date) NULLS NOT DISTINCT
   CHECK input_quantity > 0 AND conversion_factor > 0
   CHECK unit_price >= 0
   CHECK quantity = ROUND(input_quantity * conversion_factor, 3)
@@ -398,6 +433,7 @@ entity "stock_movements" as stock_movements {
   ..
   PARTIAL UK (inventory_batch_id) WHERE movement_type = RECEIPT
   PARTIAL UK (order_item_id, inventory_batch_id) WHERE movement_type = CONSUMPTION
+  CHECK movement_type IN (RECEIPT, CONSUMPTION, ADJUSTMENT)
   CHECK quantity_delta <> 0
   CHECK balance_after >= 0
   CHECK nguồn khớp movement_type
@@ -415,8 +451,11 @@ entity "stock_reservations" as stock_reservations {
   closed_at : timestamptz
   ..
   PARTIAL UK (order_item_id, inventory_batch_id) WHERE status = ACTIVE
+  CHECK status IN (ACTIVE, CONSUMED, RELEASED)
+  CHECK release_reason IN (ITEM_CANCELLED, ITEM_EDITED, LOT_UNAVAILABLE)
   CHECK quantity > 0
   CHECK RELEASED: bắt buộc release_reason
+  CHECK CONSUMED, RELEASED: bắt buộc closed_at
 }
 
 entity "stock_counts" as stock_counts {
@@ -428,6 +467,7 @@ entity "stock_counts" as stock_counts {
   confirmed_by_id : bigint <<FK>>
   confirmed_at : timestamptz
   ..
+  CHECK status IN (DRAFT, CONFIRMED)
   CHECK CONFIRMED: bắt buộc confirmed_by_id, confirmed_at
 }
 
@@ -444,6 +484,7 @@ entity "stock_count_items" as stock_count_items {
   UK (stock_count_id, inventory_batch_id)
   CHECK actual_quantity >= 0
   CHECK difference = actual_quantity - book_quantity
+  CHECK difference <> 0: bắt buộc reason
 }
 
 entity "operating_expenses" as operating_expenses {
@@ -459,15 +500,22 @@ entity "operating_expenses" as operating_expenses {
   * recorded_by_id : bigint <<FK>>
   * paid_at : timestamptz
   * created_at : timestamptz
+  * request_key : varchar(64) <<UK>>
   * status : varchar(20)
   void_reason : varchar(255)
   voided_by_id : bigint <<FK>>
   voided_at : timestamptz
   ..
+  PARTIAL UK (stock_receipt_id) WHERE stock_receipt_id IS NOT NULL AND status <> VOIDED
+  CHECK category IN (INGREDIENT, SUPPLIES, TRANSPORT, OTHER)
+  CHECK payment_method IN (CASH, TRANSFER)
+  CHECK fund_source IN (COUNTER, OTHER)
+  CHECK status IN (RECORDED, VOIDED)
   CHECK amount > 0
   CHECK fund_source = COUNTER chỉ khi payment_method = CASH
   CHECK stock_receipt_id chỉ khi category = INGREDIENT
   CHECK VOIDED: bắt buộc void_reason, voided_by_id, voided_at
+  CHECK paid_at <= created_at
 }
 
 entity "daily_cash_reconciliations" as daily_cash_reconciliations {
@@ -489,11 +537,14 @@ entity "daily_cash_reconciliations" as daily_cash_reconciliations {
   ..
   UK (business_date, version)
   PARTIAL UK (business_date) WHERE status = CURRENT
-  CHECK opening_cash >= 0 AND actual_cash >= 0
+  CHECK status IN (CURRENT, SUPERSEDED)
+  CHECK opening_cash, cash_sales, cash_expenses, actual_cash >= 0
   CHECK version >= 1
   CHECK expected_cash = opening_cash + cash_sales - cash_expenses
   CHECK difference = actual_cash - expected_cash
   CHECK difference <> 0: bắt buộc reason
+  CHECK version > 1: bắt buộc revision_reason
+  TRIGGER: chỉ đổi status CURRENT → SUPERSEDED; không sửa số liệu, không xóa
 }
 
 departments ||--o{ employees : has
@@ -548,6 +599,7 @@ employees ||--o{ operating_expenses : recorded_by
 employees |o--o{ operating_expenses : voided_by
 stock_receipts |o--o{ operating_expenses : paid_by
 employees ||--o{ daily_cash_reconciliations : reconciled_by
+payment_webhook_events |o--o| payments : confirms
 daily_cash_reconciliations ..> payments : "cash_sales\n(không phải FK)"
 daily_cash_reconciliations ..> operating_expenses : "cash_expenses\n(không phải FK)"
 @enduml

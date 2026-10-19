@@ -14,6 +14,7 @@ entity "dining_tables" as dining_tables {
   * capacity : int
   * status : varchar(20)
   ..
+  CHECK status IN (AVAILABLE, OCCUPIED)
   CHECK capacity > 0
 }
 
@@ -26,6 +27,8 @@ entity "table_sessions" as table_sessions {
   * status : varchar(20)
   ..
   PARTIAL UK (dining_table_id) WHERE status = OPEN
+  CHECK status IN (OPEN, CLOSED)
+  TRIGGER: dining_table_id không đổi sau khi tạo
 }
 
 entity "orders" as orders {
@@ -33,6 +36,8 @@ entity "orders" as orders {
   --
   * table_session_id : bigint <<FK, UK>>
   * status : varchar(20)
+  ..
+  CHECK status IN (OPEN, CLOSED, CANCELLED)
 }
 
 entity "order_batches" as order_batches {
@@ -55,6 +60,7 @@ entity "order_items" as order_items {
   * has_stock_exception : boolean
   note : varchar(255)
   ..
+  CHECK status IN (PENDING, ACCEPTED, IN_KITCHEN, COOKING, READY, CANCELLED, REJECTED)
   CHECK quantity > 0 AND unit_price >= 0
 }
 
@@ -68,6 +74,8 @@ entity "order_item_events" as order_item_events {
   reason : varchar(255)
   * kitchen_confirmed : boolean
   * created_at : timestamptz
+  ..
+  CHECK from_status, to_status IN (PENDING, ACCEPTED, IN_KITCHEN, COOKING, READY, CANCELLED, REJECTED)
 }
 
 entity "invoices" as invoices {
@@ -77,6 +85,7 @@ entity "invoices" as invoices {
   * total : decimal(12,2)
   * status : varchar(20)
   ..
+  CHECK status IN (DRAFT, PAYMENT_PENDING, PAID)
   CHECK total >= 0
 }
 
@@ -92,27 +101,36 @@ entity "payment_requests" as payment_requests {
   change_amount : decimal(12,2)
   * method : varchar(20)
   * status : varchar(30)
-  payment_reference : varchar(64)
+  payment_reference : varchar(64) <<UK>>
   cancel_reason : varchar(255)
   ..
   PARTIAL UK (invoice_id) WHERE status <> CANCELLED
+  CHECK method IN (QR, CASH)
+  CHECK status IN (REQUESTED, APPROVED, WAITING_TRANSFER, WAITING_CASH_HANDOVER, PAID, CANCELLED)
   CHECK amount_due >= 0
   CHECK cash_received, cash_counted, change_amount >= 0
-  CHECK change_amount = cash_received - amount_due
+  CHECK change_amount = GREATEST(cash_received - amount_due, 0)
+  CHECK change_amount có khi và chỉ khi có cash_received
+  CHECK payment_reference chỉ khi QR; bắt buộc khi QR ở WAITING_TRANSFER, PAID
+  CHECK QR: không có cash_received, cash_counted, change_amount
+  CHECK CASH đã PAID: bắt buộc cash_counted = cash_received >= amount_due
+  CHECK CANCELLED: bắt buộc cancel_reason
 }
 
 entity "payments" as payments {
   * id : bigint <<PK>>
   --
   * payment_request_id : bigint <<FK, UK>>
-  provider_transaction_code : varchar(64) <<UK>>
+  payment_webhook_event_id : bigint <<FK, UK>>
   * amount : decimal(12,2)
   * method : varchar(20)
   * paid_at : timestamptz
   * business_date : date
   ..
+  FK (payment_webhook_event_id, payment_request_id) → payment_webhook_events (id, payment_request_id)
+  CHECK method IN (QR, CASH)
   CHECK amount > 0
-  CHECK provider_transaction_code bắt buộc khi QR, trống khi CASH
+  CHECK payment_webhook_event_id bắt buộc khi QR, trống khi CASH
 }
 
 entity "payment_webhook_events" as payment_webhook_events {
@@ -125,6 +143,10 @@ entity "payment_webhook_events" as payment_webhook_events {
   * processing_result : varchar(20)
   * received_at : timestamptz
   raw_payload : text
+  ..
+  UK (id, payment_request_id)
+  CHECK processing_result IN (PROCESSED, MISMATCH, AFTER_CANCEL)
+  CHECK PROCESSED: bắt buộc payment_request_id
 }
 
 entity "employees" as employees #line.dashed {
@@ -164,4 +186,5 @@ employees ||--o{ payment_requests : requests
 employees |o--o{ payment_requests : approves
 employees ||--o{ order_item_events : performs
 daily_menus ||--o{ daily_menu_items : includes
+payment_webhook_events |o--o| payments : confirms
 @enduml

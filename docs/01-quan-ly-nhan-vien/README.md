@@ -385,8 +385,8 @@ Các phân hệ khác tham chiếu `employees` (người thực hiện thao tác
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã lần điều chỉnh |
 | attendance_id | bigint | FK → attendances, bắt buộc | Dòng chấm công bị điều chỉnh |
-| old_status | varchar(20) | bắt buộc, CHECK | Trạng thái chấm công trước điều chỉnh |
-| new_status | varchar(20) | bắt buộc, CHECK | Trạng thái chấm công sau điều chỉnh |
+| old_status | varchar(20) | bắt buộc, CHECK | Trạng thái chấm công trước điều chỉnh, cùng tập với `attendance_status`: PRESENT, ABSENT, DIFFERENT_HOURS |
+| new_status | varchar(20) | bắt buộc, CHECK | Trạng thái chấm công sau điều chỉnh, cùng tập: PRESENT, ABSENT, DIFFERENT_HOURS |
 | old_start_at | timestamptz | | Giờ vào trước điều chỉnh |
 | new_start_at | timestamptz | | Giờ vào sau điều chỉnh |
 | old_end_at | timestamptz | | Giờ ra trước điều chỉnh |
@@ -742,7 +742,7 @@ WHERE employee_id = :employee_id AND account_status = 'SUSPENDED';
 Máy không cài PostgreSQL server và Docker không chạy, nên bộ kiểm thử được chạy trên **PGlite 0.5.8, tức PostgreSQL 18.3 biên dịch sang WebAssembly và chạy trong Node.js** (đã có sẵn trong `node_modules` của một dự án khác trên máy, không cài thêm). Đây là mã nguồn PostgreSQL thật nhưng không phải server cài riêng.
 
 - Nạp [schema-postgresql.sql](schema-postgresql.sql) thành công: 11 bảng, 2 view, 11 khóa chính, 10 ràng buộc duy nhất, 13 khóa ngoại, 21 CHECK, 1 EXCLUDE.
-- Chạy [test-postgresql.sql](test-postgresql.sql): **94 ca, đạt 94**, lặp lại với múi giờ phiên mặc định (UTC+7), `UTC` và `America/New_York`. Mỗi ca nêu rõ ràng buộc nào phải từ chối (SQLSTATE và tên ràng buộc). Nhóm ca: SC (cấu trúc, dữ liệu khởi tạo), OV (chống chồng lịch), UQ (duy nhất), CK (CHECK), FK và NN (khóa ngoại, NOT NULL, RESTRICT), CC (chấm công, hàng loạt), TS (bảng công), AD (điều chỉnh, nhật ký chỉ ghi thêm), RB (phân quyền nhiều vai trò, Manager cuối cùng), LV (tạm nghỉ rồi đi làm lại), RS (nghỉ việc).
+- Chạy [test-postgresql.sql](test-postgresql.sql): **96 ca, đạt 96**, lặp lại với múi giờ phiên mặc định (UTC+7), `UTC` và `America/New_York` (chạy lại bằng `node docs\tools\run-pg-tests.mjs --pglite <thư mục gói @electric-sql/pglite>`, xem [docs/README.md](../README.md)). Mỗi ca nêu rõ ràng buộc nào phải từ chối (SQLSTATE và tên ràng buộc). Nhóm ca: SC (cấu trúc, dữ liệu khởi tạo), OV (chống chồng lịch), UQ (duy nhất), CK (CHECK), FK và NN (khóa ngoại, NOT NULL, RESTRICT), CC (chấm công, hàng loạt), TS (bảng công), AD (điều chỉnh, nhật ký chỉ ghi thêm, trạng thái điều chỉnh ngoài tập giá trị), RB (phân quyền nhiều vai trò, Manager cuối cùng), LV (tạm nghỉ rồi đi làm lại), RS (nghỉ việc).
 - Làm hỏng lược đồ có chủ đích (bỏ `EXCLUDE`, đổi `'[)'` thành `'[]'`, bỏ `WHERE` của `EXCLUDE`, bỏ `ck_shift_assignments_work_date`) đều làm đúng các ca liên quan thất bại.
 
 **Chưa kiểm tra:** server PostgreSQL cài riêng; PostgreSQL 13–17; chạy bằng `psql` (file test viết để chạy được bằng `psql` nhưng đường này chưa thử); nhiều kết nối đồng thời (hành vi chặn của `EXCLUDE` khi hai transaction chèn cùng lúc là đặc tính của PostgreSQL, chưa thử ở đây); ánh xạ JPA và code Spring Boot; hiệu năng; các quy tắc ở service nêu ở mục 5.10.

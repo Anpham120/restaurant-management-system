@@ -13,6 +13,8 @@ entity "daily_menus" as daily_menus {
   * business_date : date <<UK>>
   * status : varchar(20)
   published_at : timestamptz
+  ..
+  CHECK status IN (DRAFT, PUBLISHED, CLOSED)
 }
 
 entity "menu_categories" as menu_categories {

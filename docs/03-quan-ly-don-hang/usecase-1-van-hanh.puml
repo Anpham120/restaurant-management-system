@@ -13,7 +13,6 @@ rectangle "Restaurant Core – Phân hệ 3: Quản lý đơn hàng" {
   package "3.1 Quản lý bàn & phiên phục vụ" #FFFFFF;line.dashed {
     usecase "UC01\nXem trạng thái bàn" as UC01
     usecase "UC02\nMở phiên phục vụ" as UC02
-    usecase "UC03\nChuyển bàn" as UC03
     usecase "UC04\nKết thúc phiên phục vụ" as UC04
   }
 
@@ -46,7 +45,6 @@ rectangle "Restaurant Core – Phân hệ 3: Quản lý đơn hàng" {
 
 Waiter -- UC01
 Waiter -- UC02
-Waiter -- UC03
 Waiter -- UC04
 Waiter -- UC05
 Waiter -- UC06

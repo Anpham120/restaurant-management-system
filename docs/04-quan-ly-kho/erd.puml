@@ -65,6 +65,7 @@ entity "stock_receipts" as stock_receipts {
   confirmed_by_id : bigint <<FK>>
   confirmed_at : timestamptz
   ..
+  CHECK status IN (DRAFT, CONFIRMED)
   CHECK CONFIRMED: bắt buộc confirmed_by_id, confirmed_at
 }
 
@@ -82,6 +83,7 @@ entity "stock_receipt_items" as stock_receipt_items {
   expiry_date : date
   ..
   UK (id, ingredient_id)
+  UK (stock_receipt_id, ingredient_id, lot_code, expiry_date) NULLS NOT DISTINCT
   CHECK input_quantity > 0 AND conversion_factor > 0
   CHECK unit_price >= 0
   CHECK quantity = ROUND(input_quantity * conversion_factor, 3)
@@ -120,8 +122,11 @@ entity "stock_reservations" as stock_reservations {
   closed_at : timestamptz
   ..
   PARTIAL UK (order_item_id, inventory_batch_id) WHERE status = ACTIVE
+  CHECK status IN (ACTIVE, CONSUMED, RELEASED)
+  CHECK release_reason IN (ITEM_CANCELLED, ITEM_EDITED, LOT_UNAVAILABLE)
   CHECK quantity > 0
   CHECK RELEASED: bắt buộc release_reason
+  CHECK CONSUMED, RELEASED: bắt buộc closed_at
 }
 
 entity "stock_movements" as stock_movements {
@@ -137,6 +142,7 @@ entity "stock_movements" as stock_movements {
   ..
   PARTIAL UK (inventory_batch_id) WHERE movement_type = RECEIPT
   PARTIAL UK (order_item_id, inventory_batch_id) WHERE movement_type = CONSUMPTION
+  CHECK movement_type IN (RECEIPT, CONSUMPTION, ADJUSTMENT)
   CHECK quantity_delta <> 0
   CHECK balance_after >= 0
   CHECK nguồn khớp movement_type
@@ -151,6 +157,7 @@ entity "stock_counts" as stock_counts {
   confirmed_by_id : bigint <<FK>>
   confirmed_at : timestamptz
   ..
+  CHECK status IN (DRAFT, CONFIRMED)
   CHECK CONFIRMED: bắt buộc confirmed_by_id, confirmed_at
 }
 
@@ -167,6 +174,7 @@ entity "stock_count_items" as stock_count_items {
   UK (stock_count_id, inventory_batch_id)
   CHECK actual_quantity >= 0
   CHECK difference = actual_quantity - book_quantity
+  CHECK difference <> 0: bắt buộc reason
 }
 
 employees |o--o{ stock_receipts : confirmed_by

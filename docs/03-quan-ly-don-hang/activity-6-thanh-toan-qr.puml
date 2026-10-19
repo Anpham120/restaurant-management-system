@@ -24,16 +24,20 @@ note right: Quét QR chưa phải\nthanh toán thành công
 |Hệ thống|
 if (Xác thực webhook\nthành công?) then (không)
   :Từ chối webhook;
-elseif (Mã giao dịch\nđã ghi nhận?) then (có)
-  :Không ghi nhận tiền lần hai;
-elseif (Khớp yêu cầu WAITING_TRANSFER,\nđúng mã tham chiếu và số tiền?) then (có)
-  :Lưu webhook PROCESSED, ghi nhận thanh toán\n(kèm ngày kinh doanh), PAID;
-  :Hóa đơn PAID, đơn CLOSED,\nphiên CLOSED, bàn AVAILABLE;
-  :Đồng bộ kết quả tới POS\nvà điện thoại Waiter;
-else (không)
-  :Lưu webhook MISMATCH\nhoặc AFTER_CANCEL,\nkhông đổi hóa đơn;
-  |Cashier|
-  :Đối chiếu ngoại lệ;
+elseif (Mã giao dịch đã có trong\nnhật ký webhook?) then (có)
+  :Webhook gửi lặp: báo đã nhận,\nkhông xử lý lại, không ghi tiền lần hai;
+else (chưa có)
+  :Lưu webhook với mã giao dịch duy nhất;
+  if (Yêu cầu theo mã tham chiếu đang\nWAITING_TRANSFER và đúng số tiền?) then (có)
+    :Webhook PROCESSED; tạo một khoản thanh toán\nliên kết webhook, kèm ngày kinh doanh; PAID;
+    :Hóa đơn PAID, đơn CLOSED,\nphiên CLOSED, bàn AVAILABLE;
+    :Đồng bộ kết quả tới POS\nvà điện thoại Waiter;
+  else (không)
+    :AFTER_CANCEL nếu yêu cầu đã hủy;\nMISMATCH nếu sai số tiền, sai mã\nhoặc yêu cầu đã PAID (đến muộn, chuyển lần hai);
+    :Không tạo khoản thanh toán,\nkhông đổi hóa đơn;
+    |Cashier|
+    :Đối chiếu ngoại lệ;
+  endif
 endif
 stop
 @enduml

@@ -117,7 +117,7 @@ Tình trạng lô (còn dùng được, hết hạn, không đạt chất lượ
 - **Phân hệ 1:** `employees` ghi người xác nhận phiếu nhập, người xác nhận kiểm kê (điều chỉnh tồn) và người đánh dấu lô không đạt. RBAC kiểm tra ở backend: chỉ tài khoản có quyền Manager gọi chức năng quản lý kho (UC01 đến UC09, UC13 đến UC15).
 - **Phân hệ 2:** công thức nằm ở `recipe_ingredients`; kho đọc qua `daily_menu_items.recipe_id`, không có bản sao công thức trong kho.
 - **Phân hệ 3:** UC10 đến UC12 chỉ do dịch vụ đơn hàng gọi nội bộ khi POS thao tác, không mở trực tiếp cho thiết bị client. Kích hoạt từ: UC07 (duyệt món) cho UC10; UC12 (bắt đầu chế biến) cho UC11; UC10, UC15, UC16 (hủy, sửa món) cho UC12 của phân hệ 3. Kho ghi cờ `order_items.has_stock_exception` cùng transaction với đặt giữ để POS thấy ngoại lệ thiếu nguyên liệu.
-- **Phân hệ 5:** có thể ghi khoản chi liên kết `stock_receipts`; xác nhận phiếu nhập không tự sinh khoản chi đã thanh toán (giá trị hàng nhập khác tiền thực chi). Phân hệ 5 chỉ đọc `stock_receipts`, `stock_receipt_items`, `stock_movements`, `ingredients`, `inventory_batches` để báo cáo, không sửa dữ liệu kho.
+- **Phân hệ 5:** có thể ghi khoản chi liên kết `stock_receipts`, mỗi phiếu tối đa một khoản chi còn hiệu lực (FIN-04); xác nhận phiếu nhập không tự sinh khoản chi đã thanh toán (giá trị hàng nhập khác tiền thực chi). Phân hệ 5 chỉ đọc `stock_receipts`, `stock_receipt_items`, `stock_movements`, `ingredients`, `inventory_batches` để báo cáo, không sửa dữ liệu kho.
 
 ### 2.4 Quy tắc nghiệp vụ
 
@@ -125,7 +125,7 @@ Tình trạng lô (còn dùng được, hết hạn, không đạt chất lượ
 | --- | --- |
 | INV-01 | Mỗi nguyên liệu có một đơn vị cơ sở (g, ml, cái…) dùng chung cho tồn, công thức, đặt giữ và tiêu hao; số lượng lưu theo đơn vị cơ sở. Đơn vị nhập kho được quy đổi về đơn vị cơ sở, ví dụ 5 kg thịt bò thành 5.000 g |
 | INV-02 | Không xóa vật lý nguyên liệu đã có lịch sử nhập kho hoặc đang dùng trong công thức, chỉ tắt sử dụng. Không đổi đơn vị cơ sở khi đã có lô, phiếu nhập hoặc công thức. Nguyên liệu đã tắt không chọn được cho phiếu nhập và công thức mới; tồn hiện có và đặt giữ đang hoạt động không bị ảnh hưởng. Đổi cờ theo dõi hạn dùng chỉ áp dụng cho phiếu nhập từ sau đó; lô đã có hạn dùng vẫn bị kiểm tra hết hạn |
-| INV-03 | Phiếu nhập có nhiều dòng; mỗi dòng gồm nguyên liệu, số lượng và đơn vị nhập, hệ số quy đổi, đơn giá, số lô và hạn sử dụng. Hệ thống kiểm tra: nguyên liệu đang sử dụng; số lượng lớn hơn 0; đơn vị nhập tương thích với đơn vị cơ sở của nguyên liệu (cùng nhóm đơn vị: khối lượng g – kg, thể tích ml – l, đếm như cái, quả, hộp; danh sách nhóm là cấu hình chung, không có bảng quy đổi riêng); hệ số quy đổi lớn hơn 0 (hệ thống gợi ý hệ số chuẩn, ví dụ kg → g là 1.000). Nguyên liệu được cấu hình theo dõi hạn dùng (`is_expiry_tracked`) bắt buộc có hạn sử dụng chưa qua; nguyên liệu không theo dõi hạn dùng (ví dụ gạo) không bắt buộc |
+| INV-03 | Phiếu nhập có nhiều dòng; mỗi dòng gồm nguyên liệu, số lượng và đơn vị nhập, hệ số quy đổi, đơn giá, số lô và hạn sử dụng. Một phiếu có thể có nhiều dòng cùng nguyên liệu khi khác số lô hoặc hạn dùng, mỗi dòng thành một lô riêng khi xác nhận; không cho hai dòng cùng nguyên liệu, cùng số lô và cùng hạn dùng (UNIQUE `NULLS NOT DISTINCT`, số lô hoặc hạn trống cũng tính là trùng). Hệ thống kiểm tra: nguyên liệu đang sử dụng; số lượng lớn hơn 0; đơn vị nhập tương thích với đơn vị cơ sở của nguyên liệu (cùng nhóm đơn vị: khối lượng g – kg, thể tích ml – l, đếm như cái, quả, hộp; danh sách nhóm là cấu hình chung, không có bảng quy đổi riêng); hệ số quy đổi lớn hơn 0 (hệ thống gợi ý hệ số chuẩn, ví dụ kg → g là 1.000). Nguyên liệu được cấu hình theo dõi hạn dùng (`is_expiry_tracked`) bắt buộc có hạn sử dụng chưa qua; nguyên liệu không theo dõi hạn dùng (ví dụ gạo) không bắt buộc |
 | INV-04 | Phiếu `DRAFT` không làm tăng tồn. Khi xác nhận, mỗi dòng tạo một lô, cộng tồn và ghi biến động `RECEIPT` trong cùng transaction. Phiếu `CONFIRMED` không được xác nhận lần hai và không được sửa trực tiếp; nhập sai thì điều chỉnh bằng kiểm kê có lý do. Số liệu quy đổi lịch sử của dòng đã xác nhận (`input_quantity`, `input_unit`, `conversion_factor`, `quantity`) được giữ nguyên, thay đổi cấu hình về sau không làm đổi số lượng đã ghi nhận |
 | INV-05 | Không có đơn mua hàng, hợp đồng, công nợ nhà cung cấp hay duyệt nhiều cấp. Đơn giá chỉ lưu tham khảo, Core không hạch toán giá vốn |
 | INV-06 | Một kho duy nhất. Tồn sử dụng được và khả dụng tính theo công thức mục 2.1; lô hết hạn hoặc không đạt chất lượng không được tính |
@@ -199,6 +199,7 @@ Chỉ có một quan hệ UC08 «extend» UC07 vì xem chi tiết theo lô là p
 
 - Manager kiểm tra hàng thực tế, lập phiếu `DRAFT`, thêm nhiều dòng; hệ thống quy đổi về đơn vị cơ sở (ví dụ 5 kg × 1.000 = 5.000 g). Phiếu nháp chưa thay đổi tồn.
 - Kiểm tra dòng: nguyên liệu đang dùng, số lượng và hệ số lớn hơn 0, đơn vị nhập cùng nhóm với đơn vị cơ sở; nguyên liệu theo dõi hạn dùng phải có hạn chưa qua, nguyên liệu không theo dõi hạn dùng không bắt buộc (INV-03).
+- Một phiếu được có nhiều dòng cùng nguyên liệu khi khác số lô hoặc hạn dùng, mỗi dòng sau này là một lô riêng; dòng trùng nguyên liệu, số lô và hạn dùng với dòng đã có bị báo trùng, Manager sửa số lượng ở dòng đã có (INV-03).
 - Xác nhận: phiếu còn `DRAFT` và có ít nhất một dòng thì mỗi dòng tạo một lô, cộng tồn, ghi `RECEIPT` và phiếu `CONFIRMED` trong cùng transaction, giữ nguyên số liệu quy đổi lịch sử; sau đó phân hệ 2 tính lại khả dụng.
 - Phiếu đã xác nhận bị từ chối khi xác nhận lại (INV-04).
 
@@ -315,9 +316,9 @@ Quan hệ giữa các bảng của phân hệ khác cũng được vẽ, giữ n
 | --- | --- |
 | ingredients | UNIQUE (`name`); CHECK `min_quantity` ≥ 0; INDEX (`is_active`) |
 | stock_receipts | CHECK `status` thuộc (`DRAFT`, `CONFIRMED`); `confirmed_by_id` và `confirmed_at` bắt buộc khi `CONFIRMED`; INDEX (`status`, `created_at`) |
-| stock_receipt_items | CHECK `input_quantity` > 0, `conversion_factor` > 0, `unit_price` ≥ 0; CHECK `quantity` = ROUND(`input_quantity` × `conversion_factor`, 3) (tích của hai số 3 chữ số thập phân có 6 chữ số, phải làm tròn về `decimal(12,3)` thì CHECK mới đúng); UNIQUE (`id`, `ingredient_id`) làm đích khóa ngoại ghép của `inventory_batches`; `expiry_date` bắt buộc và chưa qua khi nguyên liệu có `is_expiry_tracked` (kiểm tra ở backend lúc thêm dòng); đơn vị nhập cùng nhóm đơn vị với `base_unit` (kiểm tra ở backend theo danh sách nhóm cấu hình chung); INDEX (`stock_receipt_id`), INDEX (`ingredient_id`) |
+| stock_receipt_items | CHECK `input_quantity` > 0, `conversion_factor` > 0, `unit_price` ≥ 0; CHECK `quantity` = ROUND(`input_quantity` × `conversion_factor`, 3) (tích của hai số 3 chữ số thập phân có 6 chữ số, phải làm tròn về `decimal(12,3)` thì CHECK mới đúng); UNIQUE (`id`, `ingredient_id`) làm đích khóa ngoại ghép của `inventory_batches`; UNIQUE NULLS NOT DISTINCT (`stock_receipt_id`, `ingredient_id`, `lot_code`, `expiry_date`): nhiều lô cùng nguyên liệu trong một phiếu được, nhưng không lặp cùng một lô (PostgreSQL 15 trở lên); `expiry_date` bắt buộc và chưa qua khi nguyên liệu có `is_expiry_tracked` (kiểm tra ở backend lúc thêm dòng); đơn vị nhập cùng nhóm đơn vị với `base_unit` (kiểm tra ở backend theo danh sách nhóm cấu hình chung); INDEX (`stock_receipt_id`), INDEX (`ingredient_id`) |
 | inventory_batches | UNIQUE (`stock_receipt_item_id`); FK ghép (`stock_receipt_item_id`, `ingredient_id`) → `stock_receipt_items` (`id`, `ingredient_id`): lô cùng nguyên liệu với dòng phiếu tạo ra nó; CHECK `quantity_on_hand` ≥ 0 và `reserved_quantity` ≥ 0; INDEX (`ingredient_id`, `expiry_date`, `received_at`) cho FEFO; INDEX (`expiry_date`) cho cảnh báo hạn dùng |
-| stock_movements | CHECK `movement_type` thuộc (`RECEIPT`, `CONSUMPTION`, `ADJUSTMENT`); CHECK `quantity_delta` ≠ 0 và `balance_after` ≥ 0; CHECK nguồn khớp loại (`CONSUMPTION` có `order_item_id` và `quantity_delta` < 0; `ADJUSTMENT` có `stock_count_item_id`; `RECEIPT` không có hai nguồn này); UNIQUE (`order_item_id`, `inventory_batch_id`); UNIQUE (`stock_count_item_id`); UNIQUE (`inventory_batch_id`) khi `RECEIPT`; INDEX (`inventory_batch_id`, `created_at`) |
+| stock_movements | CHECK `movement_type` thuộc (`RECEIPT`, `CONSUMPTION`, `ADJUSTMENT`); CHECK `quantity_delta` ≠ 0 và `balance_after` ≥ 0; CHECK nguồn khớp loại (`CONSUMPTION` có `order_item_id` và `quantity_delta` < 0; `ADJUSTMENT` có `stock_count_item_id`; `RECEIPT` không có hai nguồn này); UNIQUE (`order_item_id`, `inventory_batch_id`) khi `CONSUMPTION`; UNIQUE (`stock_count_item_id`); UNIQUE (`inventory_batch_id`) khi `RECEIPT`; INDEX (`inventory_batch_id`, `created_at`) |
 | stock_reservations | CHECK `quantity` > 0; CHECK `status` thuộc (`ACTIVE`, `CONSUMED`, `RELEASED`); `closed_at` bắt buộc khi `CONSUMED` hoặc `RELEASED`; `release_reason` bắt buộc khi `RELEASED` và thuộc (`ITEM_CANCELLED`, `ITEM_EDITED`, `LOT_UNAVAILABLE`); UNIQUE (`order_item_id`, `inventory_batch_id`) khi `ACTIVE`; INDEX (`order_item_id`, `status`), INDEX (`inventory_batch_id`, `status`) |
 | stock_counts | CHECK `status` thuộc (`DRAFT`, `CONFIRMED`); `confirmed_by_id` và `confirmed_at` bắt buộc khi `CONFIRMED` |
 | stock_count_items | UNIQUE (`stock_count_id`, `inventory_batch_id`); CHECK `actual_quantity` ≥ 0; CHECK `difference` = `actual_quantity` − `book_quantity`; `reason` bắt buộc khi `difference` ≠ 0 |
@@ -345,7 +346,7 @@ Quan hệ giữa các bảng của phân hệ khác cũng được vẽ, giữ n
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã phiếu nhập |
 | supplier_name | varchar(100) | | Tên nhà cung cấp (văn bản tự do, không có danh mục nhà cung cấp) |
-| status | varchar(20) | bắt buộc | DRAFT, CONFIRMED |
+| status | varchar(20) | bắt buộc, CHECK | DRAFT, CONFIRMED |
 | note | varchar(255) | | Ghi chú |
 | created_at | timestamptz | bắt buộc | Thời điểm lập phiếu |
 | confirmed_by_id | bigint | FK → employees | Người xác nhận nhập kho (trống khi DRAFT) |
@@ -366,6 +367,7 @@ Quan hệ giữa các bảng của phân hệ khác cũng được vẽ, giữ n
 | lot_code | varchar(50) | | Số lô của nhà cung cấp |
 | expiry_date | date | | Hạn sử dụng; bắt buộc khi nguyên liệu có `is_expiry_tracked`, trống nếu không có |
 | (id, ingredient_id) | | UK | Đích của khóa ngoại ghép từ `inventory_batches`; `id` đã duy nhất nên không giới hạn thêm dữ liệu |
+| (stock_receipt_id, ingredient_id, lot_code, expiry_date) | | UK, NULLS NOT DISTINCT | Một phiếu nhiều lô cùng nguyên liệu được, nhưng không lặp cùng một lô; giá trị trống cũng tính là trùng |
 
 **inventory_batches** – Lô nguyên liệu
 
@@ -391,7 +393,7 @@ Quan hệ giữa các bảng của phân hệ khác cũng được vẽ, giữ n
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã biến động |
 | inventory_batch_id | bigint | FK → inventory_batches, bắt buộc | Lô bị biến động |
-| movement_type | varchar(20) | bắt buộc | RECEIPT, CONSUMPTION, ADJUSTMENT |
+| movement_type | varchar(20) | bắt buộc, CHECK | RECEIPT, CONSUMPTION, ADJUSTMENT |
 | quantity_delta | decimal(12,3) | bắt buộc, ≠ 0 | Biến động có dấu: dương nhập, âm tiêu hao, dương hoặc âm điều chỉnh |
 | balance_after | decimal(12,3) | bắt buộc, ≥ 0 | Tồn của lô sau biến động |
 | order_item_id | bigint | FK → order_items | Nguồn của `CONSUMPTION`: dòng món bắt đầu chế biến |
@@ -408,17 +410,17 @@ Nguồn của `RECEIPT` là dòng phiếu nhập của lô (`inventory_batches.s
 | order_item_id | bigint | FK → order_items, bắt buộc | Dòng món được đặt giữ |
 | inventory_batch_id | bigint | FK → inventory_batches, bắt buộc | Lô bị giữ |
 | quantity | decimal(12,3) | bắt buộc, > 0 | Lượng giữ theo đơn vị cơ sở |
-| status | varchar(20) | bắt buộc | ACTIVE, CONSUMED, RELEASED |
-| release_reason | varchar(30) | | Lý do giải phóng, bắt buộc khi đặt giữ đã giải phóng: ITEM_CANCELLED, ITEM_EDITED, LOT_UNAVAILABLE |
+| status | varchar(20) | bắt buộc, CHECK | ACTIVE, CONSUMED, RELEASED |
+| release_reason | varchar(30) | CHECK; bắt buộc khi đã giải phóng | Lý do giải phóng: ITEM_CANCELLED, ITEM_EDITED, LOT_UNAVAILABLE |
 | created_at | timestamptz | bắt buộc | Thời điểm đặt giữ |
-| closed_at | timestamptz | | Thời điểm tiêu hao hoặc giải phóng |
+| closed_at | timestamptz | bắt buộc khi tiêu hao hoặc giải phóng | Thời điểm tiêu hao hoặc giải phóng |
 
 **stock_counts** – Phiếu kiểm kê
 
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 | --- | --- | --- | --- |
 | id | bigint | PK | Mã phiếu kiểm kê |
-| status | varchar(20) | bắt buộc | DRAFT, CONFIRMED |
+| status | varchar(20) | bắt buộc, CHECK | DRAFT, CONFIRMED |
 | note | varchar(255) | | Ghi chú |
 | created_at | timestamptz | bắt buộc | Thời điểm lập phiếu |
 | confirmed_by_id | bigint | FK → employees | Người xác nhận kiểm kê và điều chỉnh (trống khi DRAFT) |
@@ -460,7 +462,31 @@ ALTER TABLE stock_receipt_items ADD CONSTRAINT ck_stock_receipt_items_quantity
   CHECK (quantity = ROUND(input_quantity * conversion_factor, 3));
 ALTER TABLE inventory_batches ADD CONSTRAINT fk_inventory_batches_receipt_item_ingredient
   FOREIGN KEY (stock_receipt_item_id, ingredient_id) REFERENCES stock_receipt_items (id, ingredient_id) ON DELETE RESTRICT;
+-- Một phiếu nhiều lô cùng nguyên liệu, nhưng không lặp cùng một lô (INV-03; PostgreSQL 15 trở lên)
+ALTER TABLE stock_receipt_items ADD CONSTRAINT uq_stock_receipt_items_lot
+  UNIQUE NULLS NOT DISTINCT (stock_receipt_id, ingredient_id, lot_code, expiry_date);
 ```
+
+### FEFO và chống trừ kho hai lần
+
+Thứ tự lô khi đặt giữ hoặc phân bổ lại cho một nguyên liệu (INV-10): hạn sớm dùng trước, lô không theo dõi hạn dùng sau cùng, cùng hạn thì lô nhập trước; bỏ lô hết hạn, lô không đạt và lô không còn khả dụng. Truy vấn dùng chỉ mục (`ingredient_id`, `expiry_date`, `received_at`) và khóa dòng theo đúng thứ tự này (mục 6).
+
+```sql
+SELECT b.id, b.expiry_date, b.received_at, b.quantity_on_hand - b.reserved_quantity AS kha_dung
+FROM inventory_batches b
+WHERE b.ingredient_id = :nguyen_lieu
+  AND b.is_usable
+  AND (b.expiry_date IS NULL OR b.expiry_date >= :ngay_hien_tai)
+  AND b.quantity_on_hand - b.reserved_quantity > 0
+ORDER BY b.expiry_date ASC NULLS LAST, b.received_at, b.id
+FOR UPDATE;
+```
+
+Không trừ kho hai lần cho cùng một dòng món (INV-11, INV-13), bằng ba lớp:
+
+- Đặt giữ: chỉ mục duy nhất một phần (`order_item_id`, `inventory_batch_id`) khi `status` = `ACTIVE`; tiêu hao chỉ chuyển đặt giữ `ACTIVE` sang `CONSUMED`, đặt giữ đã `CONSUMED` không bị dùng lại.
+- Tiêu hao: chỉ mục duy nhất một phần (`order_item_id`, `inventory_batch_id`) khi `movement_type` = `CONSUMPTION`, nên gọi lại API hay hai thiết bị cùng bấm không tạo được biến động tiêu hao thứ hai trên cùng lô.
+- Tồn: CHECK `quantity_on_hand` ≥ 0 và khóa dòng món, lô trong transaction (mục 6).
 
 ## 6. Transaction và đồng thời
 

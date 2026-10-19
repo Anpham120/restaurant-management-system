@@ -8,9 +8,9 @@ Thứ tự trình bày: (1) bảng xác định actor, (2) sơ đồ phân cấp
 | --- | --- | --- | --- | --- | --- |
 | 1 – Quản lý nhân viên | 5 | 19 | 1 | 6 | 11 |
 | 2 – Quản lý thực đơn | 5 | 14 | 1 | 6 | 6 |
-| 3 – Quản lý đơn hàng | 6 | 26 | 2 | 9 | 10 |
+| 3 – Quản lý đơn hàng | 6 | 25 | 2 | 9 | 10 |
 | 4 – Quản lý kho và nguyên liệu | 6 | 16 | 1 | 10 | 8 |
-| 5 – Quản lý tài chính | 5 | 13 | 1 | 6 | 2 |
+| 5 – Quản lý tài chính | 5 | 14 | 1 | 6 | 2 |
 | **Tổng** | **27** | **88** | **6** | **37** | **37** |
 
 Ngoài ra có 1 sơ đồ phân cấp chức năng, 5 ERD phân hệ và 1 ERD tổng thể: tổng cộng 50 sơ đồ.
@@ -42,8 +42,8 @@ Hệ thống có **4 actor người dùng** (Manager, Waiter, Order Coordinator,
 
 | STT | Actor | Loại | Vai trò | Kênh sử dụng | Use case sử dụng | Giới hạn quyền |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | **Manager – Quản lý** | Người dùng | Quản lý nhà hàng: nhân sự và ca làm, thực đơn và công thức, kho, giám sát đơn hàng, theo dõi tài chính | Web trên laptop | PH1: UC01–UC19<br>PH2: UC01–UC11<br>PH3: UC17–UC18<br>PH4: UC01–UC09, UC13–UC16<br>PH5: UC01–UC04, UC07–UC13 | Không xóa cứng dữ liệu (chỉ đổi trạng thái hoặc hủy kèm lý do); không tính lương; mọi điều chỉnh công phải có lý do; không khóa hay gỡ vai trò của Manager đang hoạt động cuối cùng; ở phân hệ 5 chỉ xem lịch sử đối soát, việc đối soát do Cashier thực hiện; xử lý ngoại lệ món đã chế biến ngoài Core |
-| 2 | **Waiter – Nhân viên phục vụ** | Người dùng | Mở bàn, chuyển bàn, gọi món và gọi thêm món, gửi yêu cầu thanh toán, hiển thị QR, thu tiền mặt tại bàn | Điện thoại hoặc tablet (Mobile) | PH2: UC12<br>PH3: UC01–UC06, UC14, UC19, UC21, UC24 | Chỉ chọn món đang `AVAILABLE`; không duyệt món, không hủy món đã gửi (POS xử lý); không xác nhận thanh toán; không dùng chức năng kho |
+| 1 | **Manager – Quản lý** | Người dùng | Quản lý nhà hàng: nhân sự và ca làm, thực đơn và công thức, kho, giám sát đơn hàng, theo dõi tài chính | Web trên laptop | PH1: UC01–UC19<br>PH2: UC01–UC11<br>PH3: UC17–UC18<br>PH4: UC01–UC09, UC13–UC16<br>PH5: UC01–UC04, UC07–UC14 | Không xóa cứng dữ liệu (chỉ đổi trạng thái hoặc hủy kèm lý do); không tính lương; mọi điều chỉnh công phải có lý do; không khóa hay gỡ vai trò của Manager đang hoạt động cuối cùng; ở phân hệ 5 chỉ xem lịch sử đối soát, việc đối soát do Cashier thực hiện; xử lý ngoại lệ món đã chế biến ngoài Core |
+| 2 | **Waiter – Nhân viên phục vụ** | Người dùng | Mở bàn, gọi món và gọi thêm món, gửi yêu cầu thanh toán, hiển thị QR, thu tiền mặt tại bàn | Điện thoại hoặc tablet (Mobile) | PH2: UC12<br>PH3: UC01, UC02, UC04–UC06, UC14, UC19, UC21, UC24 | Chỉ chọn món đang `AVAILABLE`; không duyệt món, không hủy món đã gửi (POS xử lý); không xác nhận thanh toán; không dùng chức năng kho |
 | 3 | **Order Coordinator – POS điều phối** | Người dùng | Duyệt hoặc từ chối món, chuyển bếp, ghi nhận chế biến, gọi phục vụ, tạm ngừng hoặc mở bán lại món, sửa hoặc hủy món hợp lệ | POS trên laptop | PH2: UC12–UC14<br>PH3: UC01, UC07–UC16<br>PH4: UC10–UC12, UC16 | Không hủy món `COOKING` hoặc `READY` trên POS; hủy ngoại lệ món `IN_KITCHEN` chỉ khi bếp xác nhận; không thao tác thanh toán. Thao tác ở phân hệ 3 kích hoạt kho tự động đặt giữ, tiêu hao, giải phóng |
 | 4 | **Cashier – Thu ngân** | Người dùng | Duyệt yêu cầu thanh toán, nhận tiền mặt và giao tiền thừa, giám sát giao dịch QR, ghi chi tiền mặt từ quầy, đối soát tiền mặt cuối ngày | Web tại quầy (laptop) | PH3: UC20, UC23, UC25–UC26<br>PH5: UC01–UC03, UC05–UC10 | Không xác nhận thủ công thanh toán QR (webhook tự xác nhận); chỉ hủy yêu cầu chưa `PAID` và chưa có tiền thực nhận; chỉ ghi khoản chi tiền mặt lấy từ quầy, không hủy khoản chi; không xem báo cáo hoạt động kinh doanh |
 | 5 | **Cổng thanh toán (SePay)** | Hệ thống bên ngoài | Gửi webhook khi có giao dịch chuyển khoản QR | Webhook HTTPS về backend | PH3: UC22 | Chỉ gửi thông báo giao dịch; backend xác thực webhook, đối chiếu mã tham chiếu và số tiền, bỏ qua mã giao dịch đã ghi nhận; sai số tiền, sai mã hoặc yêu cầu đã hủy thì không tự đóng hóa đơn |
@@ -326,20 +326,19 @@ Luồng tổng thể từ mở bàn, gọi món, duyệt và chế biến, trả
 
 #### Nhóm 3.1 – Quản lý bàn & phiên phục vụ
 
-Theo dõi bàn, mở phiên phục vụ, chuyển bàn, kết thúc phiên.
+Theo dõi bàn, mở phiên phục vụ (phiên gắn cố định một bàn), kết thúc phiên. Mã UC03 (chuyển bàn) đã bỏ khỏi phạm vi Core.
 
 | Mã | Use case | Actor |
 | --- | --- | --- |
 | UC01 | Xem trạng thái bàn | Waiter, Order Coordinator |
 | UC02 | Mở phiên phục vụ | Waiter |
-| UC03 | Chuyển bàn | Waiter |
 | UC04 | Kết thúc phiên phục vụ | Waiter |
 
 **Sơ đồ hoạt động – Quản lý bàn và phiên phục vụ**
 
 ![Quản lý bàn và phiên phục vụ](03-quan-ly-don-hang/activity-2-ban-phien.png)
 
-Mở bàn (mỗi bàn một phiên `OPEN`), chuyển bàn sang bàn trống, kết thúc phiên trống; khi thanh toán thành công hệ thống tự đóng đơn và phiên.
+Mở bàn (mỗi bàn một phiên `OPEN`, phiên gắn cố định với bàn đến khi đóng), kết thúc phiên trống; khi thanh toán thành công hệ thống tự đóng đơn và phiên.
 
 #### Nhóm 3.2 – Gọi món & cập nhật đơn
 
@@ -409,13 +408,13 @@ Gửi yêu cầu thanh toán, thu ngân duyệt, QR tự động xác nhận ho�
 
 ![Thanh toán QR tự động](03-quan-ly-don-hang/activity-6-thanh-toan-qr.png)
 
-Cashier duyệt, hệ thống tạo QR đúng số tiền và mã tham chiếu; webhook SePay hợp lệ tự cập nhật `PAID`, webhook trùng, sai số tiền hoặc sai mã được lưu để đối chiếu.
+Cashier duyệt, hệ thống tạo QR đúng số tiền và mã tham chiếu; webhook được ghi nhật ký trước khi xử lý, mã giao dịch trùng thì không xử lý lại; webhook hợp lệ tạo đúng một khoản thanh toán và tự cập nhật `PAID`; webhook đến muộn (yêu cầu đã hủy hoặc đã `PAID`), sai số tiền hoặc sai mã được lưu để đối chiếu, không tạo khoản thanh toán.
 
 **Sơ đồ hoạt động – Thanh toán tiền mặt tại bàn**
 
 ![Thanh toán tiền mặt tại bàn](03-quan-ly-don-hang/activity-7-thanh-toan-tien-mat.png)
 
-Waiter thu tiền và nhập số tiền khách đưa, mang về quầy; Cashier đếm, chỉ khi khớp và đủ mới xác nhận, hệ thống mới ghi nhận `PAID`.
+Waiter thu tiền và nhập tổng số tiền khách đưa; hệ thống tính tiền thừa = max(khách đưa − phải trả, 0), khách đưa thiếu thì tiền thừa 0 và yêu cầu chưa thể `PAID`. Waiter mang tiền về quầy; Cashier đếm, chỉ khi số đếm khớp số khai và đủ trả hóa đơn mới giao tiền thừa và xác nhận, hệ thống mới ghi nhận `PAID`.
 
 #### Nhóm 3.6 – Xử lý ngoại lệ đơn hàng
 
@@ -497,7 +496,7 @@ Phiếu nhập nhiều dòng theo lô, quy đổi đơn vị nhập, hạn sử 
 
 ![Nhập kho theo lô](04-quan-ly-kho/activity-2-nhap-kho.png)
 
-Lập phiếu nhập `DRAFT` nhiều dòng, quy đổi về đơn vị cơ sở; xác nhận thì mỗi dòng tạo một lô, cộng tồn, ghi `RECEIPT` trong một transaction.
+Lập phiếu nhập `DRAFT` nhiều dòng, quy đổi về đơn vị cơ sở; một phiếu được nhiều lô cùng nguyên liệu nhưng không lặp cùng số lô và hạn dùng; xác nhận thì mỗi dòng tạo một lô, cộng tồn, ghi `RECEIPT` trong một transaction.
 
 #### Nhóm 4.3 – Theo dõi tồn kho
 
@@ -638,7 +637,7 @@ Ghi khoản tiền đã thực trả; phân biệt giá trị phiếu nhập và
 
 ![Ghi nhận và hủy khoản chi vận hành](05-quan-ly-tai-chinh/activity-2-khoan-chi.png)
 
-Ghi khoản chi đã thực trả (Cashier chỉ chi tiền mặt lấy từ quầy), liên kết phiếu nhập nếu có; Manager hủy khoản chi nhập sai kèm lý do, bản ghi được giữ.
+Ghi khoản chi đã thực trả (Cashier chỉ chi tiền mặt lấy từ quầy), liên kết phiếu nhập nếu có; xác nhận phiếu nhập không tự sinh khoản chi và mỗi phiếu chỉ có tối đa một khoản chi còn hiệu lực; mỗi lần lưu mang `request_key` nên gửi lặp không tạo khoản chi thứ hai; Manager hủy khoản chi nhập sai kèm lý do, bản ghi được giữ và phiếu được ghi lại khoản chi đúng.
 
 #### Nhóm 5.3 – Đối soát tiền mặt cuối ngày
 
@@ -660,7 +659,7 @@ Tiền mặt dự kiến so với tiền thực đếm; có chênh lệch thì b
 
 ![Đối soát lại khi đếm lại hoặc dữ liệu thay đổi](05-quan-ly-tai-chinh/activity-4-doi-soat-lai.png)
 
-Dữ liệu đổi sau đối soát thì bản đã lưu giữ nguyên và được đánh dấu "cần kiểm tra lại"; đối soát lại tạo phiên bản mới, bản cũ thành `SUPERSEDED`.
+Dữ liệu đổi sau đối soát thì bản đã lưu giữ nguyên và được đánh dấu "cần kiểm tra lại"; đối soát lại tạo phiên bản mới, bản cũ thành `SUPERSEDED`. Trigger giữ các phiên bản đã lưu bất biến: không sửa số liệu, không xóa.
 
 #### Nhóm 5.4 – Tra cứu và kiểm tra giao dịch
 
@@ -680,19 +679,20 @@ Tra cứu chỉ đọc giao dịch thanh toán, giao dịch QR bất thường, 
 
 #### Nhóm 5.5 – Báo cáo hoạt động kinh doanh
 
-Doanh thu theo ngày và phương thức; kế hoạch số suất so với thực bán; tình hình nguyên liệu.
+Doanh thu theo ngày và phương thức; kế hoạch số suất so với thực bán; tình hình nguyên liệu; doanh thu theo món.
 
 | Mã | Use case | Actor |
 | --- | --- | --- |
 | UC11 | Báo cáo doanh thu theo ngày và phương thức thanh toán | Manager |
 | UC12 | Báo cáo kế hoạch số suất so với thực bán | Manager |
 | UC13 | Báo cáo tình hình nguyên liệu | Manager |
+| UC14 | Báo cáo doanh thu theo món | Manager |
 
 **Sơ đồ hoạt động – Báo cáo hoạt động kinh doanh**
 
 ![Báo cáo hoạt động kinh doanh](05-quan-ly-tai-chinh/activity-6-bao-cao.png)
 
-Báo cáo doanh thu theo ngày và phương thức, kế hoạch số suất so với thực bán, tình hình nguyên liệu; không tính lợi nhuận, không sửa dữ liệu gốc.
+Báo cáo doanh thu theo ngày và phương thức, kế hoạch số suất so với thực bán, tình hình nguyên liệu và doanh thu theo món (tổng khớp tổng đã thu); không tính lợi nhuận, không sửa dữ liệu gốc.
 
 **Sơ đồ ERD – Phân hệ 5**
 
@@ -719,6 +719,40 @@ Toàn bộ 37 bảng và các khóa ngoại của 5 phân hệ trên một sơ �
 | 4 – Quản lý kho và nguyên liệu | 8 | `ingredients`, `stock_receipts`, `stock_receipt_items`, `inventory_batches`, `stock_movements`, `stock_reservations`, `stock_counts`, `stock_count_items` |
 | 5 – Quản lý tài chính | 2 | `operating_expenses`, `daily_cash_reconciliations` |
 
+Ràng buộc ghi trên ERD là ràng buộc PostgreSQL thực thi được: mọi cột trạng thái, phương thức, loại có CHECK tập giá trị (khớp từ điển dữ liệu và enum Java dự kiến); lược đồ phân hệ 1 viết tay, lược đồ phân hệ 2–5 sinh từ ERD tổng thể; bộ kiểm thử PostgreSQL chạy lại được nằm trong thư mục `docs`.
+
+**Tập giá trị trạng thái**
+
+Mỗi cột trạng thái, phương thức, loại lưu `VARCHAR` kèm CHECK tập giá trị; backend Spring Boot ánh xạ bằng enum Java cùng tên giá trị (`@Enumerated(EnumType.STRING)`). Sơ đồ hoạt động và quy tắc nghiệp vụ chỉ dùng các giá trị dưới đây.
+
+| Enum Java dự kiến | Cột | Giá trị |
+| --- | --- | --- |
+| `EmployeeWorkStatus` | `employees.work_status` | `ACTIVE`, `ON_LEAVE`, `RESIGNED` |
+| `AccountStatus` | `accounts.account_status` | `ACTIVE`, `LOCKED`, `SUSPENDED`, `DISABLED` |
+| `ShiftAssignmentStatus` | `shift_assignments.status` | `SCHEDULED`, `CANCELLED` |
+| `AttendanceStatus` | `attendances.attendance_status`, `attendance_adjustments.old_status`, `attendance_adjustments.new_status` | `PRESENT`, `ABSENT`, `DIFFERENT_HOURS` |
+| `DailyMenuStatus` | `daily_menus.status` | `DRAFT`, `PUBLISHED`, `CLOSED` |
+| `DiningTableStatus` | `dining_tables.status` | `AVAILABLE`, `OCCUPIED` |
+| `TableSessionStatus` | `table_sessions.status` | `OPEN`, `CLOSED` |
+| `OrderStatus` | `orders.status` | `OPEN`, `CLOSED`, `CANCELLED` |
+| `OrderItemStatus` | `order_items.status`, `order_item_events.from_status`, `order_item_events.to_status` | `PENDING`, `ACCEPTED`, `IN_KITCHEN`, `COOKING`, `READY`, `CANCELLED`, `REJECTED` |
+| `InvoiceStatus` | `invoices.status` | `DRAFT`, `PAYMENT_PENDING`, `PAID` |
+| `PaymentMethod` | `payment_requests.method`, `payments.method` | `QR`, `CASH` |
+| `PaymentRequestStatus` | `payment_requests.status` | `REQUESTED`, `APPROVED`, `WAITING_TRANSFER`, `WAITING_CASH_HANDOVER`, `PAID`, `CANCELLED` |
+| `WebhookProcessingResult` | `payment_webhook_events.processing_result` | `PROCESSED`, `MISMATCH`, `AFTER_CANCEL` |
+| `StockReceiptStatus` | `stock_receipts.status` | `DRAFT`, `CONFIRMED` |
+| `StockMovementType` | `stock_movements.movement_type` | `RECEIPT`, `CONSUMPTION`, `ADJUSTMENT` |
+| `StockReservationStatus` | `stock_reservations.status` | `ACTIVE`, `CONSUMED`, `RELEASED` |
+| `ReservationReleaseReason` | `stock_reservations.release_reason` | `ITEM_CANCELLED`, `ITEM_EDITED`, `LOT_UNAVAILABLE` |
+| `StockCountStatus` | `stock_counts.status` | `DRAFT`, `CONFIRMED` |
+| `ExpenseCategory` | `operating_expenses.category` | `INGREDIENT`, `SUPPLIES`, `TRANSPORT`, `OTHER` |
+| `ExpensePaymentMethod` | `operating_expenses.payment_method` | `CASH`, `TRANSFER` |
+| `FundSource` | `operating_expenses.fund_source` | `COUNTER`, `OTHER` |
+| `ExpenseStatus` | `operating_expenses.status` | `RECORDED`, `VOIDED` |
+| `ReconciliationStatus` | `daily_cash_reconciliations.status` | `CURRENT`, `SUPERSEDED` |
+| `MenuAvailability` | suy ra khi đọc, không lưu (phân hệ 2) | `AVAILABLE`, `UNAVAILABLE` |
+| `UnavailableReason` | suy ra khi đọc, không lưu (phân hệ 2) | `PAUSED`, `SOLD_OUT`, `OUT_OF_STOCK` |
+
 **Liên kết dữ liệu giữa các phân hệ**
 
 | Phân hệ | Bảng liên kết | Ý nghĩa |
@@ -728,7 +762,7 @@ Toàn bộ 37 bảng và các khóa ngoại của 5 phân hệ trên một sơ �
 | 2 → 4 | `recipes`, `recipe_ingredients` | Kho đọc công thức qua `daily_menu_items.recipe_id` để đặt giữ và tiêu hao nguyên liệu |
 | 3 ↔ 4 | `order_items` – `stock_reservations`, `stock_movements` | Đặt giữ khi POS duyệt, tiêu hao khi `COOKING`, giải phóng khi hủy hoặc sửa món |
 | 3 → 5 | `payments` | Doanh thu thực thu và `cash_sales` của đối soát theo `business_date`, `method`, `amount` |
-| 4 → 5 | `stock_receipts` – `operating_expenses` | Khoản chi trả cho phiếu nhập kho (`stock_receipt_id`) |
+| 4 → 5 | `stock_receipts` – `operating_expenses` | Khoản chi trả cho phiếu nhập kho (`stock_receipt_id`); mỗi phiếu tối đa một khoản chi còn hiệu lực |
 
 ## Phụ lục. Danh mục sơ đồ và tệp nguồn
 

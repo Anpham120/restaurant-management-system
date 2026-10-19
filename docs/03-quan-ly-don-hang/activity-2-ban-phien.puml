@@ -13,17 +13,10 @@ note right: Hóa đơn PAID: hệ thống tự đóng đơn\nvà phiên, trả b
 |Hệ thống|
 if (Mở bàn?) then (có)
   if (Bàn AVAILABLE và chưa có phiên OPEN?) then (có)
-    :Tạo phiên OPEN, đơn OPEN\nvà hóa đơn DRAFT;
+    :Tạo phiên OPEN gắn cố định với bàn,\nđơn OPEN và hóa đơn DRAFT;
     :Bàn chuyển OCCUPIED;
   else (không)
     :Từ chối mở bàn;
-  endif
-elseif (Chuyển bàn?) then (có)
-  if (Bàn đích AVAILABLE và chưa có\nyêu cầu thanh toán đang hoạt động?) then (có)
-    :Gán phiên sang bàn mới,\ngiữ nguyên đơn và lịch sử món;
-    :Bàn cũ AVAILABLE, bàn mới OCCUPIED,\nđồng bộ POS;
-  else (không)
-    :Từ chối chuyển bàn;
   endif
 else (Kết thúc phiên)
   if (Không có khoản phải thanh toán,\nmọi món đã hủy / từ chối hợp lệ?) then (có)
