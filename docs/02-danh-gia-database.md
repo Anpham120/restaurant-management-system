@@ -1,9 +1,9 @@
 # 02 · Đánh giá CSDL v4 theo phân hệ — liên kết · chuẩn hóa 3NF · tối ưu · thừa/thiếu
 
 > **Phạm vi:** 48 bảng / 5 phân hệ của Master Spec v4.
-> **Cách đọc:** §0–§9 là kết quả rà soát thiết kế **v4** trên từ điển dữ liệu §D, CHECK §E1, ràng buộc §I1, FK §J, index §K của spec (repo không có file DDL v4 nên "chưa thấy" = không xuất hiện trong spec). §10 liệt kê **47 phát hiện** — 35 ở vòng rà soát đầu (DB-01…DB-35) và 12 ở vòng chốt nghiệp vụ, kiểm thử trên server thật (DB-36…DB-47) — **tất cả đã xử lý trong schema v4.1**. §11 là các quyết định nghiệp vụ QĐ-1…QĐ-8 (đã áp dụng / chờ nhóm). §12 là kiểm toán 48 bảng và luồng dữ liệu.
-> **Schema v4.1:** [04-schema-v4.1.sql](04-schema-v4.1.sql) (48 bảng, 366 cột, 101 FK, 105 CHECK, 47 trigger, 28 hàm nghiệp vụ `rc_*`) · kiểm thử [05-test-v4.1.sql](05-test-v4.1.sql) và [06-test-concurrency-v4.1.mjs](06-test-concurrency-v4.1.mjs) · kiểm toán hàm [07-kiem-toan-ham-rc.md](07-kiem-toan-ham-rc.md) · ERD draw.io trong thư mục [erd/](erd/). ERD Mermaid bên dưới **sinh tự động từ chính schema v4.1 đã chạy**, khớp DDL đến từng cột.
-> **Mức xác minh:** PostgreSQL 15.18, 16.14, 17.5 và 18.4 (server thật, không phải PGlite; kết quả giống nhau ở cả bốn phiên bản, mutation chạy trên 17.5): file 05 đạt **444 kiểm tra** (198 dương + 246 âm, gồm 19 truy vấn bất biến §9 trả 0 dòng), file 06 đạt **67/67** ca nhiều kết nối, file 08 (ví dụ xuyên suốt) đạt 32/32 phép so sánh, **40/40** lỗi cài cố ý vào SQL bị phát hiện, **12/15** lỗi cài vào khóa bị phát hiện (3 mutant còn lại là mutant tương đương, [07 §9](07-kiem-toan-ham-rc.md)). Chưa đo hiệu năng, chưa chạy trên Linux.
+> **Cách đọc:** §0–§9 là kết quả rà soát thiết kế **v4** trên từ điển dữ liệu §D, CHECK §E1, ràng buộc §I1, FK §J, index §K của spec (repo không có file DDL v4 nên "chưa thấy" = không xuất hiện trong spec). §10 liệt kê **53 phát hiện** — 35 ở vòng rà soát đầu (DB-01…DB-35), 12 ở vòng chốt nghiệp vụ (DB-36…DB-47) và 6 ở vòng đóng băng (DB-48…DB-53), kiểm thử trên server thật (DB-36…DB-47) — **tất cả đã xử lý trong schema v4.1**. §11 là các quyết định nghiệp vụ QĐ-1…QĐ-8 (đã áp dụng / chờ nhóm). §12 là kiểm toán 48 bảng và luồng dữ liệu.
+> **Schema v4.1:** [04-schema-v4.1.sql](04-schema-v4.1.sql) (48 bảng, 375 cột, 102 FK, 106 CHECK, 52 index khai báo, 47 trigger, 32 hàm nghiệp vụ `rc_*`) · phân quyền [09-acl-v4.1.sql](09-acl-v4.1.sql) · báo cáo [10-bao-cao-v4.1.sql](10-bao-cao-v4.1.sql) · kiểm thử [05-test-v4.1.sql](05-test-v4.1.sql) và [06-test-concurrency-v4.1.mjs](06-test-concurrency-v4.1.mjs) · kiểm toán hàm [07-kiem-toan-ham-rc.md](07-kiem-toan-ham-rc.md) · ERD draw.io trong thư mục [erd/](erd/). ERD Mermaid bên dưới **sinh tự động từ chính schema v4.1 đã chạy**, khớp DDL đến từng cột.
+> **Mức xác minh (vòng đóng băng 26/10/2026):** PostgreSQL 15.19, 16.15, 17.11 và 18.6 (container Docker trên Linux, server thật; mutation trên 17.11): file 05 đạt **650 kiểm tra** (308 dương + 342 âm, gồm 22 truy vấn bất biến §9 trả 0 dòng), file 06 đạt **78/78**, file 08 đạt 34/34, báo cáo 11 đạt 43/43, mutation 27/27 ([07 §9](07-kiem-toan-ham-rc.md)).
 
 ## 0. Kết luận nhanh
 
@@ -11,15 +11,15 @@
 | --- | --- |
 | Đủ bảng cho 27 nhóm chức năng | ✅ **Đủ.** Mọi nhóm có bảng đọc/ghi tương ứng ([03 §B](03-luong-du-lieu-chuc-nang.md)). Không cần thêm bảng mới; chỉ thiếu **cột** và **ràng buộc** (dưới đây). |
 | Bảng thừa | ✅ **Không có.** 48/48 bảng đều có chức năng tạo và chức năng đọc (kiểm tự động trên 27 thẻ chức năng, [03 §B](03-luong-du-lieu-chuc-nang.md)). Ba cặp quan hệ 1–1 (`table_sessions`–`orders`, `stock_receipt_items`–`inventory_batches`, `kitchen_preparation_outputs`–`kitchen_batches`) có lý do: tách **chứng từ bất biến** khỏi **số dư/trạng thái thay đổi**. Vòng chốt nghiệp vụ **không đổi số bảng**: chỉ thêm 3 cột, 1 trạng thái, 1 index (QĐ-7 giữ `orders`). |
-| Liên kết | ✅ 88 FK ở v4, không có vòng FK giữa các bảng; mọi cột người thao tác trỏ `employees` (không trỏ `accounts` → khóa tài khoản không mất dấu vết). ⚠️ 3 bản sao liên bảng chưa có FK ghép giữ nhất quán (DB-09, DB-23, DB-24). **v4.1:** 101 FK (5 FK ghép), không FK nào có `ON DELETE` → xóa cha khi còn con luôn bị chặn; 9 bảng giao dịch còn bị trigger cấm xóa. |
+| Liên kết | ✅ 88 FK ở v4, không có vòng FK giữa các bảng; mọi cột người thao tác trỏ `employees` (không trỏ `accounts` → khóa tài khoản không mất dấu vết). ⚠️ 3 bản sao liên bảng chưa có FK ghép giữ nhất quán (DB-09, DB-23, DB-24). **v4.1:** 102 FK (5 FK ghép), không FK nào có `ON DELETE` → xóa cha khi còn con luôn bị chặn; 9 bảng giao dịch còn bị trigger cấm xóa. |
 | 1NF, 2NF | ✅ Đạt. Giá trị nguyên tử (`raw_payload` là blob chứng cứ, không truy vấn bên trong); khóa chính surrogate đơn; các khóa ứng viên ghép như `(daily_menu_id, menu_item_id)`, `(recipe_id, kitchen_ingredient_type_id)` không có phụ thuộc bộ phận. |
 | 3NF | ⚠️ **Đạt ở mức thiết kế, còn 3 cột vi phạm**: `payment_requests.change_amount`, `daily_cash_reconciliations.expected_cash`, `daily_cash_reconciliations.difference` là giá trị tính từ cột khác trong cùng dòng (DB-10, DB-31). Giá trị `ADJUSTED` của `attendances` lưu lặp thông tin đã có ở `attendance_adjustments` (DB-01). Các dư thừa còn lại là **có chủ đích** (snapshot, số dư) — liệt kê ở §8. **v4.1:** 4 cột GENERATED (cả `invoice_items.line_total`), bỏ `ADJUSTED`, **không lưu số suất đã bán** (suy ra bằng `rc_quota_used`) → đạt 3NF ở mô hình logic. |
-| Tối ưu (index) | ✅ 43 index ở spec §K (15 UNIQUE + 28 thường) phủ FEFO, audit sổ kho, doanh thu, lịch ca. ⚠️ Thiếu index thời gian cho báo cáo nhập–xuất–tồn và index truy vết theo chứng từ (DB-27). **v4.1:** 51 `CREATE INDEX` (15 UNIQUE + 36 thường, có 1 BRIN) cộng 43 ràng buộc UNIQUE và 1 EXCLUDE. Chưa đo `EXPLAIN ANALYZE`. |
+| Tối ưu (index) | ✅ 43 index ở spec §K (15 UNIQUE + 28 thường) phủ FEFO, audit sổ kho, doanh thu, lịch ca. ⚠️ Thiếu index thời gian cho báo cáo nhập–xuất–tồn và index truy vết theo chứng từ (DB-27). **v4.1:** 52 `CREATE INDEX` (15 UNIQUE + 37 thường, có 1 BRIN) cộng 43 ràng buộc UNIQUE và 1 EXCLUDE. Chưa đo `EXPLAIN ANALYZE`. |
 | Hàng rào bất biến tiền/tồn | 🔴 **6 bất biến cốt lõi chưa có ràng buộc DB** ở v4 (DB-09, DB-19…DB-22, DB-30). **v4.1:** đủ 6 hàng rào, cộng (vòng chốt) số dư kiểm bằng đẳng thức với sổ kho tại COMMIT (DB-39), đồ thị trạng thái đóng ở mọi đường ghi (DB-38) và khóa theo một thứ tự chung (DB-36). |
 | Cột thiếu cho nghiệp vụ spec yêu cầu | 🟠 Mốc thời gian/người thao tác của chứng từ tiền (DB-11, DB-13), nơi ghi xử lý sự cố webhook (DB-12), audit kho (DB-25), routine cho thao tác chạm số dư (DB-34). **v4.1:** đã bổ sung cột + 8 hàm (6 của DB-34, 2 của QĐ-2/QĐ-3). |
-| Quyết định nghiệp vụ | QĐ-1, QĐ-2, QĐ-3, QĐ-4, QĐ-8 do nhóm chốt, QĐ-6 và QĐ-7 áp dụng (đề xuất rõ, không mâu thuẫn): đã cài và kiểm thử. **QĐ-5 giữ hiện trạng, chờ nhóm** (§11). |
+| Quyết định nghiệp vụ | QĐ-1…QĐ-8 và 4 quyết định của vòng đóng băng (QĐ-MT miễn thu, QĐ-ID chứng từ idempotent, QĐ-NG ngày kinh doanh, QĐ-BM phân quyền) đã chốt, cài và kiểm thử; **không còn điểm chờ nhóm** (§11). |
 
-**Tổng: 47 phát hiện — 🔴 10 · 🟠 21 · 🟢 16** (danh sách §10: 35 ở vòng đầu + 12 ở vòng chốt nghiệp vụ) — **tất cả đã xử lý trong v4.1**; điểm còn chờ nhóm xác nhận ở §11 và [07 §8](07-kiem-toan-ham-rc.md).
+**Tổng: 53 phát hiện — 🔴 12 · 🟠 25 · 🟢 16** (danh sách §10: 35 vòng đầu + 12 vòng chốt nghiệp vụ + 6 vòng đóng băng) — **tất cả đã xử lý trong v4.1**; giới hạn chưa kiểm chứng ở [07 §8](07-kiem-toan-ham-rc.md).
 
 ## 1. Phương pháp và ký hiệu
 
@@ -365,12 +365,15 @@ erDiagram
         bigint id PK
         bigint order_id FK, UK
         numeric total
-        varchar status "DRAFT / PAYMENT_PENDING / PAID / UNCOLLECTED"
+        varchar status "DRAFT / PAYMENT_PENDING / PAID / UNCOLLECTED / WAIVED"
         tstz created_at
         bigint created_by_id FK "employees"
         varchar uncollected_reason "null"
         bigint uncollected_by_id FK "null; employees"
         tstz uncollected_at "null"
+        varchar waived_reason "null"
+        bigint waived_by_id FK "null; employees"
+        tstz waived_at "null"
     }
     payment_requests {
         bigint id PK
@@ -460,7 +463,7 @@ erDiagram
 | `order_batches` | `id`, `request_key` | ✅ |
 | `order_items` | `id` | ✅. `item_name_snapshot`, `unit_price` = **S**; `status` = **B** (trạng thái của sự kiện cuối, kiểm lúc COMMIT). Số suất đã chiếm của một món/ngày **không lưu** mà suy ra từ `status` và sự kiện COOKING (`rc_quota_used`, QĐ-8) |
 | `order_item_events` | `id` | ✅ nhật ký, chỉ thêm; sự kiện đầu bắt buộc `NULL → PENDING`, các sự kiện nối đúng chuỗi, REJECTED/CANCELLED bắt buộc lý do khác rỗng (QĐ-2) |
-| `invoices` | `id`, `order_id` | ✅. `total` = **B** (Σ `line_total`, đối chiếu bằng `rc_invoice_total_checked`). `uncollected_reason/by/at` là dữ kiện của sự kiện "khách bỏ về" (QĐ-3): chỉ có khi `status = UNCOLLECTED` (`ck_invoice_uncollected_fields`) — không phải dư thừa |
+| `invoices` | `id`, `order_id` | ✅. `total` = **B** (Σ `line_total`, đối chiếu bằng `rc_invoice_total_checked`). `uncollected_reason/by/at` là dữ kiện của sự kiện "khách bỏ về" (QĐ-3): chỉ có khi `status = UNCOLLECTED` (`ck_invoice_uncollected_fields`) — không phải dư thừa | `waived_reason/by/at` (QĐ-MT) tương tự cho sự kiện miễn thu (`ck_invoice_waived_fields`).
 | `invoice_items` | `id`, `order_item_id` | ✅ BCNF (`order_item_id` là khóa). Toàn bộ dòng là **S** của `order_items` đã SERVED; `invoice_id` suy ra được qua order → cần khóa sửa sau chốt (DB-17). Chỉ xóa được khi hóa đơn còn DRAFT (hủy ngoại lệ, QĐ-2) |
 | `payment_requests` | `id` | ❌ `change_amount = cash_received − amount_due` là phụ thuộc bắc cầu trong dòng (DB-10). `amount_due` = **S** |
 | `payments` | `id`, `invoice_id`, `payment_request_id` | ✅ BCNF (mọi định thức đều là khóa). `method` = **X** chưa khóa (DB-09); `business_date` = **S** |
@@ -506,6 +509,8 @@ erDiagram
         tstz received_at "null"
         bigint confirmed_by_id FK "null; employees"
         tstz confirmed_at "null"
+        varchar request_key UK
+        char request_hash
     }
     stock_receipt_items {
         bigint id PK
@@ -563,6 +568,8 @@ erDiagram
         bigint created_by_id FK "employees"
         bigint confirmed_by_id FK "null; employees"
         tstz confirmed_at "null"
+        varchar request_key UK
+        char request_hash
     }
     stock_count_items {
         bigint id PK
@@ -595,6 +602,8 @@ erDiagram
         tstz cancelled_at "null"
         tstz created_at
         bigint cancelled_by_id FK "null; employees"
+        varchar request_key UK
+        char request_hash
     }
     stock_issue_items {
         bigint id PK
@@ -730,12 +739,12 @@ erDiagram
 | Bảng | Khóa ứng viên | Đánh giá |
 | --- | --- | --- |
 | `ingredients` | `id`, `name` | ✅ |
-| `stock_receipts` | `id` | ✅; tổng tiền phiếu không lưu (suy ra từ dòng) ✓ |
+| `stock_receipts` | `id`, `request_key` | ✅; tổng tiền phiếu không lưu (suy ra từ dòng) ✓; `request_hash` là dữ kiện của yêu cầu tạo phiếu (QĐ-ID), không suy ra được từ dòng vì dòng nháp còn sửa được |
 | `stock_receipt_items` | `id`, `(stock_receipt_id, ingredient_id, lot_code, expiry_date)` | ✅. `conversion_factor` là sự kiện của từng dòng (quy cách bao/thùng thay đổi theo lô) nên không phụ thuộc `(ingredient_id, input_unit)` |
 | `inventory_batches` | `id`, `stock_receipt_item_id` | ✅. `quantity_on_hand` = **B**; `received_at` ≈ `stock_receipts.confirmed_at` (dư thừa nhẹ, dùng làm tiêu chí phụ FEFO) |
 | `stock_movements` | `id`, `event_key` | ✅ sổ bất biến; người thao tác suy ra qua chứng từ tham chiếu (không lưu lặp) ✓ |
 | `stock_reservations` | `id`, `(order_item_id, kitchen_batch_id)` | ✅; `status` suy ra được từ `closed_at` + `release_reason` → CHECK (DB-14) |
-| `stock_counts`, `stock_adjustments`, `stock_returns`, `stock_issues`, `kitchen_preparations` | `id` (+ `request_key` nếu có) | ✅ header phiếu |
+| `stock_counts`, `stock_adjustments`, `stock_returns`, `stock_issues`, `kitchen_preparations` | `id`, `request_key` (cả năm bảng; nhập/xuất/kiểm kê kèm `request_hash`) | ✅ header phiếu |
 | `stock_count_items` | `id` | ✅; chênh lệch (actual − book) không lưu ✓ |
 | `kitchen_ingredient_types` | `id` | ✅; không có cột đơn vị → đơn vị = `base_unit` nguyên liệu gốc (QĐ-6) |
 | `stock_issue_items` | `id`, `(stock_issue_id, inventory_batch_id, fulfillment_mode)` | ✅. `wip_remaining_quantity` = **B** đặt trên dòng chứng từ — chấp nhận vì WIP 1–1 với dòng xuất |
@@ -847,6 +856,15 @@ Vòng này nạp lại toàn bộ schema trên PostgreSQL 17.5 thật, viết th
 - **DB-45 🟠** Kiểm đầu vào trong hàm còn thiếu: lý do trắng (từ chối món, mở lại hóa đơn, hủy request/phiếu), xuất DIRECT cho nguyên liệu chưa có loại bếp DIRECT (lỗi muộn khi RAW đã trừ), nhận vào kho lô đã quá hạn hoặc nguyên liệu ngừng dùng, đối soát ngày tương lai hoặc thiếu số liệu. Đề xuất RC422 ngay đầu hàm.
 - **DB-46 🟠** (QĐ-2, QĐ-3) Cưỡng chế "chỉ Manager" cần dữ liệu vai trò, nhưng baseline không seed `roles`. Đề xuất seed 4 vai trò và `rc_require_role` (nhân viên ACTIVE, tài khoản ACTIVE, đúng vai trò → nếu không RC403) cho hai hàm ngoại lệ; các hàm còn lại kiểm quyền ở ứng dụng (spec A2).
 - **DB-47 🟢** Môi trường và ràng buộc nhỏ: database locale `C` không hạ chữ hoa có dấu nên `UNIQUE (lower(name))` hở (PGlite không lộ ra) → file 04 từ chối nạp khi `lower('ẮÒÚĐ') <> 'ắòúđ'`; `attendances.worked_minutes` không được vượt khoảng có mặt (`ck_attendance_worked_le_span`).
+
+### Phát hiện của vòng đóng băng thiết kế (DB-48…DB-53)
+
+- **DB-48 🔴** Đổi trạng thái chứng từ kho bằng DML trực tiếp (ISSUED/RECEIVED/CONFIRMED) không đi kèm bút toán → tồn sinh hoặc mất ngoài sổ (ví dụ phiếu xuất ISSUED không trừ RAW rồi bếp nhận). Xử lý: `rc_guard_doc_header` + `rc_doc_effect_missing` (trạng thái có hiệu lực kho chỉ khi mọi dòng đã có bút toán), `rc_confirm_receipt` ghi sổ trước; ACL không cấp cột trạng thái; I-17.
+- **DB-49 🔴** `p_actor` chỉ được kiểm vai trò ở 2/31 hàm. Xử lý: `rc_authorize` cho 31 hàm (ma trận [07 §10](07-kiem-toan-ham-rc.md)) + script ACL chính thức 09.
+- **DB-50 🟠** Hóa đơn DRAFT treo sau khi đơn kết thúc. Xử lý: đơn CANCELLED chỉ khi không có hóa đơn; I-16.
+- **DB-51 🟠** Không có trạng thái cho miễn thu / hóa đơn 0 đồng. Xử lý: `WAIVED` + `waived_reason/by/at` + `rc_waive_invoice`.
+- **DB-52 🟠** Phiếu nhập/xuất/kiểm kê nhân đôi khi gửi lặp. Xử lý: `request_key` UNIQUE + `request_hash` + `rc_create_*`.
+- **DB-53 🟠** Khách bỏ về với món SERVED giá 0 → UNCOLLECTED total 0 vi phạm CHECK. Xử lý: tổng 0 → WAIVED.
 
 ## 8. Sổ đăng ký dư thừa có chủ đích
 
@@ -961,13 +979,13 @@ WHERE v.status = 'UNCOLLECTED'
   AND (EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = v.id) OR o.status <> 'CLOSED' OR s.status <> 'CLOSED'
     OR s.closed_by_id IS DISTINCT FROM v.uncollected_by_id);
 
--- I-12 đơn CLOSED <=> hóa đơn PAID/UNCOLLECTED; đơn CANCELLED không còn món/hóa đơn có nghĩa vụ
+-- I-12 đơn CLOSED <=> hóa đơn PAID/UNCOLLECTED/WAIVED; đơn CANCELLED không có hóa đơn và không còn món có nghĩa vụ
 SELECT o.id FROM orders o
-WHERE (o.status = 'CLOSED') <> EXISTS (SELECT 1 FROM invoices v WHERE v.order_id = o.id AND v.status IN ('PAID', 'UNCOLLECTED'));
+WHERE (o.status = 'CLOSED') <> EXISTS (SELECT 1 FROM invoices v WHERE v.order_id = o.id AND v.status IN ('PAID', 'UNCOLLECTED', 'WAIVED'));
 
 SELECT o.id FROM orders o
 WHERE o.status = 'CANCELLED'
-  AND (EXISTS (SELECT 1 FROM invoices v WHERE v.order_id = o.id AND v.status <> 'DRAFT')
+  AND (EXISTS (SELECT 1 FROM invoices v WHERE v.order_id = o.id)
     OR EXISTS (SELECT 1 FROM order_items oi JOIN order_batches b ON b.id = oi.order_batch_id
                 WHERE b.order_id = o.id AND oi.status NOT IN ('CANCELLED', 'REJECTED')));
 
@@ -981,6 +999,21 @@ WHERE e.to_status = 'CANCELLED' AND e.from_status IN ('COOKING', 'READY', 'SERVE
   AND (btrim(COALESCE(e.reason, '')) = ''
     OR NOT EXISTS (SELECT 1 FROM accounts a JOIN account_roles ar ON ar.account_id = a.id JOIN roles r ON r.id = ar.role_id
                     WHERE a.employee_id = e.actor_id AND r.role_code = 'MANAGER'));
+
+-- I-15 miễn thu (QĐ-MT): hóa đơn WAIVED không có payment, do Manager, đơn và phiên đã đóng
+SELECT v.id FROM invoices v JOIN orders o ON o.id = v.order_id JOIN table_sessions s ON s.id = o.table_session_id
+WHERE v.status = 'WAIVED'
+  AND (EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = v.id) OR o.status <> 'CLOSED' OR s.status <> 'CLOSED'
+    OR NOT EXISTS (SELECT 1 FROM accounts a JOIN account_roles ar ON ar.account_id = a.id JOIN roles r ON r.id = ar.role_id
+                    WHERE a.employee_id = v.waived_by_id AND r.role_code = 'MANAGER'));
+
+-- I-16 không có hóa đơn treo: đơn đã kết thúc thì hóa đơn ở trạng thái cuối
+SELECT v.id FROM invoices v JOIN orders o ON o.id = v.order_id
+WHERE o.status <> 'OPEN' AND v.status IN ('DRAFT', 'PAYMENT_PENDING');
+
+-- I-17 chứng từ kho ở trạng thái có hiệu lực luôn đủ bút toán cho mọi dòng (ví dụ phiếu nhập; 05 kiểm đủ 6 loại)
+SELECT id FROM stock_receipts
+WHERE status = 'CONFIRMED' AND rc_doc_effect_missing('stock_receipts', id, 'DRAFT', status);
 ```
 <!-- /GEN:INV -->
 
@@ -1037,10 +1070,16 @@ Cột cuối ghi tên ràng buộc/cột/hàm trong [04-schema-v4.1.sql](04-sche
 | DB-45 | 🟠 | hàm nghiệp vụ | Kiểm đầu vào thiếu: lý do trắng, xuất DIRECT thiếu loại bếp, nhập lô quá hạn / nguyên liệu ngừng dùng, đối soát ngày tương lai | ✅ RC422 ở `rc_reject_item`, `rc_cancel_item`, `rc_reopen_invoice`, `rc_cancel_payment_request`, `rc_cancel_issue`, `rc_issue_stock`, `rc_confirm_receipt`, `rc_reconcile_cash` |
 | DB-46 | 🟠 | `roles`, `accounts` | Cưỡng chế "chỉ Manager" cần dữ liệu vai trò (baseline không seed `roles`) | ✅ seed 4 vai trò, `rc_require_role` (RC403) cho `rc_cancel_item_exception`, `rc_abandon_session`; ca RBAC |
 | DB-47 | 🟢 | môi trường, `attendances` | Locale `C` làm `UNIQUE (lower(name))` hở; `worked_minutes` có thể vượt khoảng có mặt | ✅ file 04 từ chối nạp khi không hạ được chữ hoa có dấu; `ck_attendance_worked_le_span` |
+| DB-48 | 🔴 | 6 header chứng từ kho | Đổi trạng thái có hiệu lực kho bằng DML không kèm bút toán | ✅ `rc_doc_effect_missing` trong `rc_guard_doc_header`; ACL theo cột; I-17 |
+| DB-49 | 🔴 | 31 hàm `rc_*` | `p_actor` không được kiểm vai trò | ✅ `rc_authorize` + ma trận [07 §10](07-kiem-toan-ham-rc.md); 09-acl |
+| DB-50 | 🟠 | `invoices`, `orders` | Hóa đơn DRAFT treo sau khi đơn kết thúc | ✅ `rc_guard_order` (CANCELLED ⇒ không hóa đơn); I-16 |
+| DB-51 | 🟠 | `invoices` | Không biểu diễn được miễn thu / hóa đơn 0 đồng | ✅ WAIVED + `waived_reason/by/at` + `rc_waive_invoice` |
+| DB-52 | 🟠 | `stock_receipts`, `stock_issues`, `stock_counts` | Gửi lặp tạo phiếu nháp trùng | ✅ `request_key` UNIQUE + `request_hash` + `rc_create_*` |
+| DB-53 | 🟠 | `invoices` | Bỏ về với tổng 0 vi phạm CHECK UNCOLLECTED | ✅ tổng 0 → WAIVED |
 
 ## 11. Quyết định nghiệp vụ
 
-Nhóm đã chốt QĐ-1, QĐ-2, QĐ-3, QĐ-4 và QĐ-8. QĐ-6 và QĐ-7 được áp dụng vì đề xuất duy nhất, rõ ràng và không mâu thuẫn với spec hay các quyết định đã chốt. **QĐ-5 là lựa chọn còn tranh luận (hai phương án) nên giữ nguyên hiện trạng** và chờ nhóm xác nhận. Khi nhóm quyết định khác, chỉ cần sửa ràng buộc/hàm liên quan trong file 04.
+Nhóm đã chốt QĐ-1…QĐ-5 và QĐ-8; QĐ-6, QĐ-7 áp dụng vì đề xuất duy nhất, rõ ràng. Vòng đóng băng (26/10/2026) chốt QĐ-5 và bốn quyết định mới — miễn thu (**QĐ-MT**; yêu cầu gọi là "QĐ-7 miễn thu" nhưng số 7 đã dùng), chứng từ idempotent (**QĐ-ID**), ngày kinh doanh (**QĐ-NG**), phân quyền (**QĐ-BM**) — và bổ sung QĐ-4 (gửi món khi hết quota chỉ cảnh báo). Không còn điểm chờ nhóm.
 
 | Mã | Câu hỏi | Hiện trạng v4 | Áp dụng trong v4.1 | Trạng thái | Cài ở | Kiểm thử |
 | --- | --- | --- | --- | :-: | --- | --- |
@@ -1048,12 +1087,17 @@ Nhóm đã chốt QĐ-1, QĐ-2, QĐ-3, QĐ-4 và QĐ-8. QĐ-6 và QĐ-7 được
 | QĐ-2 | Món đã COOKING bị cháy/sai món? | Không cho hủy sau COOKING (M5) | Trước COOKING: hủy thường theo quyền. Từ COOKING: chỉ Manager, bắt buộc lý do, lưu lịch sử + người, không hoàn nguyên liệu, không hoàn suất, không tính tiền khi chưa PAID, không hủy sau PAID | ✅ nhóm chốt | `rc_cancel_item`, `rc_cancel_item_exception`, `ck_order_item_event_*` | QĐ-2, I-14, C4, C8b |
 | QĐ-3 | Khách bỏ về không trả tiền? | Bàn kẹt OCCUPIED, hóa đơn treo PAYMENT_PENDING (M6) | Manager xử lý, lý do + người bắt buộc; hóa đơn **UNCOLLECTED** (trạng thái mới + 3 cột), đóng phiên, trả bàn; không `payments`, không PAID, không vào doanh thu thực thu, không xóa dữ liệu | ✅ nhóm chốt | `rc_abandon_session`, `invoices.uncollected_*` | QĐ-3, I-11, I-12, C8 |
 | QĐ-4 | DRAFT → PAYMENT_PENDING lúc nào? | Spec không nói rõ | Cashier chốt: đủ `invoice_items`, tự tính tổng, đối chiếu đơn → PAYMENT_PENDING; Waiter không gửi thêm; muốn đổi phải mở lại (hủy request hiện hành, có lý do); khóa orders → invoices | ✅ nhóm chốt | `rc_checkout_invoice`, `rc_invoice_total_checked`, `rc_reopen_invoice`, `rc_submit_batch` | QĐ-4, C5, C6 |
-| QĐ-5 | Hủy một phần số lượng một dòng (gọi 3, hủy 1)? | Dòng món là đơn vị nguyên khối | **Giữ hiện trạng**: hủy cả dòng rồi gửi lại số đúng. Có hai phương án (hủy-gửi lại hoặc tách dòng khi hủy) nên chưa tự quyết | ⏳ chờ nhóm | — | — |
+| QĐ-5 | Hủy một phần số lượng một dòng (gọi 3, hủy 1)? | Dòng món là đơn vị nguyên khối | **Không hỗ trợ hủy một phần**: hủy cả dòng còn hủy được, gửi dòng mới với số lượng thay thế; dòng CANCELLED là cuối, không dùng lại; không mất lịch sử; không trừ/hoàn hai lần; quota theo QĐ-8; không thêm bảng/API | ✅ chốt (vòng đóng băng) | `rc_cancel_item`, `rc_cancel_item_exception`, `rc_guard_order_item` | QĐ-5, M15, M16 |
 | QĐ-6 | Đầu ra sơ chế khác đơn vị? | Ngoài mô hình (M3) | Mọi loại bếp tính theo `base_unit` của nguyên liệu gốc (nước dùng làm công thức riêng nếu cần); `rc_confirm_preparation` kiểm Σ đầu ra ≤ đầu vào | ✅ áp dụng | `rc_confirm_preparation` | PREP-02, PREP-03 |
 | QĐ-7 | Gộp `orders` vào `table_sessions`? | 1–1 bắt buộc | Không gộp, giữ baseline 48 bảng | ✅ áp dụng | — | — |
 | QĐ-8 | Quota tính theo trạng thái nào? | Spec chỉ nói "quota còn" khi nhận món | Chiếm khi ACCEPTED; REJECTED không chiếm; hủy trước COOKING trả đúng một lần; từ COOKING không hoàn; hai Kitchen không nhận vượt suất; kiểm suất + đặt giữ nguyên liệu nguyên tử hoặc rollback | ✅ nhóm chốt | `rc_quota_used`, `rc_accept_item`, `rc_cancel_item`, `rc_allocate_item` | QĐ-8, C1, C3, C4 |
+| QĐ-4 (bổ sung) | Gửi món khi hết quota? | Bản 25/10 chặn mềm ở `rc_submit_batch` | **Không chặn**: ghi đợt món, trả cảnh báo `QUOTA_EXCEEDED` (JSONB); Kitchen chỉ ACCEPTED khi đủ suất **và** nguyên liệu | ✅ chốt | `rc_submit_batch`, `rc_batch_result`, `rc_accept_item` | QĐ-4, M09, M10 |
+| QĐ-MT | Miễn thu toàn bộ / hóa đơn 0 đồng? | Spec M5: chưa hỗ trợ | Trạng thái **WAIVED** (Manager, lý do, người, thời điểm), giữ `invoice_items` và tổng (giá trị được miễn), không payments, không doanh thu, không áp cho PAID; hóa đơn 0 đồng đóng bằng WAIVED | ✅ chốt | `rc_waive_invoice`, `invoices.waived_*`, `ck_invoice_waived_fields`, `rc_guard_invoice`, `rc_guard_order` | QĐ-MT, I-15, I-16, C11 |
+| QĐ-ID | Gửi lặp yêu cầu tạo phiếu nhập/xuất/kiểm kê? | Mỗi lần bấm một phiếu nháp | `request_key` UNIQUE + `request_hash`; cùng khóa cùng payload → phiếu cũ, khác payload → RC409 | ✅ chốt | `rc_create_stock_receipt/_issue/_count` | QĐ-ID, C11 |
+| QĐ-NG | Mốc ngày kinh doanh? | DB-33 04:00 | 04:00 Asia/Ho_Chi_Minh, `TIMESTAMPTZ`, không phụ thuộc TimeZone phiên | ✅ chốt | `rc_business_date` | QĐ-NG |
+| QĐ-BM | Phân quyền hàm? | Spec A2: ở ứng dụng | DB ép vai trò cho 31 hàm + ACL role chính thức; `p_actor` chỉ từ principal đã xác thực | ✅ chốt | `rc_authorize`, 09-acl | QĐ-BM, ACL |
 
-**Chỗ các quyết định ghi đè hoặc bổ sung văn bản spec** (có chủ đích, chỉ trong phạm vi hàm tương ứng): QĐ-3 ghi đè G3.6/M6 ("không tự trả bàn khi chưa PAID") riêng cho `rc_abandon_session`; QĐ-2 bổ sung ngoại lệ cho E2/M5 ("không hủy sau COOKING"); QĐ-8 thực hiện "PENDING chỉ cảnh báo" bằng kiểm *mềm* ở `rc_submit_batch` (chặn khi suất đã chiếm không còn đủ, kiểm cứng ở lúc nhận) — điểm này nằm trong danh sách nhóm xác nhận ở [07 §8](07-kiem-toan-ham-rc.md).
+**Chỗ các quyết định ghi đè hoặc bổ sung văn bản spec** (có chủ đích, chỉ trong phạm vi hàm tương ứng): QĐ-3 ghi đè G3.6/M6 ("không tự trả bàn khi chưa PAID") riêng cho `rc_abandon_session`; QĐ-2 bổ sung ngoại lệ cho E2/M5 ("không hủy sau COOKING"); QĐ-4/QĐ-8 thực hiện đúng "PENDING chỉ cảnh báo": `rc_submit_batch` không chặn mà trả cảnh báo, kiểm cứng ở lúc nhận; QĐ-MT bổ sung M5 ("hóa đơn miễn phí chưa hỗ trợ") bằng trạng thái WAIVED.
 
 ## 12. Kiểm toán 48 bảng và luồng dữ liệu
 
@@ -1064,12 +1108,12 @@ Nhóm đã chốt QĐ-1, QĐ-2, QĐ-3, QĐ-4 và QĐ-8. QĐ-6 và QĐ-7 được
 | 1 | Không ghi trùng thanh toán | `payments.invoice_id`, `payment_request_id`, `payment_webhook_event_id` UNIQUE; khóa orders → invoices → request; `rc_pay_cash` và `rc_process_verified_qr` kiểm trạng thái dưới khóa; webhook idempotent; `trg_payments_guard` chỉ cho ghi khi PAYMENT_PENDING và đúng số phải thu | CASH-01, QR-02, C6, C7, C8; I-7 |
 | 2 | Không trừ nguyên liệu hai lần | Reservation chỉ ACTIVE → CONSUMED/RELEASED (một chiều, trigger khóa); `stock_movements.event_key = COOK:<reservation>` UNIQUE; `rc_start_cooking` kiểm trạng thái dưới khóa dòng | ORDER-03, C3; I-9, I-13 |
 | 3 | Không hoàn sai nguyên liệu đã tiêu hao | Hủy thường chỉ RELEASE phần ACTIVE (không movement cộng tồn); hủy ngoại lệ từ COOKING không đụng kho; hoàn trả chỉ từ phần khả dụng (không trả phần đang giữ, không trả PREPARED, không trả hàng đã COOK) | ORDER-02, QĐ-2, RETURN-01, RETURN-02; I-3, I-13 |
-| 4 | Không ghi trùng hao hụt | `WASTE:<dòng>` event_key UNIQUE; xác nhận phiếu một lần; `request_key` chống tạo phiếu trùng; hao hụt sơ chế là giá trị suy ra, không ghi sổ thêm | WASTE-01, PREP-01, C10 |
+| 4 | Không ghi trùng hao hụt | `WASTE:<dòng>` event_key UNIQUE; xác nhận phiếu một lần; `request_key` chống tạo phiếu trùng (cả nhập/xuất/kiểm kê — QĐ-ID); hao hụt sơ chế là giá trị suy ra, không ghi sổ thêm | WASTE-01, PREP-01, C10 |
 | 5 | Không xuất từ lô hết hạn / không dùng được | `rc_issue_stock` kiểm `is_usable` và `expiry_date`; `rc_allocate_item` lọc lô bếp; `rc_start_cooking` kiểm lô đang giữ; FEFO có xử lý NULL expiry | EXC-01, FNC-EXP, FNC-FEFO |
 | 6 | Không tạo hóa đơn thiếu món hoặc tính tiền trùng | `rc_invoice_total_checked`; `invoice_items.order_item_id` UNIQUE; `trg_invoice_items_guard` | INV-01, QĐ-4; I-4a, I-4b, I-4c |
 | 7 | Không đóng bàn sai điều kiện | `trg_dining_tables_guard`, `trg_table_sessions_guard`, `trg_orders_guard`; chỉ `rc_close_empty_session`, `rc_settle_invoice`, `rc_abandon_session` trả bàn | TABLE-02, GRD, QĐ-3; I-6, I-12 |
-| 8 | Không sửa trực tiếp lịch sử giao dịch đã hoàn tất | Chỉ-thêm (4 bảng), cấm xóa (9 bảng), hóa đơn PAID/UNCOLLECTED bất biến, chứng từ kho CONFIRMED và dòng chi tiết bị khóa, webhook chỉ sửa `resolution_*`, đối soát chỉ CURRENT → SUPERSEDED | GRD, FIN-02, DB-12 |
-| 9 | Không có dữ liệu mồ côi | 101 FK, không FK nào có `ON DELETE`; quan hệ bắt buộc có cột NOT NULL; 9 bảng giao dịch cấm xóa; danh mục chỉ ngừng dùng (`is_active`) | CON (FK `23503`) |
+| 8 | Không sửa trực tiếp lịch sử giao dịch đã hoàn tất | Chỉ-thêm (4 bảng), cấm xóa (9 bảng), hóa đơn PAID/UNCOLLECTED/WAIVED bất biến, chứng từ kho CONFIRMED và dòng chi tiết bị khóa, trạng thái có hiệu lực kho phải kèm bút toán, webhook chỉ sửa `resolution_*`, đối soát chỉ CURRENT → SUPERSEDED | GRD, FIN-02, DB-12 |
+| 9 | Không có dữ liệu mồ côi | 102 FK, không FK nào có `ON DELETE`; quan hệ bắt buộc có cột NOT NULL; 9 bảng giao dịch cấm xóa; danh mục chỉ ngừng dùng (`is_active`) | CON (FK `23503`) |
 | 10 | Số dư khớp nhật ký biến động | `rc_check_balance` trong 5 constraint trigger hoãn tới COMMIT cho RAW, WIP, kho bếp và reserved | I-1, I-2, I-3, GRD sửa tay số dư |
 | 11 | Không lưu dư thừa vô mục đích | §8: mỗi cột dư thừa có loại (S/B/D/X), nguồn sự thật, nơi đồng bộ, truy vấn kiểm; 4 cột GENERATED; số suất đã chiếm không lưu | §8; I-4, I-5 |
 | 12 | Snapshot hợp lệ và nhất quán | `order_items` (tên, giá), `invoice_items` (đối chiếu từng dòng), `payment_requests.amount_due`, `payments.amount`, `scheduled_*`, `opening_cash` / `cash_sales` / `cash_expenses` | INV-02, I-4c, I-7, I-10 |
@@ -1108,21 +1152,21 @@ Cột "Ghi" là mã nhóm chức năng ghi bảng (C, U hoặc D) theo các th�
 | `order_batches` | 3 | Chứng từ đợt gọi món | 3.2 | 5 / 2 / 0 | `order_batches_request_key_key`, cấm xóa | BCNF |
 | `order_items` | 3 | Chi tiết + snapshot | 3.1, 3.2, 3.3, 3.4, 4.5 | 9 / 2 / 4 | `trg_order_items_guard`, `trg_order_items_event_sync`, cấm xóa | `item_name_snapshot`, `unit_price` là **S**; `status` là **B** |
 | `order_item_events` | 3 | Audit chỉ-thêm | 3.1, 3.2, 3.3 | 7 / 2 / 4 | `trg_order_item_events_chain`, `ck_order_item_event_first`, `ck_order_item_event_reason` | Nhật ký, không thuộc tính dư |
-| `invoices` | 3 | Chứng từ nghĩa vụ phải thu | 3.1, 3.3, 3.5, 3.6, 3.7 | 9 / 3 / 3 | `invoices_order_id_key`, `trg_invoice_guard`, `ck_invoice_uncollected_fields` | `total` là **B** (Σ dòng); `uncollected_*` là dữ kiện của sự kiện, không dư |
+| `invoices` | 3 | Chứng từ nghĩa vụ phải thu | 3.1, 3.3, 3.5, 3.6, 3.7 | 12 / 4 / 4 | `invoices_order_id_key`, `trg_invoice_guard`, `ck_invoice_uncollected_fields`, `ck_invoice_waived_fields` | `total` là **B** (Σ dòng); `uncollected_*`, `waived_*` là dữ kiện của sự kiện kết thúc, không dư (mỗi hóa đơn tối đa một sự kiện) |
 | `payment_requests` | 3 | Giao dịch yêu cầu thu | 3.1, 3.5, 3.6, 3.7 | 13 / 3 / 5 | `ux_payment_request_active`, `trg_payment_requests_guard`, cấm xóa | `amount_due` là **S**; `change_amount` GENERATED |
 | `payments` | 3 | Giao dịch thu thành công, chỉ-thêm | 3.6, 3.7 | 8 / 5 / 3 | `payments_invoice_id_key`, `fk_payments_request_invoice_method`, `ck_payments_qr_webhook`, `trg_payments_guard` | `amount`, `business_date` là **S**; `method` là **X** khóa bằng FK ghép |
 | `payment_webhook_events` | 3 | Audit chứng cứ | 3.7 | 12 / 2 / 3 | `provider_transaction_code` UNIQUE, `trg_webhook_event_guard` (chỉ sửa `resolution_*`) | `raw_payload` là chứng cứ nguyên văn |
 | `invoice_items` | 3 | Snapshot dòng hóa đơn | 3.1, 3.3, 3.5 | 7 / 2 / 2 | `invoice_items_order_item_id_key`, `trg_invoice_items_guard` (chỉ bản chụp đúng của dòng SERVED; chỉ xóa khi DRAFT) | Toàn bộ dòng là **S**; `line_total` GENERATED |
 | `ingredients` | 4 | Danh mục nguyên liệu thô | 4.1 | 6 / 0 / 1 | UNIQUE tên (không phân biệt hoa thường), `base_unit` cố định | BCNF |
-| `stock_receipts` | 4 | Chứng từ nhập (header) | 4.2 | 9 / 2 / 2 | `trg_stock_receipts_guard`, `ck_stock_receipt_confirm_fields` | BCNF |
+| `stock_receipts` | 4 | Chứng từ nhập (header) | 4.2 | 11 / 2 / 2 | `trg_stock_receipts_guard`, `ck_stock_receipt_confirm_fields` | BCNF |
 | `stock_receipt_items` | 4 | Chi tiết nhập (nguồn lô) | 4.2 | 9 / 2 / 3 | `ux_stock_receipt_items_lot`, `trg_stock_receipt_items_lines` (khóa khi header khác DRAFT) | Giá theo đơn vị mua (**S**) |
 | `inventory_batches` | 4 | Số dư RAW theo lô | 4.1, 4.2, 4.3, 4.7 | 8 / 2 / 2 | `inventory_batches_stock_receipt_item_id_key`, `trg_inventory_batches_balance`, cấm xóa | `quantity_on_hand` là **B** (Σ sổ kho) |
 | `stock_movements` | 4 | Sổ cái bất biến | 3.4, 4.2, 4.3, 4.4, 4.6, 4.7 | 15 / 9 / 3 | `stock_movements_event_key_key`, `ck_movement_type_shape`, chỉ-thêm, `trg_stock_movements_balance` | Nguồn sự thật của mọi số dư |
 | `stock_reservations` | 4 | Đặt giữ lô bếp | 3.1, 3.4, 4.6 | 8 / 2 / 4 | `ux_stock_reservation_batch`, `trg_stock_reservations_guard` (một chiều), `trg_stock_reservations_balance`, cấm xóa | Σ ACTIVE = `reserved_quantity` (**B**) |
-| `stock_counts` | 4 | Chứng từ kiểm kê (header) | 4.7 | 7 / 2 / 2 | `trg_stock_counts_guard`, `ck_stock_count_confirm_fields` | BCNF |
+| `stock_counts` | 4 | Chứng từ kiểm kê (header) | 4.7 | 9 / 2 / 2 | `trg_stock_counts_guard`, `ck_stock_count_confirm_fields` | BCNF |
 | `stock_count_items` | 4 | Chi tiết kiểm kê | 4.7 | 8 / 4 / 3 | `ck_stock_count_one_source`, `trg_stock_count_items_lines` | `book_quantity` là **S** (phát hiện sổ đã đổi — stale) |
 | `kitchen_ingredient_types` | 4 | Danh mục loại nguyên liệu bếp | 2.2 | 7 / 1 / 3 | `ux_kitchen_direct_one`, `ux_kitchen_types_name` | BCNF |
-| `stock_issues` | 4 | Chứng từ xuất kho (header) | 4.3 | 11 / 3 / 2 | `trg_stock_issues_guard`, `ck_stock_issue_fields` | BCNF |
+| `stock_issues` | 4 | Chứng từ xuất kho (header) | 4.3 | 13 / 3 / 2 | `trg_stock_issues_guard`, `ck_stock_issue_fields` | BCNF |
 | `stock_issue_items` | 4 | Chi tiết xuất + số dư WIP | 4.3, 4.4, 4.7 | 6 / 2 / 4 | `ux_stock_issue_batch_mode`, `ck_issue_item_wip_bounds`, `trg_stock_issue_items_balance` | `wip_remaining_quantity` là **B** (Σ sổ kho) |
 | `kitchen_preparations` | 4 | Chứng từ sơ chế (header) | 4.4 | 8 / 2 / 3 | `request_key` UNIQUE, `trg_kitchen_preparations_guard` | Hao hụt = đầu vào − Σ đầu ra: suy ra, không lưu |
 | `kitchen_batches` | 4 | Số dư tồn bếp theo lô | 3.1, 3.4, 4.3, 4.4, 4.5, 4.6, 4.7 | 12 / 5 / 5 | `ck_kitchen_reserved_le_on_hand`, `ck_kitchen_batch_one_source`, `trg_kitchen_batches_balance`, cấm xóa | `quantity_on_hand`, `reserved_quantity` là **B** |

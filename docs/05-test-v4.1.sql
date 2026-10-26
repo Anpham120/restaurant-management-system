@@ -4,7 +4,8 @@
 --     psql -v ON_ERROR_STOP=1 -d restaurant_core -f 05-test-v4.1.sql
 -- Mỗi khối DO là một giao dịch riêng (giống psql -f). Mã ca theo ma trận L1 Master Spec; QĐ-n = quyết định
 -- nghiệp vụ n; EXC/ABD/GRD/CON = ca bổ sung; FNC/FNC-EXP/FNC-FEFO = ca kiểm toán từng hàm (docs/07); ACL = phân quyền
--- role. Sai ở đâu → dừng với lỗi 'TEST FAIL: …'; chạy hết không lỗi = đạt.
+-- role; FZ/GRD-FZ/QĐ-MT/QĐ-ID/QĐ-NG/QĐ-BM/III = vòng đóng băng thiết kế (docs/07 §3, §5.2, §10). Khối ACL nạp 09-acl-v4.1.sql
+-- bằng \ir nên chạy file này trong thư mục docs/. Sai ở đâu → dừng với lỗi 'TEST FAIL: …'; chạy hết không lỗi = đạt.
 -- Các ca cần HAI kết nối thật (đua khóa, deadlock, webhook song song) nằm ở 06-test-concurrency-v4.1.mjs.
 -- =====================================================================
 
@@ -93,7 +94,7 @@ CREATE FUNCTION rc_test.send(p_order BIGINT, p_key TEXT, p_dish TEXT, p_qty INT)
 DECLARE
     v_b BIGINT;
 BEGIN
-    v_b := rc_submit_batch(p_order, rc_test.emp('W1'), p_key, rc_test.items(rc_test.dmi(p_dish), p_qty));
+    v_b := rc_test.batch_id(rc_submit_batch(p_order, rc_test.emp('W1'), p_key, rc_test.items(rc_test.dmi(p_dish), p_qty)));
     RETURN (SELECT id FROM order_items WHERE order_batch_id = v_b ORDER BY id LIMIT 1);
 END $$;
 -- Đưa một dòng món qua nhận → nấu → xong → phục vụ
@@ -106,6 +107,8 @@ BEGIN
     PERFORM rc_finish_dish(p_item, rc_test.emp('K1'));
     PERFORM rc_serve_item(p_item, rc_test.emp('W1'));
 END $$;
+-- rc_submit_batch trả JSONB {"batch_id", "replayed", "warnings"} (QĐ-4)
+CREATE FUNCTION rc_test.batch_id(p_result JSONB) RETURNS BIGINT LANGUAGE sql AS $$ SELECT (p_result ->> 'batch_id')::bigint $$;
 CREATE FUNCTION rc_test.state(p_item BIGINT) RETURNS TEXT LANGUAGE sql AS $$ SELECT status FROM order_items WHERE id = p_item $$;
 
 -- ---------------------------------------------------------------------
@@ -176,16 +179,16 @@ BEGIN
     PERFORM rc_test.fails(format('INSERT INTO account_roles (account_id, role_id) SELECT %s, id FROM roles WHERE role_code = ''MANAGER''', v_acc),
                           'ux_account_role', 'HR-01 trùng cặp account–role', '23505');
     PERFORM rc_test.fails('INSERT INTO roles (role_code, role_name) VALUES (''MANAGER'', ''Trùng'')', 'roles_role_code_key', 'HR-01 vai trò trùng mã', '23505');
-    -- rc_require_role: đúng vai trò, sai vai trò, nhân viên nghỉ việc, tài khoản bị khóa
-    PERFORM rc_require_role(rc_test.emp('M1'), 'MANAGER');
-    PERFORM rc_test.fails(format('SELECT rc_require_role(%s, ''MANAGER'')', rc_test.emp('K1')), 'không có vai trò', 'RBAC bếp không phải Manager', 'RC403');
+    -- rc_authorize: đúng vai trò, sai vai trò, nhân viên nghỉ việc, tài khoản bị khóa
+    PERFORM rc_authorize(rc_test.emp('M1'), 'MANAGER');
+    PERFORM rc_test.fails(format('SELECT rc_authorize(%s, ''MANAGER'')', rc_test.emp('K1')), 'không có vai trò', 'RBAC bếp không phải Manager', 'RC403');
     UPDATE accounts SET account_status = 'LOCKED' WHERE username = 'm1';
-    PERFORM rc_test.fails(format('SELECT rc_require_role(%s, ''MANAGER'')', rc_test.emp('M1')), 'không có vai trò', 'RBAC tài khoản bị khóa', 'RC403');
+    PERFORM rc_test.fails(format('SELECT rc_authorize(%s, ''MANAGER'')', rc_test.emp('M1')), 'không có vai trò', 'RBAC tài khoản bị khóa', 'RC403');
     UPDATE accounts SET account_status = 'ACTIVE' WHERE username = 'm1';
     UPDATE employees SET work_status = 'LEFT', end_date = CURRENT_DATE WHERE employee_code = 'M1';
-    PERFORM rc_test.fails(format('SELECT rc_require_role(%s, ''MANAGER'')', rc_test.emp('M1')), 'không có vai trò', 'RBAC nhân viên đã nghỉ việc', 'RC403');
+    PERFORM rc_test.fails(format('SELECT rc_authorize(%s, ''MANAGER'')', rc_test.emp('M1')), 'không có vai trò', 'RBAC nhân viên đã nghỉ việc', 'RC403');
     UPDATE employees SET work_status = 'ACTIVE', end_date = NULL WHERE employee_code = 'M1';
-    PERFORM rc_require_role(rc_test.emp('M1'), 'MANAGER');
+    PERFORM rc_authorize(rc_test.emp('M1'), 'MANAGER');
 END $$;
 
 -- ---------------------------------------------------------------------
@@ -260,7 +263,7 @@ DECLARE
     v_today DATE := rc_business_date(now());
     v_r     BIGINT;
 BEGIN
-    INSERT INTO stock_receipts (supplier_name, created_by_id) VALUES ('NCC Tươi Sống', rc_test.emp('M1')) RETURNING id INTO v_r;
+    INSERT INTO stock_receipts (request_key, request_hash, supplier_name, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), 'NCC Tươi Sống', rc_test.emp('M1')) RETURNING id INTO v_r;
     INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor,
                                      unit_price_per_input_unit, lot_code, expiry_date) VALUES
         (v_r, rc_test.ing('Thịt bò A'), 10, 'kg', 1, 250000, 'BO-L1', v_today + 5),
@@ -273,13 +276,13 @@ BEGIN
                           'dòng chi tiết bị khóa', 'GRD chứng từ đã CONFIRMED không thêm dòng', 'RC409');
     PERFORM rc_test.fails(format('UPDATE stock_receipts SET note = ''sửa'' WHERE id = %s', v_r), 'bất biến', 'GRD chứng từ đã CONFIRMED bất biến', 'RC409');
 
-    INSERT INTO stock_receipts (supplier_name, created_by_id) VALUES ('Chợ đầu mối', rc_test.emp('M1')) RETURNING id INTO v_r;
+    INSERT INTO stock_receipts (request_key, request_hash, supplier_name, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), 'Chợ đầu mối', rc_test.emp('M1')) RETURNING id INTO v_r;
     INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor,
                                      unit_price_per_input_unit, lot_code, expiry_date)
     VALUES (v_r, rc_test.ing('Hành tây'), 1000, 'g', 0.001, 25, 'H-L2', v_today + 2);
     PERFORM rc_confirm_receipt(v_r, rc_test.emp('M1'));
 
-    INSERT INTO stock_receipts (supplier_name, created_by_id) VALUES ('Thiếu hạn', rc_test.emp('M1')) RETURNING id INTO v_r;
+    INSERT INTO stock_receipts (request_key, request_hash, supplier_name, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), 'Thiếu hạn', rc_test.emp('M1')) RETURNING id INTO v_r;
     INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor, unit_price_per_input_unit)
     VALUES (v_r, rc_test.ing('Coca lon'), 24, 'lon', 1, 8000);
     PERFORM rc_test.fails(format('SELECT rc_confirm_receipt(%s, %s)', v_r, rc_test.emp('M1')), 'expiry_date', 'RAW-01 thiếu hạn dùng', 'RC422');
@@ -304,7 +307,7 @@ DO $$
 DECLARE
     v_i BIGINT;
 BEGIN
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) VALUES
         (v_i, rc_test.id('LOT_BO'), 7, 'PREPARE'),
         (v_i, rc_test.id('LOT_H1'), 0.5, 'DIRECT'),      -- sai FEFO: lô H2 hạn sớm hơn vẫn còn hàng
@@ -325,7 +328,7 @@ BEGIN
     PERFORM rc_test.fails(format('SELECT rc_issue_stock(%s, %s)', v_i, rc_test.emp('M1')), 'không phải DRAFT', 'ISSUE xuất lặp cùng phiếu', 'RC409');
     PERFORM rc_test.fails(format('UPDATE stock_issue_items SET quantity = 1 WHERE stock_issue_id = %s', v_i), 'dòng chi tiết bị khóa', 'GRD sửa dòng phiếu đã ISSUED', 'RC409');
 
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode)
     VALUES (v_i, rc_test.id('LOT_COCA'), 100, 'DIRECT');
     PERFORM rc_test.fails(format('SELECT rc_issue_stock(%s, %s)', v_i, rc_test.emp('M1')), 'chỉ còn', 'RAW-03 xuất vượt tồn', 'RC409');
@@ -333,11 +336,11 @@ BEGIN
 
     -- dòng DIRECT phải có loại bếp DIRECT; thêm nguyên liệu không có loại DIRECT
     INSERT INTO ingredients (name, base_unit, is_expiry_tracked) VALUES ('Gia vị X', 'g', false);
-    INSERT INTO stock_receipts (created_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_receipts (request_key, request_hash, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor, unit_price_per_input_unit)
     VALUES (v_i, rc_test.ing('Gia vị X'), 100, 'g', 1, 10);
     PERFORM rc_confirm_receipt(v_i, rc_test.emp('M1'));
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode)
     SELECT v_i, b.id, 10, 'DIRECT' FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id
      WHERE s.ingredient_id = rc_test.ing('Gia vị X');
@@ -435,10 +438,10 @@ BEGIN
                           'lớn hơn 0', 'ORDER số lượng 0', 'RC422');
     PERFORM rc_test.fails(format('SELECT rc_submit_batch(%s, %s, ''b01-bad2'', ''[{"daily_menu_item_id": 999999, "quantity": 1}]''::jsonb)', v_o, rc_test.emp('W1')),
                           'không có trong thực đơn', 'ORDER món không tồn tại', 'RC409');
-    v_b := rc_submit_batch(v_o, rc_test.emp('W1'), 'b01-1', jsonb_build_array(
+    v_b := rc_test.batch_id(rc_submit_batch(v_o, rc_test.emp('W1'), 'b01-1', jsonb_build_array(
                jsonb_build_object('daily_menu_item_id', rc_test.dmi('Bò lúc lắc'), 'quantity', 1, 'note', 'Ít tiêu'),
-               jsonb_build_object('daily_menu_item_id', rc_test.dmi('Coca'), 'quantity', 2)));
-    v_b2 := rc_submit_batch(v_o, rc_test.emp('W1'), 'b01-1', '[]'::jsonb);
+               jsonb_build_object('daily_menu_item_id', rc_test.dmi('Coca'), 'quantity', 2))));
+    v_b2 := rc_test.batch_id(rc_submit_batch(v_o, rc_test.emp('W1'), 'b01-1', '[]'::jsonb));
     PERFORM rc_test.ok(v_b = v_b2 AND (SELECT count(*) FROM order_items WHERE order_batch_id = v_b) = 2, 'ORDER-01 gửi lặp không ghi trùng');
     PERFORM rc_test.fails(format('SELECT rc_submit_batch(%s, %s, ''b01-1'', %L::jsonb)', v_o + 1000, rc_test.emp('W1'), rc_test.items(rc_test.dmi('Coca'), 1)),
                           'đã dùng cho đơn khác', 'ORDER-01 request_key dùng cho đơn khác', 'RC409');
@@ -491,7 +494,7 @@ DECLARE
     v_inv BIGINT;
     v_add BIGINT;
 BEGIN
-    v_b := rc_submit_batch(rc_test.id('O_B01'), rc_test.emp('W1'), 'b01-2', rc_test.items(rc_test.dmi('Coca'), 1));
+    v_b := rc_test.batch_id(rc_submit_batch(rc_test.id('O_B01'), rc_test.emp('W1'), 'b01-2', rc_test.items(rc_test.dmi('Coca'), 1)));
     SELECT id INTO v_add FROM order_items WHERE order_batch_id = v_b;
     PERFORM rc_test.fails(format('SELECT rc_checkout_invoice(%s, %s)', rc_test.id('O_B01'), rc_test.emp('C1')),
                           'chưa phục vụ xong', 'INV-01 chốt khi còn món chưa xong', 'RC409');
@@ -534,20 +537,24 @@ BEGIN
 
     v_s := rc_open_session(rc_test.tbl('B02'), rc_test.emp('W1'));
     SELECT id INTO v_o FROM orders WHERE table_session_id = v_s;
-    -- quota 3, đã nhận 1 (B01): gọi 3 suất bị chặn sớm ở gửi món (kiểm mềm); gọi 2 + 2 đều qua được vì PENDING chưa chiếm suất
-    PERFORM rc_test.fails(format('SELECT rc_submit_batch(%s, %s, ''b02-soft'', %L::jsonb)', v_o, rc_test.emp('W1'), rc_test.items(rc_test.dmi('Bò lúc lắc'), 3)),
-                          'không đủ suất: còn 2', 'MENU-02 gửi vượt quota bị chặn sớm', 'RC409');
-    v_b := rc_submit_batch(v_o, rc_test.emp('W1'), 'b02-1', rc_test.items(rc_test.dmi('Bò lúc lắc'), 2));
+    -- QĐ-4: quota 3, đã nhận 1 (B01): gọi 3 suất VẪN gửi được, kèm cảnh báo QUOTA_EXCEEDED (còn 2); dòng PENDING chưa chiếm suất
+    v_b := rc_test.batch_id(rc_submit_batch(v_o, rc_test.emp('W1'), 'b02-soft', rc_test.items(rc_test.dmi('Bò lúc lắc'), 3)));
+    PERFORM rc_test.ok((SELECT w ->> 'code' = 'QUOTA_EXCEEDED' AND (w ->> 'remaining')::int = 2 AND (w ->> 'quota_used')::int = 1
+                          FROM jsonb_array_elements(rc_batch_result(v_b, false) -> 'warnings') w),
+                       'QĐ-4 gửi vượt quota được ghi nhận kèm cảnh báo còn 2 suất');
+    PERFORM rc_test.ok((SELECT count(*) FROM order_items WHERE order_batch_id = v_b AND status = 'PENDING') = 1, 'QĐ-4 dòng vượt quota vẫn PENDING');
+    PERFORM rc_cancel_item((SELECT id FROM order_items WHERE order_batch_id = v_b), rc_test.emp('W1'), 'Khách giảm số lượng');
+    v_b := rc_test.batch_id(rc_submit_batch(v_o, rc_test.emp('W1'), 'b02-1', rc_test.items(rc_test.dmi('Bò lúc lắc'), 2)));
     SELECT id INTO v_item FROM order_items WHERE order_batch_id = v_b;
     PERFORM rc_test.put('OI_B02_FIRST', v_item);
-    v_b := rc_submit_batch(v_o, rc_test.emp('W1'), 'b02-1b', rc_test.items(rc_test.dmi('Bò lúc lắc'), 2));
+    v_b := rc_test.batch_id(rc_submit_batch(v_o, rc_test.emp('W1'), 'b02-1b', rc_test.items(rc_test.dmi('Bò lúc lắc'), 2)));
     SELECT id INTO v_item FROM order_items WHERE order_batch_id = v_b;
     PERFORM rc_test.ok(rc_accept_item(rc_test.id('OI_B02_FIRST'), rc_test.emp('K1')) = 'ACCEPTED', 'MENU-02 dòng đầu nhận đủ suất còn lại');
     PERFORM rc_test.ok(rc_accept_item(v_item, rc_test.emp('K1')) = 'REJECTED', 'MENU-02 vượt quota bị từ chối khi nhận (kiểm cứng)');
     PERFORM rc_test.ok((SELECT reason FROM order_item_events WHERE order_item_id = v_item AND to_status = 'REJECTED') LIKE 'Vượt hạn mức%',
                        'MENU-02 có lý do');
     PERFORM rc_cancel_item(rc_test.id('OI_B02_FIRST'), rc_test.emp('W1'), 'Khách đổi ý');
-    v_b := rc_submit_batch(v_o, rc_test.emp('W1'), 'b02-2', rc_test.items(rc_test.dmi('Coca'), 12));
+    v_b := rc_test.batch_id(rc_submit_batch(v_o, rc_test.emp('W1'), 'b02-2', rc_test.items(rc_test.dmi('Coca'), 12)));
     SELECT id INTO v_item FROM order_items WHERE order_batch_id = v_b;
     PERFORM rc_test.ok(rc_accept_item(v_item, rc_test.emp('K1')) = 'REJECTED', 'MENU-02 thiếu tồn bị từ chối');
     PERFORM rc_test.ok(NOT EXISTS (SELECT 1 FROM stock_reservations WHERE order_item_id = v_item) AND rc_test.kr('KB_COCA') = 0,
@@ -623,15 +630,15 @@ BEGIN
     v_o := rc_test.open('B05');
     v_item := rc_test.send(v_o, 'b05-1', 'Bò lúc lắc', 1);
     PERFORM rc_accept_item(v_item, rc_test.emp('K1'));
-    PERFORM rc_test.fails(format('SELECT rc_mark_batch_unusable(''KITCHEN'', %s, %s, '''')', rc_test.id('KB_BO_THAI'), rc_test.emp('K1')),
+    PERFORM rc_test.fails(format('SELECT rc_mark_batch_unusable(''KITCHEN'', %s, %s, '''')', rc_test.id('KB_BO_THAI'), rc_test.emp('M1')),
                           'bắt buộc có lý do', 'EXC-01 đánh dấu lô không lý do', 'RC422');
-    PERFORM rc_test.ok(rc_mark_batch_unusable('KITCHEN', rc_test.id('KB_BO_THAI'), rc_test.emp('K1'), 'Hỏng tủ mát') = 1,
+    PERFORM rc_test.ok(rc_mark_batch_unusable('KITCHEN', rc_test.id('KB_BO_THAI'), rc_test.emp('M1'), 'Hỏng tủ mát') = 1,
                        'EXC-01 bật cờ cho 1 món đang giữ');
     PERFORM rc_test.fails(format('SELECT rc_start_cooking(%s, %s)', v_item, rc_test.emp('K1')), 'cấp lại', 'EXC-01 chặn nấu', 'RC409');
     PERFORM rc_test.fails(format('SELECT rc_reallocate_item(%s, %s)', v_item, rc_test.emp('K1')), 'Thiếu nguyên liệu',
                           'EXC-01 chưa có lô thay thế', 'RC001');
 
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode)
     VALUES (v_i, rc_test.id('LOT_BO'), 1, 'PREPARE');
     PERFORM rc_issue_stock(v_i, rc_test.emp('M1'));
@@ -683,7 +690,7 @@ DECLARE
     v_raw_bo NUMERIC;
     v_raw_h2 NUMERIC;
 BEGIN
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode)
     VALUES (v_i, rc_test.id('LOT_BO'), 0.5, 'PREPARE') RETURNING id INTO v_line;
     PERFORM rc_issue_stock(v_i, rc_test.emp('M1'));
@@ -727,10 +734,10 @@ DECLARE
     v_c    BIGINT;
     v_i    BIGINT;
 BEGIN
-    INSERT INTO stock_counts (created_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_c;
+    INSERT INTO stock_counts (request_key, request_hash, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_c;
     INSERT INTO stock_count_items (stock_count_id, raw_batch_id, book_quantity, actual_quantity, reason)
     VALUES (v_c, rc_test.id('LOT_BO'), v_book, v_book - 0.1, 'Hao hụt cân');
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode)
     VALUES (v_i, rc_test.id('LOT_BO'), 0.2, 'DIRECT');
     PERFORM rc_issue_stock(v_i, rc_test.emp('M1'));
@@ -766,11 +773,11 @@ BEGIN
     INSERT INTO ingredients (name, base_unit, min_quantity, is_expiry_tracked) VALUES ('Trứng', 'quả', 0, false);
     INSERT INTO kitchen_ingredient_types (raw_ingredient_id, name, handling_type, minimum_quantity)
     VALUES (rc_test.ing('Trứng'), 'Trứng', 'DIRECT', 0);
-    INSERT INTO stock_receipts (supplier_name, created_by_id) VALUES ('NCC trứng', rc_test.emp('M1')) RETURNING id INTO v_r;
+    INSERT INTO stock_receipts (request_key, request_hash, supplier_name, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), 'NCC trứng', rc_test.emp('M1')) RETURNING id INTO v_r;
     INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor, unit_price_per_input_unit)
     VALUES (v_r, rc_test.ing('Trứng'), 80, 'quả', 1, 3000);
     PERFORM rc_confirm_receipt(v_r, rc_test.emp('M1'));
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode)
     SELECT v_i, b.id, 80, 'DIRECT' FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id
      WHERE s.stock_receipt_id = v_r;
@@ -822,10 +829,13 @@ BEGIN
     PERFORM rc_test.ok(rc_test.kr('KB_EGG') = 0, 'QĐ-1 hủy giải phóng phần giữ');
     PERFORM rc_close_empty_session((SELECT table_session_id FROM orders WHERE id = v_o), rc_test.emp('W1'));
 
-    -- quota 0: không còn suất → chặn sớm ở gửi món
+    -- quota 0: không còn suất → QĐ-4 vẫn gửi được, cảnh báo còn 0; Kitchen không nhận được (REJECTED)
     v_o := rc_test.open('Q02');
-    PERFORM rc_test.fails(format('SELECT rc_submit_batch(%s, %s, ''q2-a'', %L::jsonb)', v_o, rc_test.emp('W1'), rc_test.items(rc_test.dmi('QD-ZERO'), 1)),
-                          'không đủ suất', 'QĐ-1 quota 0 chặn gửi món', 'RC409');
+    a := rc_test.send(v_o, 'q2-a', 'QD-ZERO', 1);
+    PERFORM rc_test.ok((SELECT (w ->> 'remaining')::int = 0 AND (w ->> 'quota_total')::int = 0
+                          FROM jsonb_array_elements(rc_batch_result((SELECT order_batch_id FROM order_items WHERE id = a), false) -> 'warnings') w),
+                       'QĐ-4 quota 0: gửi món kèm cảnh báo còn 0 suất');
+    PERFORM rc_test.ok(rc_accept_item(a, rc_test.emp('K1')) = 'REJECTED', 'QĐ-4 quota 0: Kitchen không nhận được món đã gửi');
     -- kiểm cứng ở nhận món: món đã PENDING rồi quota bị đặt về 0
     UPDATE daily_menu_items SET quota_total = 5 WHERE id = rc_test.dmi('QD-ZERO');
     a := rc_test.send(v_o, 'q2-b', 'QD-ZERO', 1);
@@ -844,8 +854,10 @@ BEGIN
     PERFORM rc_test.ok(rc_accept_item(b, rc_test.emp('K1')) = 'REJECTED', 'QĐ-1 quota còn 1: món sau bị từ chối');
     PERFORM rc_test.ok((SELECT reason FROM order_item_events WHERE order_item_id = b AND to_status = 'REJECTED') LIKE 'Vượt hạn mức%', 'QĐ-1 lý do vượt hạn mức');
     PERFORM rc_test.ok(rc_quota_used(rc_test.dmi('QD-ONE')) = 1, 'QĐ-1 đã chiếm đúng 1 suất');
-    PERFORM rc_test.fails(format('SELECT rc_submit_batch(%s, %s, ''q4-b'', %L::jsonb)', v_o2, rc_test.emp('W1'), rc_test.items(rc_test.dmi('QD-ONE'), 1)),
-                          'còn 0', 'QĐ-1 hết suất chặn gửi thêm', 'RC409');
+    c := rc_test.send(v_o2, 'q4-b', 'QD-ONE', 1);
+    PERFORM rc_test.ok(jsonb_array_length(rc_batch_result((SELECT order_batch_id FROM order_items WHERE id = c), false) -> 'warnings') = 1,
+                       'QĐ-4 hết suất: gửi thêm được, kèm cảnh báo');
+    PERFORM rc_reject_item(c, rc_test.emp('K1'), 'Hết suất trong ngày');
     -- không hạ quota dưới số đã chiếm; hạ đúng bằng số đã chiếm hoặc nâng/bỏ giới hạn thì được
     PERFORM rc_test.fails(format('UPDATE daily_menu_items SET quota_total = 0 WHERE id = %s', rc_test.dmi('QD-ONE')),
                           'thấp hơn số suất đã nhận', 'QĐ-1 không hạ quota dưới số đã chiếm', 'RC409');
@@ -990,8 +1002,8 @@ BEGIN
     PERFORM rc_test.fails(format('SELECT rc_cancel_item_exception(%s, %s, ''muộn'')', r, rc_test.emp('M1')), 'đã CLOSED', 'QĐ-2 không hủy ngoại lệ sau khi hóa đơn PAID', 'RC409');
 END $$;
 
--- QĐ-2 ↔ QĐ-3: hủy ngoại lệ hết món đã phục vụ khi hóa đơn còn DRAFT (0 đồng) → phiên không còn nghĩa vụ nhưng đã có hóa đơn,
--- rc_close_empty_session từ chối; Manager đóng bằng rc_abandon_session: đơn CANCELLED, không UNCOLLECTED, không payments
+-- QĐ-2 ↔ QĐ-3 ↔ QĐ-MT: hủy ngoại lệ hết món đã phục vụ khi hóa đơn còn DRAFT (0 đồng) → phiên không còn nghĩa vụ nhưng đã
+-- có hóa đơn: rc_close_empty_session và chốt hóa đơn đều từ chối; Manager đóng dứt điểm — hóa đơn WAIVED 0 đồng, không DRAFT treo
 DO $$
 DECLARE
     v_o    BIGINT;
@@ -1009,13 +1021,18 @@ BEGIN
     PERFORM rc_test.ok((SELECT status = 'DRAFT' AND total = 0 FROM invoices WHERE id = v_inv), 'QĐ-2/3 hóa đơn DRAFT 0 đồng sau khi miễn phí toàn bộ');
     PERFORM rc_test.fails(format('SELECT rc_close_empty_session(%s, %s)', v_s, rc_test.emp('W1')), 'đã có hóa đơn', 'QĐ-2/3 phiên đã có hóa đơn: không đóng trống', 'RC409');
     PERFORM rc_test.fails(format('SELECT rc_checkout_invoice(%s, %s)', v_o, rc_test.emp('C1')), 'không có món phải thu', 'QĐ-2/3 không chốt hóa đơn 0 đồng', 'RC409');
-    PERFORM rc_test.ok(rc_abandon_session(v_s, rc_test.emp('M1'), 'Miễn phí toàn bộ, khách rời bàn') IS NULL, 'QĐ-2/3 không còn món phải thu: trả NULL');
-    PERFORM rc_test.ok((SELECT status FROM orders WHERE id = v_o) = 'CANCELLED'
-                       AND (SELECT status FROM invoices WHERE id = v_inv) = 'DRAFT'
+    PERFORM rc_test.fails(format('SELECT rc_waive_invoice(%s, %s, ''x'')', v_o, rc_test.emp('C1')), 'không có vai trò MANAGER', 'QĐ-MT Cashier không đóng hóa đơn 0 đồng', 'RC403');
+    PERFORM rc_test.ok(rc_abandon_session(v_s, rc_test.emp('M1'), 'Miễn phí toàn bộ, khách rời bàn') = v_inv, 'QĐ-MT bỏ về khi hóa đơn 0 đồng: trả id hóa đơn');
+    PERFORM rc_test.ok((SELECT status FROM orders WHERE id = v_o) = 'CLOSED'
+                       AND (SELECT status = 'WAIVED' AND total = 0 AND waived_by_id = rc_test.emp('M1') AND uncollected_at IS NULL
+                              FROM invoices WHERE id = v_inv)
                        AND NOT EXISTS (SELECT 1 FROM payments WHERE invoice_id = v_inv)
                        AND (SELECT status FROM table_sessions WHERE id = v_s) = 'CLOSED'
                        AND (SELECT status FROM dining_tables WHERE code = 'X03') = 'AVAILABLE',
-                       'QĐ-2/3 đơn CANCELLED, hóa đơn DRAFT không thành nợ, không payments, bàn trống');
+                       'QĐ-MT hóa đơn 0 đồng đóng WAIVED (không UNCOLLECTED, không payments), đơn CLOSED, bàn trống');
+    PERFORM rc_test.ok(NOT EXISTS (SELECT 1 FROM invoices i JOIN orders o ON o.id = i.order_id
+                                    WHERE o.status <> 'OPEN' AND i.status IN ('DRAFT', 'PAYMENT_PENDING')),
+                       'QĐ-MT không còn hóa đơn DRAFT/PAYMENT_PENDING của đơn đã kết thúc');
 END $$;
 
 -- ---------------------------------------------------------------------
@@ -1334,7 +1351,7 @@ BEGIN
     PERFORM rc_test.fails('UPDATE dining_tables SET status = ''BROKEN'' WHERE code = ''B01''', 'ck_dining_tables_status', 'CON CHECK miền trạng thái bàn', '23514');
     PERFORM rc_test.fails('INSERT INTO order_items (order_batch_id, daily_menu_item_id, quantity, item_name_snapshot, unit_price) SELECT order_batch_id, daily_menu_item_id, 0, ''x'', 1 FROM order_items LIMIT 1',
                           'ck_order_items_quantity_positive', 'CON CHECK số lượng món 0', '23514');
-    INSERT INTO stock_receipts (created_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_rc;
+    INSERT INTO stock_receipts (request_key, request_hash, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_rc;
     PERFORM rc_test.fails(format('INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor, unit_price_per_input_unit) VALUES (%s, %s, 1, ''kg'', 0, 1)', v_rc, rc_test.ing('Hành tây')),
                           'ck_stock_receipt_items_conversion_factor_positive', 'CON CHECK hệ số quy đổi 0', '23514');
     PERFORM rc_test.fails(format('INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor, unit_price_per_input_unit) VALUES (%s, %s, -1, ''kg'', 1, 1)', v_rc, rc_test.ing('Hành tây')),
@@ -1386,7 +1403,7 @@ BEGIN
     -- 2. kho bếp đang có phần giữ: kiểm kê / hủy hàng không được hạ dưới phần đang giữ
     SELECT quantity_on_hand, reserved_quantity INTO v_on, v_res FROM kitchen_batches WHERE id = v_kb;
     PERFORM rc_test.ok(v_res >= 2, 'FNC kho trứng đang giữ cho món vừa nhận');
-    INSERT INTO stock_counts (created_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_c;
+    INSERT INTO stock_counts (request_key, request_hash, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_c;
     INSERT INTO stock_count_items (stock_count_id, kitchen_batch_id, book_quantity, actual_quantity, reason)
     VALUES (v_c, v_kb, v_on, v_res - 1, 'Đếm thiếu');
     PERFORM rc_test.fails(format('SELECT rc_confirm_count(%s, %s)', v_c, rc_test.emp('M1')), 'nhỏ hơn lượng đang giữ',
@@ -1406,14 +1423,14 @@ BEGIN
 
     -- 3. RAW → bàn giao PREPARE → WIP: phiếu xuất rỗng / chưa xuất / thiếu lý do; kiểm kê và hủy hàng WIP + RAW
     INSERT INTO ingredients (name, base_unit, min_quantity, is_expiry_tracked) VALUES ('Muối', 'kg', 0, false);
-    INSERT INTO stock_receipts (supplier_name, created_by_id) VALUES ('NCC muối', rc_test.emp('M1')) RETURNING id INTO v_r;
+    INSERT INTO stock_receipts (request_key, request_hash, supplier_name, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), 'NCC muối', rc_test.emp('M1')) RETURNING id INTO v_r;
     INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor, unit_price_per_input_unit)
     VALUES (v_r, rc_test.ing('Muối'), 10, 'kg', 1, 1000);
     PERFORM rc_confirm_receipt(v_r, rc_test.emp('M1'));
     SELECT b.id INTO v_lot FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id
      WHERE s.stock_receipt_id = v_r;
     PERFORM rc_test.put('LOT_MUOI', v_lot);
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     PERFORM rc_test.fails(format('SELECT rc_issue_stock(%s, %s)', v_i, rc_test.emp('M1')), 'rỗng', 'FNC xuất kho phiếu rỗng', 'RC422');
     PERFORM rc_test.fails(format('SELECT rc_receive_issue(%s, %s)', v_i, rc_test.emp('K1')), 'không phải ISSUED', 'FNC nhận phiếu chưa xuất', 'RC409');
     PERFORM rc_test.fails(format('SELECT rc_receive_issue(%s, %s)', v_ghost, rc_test.emp('K1')), 'không tồn tại', 'FNC nhận phiếu không tồn tại', 'RC422');
@@ -1426,7 +1443,7 @@ BEGIN
     PERFORM rc_test.ok(rc_test.raw('LOT_MUOI') = 6 AND (SELECT wip_remaining_quantity FROM stock_issue_items WHERE id = v_line) = 4,
                        'FNC xuất rồi nhận: RAW −4, WIP +4');
 
-    INSERT INTO stock_counts (created_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_c;
+    INSERT INTO stock_counts (request_key, request_hash, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_c;
     PERFORM rc_test.fails(format('SELECT rc_confirm_count(%s, %s)', v_c, rc_test.emp('M1')), 'rỗng', 'FNC kiểm kê phiếu rỗng', 'RC422');
     PERFORM rc_test.fails(format('SELECT rc_confirm_count(%s, %s)', v_ghost, rc_test.emp('M1')), 'không tồn tại', 'FNC kiểm kê không tồn tại', 'RC422');
     INSERT INTO stock_count_items (stock_count_id, wip_issue_item_id, book_quantity, actual_quantity, reason) VALUES (v_c, v_line, 4, 3.5, 'Rơi vãi');
@@ -1451,7 +1468,7 @@ BEGIN
                        'FNC hủy hàng RAW và WIP');
 
     -- 4. phiếu nhập, lô RAW, bàn, đối soát, yêu cầu thanh toán: đầu vào sai
-    INSERT INTO stock_receipts (created_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_r;
+    INSERT INTO stock_receipts (request_key, request_hash, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_r;
     PERFORM rc_test.fails(format('SELECT rc_confirm_receipt(%s, %s)', v_r, rc_test.emp('M1')), 'rỗng', 'FNC nhập kho phiếu rỗng', 'RC422');
     PERFORM rc_test.fails(format('SELECT rc_confirm_receipt(%s, %s)', v_ghost, rc_test.emp('M1')), 'không tồn tại', 'FNC nhập kho không tồn tại', 'RC422');
     UPDATE ingredients SET is_active = false WHERE name = 'Muối';
@@ -1459,7 +1476,7 @@ BEGIN
     VALUES (v_r, rc_test.ing('Muối'), 1, 'kg', 1, 1000);
     PERFORM rc_test.fails(format('SELECT rc_confirm_receipt(%s, %s)', v_r, rc_test.emp('M1')), 'ngừng sử dụng', 'FNC nhập nguyên liệu đã ngừng sử dụng', 'RC422');
     UPDATE ingredients SET is_active = true WHERE name = 'Muối';
-    PERFORM rc_test.fails(format('SELECT rc_mark_batch_unusable(''BEP'', %s, %s, ''x'')', v_lot, rc_test.emp('K1')), 'RAW hoặc KITCHEN', 'FNC đánh dấu lô sai loại', 'RC422');
+    PERFORM rc_test.fails(format('SELECT rc_mark_batch_unusable(''BEP'', %s, %s, ''x'')', v_lot, rc_test.emp('M1')), 'RAW hoặc KITCHEN', 'FNC đánh dấu lô sai loại', 'RC422');
     PERFORM rc_test.fails(format('SELECT rc_mark_batch_unusable(''RAW'', %s, %s, ''x'')', v_ghost, rc_test.emp('M1')), 'không tồn tại hoặc đã đánh dấu', 'FNC đánh dấu lô không tồn tại', 'RC409');
     PERFORM rc_test.ok(rc_mark_batch_unusable('RAW', v_lot, rc_test.emp('M1'), 'Ẩm mốc') = 0, 'FNC đánh dấu lô RAW không dùng được');
     PERFORM rc_test.fails(format('SELECT rc_mark_batch_unusable(''RAW'', %s, %s, ''lần 2'')', v_lot, rc_test.emp('M1')), 'đã đánh dấu', 'FNC đánh dấu lô hai lần', 'RC409');
@@ -1496,7 +1513,7 @@ DECLARE
     v_item3 BIGINT;
 BEGIN
     INSERT INTO ingredients (name, base_unit, min_quantity, is_expiry_tracked) VALUES ('Tiêu', 'kg', 0, true);
-    INSERT INTO stock_receipts (supplier_name, created_by_id) VALUES ('NCC tiêu', rc_test.emp('M1')) RETURNING id INTO v_r;
+    INSERT INTO stock_receipts (request_key, request_hash, supplier_name, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), 'NCC tiêu', rc_test.emp('M1')) RETURNING id INTO v_r;
     INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor,
                                      unit_price_per_input_unit, lot_code, expiry_date)
     VALUES (v_r, rc_test.ing('Tiêu'), 5, 'kg', 1, 1000, 'T-BAD', rc_business_date(now()) + 30),
@@ -1507,7 +1524,7 @@ BEGIN
     SELECT b.id INTO v_old FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id
      WHERE s.stock_receipt_id = v_r AND s.lot_code = 'T-OLD';
 
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) VALUES (v_i, v_bad, 1, 'PREPARE');
     PERFORM rc_mark_batch_unusable('RAW', v_bad, rc_test.emp('M1'), 'Ẩm mốc');
     PERFORM rc_test.fails(format('SELECT rc_issue_stock(%s, %s)', v_i, rc_test.emp('M1')), 'không dùng được hoặc đã hết hạn',
@@ -1516,7 +1533,7 @@ BEGIN
     ALTER TABLE stock_receipt_items DISABLE TRIGGER trg_stock_receipt_items_lines;
     UPDATE stock_receipt_items SET expiry_date = rc_business_date(now()) - 1 WHERE lot_code = 'T-OLD';
     ALTER TABLE stock_receipt_items ENABLE TRIGGER trg_stock_receipt_items_lines;
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) VALUES (v_i, v_old, 1, 'PREPARE');
     PERFORM rc_test.fails(format('SELECT rc_issue_stock(%s, %s)', v_i, rc_test.emp('M1')), 'không dùng được hoặc đã hết hạn',
                           'FNC-EXP không xuất từ lô RAW đã hết hạn', 'RC409');
@@ -1543,7 +1560,7 @@ BEGIN
     UPDATE kitchen_batches SET usable_until = v_until WHERE id = v_kb;
     -- lô bếp bị đánh dấu không dùng được (còn tồn): không cấp cho món mới; món đang giữ bị bật cờ ngoại lệ
     v_item3 := rc_test.send(v_o, 'f02-3', 'QD-NULL', 1);
-    PERFORM rc_test.ok(rc_mark_batch_unusable('KITCHEN', v_kb, rc_test.emp('K1'), 'Hỏng tủ mát') >= 1, 'FNC-EXP đánh dấu lô bếp: bật cờ cho món đang giữ');
+    PERFORM rc_test.ok(rc_mark_batch_unusable('KITCHEN', v_kb, rc_test.emp('M1'), 'Hỏng tủ mát') >= 1, 'FNC-EXP đánh dấu lô bếp: bật cờ cho món đang giữ');
     PERFORM rc_test.ok(rc_accept_item(v_item3, rc_test.emp('K1')) = 'REJECTED', 'FNC-EXP lô bếp không dùng được không được cấp cho món mới');
     PERFORM rc_cancel_item(v_item2, rc_test.emp('W1'), 'Dọn ca kiểm thử');
     PERFORM rc_close_empty_session((SELECT table_session_id FROM orders WHERE id = v_o), rc_test.emp('W1'));
@@ -1557,7 +1574,7 @@ CREATE FUNCTION rc_test.issue_one(p_lot BIGINT, p_qty NUMERIC) RETURNS BIGINT LA
 DECLARE
     v_i BIGINT;
 BEGIN
-    INSERT INTO stock_issues (issued_by_id) VALUES (rc_test.emp('M1')) RETURNING id INTO v_i;
+    INSERT INTO stock_issues (request_key, request_hash, issued_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), rc_test.emp('M1')) RETURNING id INTO v_i;
     INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) VALUES (v_i, p_lot, p_qty, 'PREPARE');
     RETURN v_i;
 END $$;
@@ -1570,7 +1587,7 @@ DECLARE
     v_r BIGINT;
 BEGIN
     INSERT INTO ingredients (name, base_unit, min_quantity, is_expiry_tracked) VALUES ('Dầu ăn', 'lít', 0, false);
-    INSERT INTO stock_receipts (supplier_name, created_by_id) VALUES ('NCC dầu', rc_test.emp('M1')) RETURNING id INTO v_r;
+    INSERT INTO stock_receipts (request_key, request_hash, supplier_name, created_by_id) VALUES (gen_random_uuid()::text, repeat('0', 64), 'NCC dầu', rc_test.emp('M1')) RETURNING id INTO v_r;
     INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor,
                                      unit_price_per_input_unit, lot_code, expiry_date)
     VALUES (v_r, rc_test.ing('Dầu ăn'), 3, 'lít', 1, 1000, 'DAU-N1', NULL),
@@ -1586,6 +1603,384 @@ BEGIN
     PERFORM rc_issue_stock(rc_test.issue_one(rc_test.lot('DAU-N1'), 3), rc_test.emp('M1'));
     PERFORM rc_issue_stock(rc_test.issue_one(rc_test.lot('DAU-N2'), 3), rc_test.emp('M1'));
     PERFORM rc_test.ok(rc_test.raw_by_lot('DAU-N1') = 0 AND rc_test.raw_by_lot('DAU-N2') = 0, 'FNC-FEFO xuất hết theo đúng thứ tự');
+END $$;
+
+-- =====================================================================
+-- VÒNG ĐÓNG BĂNG THIẾT KẾ (FZ): 7 chính sách chốt cuối — QĐ-ID, QĐ-5, QĐ-4, QĐ-MT, QĐ-3, QĐ-NG, QĐ-BM
+-- =====================================================================
+-- QĐ-ID: chứng từ nhập / xuất / kiểm kê idempotent theo request_key; nền dữ liệu FZ (Đậu hũ DIRECT, 20 miếng)
+DO $$
+DECLARE
+    v_p    JSONB;
+    v_r    BIGINT;
+    v_r2   BIGINT;
+    v_lot  BIGINT;
+    v_i    BIGINT;
+    v_c    BIGINT;
+    v_kb   BIGINT;
+    v_item BIGINT;
+    v_rec  BIGINT;
+    k      RECORD;
+BEGIN
+    INSERT INTO ingredients (name, base_unit, is_expiry_tracked) VALUES ('Đậu hũ', 'miếng', false);
+    INSERT INTO kitchen_ingredient_types (raw_ingredient_id, name, handling_type) VALUES (rc_test.ing('Đậu hũ'), 'Đậu hũ', 'DIRECT');
+    v_p := jsonb_build_object('supplier_name', 'NCC đậu', 'items', jsonb_build_array(jsonb_build_object(
+               'ingredient_id', rc_test.ing('Đậu hũ'), 'input_quantity', 20, 'input_unit', 'miếng',
+               'conversion_factor', 1, 'unit_price_per_input_unit', 4000)));
+    v_r := rc_create_stock_receipt(rc_test.emp('M1'), 'fz-rcp-1', v_p);
+    -- cùng nội dung, khác thứ tự khóa JSON → cùng payload
+    v_r2 := rc_create_stock_receipt(rc_test.emp('M1'), 'fz-rcp-1', (v_p::text)::jsonb || jsonb_build_object('supplier_name', 'NCC đậu'));
+    PERFORM rc_test.ok(v_r = v_r2 AND (SELECT count(*) FROM stock_receipts WHERE request_key = 'fz-rcp-1') = 1
+                       AND (SELECT count(*) FROM stock_receipt_items WHERE stock_receipt_id = v_r) = 1,
+                       'QĐ-ID nhập: gửi lặp cùng khóa + cùng payload trả đúng phiếu cũ, không tạo nháp thứ hai');
+    PERFORM rc_test.fails(format('SELECT rc_create_stock_receipt(%s, ''fz-rcp-1'', %L::jsonb)', rc_test.emp('M1'),
+                                 jsonb_set(v_p, '{items,0,input_quantity}', '21')),
+                          'khác nội dung', 'QĐ-ID nhập: cùng khóa khác payload bị từ chối', 'RC409');
+    v_r2 := rc_create_stock_receipt(rc_test.emp('M1'), 'fz-rcp-2', v_p);
+    PERFORM rc_test.ok(v_r2 <> v_r, 'QĐ-ID nhập: hai yêu cầu nghiệp vụ (hai khóa) tạo hai chứng từ');
+    DELETE FROM stock_receipt_items WHERE stock_receipt_id = v_r2;
+    DELETE FROM stock_receipts WHERE id = v_r2;                                       -- nháp bỏ đi: xóa được khi DRAFT
+    PERFORM rc_test.fails(format('SELECT rc_create_stock_receipt(%s, NULL, %L::jsonb)', rc_test.emp('M1'), v_p),
+                          'request_key bắt buộc', 'QĐ-ID thiếu request_key', 'RC422');
+    PERFORM rc_test.fails(format('SELECT rc_create_stock_receipt(%s, ''fz-rcp-x'', ''{"items": []}''::jsonb)', rc_test.emp('M1')),
+                          'không rỗng', 'QĐ-ID phiếu rỗng', 'RC422');
+    PERFORM rc_test.fails(format('SELECT rc_create_stock_receipt(%s, ''fz-rcp-x'', %L::jsonb)', rc_test.emp('W1'), v_p),
+                          'không có vai trò MANAGER', 'QĐ-ID Waiter không lập phiếu nhập', 'RC403');
+    -- xác nhận idempotent riêng: lần hai bị chặn, sổ kho không ghi trùng; gửi lại yêu cầu tạo sau khi xác nhận vẫn trả phiếu cũ
+    PERFORM rc_confirm_receipt(v_r, rc_test.emp('M1'));
+    PERFORM rc_test.fails(format('SELECT rc_confirm_receipt(%s, %s)', v_r, rc_test.emp('M1')), 'không phải DRAFT', 'QĐ-ID xác nhận nhập lần hai', 'RC409');
+    SELECT b.id INTO v_lot FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id WHERE s.stock_receipt_id = v_r;
+    PERFORM rc_test.ok((SELECT count(*) FROM stock_movements WHERE raw_batch_id = v_lot) = 1
+                       AND rc_create_stock_receipt(rc_test.emp('M1'), 'fz-rcp-1', v_p) = v_r,
+                       'QĐ-ID nhập: một bút toán RECEIPT; gửi lại sau xác nhận vẫn trả phiếu cũ');
+    -- xuất kho
+    v_p := jsonb_build_object('items', jsonb_build_array(jsonb_build_object('inventory_batch_id', v_lot, 'quantity', 20, 'fulfillment_mode', 'DIRECT')));
+    v_i := rc_create_stock_issue(rc_test.emp('M1'), 'fz-iss-1', v_p);
+    PERFORM rc_test.ok(rc_create_stock_issue(rc_test.emp('M1'), 'fz-iss-1', v_p) = v_i
+                       AND (SELECT count(*) FROM stock_issues WHERE request_key = 'fz-iss-1') = 1, 'QĐ-ID xuất: gửi lặp trả phiếu cũ');
+    PERFORM rc_test.fails(format('SELECT rc_create_stock_issue(%s, ''fz-iss-1'', %L::jsonb)', rc_test.emp('M1'),
+                                 jsonb_set(v_p, '{items,0,quantity}', '19')),
+                          'khác nội dung', 'QĐ-ID xuất: cùng khóa khác payload', 'RC409');
+    -- chuyển trạng thái trực tiếp không có bút toán → bị chặn (không tạo tồn bếp "từ không khí")
+    PERFORM rc_test.fails(format('UPDATE stock_issues SET status = ''ISSUED'', issued_at = now() WHERE id = %s', v_i),
+                          'thiếu bút toán', 'GRD-FZ phiếu xuất ISSUED trực tiếp không trừ RAW bị chặn', 'RC409');
+    PERFORM rc_issue_stock(v_i, rc_test.emp('M1'));
+    PERFORM rc_test.fails(format('UPDATE stock_issues SET status = ''RECEIVED'', received_at = now(), received_by_id = %s WHERE id = %s', rc_test.emp('K1'), v_i),
+                          'thiếu bút toán', 'GRD-FZ phiếu xuất RECEIVED trực tiếp không nhập bếp bị chặn', 'RC409');
+    PERFORM rc_receive_issue(v_i, rc_test.emp('K1'));
+    SELECT id INTO v_kb FROM kitchen_batches WHERE direct_issue_item_id = (SELECT id FROM stock_issue_items WHERE stock_issue_id = v_i);
+    PERFORM rc_test.put('KB_TOFU', v_kb);
+    -- kiểm kê: book_quantity chụp từ sổ lúc tạo
+    v_p := jsonb_build_object('items', jsonb_build_array(jsonb_build_object('kitchen_batch_id', v_kb, 'actual_quantity', 20)));
+    v_c := rc_create_stock_count(rc_test.emp('M1'), 'fz-cnt-1', v_p);
+    PERFORM rc_test.ok(rc_create_stock_count(rc_test.emp('M1'), 'fz-cnt-1', v_p) = v_c
+                       AND (SELECT book_quantity FROM stock_count_items WHERE stock_count_id = v_c) = 20, 'QĐ-ID kiểm kê: gửi lặp trả phiếu cũ, số sổ chụp đúng');
+    PERFORM rc_test.fails(format('SELECT rc_create_stock_count(%s, ''fz-cnt-1'', %L::jsonb)', rc_test.emp('M1'),
+                                 jsonb_set(v_p, '{items,0,actual_quantity}', '18')),
+                          'khác nội dung', 'QĐ-ID kiểm kê: cùng khóa khác payload', 'RC409');
+    PERFORM rc_confirm_count(v_c, rc_test.emp('M1'));
+    v_c := rc_create_stock_count(rc_test.emp('M1'), 'fz-cnt-2', jsonb_build_object('items', jsonb_build_array(
+               jsonb_build_object('kitchen_batch_id', v_kb, 'actual_quantity', 19, 'reason', 'vỡ'))));
+    PERFORM rc_test.fails(format('UPDATE stock_counts SET status = ''CONFIRMED'', confirmed_by_id = %s, confirmed_at = now() WHERE id = %s', rc_test.emp('M1'), v_c),
+                          'thiếu bút toán', 'GRD-FZ kiểm kê CONFIRMED trực tiếp không ghi chênh lệch bị chặn', 'RC409');
+    DELETE FROM stock_count_items WHERE stock_count_id = v_c;
+    DELETE FROM stock_counts WHERE id = v_c;
+    PERFORM rc_test.ok(rc_test.kb('KB_TOFU') = 20 AND (SELECT count(*) FROM stock_movements WHERE kitchen_batch_id = v_kb) = 1,
+                       'QĐ-ID không biến động tồn trùng');
+    -- món dùng 1 miếng đậu/suất: FZ-Q5 (quota 5), FZ-NOLIM (không giới hạn), FZ-W (40 000), FZ-FREE (0 đồng)
+    FOR k IN SELECT * FROM (VALUES ('FZ-Q5', 5, 25000), ('FZ-NOLIM', NULL, 25000), ('FZ-W', NULL, 40000), ('FZ-FREE', NULL, 0))
+                       AS t(name, quota, price) LOOP
+        INSERT INTO menu_items (menu_category_id, name, price) VALUES (rc_test.id('CAT_MAIN'), k.name, k.price) RETURNING id INTO v_item;
+        INSERT INTO recipes (menu_item_id, version, is_current) VALUES (v_item, 1, true) RETURNING id INTO v_rec;
+        INSERT INTO recipe_ingredients (recipe_id, kitchen_ingredient_type_id, quantity_per_serving) VALUES (v_rec, rc_test.kt('Đậu hũ'), 1);
+        INSERT INTO daily_menu_items (daily_menu_id, menu_item_id, recipe_id, quota_total)
+        VALUES (rc_test.id('MENU_TODAY'), v_item, v_rec, k.quota);
+    END LOOP;
+END $$;
+
+-- QĐ-5: không hủy một phần — hủy cả dòng, gửi dòng mới với số lượng thay thế; lịch sử giữ nguyên; không hoàn/trừ hai lần
+DO $$
+DECLARE
+    v_o BIGINT;
+    a   BIGINT;
+    b   BIGINT;
+BEGIN
+    v_o := rc_test.open('FZ1');
+    a := rc_test.send(v_o, 'fz5-a', 'FZ-Q5', 3);
+    PERFORM rc_test.ok(rc_accept_item(a, rc_test.emp('K1')) = 'ACCEPTED', 'QĐ-5 nhận 3 suất');
+    PERFORM rc_test.ok(rc_quota_used(rc_test.dmi('FZ-Q5')) = 3 AND rc_test.kr('KB_TOFU') = 3, 'QĐ-5 nhận 3 suất: chiếm 3 suất, giữ 3 miếng');
+    PERFORM rc_test.fails(format('UPDATE order_items SET quantity = 2 WHERE id = %s', a), 'snapshot bất biến', 'QĐ-5 không sửa số lượng dòng (không hủy một phần)', 'RC409');
+    PERFORM rc_cancel_item(a, rc_test.emp('W1'), 'Khách giảm còn 2 suất');
+    PERFORM rc_test.ok(rc_quota_used(rc_test.dmi('FZ-Q5')) = 0 AND rc_test.kr('KB_TOFU') = 0 AND rc_test.kb('KB_TOFU') = 20,
+                       'QĐ-5 hủy cả dòng trước COOKING: hoàn suất và phần giữ đúng một lần, tồn vật lý không đổi');
+    b := rc_test.send(v_o, 'fz5-b', 'FZ-Q5', 2);
+    PERFORM rc_test.ok(rc_accept_item(b, rc_test.emp('K1')) = 'ACCEPTED', 'QĐ-5 nhận dòng thay thế');
+    PERFORM rc_test.ok(rc_quota_used(rc_test.dmi('FZ-Q5')) = 2 AND rc_test.kr('KB_TOFU') = 2, 'QĐ-5 dòng thay thế 2 suất là dòng mới');
+    PERFORM rc_test.ok(b <> a AND rc_test.state(a) = 'CANCELLED'
+                       AND (SELECT string_agg(to_status, '>' ORDER BY id) FROM order_item_events WHERE order_item_id = a) = 'PENDING>ACCEPTED>CANCELLED',
+                       'QĐ-5 dòng cũ giữ nguyên lịch sử PENDING>ACCEPTED>CANCELLED');
+    PERFORM rc_test.fails(format('SELECT rc_accept_item(%s, %s)', a, rc_test.emp('K1')), 'không phải PENDING', 'QĐ-5 không dùng lại dòng CANCELLED', 'RC409');
+    PERFORM rc_test.fails(format('UPDATE order_items SET status = ''PENDING'' WHERE id = %s', a), 'không chuyển', 'QĐ-5 không mở lại dòng CANCELLED trực tiếp', 'RC409');
+    PERFORM rc_test.fails(format('SELECT rc_cancel_item(%s, %s, ''lần 2'')', a, rc_test.emp('W1')), 'không hủy được', 'QĐ-5 hủy lần hai bị chặn', 'RC409');
+    PERFORM rc_test.ok(rc_quota_used(rc_test.dmi('FZ-Q5')) = 2 AND rc_test.kr('KB_TOFU') = 2, 'QĐ-5 hủy lặp không hoàn hai lần');
+    -- sau COOKING: hủy thường bị chặn; Manager hủy ngoại lệ không hoàn nguyên liệu và không hoàn suất
+    PERFORM rc_start_cooking(b, rc_test.emp('K1'));
+    PERFORM rc_test.fails(format('SELECT rc_cancel_item(%s, %s, ''khách đổi'')', b, rc_test.emp('W1')), 'chỉ Manager', 'QĐ-5 sau COOKING không hủy thường', 'RC409');
+    PERFORM rc_cancel_item_exception(b, rc_test.emp('M1'), 'Khách đổi ý khi món đang nấu');
+    PERFORM rc_test.ok(rc_test.kb('KB_TOFU') = 18 AND rc_test.kr('KB_TOFU') = 0 AND rc_quota_used(rc_test.dmi('FZ-Q5')) = 2
+                       AND (SELECT count(*) FROM stock_movements WHERE order_item_id = b) = 1,
+                       'QĐ-5 hủy sau COOKING: không hoàn 2 miếng đã nấu, không hoàn suất, đúng một bút toán COOK');
+    PERFORM rc_close_empty_session((SELECT table_session_id FROM orders WHERE id = v_o), rc_test.emp('W1'));
+END $$;
+
+-- QĐ-4: gửi vượt quota được kèm cảnh báo; Kitchen chỉ nhận khi đủ suất + nguyên liệu; quota NULL vẫn kiểm nguyên liệu
+DO $$
+DECLARE
+    v_o BIGINT;
+    v_r JSONB;
+    a   BIGINT;
+    b   BIGINT;
+BEGIN
+    v_o := rc_test.open('FZ2');
+    v_r := rc_submit_batch(v_o, rc_test.emp('W1'), 'fz4-a', rc_test.items(rc_test.dmi('FZ-Q5'), 4));   -- đã chiếm 2/5
+    a := (SELECT id FROM order_items WHERE order_batch_id = rc_test.batch_id(v_r));
+    PERFORM rc_test.ok(NOT (v_r ->> 'replayed')::boolean AND jsonb_array_length(v_r -> 'warnings') = 1
+                       AND (v_r -> 'warnings' -> 0 ->> 'remaining')::int = 3 AND (v_r -> 'warnings' -> 0 ->> 'order_item_id')::bigint = a,
+                       'QĐ-4 gửi 4 suất khi còn 3: thành công + cảnh báo QUOTA_EXCEEDED (còn 3)');
+    PERFORM rc_test.ok((rc_submit_batch(v_o, rc_test.emp('W1'), 'fz4-a', '[]'::jsonb) ->> 'replayed')::boolean,
+                       'QĐ-4 gửi lặp báo replayed, không ghi thêm');
+    PERFORM rc_test.ok(rc_accept_item(a, rc_test.emp('K1')) = 'REJECTED', 'QĐ-4 Kitchen không nhận vượt quota');
+    PERFORM rc_test.ok(rc_quota_used(rc_test.dmi('FZ-Q5')) = 2 AND rc_test.kr('KB_TOFU') = 0,
+                       'QĐ-4 món bị từ chối không chiếm suất, không giữ nguyên liệu');
+    v_r := rc_submit_batch(v_o, rc_test.emp('W1'), 'fz4-b', rc_test.items(rc_test.dmi('FZ-Q5'), 3));
+    b := (SELECT id FROM order_items WHERE order_batch_id = rc_test.batch_id(v_r));
+    PERFORM rc_test.ok(jsonb_array_length(v_r -> 'warnings') = 0, 'QĐ-4 vừa đủ suất: không cảnh báo');
+    PERFORM rc_test.ok(rc_accept_item(b, rc_test.emp('K1')) = 'ACCEPTED', 'QĐ-4 vừa đủ suất: nhận được');
+    PERFORM rc_test.ok(rc_quota_used(rc_test.dmi('FZ-Q5')) = 5, 'QĐ-4 chiếm 5/5 suất');
+    PERFORM rc_cancel_item(b, rc_test.emp('K1'), 'Bếp hủy trước khi nấu');
+    PERFORM rc_test.ok(rc_quota_used(rc_test.dmi('FZ-Q5')) = 2, 'QĐ-4 hủy trước COOKING hoàn suất đúng một lần');
+    -- quota NULL: không cảnh báo suất nhưng vẫn kiểm nguyên liệu (còn 18 miếng)
+    v_r := rc_submit_batch(v_o, rc_test.emp('W1'), 'fz4-c', rc_test.items(rc_test.dmi('FZ-NOLIM'), 19));
+    a := (SELECT id FROM order_items WHERE order_batch_id = rc_test.batch_id(v_r));
+    PERFORM rc_test.ok(jsonb_array_length(v_r -> 'warnings') = 0, 'QĐ-4 quota NULL: không cảnh báo suất');
+    PERFORM rc_test.ok(rc_accept_item(a, rc_test.emp('K1')) = 'REJECTED', 'QĐ-4 quota NULL: thiếu nguyên liệu vẫn REJECTED');
+    PERFORM rc_test.ok((SELECT reason FROM order_item_events WHERE order_item_id = a AND to_status = 'REJECTED') LIKE 'Thiếu nguyên liệu%',
+                       'QĐ-4 quota NULL: lý do thiếu nguyên liệu');
+    PERFORM rc_close_empty_session((SELECT table_session_id FROM orders WHERE id = v_o), rc_test.emp('W1'));
+END $$;
+
+-- QĐ-MT: miễn thu — chỉ Manager, lý do; không payments, không doanh thu, giữ giá trị; không áp cho hóa đơn PAID; hóa đơn 0 đồng
+DO $$
+DECLARE
+    v_o    BIGINT;
+    v_s    BIGINT;
+    a      BIGINT;
+    v_inv  BIGINT;
+    v_ref  TEXT;
+    v_rev  NUMERIC;
+BEGIN
+    SELECT COALESCE(SUM(amount), 0) INTO v_rev FROM payments;
+    v_o := rc_test.open('FZ3');
+    v_s := (SELECT table_session_id FROM orders WHERE id = v_o);
+    a := rc_test.send(v_o, 'fzw-a', 'FZ-W', 2);
+    PERFORM rc_accept_item(a, rc_test.emp('K1'));
+    PERFORM rc_test.fails(format('SELECT rc_waive_invoice(%s, %s, ''khách quen'')', v_o, rc_test.emp('M1')), 'chưa kết thúc', 'QĐ-MT còn món đang xử lý thì chưa miễn thu', 'RC409');
+    PERFORM rc_start_cooking(a, rc_test.emp('K1'));
+    PERFORM rc_finish_dish(a, rc_test.emp('K1'));
+    PERFORM rc_serve_item(a, rc_test.emp('W1'));
+    v_inv := rc_checkout_invoice(v_o, rc_test.emp('C1'));
+    v_ref := rc_start_qr(v_inv, rc_test.emp('C1'));
+    PERFORM rc_test.fails(format('SELECT rc_waive_invoice(%s, %s, ''x'')', v_o, rc_test.emp('C1')), 'không có vai trò MANAGER', 'QĐ-MT Cashier không miễn thu', 'RC403');
+    PERFORM rc_test.fails(format('SELECT rc_waive_invoice(%s, %s, ''  '')', v_o, rc_test.emp('M1')), 'bắt buộc có lý do', 'QĐ-MT thiếu lý do', 'RC422');
+    PERFORM rc_test.fails(format('UPDATE orders SET status = ''CLOSED'' WHERE id = %s', v_o), 'chỉ đóng sau khi hóa đơn',
+                          'GRD-FZ đóng đơn trực tiếp khi hóa đơn còn PAYMENT_PENDING', 'RC409');
+    PERFORM rc_test.fails(format('UPDATE orders SET status = ''CANCELLED'' WHERE id = %s', v_o), 'đã có hóa đơn',
+                          'GRD-FZ hủy đơn đã có hóa đơn', 'RC409');
+    PERFORM rc_test.fails(format('UPDATE invoices SET status = ''WAIVED'' WHERE id = %s', v_inv), 'ck_invoice_waived_fields',
+                          'QĐ-MT WAIVED thiếu người/lý do/thời điểm bị CHECK chặn', '23514');
+    PERFORM rc_test.ok(rc_waive_invoice(v_o, rc_test.emp('M1'), 'Món ra chậm 40 phút') = v_inv, 'QĐ-MT Manager miễn thu hóa đơn PAYMENT_PENDING');
+    PERFORM rc_test.ok((SELECT status = 'WAIVED' AND total = 80000 AND waived_reason = 'Món ra chậm 40 phút' AND waived_by_id = rc_test.emp('M1')
+                               AND waived_at IS NOT NULL FROM invoices WHERE id = v_inv)
+                       AND (SELECT unit_price = 40000 AND quantity = 2 AND line_total = 80000 FROM invoice_items WHERE invoice_id = v_inv),
+                       'QĐ-MT giữ nguyên giá trị được miễn và snapshot giá bán');
+    PERFORM rc_test.ok(NOT EXISTS (SELECT 1 FROM payments WHERE invoice_id = v_inv)
+                       AND (SELECT status FROM payment_requests WHERE payment_reference = v_ref) = 'CANCELLED'
+                       AND (SELECT status FROM orders WHERE id = v_o) = 'CLOSED' AND (SELECT status FROM table_sessions WHERE id = v_s) = 'CLOSED'
+                       AND (SELECT status FROM dining_tables WHERE code = 'FZ3') = 'AVAILABLE',
+                       'QĐ-MT không payments, yêu cầu QR bị hủy, đơn/phiên đóng, bàn trống');
+    PERFORM rc_test.ok(rc_process_verified_qr('FT-FZ-WAIVED', v_ref, 80000, '{}') = 'AFTER_CANCEL', 'QĐ-MT QR đến sau miễn thu: AFTER_CANCEL');
+    PERFORM rc_test.ok((SELECT status FROM invoices WHERE id = v_inv) = 'WAIVED'
+                       AND (SELECT resolution_status FROM payment_webhook_events WHERE provider_transaction_code = 'FT-FZ-WAIVED') = 'OPEN',
+                       'QĐ-MT QR đến sau miễn thu: lưu sự cố OPEN, không thành PAID');
+    PERFORM rc_test.ok((SELECT COALESCE(SUM(amount), 0) FROM payments) = v_rev, 'QĐ-MT không cộng vào doanh thu thực thu');
+    PERFORM rc_test.fails(format('SELECT rc_waive_invoice(%s, %s, ''lần 2'')', v_o, rc_test.emp('M1')), 'đã WAIVED', 'QĐ-MT miễn thu lần hai', 'RC409');
+    PERFORM rc_test.fails(format('SELECT rc_pay_cash(%s, %s, 100000)', v_inv, rc_test.emp('C1')), 'không chờ thanh toán', 'QĐ-MT không thu tiền hóa đơn đã miễn', 'RC409');
+    PERFORM rc_test.fails(format('UPDATE invoices SET waived_reason = ''sửa'' WHERE id = %s', v_inv), 'bất biến', 'QĐ-MT hóa đơn WAIVED bất biến', 'RC409');
+    -- hóa đơn đã PAID không chuyển WAIVED
+    v_o := rc_test.open('FZ4');
+    a := rc_test.send(v_o, 'fzw-b', 'FZ-W', 1);
+    PERFORM rc_test.serve(a);
+    v_inv := rc_checkout_invoice(v_o, rc_test.emp('C1'));
+    PERFORM rc_pay_cash(v_inv, rc_test.emp('C1'), 40000);
+    PERFORM rc_test.fails(format('SELECT rc_waive_invoice(%s, %s, ''trả lại'')', v_o, rc_test.emp('M1')), 'đã PAID', 'QĐ-MT không miễn thu hóa đơn PAID', 'RC409');
+    PERFORM rc_test.fails(format('UPDATE invoices SET status = ''WAIVED'', waived_reason = ''x'', waived_by_id = %s, waived_at = now() WHERE id = %s', rc_test.emp('M1'), v_inv),
+                          'bất biến', 'QĐ-MT PAID → WAIVED trực tiếp bị chặn', 'RC409');
+    -- món 0 đồng: không chốt được để thu, Manager đóng bằng WAIVED tổng 0
+    v_o := rc_test.open('FZ5');
+    a := rc_test.send(v_o, 'fzw-c', 'FZ-FREE', 1);
+    PERFORM rc_test.serve(a);
+    PERFORM rc_test.fails(format('SELECT rc_checkout_invoice(%s, %s)', v_o, rc_test.emp('C1')), 'tổng 0 đồng', 'QĐ-MT hóa đơn 0 đồng không chờ thu', 'RC422');
+    v_inv := rc_waive_invoice(v_o, rc_test.emp('M1'), 'Món tặng kèm');
+    PERFORM rc_test.ok((SELECT status = 'WAIVED' AND total = 0 FROM invoices WHERE id = v_inv) AND (SELECT status FROM orders WHERE id = v_o) = 'CLOSED',
+                       'QĐ-MT hóa đơn 0 đồng đóng dứt điểm bằng WAIVED');
+    PERFORM rc_test.fails(format('SELECT rc_waive_invoice(%s, %s, ''x'')', rc_test.open('FZ6'), rc_test.emp('M1')),
+                          'không có món phải thu', 'QĐ-MT phiên trống không có gì để miễn: dùng đóng phiên trống', 'RC409');
+    PERFORM rc_close_empty_session((SELECT table_session_id FROM orders o JOIN table_sessions s ON s.id = o.table_session_id
+                                     WHERE s.dining_table_id = rc_test.tbl('FZ6') AND s.status = 'OPEN'), rc_test.emp('W1'));
+END $$;
+
+-- QĐ-3: vòng đời UNCOLLECTED — Manager, lý do; cuối cùng; QR đến muộn chỉ lưu sự cố; không công nợ/thu bù; bàn dùng lại được
+DO $$
+DECLARE
+    v_o    BIGINT;
+    v_s    BIGINT;
+    a      BIGINT;
+    v_inv  BIGINT;
+    v_ref  TEXT;
+BEGIN
+    v_o := rc_test.open('FZ7');
+    v_s := (SELECT table_session_id FROM orders WHERE id = v_o);
+    a := rc_test.send(v_o, 'fz3-a', 'FZ-W', 1);
+    PERFORM rc_test.serve(a);
+    v_inv := rc_checkout_invoice(v_o, rc_test.emp('C1'));
+    v_ref := rc_start_qr(v_inv, rc_test.emp('C1'));
+    PERFORM rc_test.fails(format('SELECT rc_abandon_session(%s, %s, ''bỏ về'')', v_s, rc_test.emp('C1')), 'không có vai trò MANAGER', 'QĐ-3 Cashier không ghi nhận khách bỏ về', 'RC403');
+    PERFORM rc_test.fails(format('SELECT rc_abandon_session(%s, %s, '''')', v_s, rc_test.emp('M1')), 'bắt buộc có lý do', 'QĐ-3 thiếu lý do', 'RC422');
+    PERFORM rc_test.ok(rc_abandon_session(v_s, rc_test.emp('M1'), 'Khách rời quán khi chờ quét QR') = v_inv, 'QĐ-3 ghi nhận khách bỏ về');
+    PERFORM rc_test.ok((SELECT status = 'UNCOLLECTED' AND total = 40000 AND uncollected_by_id = rc_test.emp('M1') AND uncollected_at IS NOT NULL
+                               AND waived_at IS NULL FROM invoices WHERE id = v_inv)
+                       AND NOT EXISTS (SELECT 1 FROM payments WHERE invoice_id = v_inv)
+                       AND (SELECT status FROM payment_requests WHERE payment_reference = v_ref) = 'CANCELLED'
+                       AND (SELECT count(*) FROM invoice_items WHERE invoice_id = v_inv) = 1 AND rc_test.state(a) = 'SERVED',
+                       'QĐ-3 UNCOLLECTED giữ số chưa thu, không payments, không xóa đơn/dòng/lịch sử');
+    PERFORM rc_test.ok(rc_process_verified_qr('FT-FZ-LATE', v_ref, 40000, '{"late": true}') = 'AFTER_CANCEL', 'QĐ-3 QR đến sau bỏ về: AFTER_CANCEL');
+    PERFORM rc_test.ok(rc_process_verified_qr('FT-FZ-LATE', v_ref, 40000, '{"late": true}') = 'AFTER_CANCEL', 'QĐ-3 QR lặp trả kết quả đã lưu');
+    PERFORM rc_test.ok((SELECT status FROM invoices WHERE id = v_inv) = 'UNCOLLECTED'
+                       AND (SELECT resolution_status FROM payment_webhook_events WHERE provider_transaction_code = 'FT-FZ-LATE') = 'OPEN'
+                       AND (SELECT count(*) FROM payment_webhook_events WHERE provider_transaction_code = 'FT-FZ-LATE') = 1,
+                       'QĐ-3 QR đến sau bỏ về: lưu một lần để đối chiếu, không PAID');
+    PERFORM rc_test.fails(format('SELECT rc_pay_cash(%s, %s, 40000)', v_inv, rc_test.emp('C1')), 'không chờ thanh toán', 'QĐ-3 không thu bù trong Core', 'RC409');
+    PERFORM rc_test.fails(format('SELECT rc_reopen_invoice(%s, %s, ''thu bù'')', v_inv, rc_test.emp('C1')), 'không phải PAYMENT_PENDING', 'QĐ-3 không mở lại UNCOLLECTED', 'RC409');
+    PERFORM rc_test.fails(format('SELECT rc_waive_invoice(%s, %s, ''xóa nợ'')', v_o, rc_test.emp('M1')), 'đã UNCOLLECTED', 'QĐ-3 không xóa nợ bằng miễn thu', 'RC409');
+    PERFORM rc_test.fails(format('UPDATE invoices SET status = ''PAID'' WHERE id = %s', v_inv), 'bất biến', 'QĐ-3 UNCOLLECTED là trạng thái cuối', 'RC409');
+    PERFORM rc_test.fails(format('DELETE FROM invoices WHERE id = %s', v_inv), 'không xóa', 'QĐ-3 không xóa hóa đơn', 'RC409');
+    v_o := rc_test.open('FZ7');
+    PERFORM rc_test.ok(v_o IS NOT NULL, 'QĐ-3 bàn được giải phóng, mở phiên mới được');
+    PERFORM rc_close_empty_session((SELECT table_session_id FROM orders WHERE id = v_o), rc_test.emp('W1'));
+END $$;
+
+-- QĐ-NG: ngày kinh doanh 04:00 Asia/Ho_Chi_Minh, không phụ thuộc TimeZone của phiên
+DO $$
+DECLARE
+    tz  TEXT;
+    c   RECORD;
+    v_u TIMESTAMPTZ;
+BEGIN
+    v_u := rc_usable_until(DATE '2026-10-25', NULL);
+    FOREACH tz IN ARRAY ARRAY['UTC', 'Asia/Ho_Chi_Minh', 'America/Los_Angeles', 'Asia/Tokyo', 'Pacific/Kiritimati'] LOOP
+        PERFORM set_config('TimeZone', tz, true);
+        FOR c IN SELECT * FROM (VALUES
+                ('2026-10-25 03:59:59+07', '2026-10-24'), ('2026-10-25 04:00:00+07', '2026-10-25'), ('2026-10-25 04:01:00+07', '2026-10-25'),
+                ('2026-11-01 03:59:59+07', '2026-10-31'), ('2026-11-01 04:00:00+07', '2026-11-01'),
+                ('2027-01-01 03:59:59.999+07', '2026-12-31'), ('2027-01-01 04:00:00+07', '2027-01-01'),
+                ('2028-03-01 03:00:00+07', '2028-02-29'), ('2026-10-24 20:59:59Z', '2026-10-24'), ('2026-10-24 21:00:00Z', '2026-10-25'))
+                AS t(at_text, expect) LOOP
+            PERFORM rc_test.ok(rc_business_date(c.at_text::timestamptz) = c.expect::date,
+                               format('QĐ-NG %s (phiên %s) → ngày kinh doanh %s', c.at_text, tz, c.expect));
+        END LOOP;
+        PERFORM rc_test.ok(rc_usable_until(DATE '2026-10-25', NULL) = v_u AND v_u = '2026-10-26 00:00:00+07'::timestamptz,
+                           format('QĐ-NG hạn dùng theo ngày hạn lô không đổi theo phiên %s', tz));
+    END LOOP;
+    -- chứng từ có business_date (khoản chi, payments) phải khớp quy tắc chung của paid_at, phiên đặt timezone nào cũng vậy
+    PERFORM set_config('TimeZone', 'America/Los_Angeles', true);
+    PERFORM rc_test.fails(format('INSERT INTO operating_expenses (business_date, category, description, amount, payment_method, fund_source,
+                                  recorded_by_id, paid_at, request_key) VALUES (''2026-10-25'', ''OTHER'', ''ca 03:59'', 1, ''CASH'', ''OWNER'', %s,
+                                  ''2026-10-25 03:59:00+07'', ''fz-ng-1'')', rc_test.emp('M1')),
+                          'ngày kinh doanh', 'QĐ-NG khoản chi 03:59 không ghi vào ngày mới', 'RC409');
+    INSERT INTO operating_expenses (business_date, category, description, amount, payment_method, fund_source, recorded_by_id, paid_at, request_key)
+    VALUES ('2026-10-25', 'OTHER', 'ca 04:00', 1, 'CASH', 'OWNER', rc_test.emp('M1'), '2026-10-25 04:00:00+07', 'fz-ng-2');
+    PERFORM rc_test.ok(true, 'QĐ-NG khoản chi 04:00 thuộc ngày mới');
+    PERFORM set_config('TimeZone', 'UTC', true);
+END $$;
+
+-- QĐ-BM (1): mọi hàm có p_actor từ chối vai trò không được phép bằng RC403 trước khi đọc dữ liệu; actor giả/không hoạt động bị chặn
+DO $$
+DECLARE
+    c   RECORD;
+    v_n INT := 0;
+BEGIN
+    FOR c IN SELECT * FROM (VALUES
+            ('rc_open_session(0, %s)', 'K1'), ('rc_close_empty_session(0, %s)', 'C1'),
+            ('rc_submit_batch(0, %s, ''k'', ''[]'')', 'C1'), ('rc_accept_item(0, %s)', 'W1'), ('rc_reject_item(0, %s, ''r'')', 'W1'),
+            ('rc_start_cooking(0, %s)', 'C1'), ('rc_finish_dish(0, %s)', 'W1'), ('rc_serve_item(0, %s)', 'K1'),
+            ('rc_cancel_item(0, %s, ''r'')', 'C1'), ('rc_cancel_item_exception(0, %s, ''r'')', 'K1'),
+            ('rc_mark_batch_unusable(''RAW'', 0, %s, ''r'')', 'K1'), ('rc_reallocate_item(0, %s)', 'W1'),
+            ('rc_checkout_invoice(0, %s)', 'W1'), ('rc_reopen_invoice(0, %s, ''r'')', 'W1'), ('rc_pay_cash(0, %s, 1)', 'W1'),
+            ('rc_start_qr(0, %s)', 'K1'), ('rc_cancel_payment_request(0, %s, ''r'')', 'K1'),
+            ('rc_abandon_session(0, %s, ''r'')', 'C1'), ('rc_waive_invoice(0, %s, ''r'')', 'W1'),
+            ('rc_create_stock_receipt(%s, ''k'', ''{}'')', 'K1'), ('rc_create_stock_issue(%s, ''k'', ''{}'')', 'C1'),
+            ('rc_create_stock_count(%s, ''k'', ''{}'')', 'W1'), ('rc_confirm_receipt(0, %s)', 'K1'), ('rc_issue_stock(0, %s)', 'K1'),
+            ('rc_receive_issue(0, %s)', 'C1'), ('rc_cancel_issue(0, %s, ''r'')', 'K1'), ('rc_confirm_preparation(0, %s)', 'W1'),
+            ('rc_confirm_return(0, %s)', 'K1'), ('rc_confirm_adjustment(0, %s)', 'K1'), ('rc_confirm_count(0, %s)', 'K1'),
+            ('rc_reconcile_cash(CURRENT_DATE, 0, 0, %s)', 'C1')) AS t(call, who) LOOP
+        PERFORM rc_test.fails('SELECT ' || format(c.call, rc_test.emp(c.who)), 'không có vai trò', 'QĐ-BM ' || c.who || ' gọi ' || c.call, 'RC403');
+        v_n := v_n + 1;
+    END LOOP;
+    PERFORM rc_test.ok(v_n = 31, 'QĐ-BM ma trận phủ đủ 31 hàm có p_actor');
+    -- actor giả / NULL / không tồn tại / tài khoản khóa
+    PERFORM rc_test.fails('SELECT rc_open_session(0, NULL)', 'không có vai trò', 'QĐ-BM actor NULL', 'RC403');
+    PERFORM rc_test.fails('SELECT rc_open_session(0, 987654321)', 'không có vai trò', 'QĐ-BM actor không tồn tại', 'RC403');
+    UPDATE accounts SET account_status = 'LOCKED' WHERE employee_id = rc_test.emp('W1');
+    PERFORM rc_test.fails(format('SELECT rc_open_session(0, %s)', rc_test.emp('W1')), 'không có vai trò', 'QĐ-BM tài khoản bị khóa không thao tác được', 'RC403');
+    UPDATE accounts SET account_status = 'ACTIVE' WHERE employee_id = rc_test.emp('W1');
+    -- Manager làm được thao tác vận hành (giám sát); không hàm nào cho phép vai trò ngoài ma trận
+    INSERT INTO dining_tables (code, capacity) VALUES ('FZ9', 2);
+    PERFORM rc_close_empty_session(rc_open_session(rc_test.tbl('FZ9'), rc_test.emp('M1')), rc_test.emp('M1'));
+    PERFORM rc_test.ok((SELECT status FROM dining_tables WHERE code = 'FZ9') = 'AVAILABLE', 'QĐ-BM Manager mở/đóng phiên được');
+END $$;
+
+-- III: trigger hoãn tới COMMIT — nhiều thay đổi hợp lệ trên cùng lô trong một transaction không báo lỗi giả;
+-- sai lệch cố ý (đặt giữ, sổ kho, lịch sử) bị bắt
+DO $$
+DECLARE
+    v_o  BIGINT;
+    a    BIGINT;
+    b    BIGINT;
+    c    BIGINT;
+    v_kb NUMERIC := rc_test.kb('KB_TOFU');
+BEGIN
+    v_o := rc_test.open('FZ8');
+    a := rc_test.send(v_o, 'fzd-a', 'FZ-NOLIM', 2);
+    b := rc_test.send(v_o, 'fzd-b', 'FZ-NOLIM', 3);
+    c := rc_test.send(v_o, 'fzd-c', 'FZ-NOLIM', 1);
+    PERFORM rc_accept_item(a, rc_test.emp('K1'));
+    PERFORM rc_accept_item(b, rc_test.emp('K1'));
+    PERFORM rc_start_cooking(a, rc_test.emp('K1'));
+    PERFORM rc_cancel_item(b, rc_test.emp('W1'), 'Khách hủy');
+    SET CONSTRAINTS ALL IMMEDIATE;                   -- ép kiểm 6 trigger hoãn ngay: phải đạt
+    SET CONSTRAINTS ALL DEFERRED;
+    PERFORM rc_test.ok(rc_test.kb('KB_TOFU') = v_kb - 2 AND rc_test.kr('KB_TOFU') = 0,
+                       'III nhiều thay đổi trên một lô trong cùng transaction: số dư cuối đúng, không lỗi giả');
+    PERFORM rc_test.fails_commit(format('INSERT INTO stock_reservations (order_item_id, kitchen_batch_id, quantity) VALUES (%s, %s, 1);', c, rc_test.id('KB_TOFU')),
+                                 'reserved_quantity', 'III đặt giữ không cập nhật reserved_quantity bị bắt ở COMMIT', 'RC500');
+    PERFORM rc_test.fails_commit(format('INSERT INTO stock_movements (movement_type, kitchen_batch_id, order_item_id, quantity_delta, event_key) VALUES (''COOK'', %s, %s, -1, ''fz-dup-cook'');',
+                                        rc_test.id('KB_TOFU'), a),
+                                 'tổng sổ kho', 'III bút toán COOK thừa (trừ hai lần) bị bắt ở COMMIT', 'RC500');
+    PERFORM rc_test.fails(format('DELETE FROM stock_movements WHERE kitchen_batch_id = %s', rc_test.id('KB_TOFU')), 'chỉ-thêm', 'III không xóa lịch sử sổ kho', 'RC409');
+    PERFORM rc_test.fails(format('UPDATE order_item_events SET reason = ''sửa'' WHERE order_item_id = %s', b), 'chỉ-thêm', 'III không sửa nhật ký món', 'RC409');
+    PERFORM rc_cancel_item(c, rc_test.emp('W1'), 'Dọn ca kiểm thử');
+    PERFORM rc_cancel_item_exception(a, rc_test.emp('M1'), 'Dọn ca kiểm thử');
+    PERFORM rc_close_empty_session((SELECT table_session_id FROM orders WHERE id = v_o), rc_test.emp('W1'));
 END $$;
 
 -- ---------------------------------------------------------------------
@@ -1658,46 +2053,109 @@ BEGIN
 END $$;
 
 -- ---------------------------------------------------------------------
--- ACL (spec I4, M7): role ứng dụng chỉ có SELECT + EXECUTE các hàm rc_* → ghi được qua hàm (SECURITY DEFINER), nhưng DML
--- trực tiếp bị 42501; role webhook chỉ chạy được rc_process_verified_qr và không đọc được bảng tiền.
--- Role là đối tượng của cả cụm nên được xóa ngay cuối khối (và dọn nếu lần chạy trước bỏ dở).
+-- ACL (QĐ-BM, spec I4, M7): áp dụng script phân quyền chính thức 09-acl-v4.1.sql rồi kiểm bằng role thử là thành viên
+-- của rc_app / rc_webhook / rc_readonly: ghi nghiệp vụ chỉ qua hàm; DML trực tiếp vào bảng nhạy cảm, cột trạng thái, hàm
+-- nội bộ, leo thang sang rc_owner đều bị 42501. Role thử bị xóa cuối khối (role là đối tượng của cả cụm).
 -- ---------------------------------------------------------------------
+\ir 09-acl-v4.1.sql
+
 DO $$
 DECLARE
-    v_t BIGINT;
-    v_s BIGINT;
-    r   RECORD;
+    v_t  BIGINT;
+    v_s  BIGINT;
+    v_r  BIGINT;
+    v_n  INT := 0;
+    c    RECORD;
+    r    RECORD;
 BEGIN
-    FOR r IN SELECT rolname FROM pg_roles WHERE rolname IN ('rc_app_probe', 'rc_webhook_probe') LOOP
+    FOR r IN SELECT rolname FROM pg_roles WHERE rolname IN ('rc_test_app', 'rc_test_hook', 'rc_test_ro') LOOP
         EXECUTE format('DROP OWNED BY %I', r.rolname);
         EXECUTE format('DROP ROLE %I', r.rolname);
     END LOOP;
-    CREATE ROLE rc_app_probe NOLOGIN;
-    CREATE ROLE rc_webhook_probe NOLOGIN;
-    GRANT USAGE ON SCHEMA public, rc_test TO rc_app_probe, rc_webhook_probe;
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO rc_app_probe;
-    GRANT SELECT ON ALL TABLES IN SCHEMA rc_test TO rc_app_probe, rc_webhook_probe;
-    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO rc_app_probe;
-    GRANT EXECUTE ON FUNCTION rc_process_verified_qr(TEXT, TEXT, NUMERIC, TEXT) TO rc_webhook_probe;
-    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rc_test TO rc_app_probe, rc_webhook_probe;
+    CREATE ROLE rc_test_app NOLOGIN IN ROLE rc_app;
+    CREATE ROLE rc_test_hook NOLOGIN IN ROLE rc_webhook;
+    CREATE ROLE rc_test_ro NOLOGIN IN ROLE rc_readonly;
+    GRANT USAGE ON SCHEMA rc_test TO rc_test_app, rc_test_hook, rc_test_ro;
+    GRANT SELECT ON ALL TABLES IN SCHEMA rc_test TO rc_test_app, rc_test_hook, rc_test_ro;
+    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rc_test TO rc_test_app, rc_test_hook, rc_test_ro;
     INSERT INTO dining_tables (code, capacity) VALUES ('ACL1', 2) RETURNING id INTO v_t;
 
-    -- role ứng dụng: gọi hàm thì ghi được; DML trực tiếp vào bảng số dư / tiền / trạng thái thì không
-    SET LOCAL ROLE rc_app_probe;
+    -- cấu hình: mọi hàm rc_* SECURITY DEFINER + search_path cố định, thuộc rc_owner, PUBLIC không EXECUTE
+    PERFORM rc_test.ok(NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname LIKE 'rc\_%'
+                                     AND (NOT p.prosecdef OR p.proowner <> 'rc_owner'::regrole OR has_function_privilege('public', p.oid, 'EXECUTE')
+                                          OR NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) x WHERE x LIKE 'search\_path=%'))),
+                       'ACL hàm rc_*: SECURITY DEFINER, search_path cố định, chủ rc_owner, PUBLIC không EXECUTE');
+    PERFORM rc_test.ok((SELECT NOT (rolsuper OR rolbypassrls OR rolcanlogin) FROM pg_roles WHERE rolname = 'rc_owner')
+                       AND NOT pg_has_role('rc_app', 'rc_owner', 'MEMBER') AND NOT pg_has_role('rc_webhook', 'rc_owner', 'MEMBER')
+                       AND NOT pg_has_role('rc_readonly', 'rc_owner', 'MEMBER'),
+                       'ACL rc_owner không superuser/LOGIN/BYPASSRLS; role ứng dụng không phải thành viên rc_owner');
+
+    -- rc_app: gọi hàm nghiệp vụ được (kể cả tạo chứng từ idempotent) …
+    SET LOCAL ROLE rc_test_app;
     v_s := rc_open_session(v_t, rc_test.emp('W1'));
     PERFORM rc_close_empty_session(v_s, rc_test.emp('W1'));
-    BEGIN UPDATE order_items SET status = 'SERVED' WHERE false; RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL app UPDATE order_items'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-    BEGIN INSERT INTO payments (invoice_id, payment_request_id, amount, method, business_date) SELECT 1, 1, 1, 'CASH', CURRENT_DATE WHERE false;
-          RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL app INSERT payments'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-    BEGIN DELETE FROM stock_movements WHERE false; RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL app DELETE stock_movements'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-    BEGIN UPDATE inventory_batches SET quantity_on_hand = 0 WHERE false; RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL app UPDATE inventory_batches'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-    BEGIN UPDATE invoices SET status = 'PAID' WHERE false; RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL app UPDATE invoices'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    v_r := rc_create_stock_receipt(rc_test.emp('M1'), 'acl-rcp-1', jsonb_build_object('items', jsonb_build_array(jsonb_build_object(
+               'ingredient_id', rc_test.ing('Hành tây'), 'input_quantity', 1, 'input_unit', 'kg', 'conversion_factor', 1, 'unit_price_per_input_unit', 1))));
+    DELETE FROM stock_receipt_items WHERE stock_receipt_id = v_r;                    -- nháp: xóa được
+    DELETE FROM stock_receipts WHERE id = v_r;
+    INSERT INTO ingredients (name, base_unit) VALUES ('ACL gia vị', 'g');           -- danh mục: ghi trực tiếp được
+    UPDATE dining_tables SET capacity = 3 WHERE id = v_t;
     RESET ROLE;
-    UPDATE rc_test.stat SET n = n + 1 WHERE kind = 'ok';
-    UPDATE rc_test.stat SET n = n + 5 WHERE kind = 'fails';
+    PERFORM rc_test.ok((SELECT capacity FROM dining_tables WHERE id = v_t) = 3 AND rc_test.ing('ACL gia vị') IS NOT NULL,
+                       'ACL rc_app: hàm nghiệp vụ, tạo/bỏ nháp chứng từ, ghi danh mục được');
 
-    -- role webhook: chỉ chạy rc_process_verified_qr; không chạy hàm khác, không đọc bảng tiền
-    SET LOCAL ROLE rc_webhook_probe;
+    -- … nhưng mọi đường ghi tắt đều bị chặn (42501)
+    FOR c IN SELECT * FROM (VALUES
+            ('UPDATE order_items SET status = ''SERVED'' WHERE false'),
+            ('INSERT INTO payments (invoice_id, payment_request_id, amount, method, business_date) SELECT 1, 1, 1, ''CASH'', CURRENT_DATE WHERE false'),
+            ('DELETE FROM stock_movements WHERE false'),
+            ('UPDATE inventory_batches SET quantity_on_hand = 0 WHERE false'),
+            ('UPDATE invoices SET status = ''PAID'' WHERE false'),
+            ('UPDATE stock_issues SET status = ''ISSUED'' WHERE false'),
+            ('UPDATE stock_receipts SET status = ''CONFIRMED'' WHERE false'),
+            ('UPDATE stock_counts SET status = ''CONFIRMED'' WHERE false'),
+            ('UPDATE kitchen_preparations SET status = ''CONFIRMED'' WHERE false'),
+            ('INSERT INTO stock_receipts (created_by_id, request_key, request_hash) SELECT 1, ''x'', ''x'' WHERE false'),
+            ('UPDATE dining_tables SET status = ''AVAILABLE'' WHERE false'),
+            ('UPDATE operating_expenses SET amount = 1 WHERE false'),
+            ('INSERT INTO roles (role_code, role_name) VALUES (''ROOT'', ''x'')'),
+            ('INSERT INTO daily_cash_reconciliations (business_date, version, opening_cash, cash_sales, cash_expenses, actual_cash, reconciled_by_id) SELECT CURRENT_DATE, 9, 0, 0, 0, 0, 1 WHERE false'),
+            ('UPDATE payment_webhook_events SET processing_result = ''PROCESSED'' WHERE false'),
+            ('SELECT rc_item_transition(1, ARRAY[''PENDING''], ''ACCEPTED'', 1)'),
+            ('SELECT rc_settle_invoice(1, 1)'),
+            ('SELECT rc_allocate_item(1)'),
+            ('SELECT rc_release_item_reservations(1, ''ITEM_CANCELLED'')'),
+            ('SELECT rc_check_balance(''RAW'', 1)'),
+            ('SELECT rc_raise(''RC500'', ''x'')'),
+            ('GRANT rc_owner TO rc_test_app'),
+            ('ALTER FUNCTION rc_authorize(BIGINT, TEXT[]) SECURITY INVOKER'),
+            ('CREATE FUNCTION public.rc_shadow() RETURNS INT LANGUAGE sql AS ''SELECT 1'''),
+            ('CREATE TABLE public.acl_shadow (id INT)')) AS t(stmt) LOOP
+        BEGIN
+            SET LOCAL ROLE rc_test_app;
+            EXECUTE c.stmt;
+            RESET ROLE;
+            RAISE EXCEPTION 'TEST FAIL: ACL rc_app lẽ ra bị chặn: %', c.stmt;
+        EXCEPTION WHEN insufficient_privilege THEN
+            RESET ROLE;
+            v_n := v_n + 1;
+        END;
+    END LOOP;
+    UPDATE rc_test.stat SET n = n + v_n WHERE kind = 'fails';
+    PERFORM rc_test.ok(v_n = 25, 'ACL rc_app: 25 đường ghi tắt / hàm nội bộ / leo thang đều bị từ chối');
+
+    -- giả mạo danh tính qua tham số: rc_app vẫn không vượt được vai trò của p_actor
+    SET LOCAL ROLE rc_test_app;
+    BEGIN
+        PERFORM rc_waive_invoice(0, rc_test.emp('W1'), 'tự miễn thu');
+        RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL Waiter gọi hàm Manager qua rc_app';
+    EXCEPTION WHEN SQLSTATE 'RC403' THEN NULL;
+    END;
+    RESET ROLE;
+    UPDATE rc_test.stat SET n = n + 1 WHERE kind = 'fails';
+
+    -- rc_webhook: chỉ rc_process_verified_qr; không hàm khác, không đọc bảng
+    SET LOCAL ROLE rc_test_hook;
     IF rc_process_verified_qr('ACL-FT-1', 'KHONG-CO-MA', 1000, '{}') <> 'MISMATCH' THEN
         RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL webhook gọi hàm được cấp quyền';
     END IF;
@@ -1707,8 +2165,19 @@ BEGIN
     UPDATE rc_test.stat SET n = n + 1 WHERE kind = 'ok';
     UPDATE rc_test.stat SET n = n + 2 WHERE kind = 'fails';
 
-    DROP OWNED BY rc_app_probe, rc_webhook_probe;
-    DROP ROLE rc_app_probe, rc_webhook_probe;
+    -- rc_readonly: đọc báo cáo được, không đọc mật khẩu băm, không ghi, không gọi hàm nghiệp vụ
+    SET LOCAL ROLE rc_test_ro;
+    PERFORM count(*) FROM payments;
+    PERFORM username FROM accounts LIMIT 1;
+    BEGIN PERFORM password_hash FROM accounts LIMIT 1; RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL readonly đọc password_hash'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    BEGIN UPDATE menu_items SET price = 0 WHERE false; RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL readonly ghi bảng'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    BEGIN PERFORM rc_open_session(1, 1); RESET ROLE; RAISE EXCEPTION 'TEST FAIL: ACL readonly gọi hàm nghiệp vụ'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    RESET ROLE;
+    UPDATE rc_test.stat SET n = n + 1 WHERE kind = 'ok';
+    UPDATE rc_test.stat SET n = n + 3 WHERE kind = 'fails';
+
+    DROP OWNED BY rc_test_app, rc_test_hook, rc_test_ro;
+    DROP ROLE rc_test_app, rc_test_hook, rc_test_ro;
 END $$;
 
 -- ---------------------------------------------------------------------
@@ -1784,12 +2253,12 @@ BEGIN
           WHERE v.status = ''UNCOLLECTED''
             AND (EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = v.id) OR o.status <> ''CLOSED'' OR s.status <> ''CLOSED''
               OR s.closed_by_id IS DISTINCT FROM v.uncollected_by_id)',
-        -- I-12 đơn CLOSED <=> hóa đơn PAID/UNCOLLECTED; đơn CANCELLED không còn món/hóa đơn có nghĩa vụ
+        -- I-12 đơn CLOSED <=> hóa đơn PAID/UNCOLLECTED/WAIVED; đơn CANCELLED không có hóa đơn và không còn món có nghĩa vụ
         'SELECT o.id FROM orders o
-          WHERE (o.status = ''CLOSED'') <> EXISTS (SELECT 1 FROM invoices v WHERE v.order_id = o.id AND v.status IN (''PAID'', ''UNCOLLECTED''))',
+          WHERE (o.status = ''CLOSED'') <> EXISTS (SELECT 1 FROM invoices v WHERE v.order_id = o.id AND v.status IN (''PAID'', ''UNCOLLECTED'', ''WAIVED''))',
         'SELECT o.id FROM orders o
           WHERE o.status = ''CANCELLED''
-            AND (EXISTS (SELECT 1 FROM invoices v WHERE v.order_id = o.id AND v.status <> ''DRAFT'')
+            AND (EXISTS (SELECT 1 FROM invoices v WHERE v.order_id = o.id)
               OR EXISTS (SELECT 1 FROM order_items oi JOIN order_batches b ON b.id = oi.order_batch_id
                           WHERE b.order_id = o.id AND oi.status NOT IN (''CANCELLED'', ''REJECTED'')))',
         -- I-13 reservation CONSUMED luôn có sổ COOK tương ứng (không trừ hai lần, không thiếu)
@@ -1800,7 +2269,24 @@ BEGIN
           WHERE e.to_status = ''CANCELLED'' AND e.from_status IN (''COOKING'', ''READY'', ''SERVED'')
             AND (btrim(COALESCE(e.reason, '''')) = ''''
               OR NOT EXISTS (SELECT 1 FROM accounts a JOIN account_roles ar ON ar.account_id = a.id JOIN roles r ON r.id = ar.role_id
-                              WHERE a.employee_id = e.actor_id AND r.role_code = ''MANAGER''))'
+                              WHERE a.employee_id = e.actor_id AND r.role_code = ''MANAGER''))',
+        -- I-15 miễn thu (QĐ-MT): hóa đơn WAIVED không có payment, do Manager, đơn và phiên đã đóng
+        'SELECT v.id FROM invoices v JOIN orders o ON o.id = v.order_id JOIN table_sessions s ON s.id = o.table_session_id
+          WHERE v.status = ''WAIVED''
+            AND (EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = v.id) OR o.status <> ''CLOSED'' OR s.status <> ''CLOSED''
+              OR NOT EXISTS (SELECT 1 FROM accounts a JOIN account_roles ar ON ar.account_id = a.id JOIN roles r ON r.id = ar.role_id
+                              WHERE a.employee_id = v.waived_by_id AND r.role_code = ''MANAGER''))',
+        -- I-16 không có hóa đơn treo: đơn đã kết thúc thì hóa đơn ở trạng thái cuối
+        'SELECT v.id FROM invoices v JOIN orders o ON o.id = v.order_id
+          WHERE o.status <> ''OPEN'' AND v.status IN (''DRAFT'', ''PAYMENT_PENDING'')',
+        -- I-17 chứng từ kho ở trạng thái có hiệu lực luôn đủ bút toán sổ kho cho mọi dòng
+        'SELECT ''receipt'', id FROM stock_receipts WHERE status = ''CONFIRMED'' AND rc_doc_effect_missing(''stock_receipts'', id, ''DRAFT'', status)
+         UNION ALL SELECT ''issue'', id FROM stock_issues WHERE status IN (''ISSUED'', ''RECEIVED'')
+                     AND (rc_doc_effect_missing(''stock_issues'', id, ''DRAFT'', ''ISSUED'') OR (status = ''RECEIVED'' AND rc_doc_effect_missing(''stock_issues'', id, ''ISSUED'', ''RECEIVED'')))
+         UNION ALL SELECT ''prep'', id FROM kitchen_preparations WHERE status = ''CONFIRMED'' AND rc_doc_effect_missing(''kitchen_preparations'', id, ''DRAFT'', status)
+         UNION ALL SELECT ''return'', id FROM stock_returns WHERE status = ''CONFIRMED'' AND rc_doc_effect_missing(''stock_returns'', id, ''DRAFT'', status)
+         UNION ALL SELECT ''waste'', id FROM stock_adjustments WHERE status = ''CONFIRMED'' AND rc_doc_effect_missing(''stock_adjustments'', id, ''DRAFT'', status)
+         UNION ALL SELECT ''count'', id FROM stock_counts WHERE status = ''CONFIRMED'' AND rc_doc_effect_missing(''stock_counts'', id, ''DRAFT'', status)'
     ] LOOP
         EXECUTE 'SELECT count(*) FROM (' || v_q || ') x' INTO v_n;
         PERFORM rc_test.ok(v_n = 0, 'Bất biến bị vi phạm: ' || left(regexp_replace(v_q, '\s+', ' ', 'g'), 100));

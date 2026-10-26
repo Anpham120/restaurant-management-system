@@ -72,11 +72,11 @@ let E = {};
 async function base() {
   await q(`INSERT INTO departments (department_name) VALUES ('Vận hành') ON CONFLICT DO NOTHING`);
   const dept = await one(`SELECT id FROM departments WHERE department_name = 'Vận hành'`);
-  for (const [c, n, role] of [['CM', 'Quản lý', 'MANAGER'], ['CW', 'Phục vụ', 'WAITER'], ['CK', 'Bếp', 'KITCHEN'], ['CC', 'Thu ngân', 'CASHIER']]) {
+  for (const [c, n, role] of [['CM2', 'Quản lý 2', 'MANAGER2'], ['CM', 'Quản lý', 'MANAGER'], ['CW', 'Phục vụ', 'WAITER'], ['CK', 'Bếp', 'KITCHEN'], ['CC', 'Thu ngân', 'CASHIER']]) {
     await q(`INSERT INTO employees (employee_code, full_name, department_id) VALUES ($1, $2, $3) ON CONFLICT (employee_code) DO NOTHING`, [c, n, dept]);
     const id = await one(`SELECT id FROM employees WHERE employee_code = $1`, [c]);
     await q(`INSERT INTO accounts (employee_id, username, password_hash) VALUES ($1, $2, 'x') ON CONFLICT (employee_id) DO NOTHING`, [id, c.toLowerCase()]);
-    await q(`INSERT INTO account_roles (account_id, role_id) SELECT a.id, r.id FROM accounts a, roles r WHERE a.employee_id = $1 AND r.role_code = $2 ON CONFLICT DO NOTHING`, [id, role]);
+    await q(`INSERT INTO account_roles (account_id, role_id) SELECT a.id, r.id FROM accounts a, roles r WHERE a.employee_id = $1 AND r.role_code = $2 ON CONFLICT DO NOTHING`, [id, role.replace(/\d$/, '')]);
     E[role] = id;
   }
   await q(`INSERT INTO menu_categories (name) VALUES ('Concurrency') ON CONFLICT DO NOTHING`);
@@ -96,10 +96,10 @@ async function newDish({ quota = null, stock = 100, per = 1, share = null } = {}
   }
   const ing = await one(`INSERT INTO ingredients (name, base_unit, is_expiry_tracked) VALUES ($1, 'u', false) RETURNING id`, [name]);
   const type = await one(`INSERT INTO kitchen_ingredient_types (raw_ingredient_id, name, handling_type) VALUES ($1, $2, 'DIRECT') RETURNING id`, [ing, name]);
-  const rcp = await one(`INSERT INTO stock_receipts (created_by_id) VALUES ($1) RETURNING id`, [E.MANAGER]);
+  const rcp = await one(`INSERT INTO stock_receipts (created_by_id, request_key, request_hash) VALUES ($1, gen_random_uuid()::text, repeat('0', 64)) RETURNING id`, [E.MANAGER]);
   await q(`INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor, unit_price_per_input_unit) VALUES ($1, $2, $3, 'u', 1, 1)`, [rcp, ing, stock]);
   await q(`SELECT rc_confirm_receipt($1, $2)`, [rcp, E.MANAGER]);
-  const iss = await one(`INSERT INTO stock_issues (issued_by_id) VALUES ($1) RETURNING id`, [E.MANAGER]);
+  const iss = await one(`INSERT INTO stock_issues (issued_by_id, request_key, request_hash) VALUES ($1, gen_random_uuid()::text, repeat('0', 64)) RETURNING id`, [E.MANAGER]);
   await q(`INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) SELECT $1, b.id, $3, 'DIRECT' FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id WHERE s.stock_receipt_id = $2`, [iss, rcp, stock]);
   await q(`SELECT rc_issue_stock($1, $2)`, [iss, E.MANAGER]);
   await q(`SELECT rc_receive_issue($1, $2)`, [iss, E.KITCHEN]);
@@ -120,7 +120,7 @@ async function newOrder() {
 let keySeq = 0;
 async function send(order, dmi, qty = 1) {
   const key = code('K') + '-' + (++keySeq);
-  const b = await one(`SELECT rc_submit_batch($1, $2, $3, jsonb_build_array(jsonb_build_object('daily_menu_item_id', $4::bigint, 'quantity', $5::int)))`, [order, E.WAITER, key, dmi, qty]);
+  const b = await one(`SELECT (rc_submit_batch($1, $2, $3, jsonb_build_array(jsonb_build_object('daily_menu_item_id', $4::bigint, 'quantity', $5::int))) ->> 'batch_id')::bigint`, [order, E.WAITER, key, dmi, qty]);
   return one(`SELECT id FROM order_items WHERE order_batch_id = $1 ORDER BY id LIMIT 1`, [b]);
 }
 const status = (item) => one(`SELECT status FROM order_items WHERE id = $1`, [item]);
@@ -438,6 +438,7 @@ group('C8 · QĐ-3 Khách bỏ về ↔ thanh toán; thứ tự khóa orders →
     ['rc_abandon_session', (p) => `SELECT rc_abandon_session(${p.session}, ${E.MANAGER}, 'kiểm thử')`],
     ['rc_cancel_item_exception', (p) => `SELECT rc_cancel_item_exception(${p.item}, ${E.MANAGER}, 'kiểm thử')`],
     ['rc_checkout_invoice', (p) => `SELECT rc_checkout_invoice(${p.order}, ${E.CASHIER})`],
+    ['rc_waive_invoice', (p) => `SELECT rc_waive_invoice(${p.order}, ${E.MANAGER}, 'kiểm thử')`],
   ];
   for (const [name, build] of probes) {
     const p = await pendingInvoice(d);
@@ -516,7 +517,7 @@ group('C9 · Mở bàn, chứng từ kho: xác nhận trùng đồng thời');
     && Number(await one(`SELECT count(*) FROM table_sessions WHERE dining_table_id = $1 AND status = 'OPEN'`, [t])) === 1);
   const d = await newDish({ quota: null, stock: 50 });
   // nhập kho: hai lần xác nhận
-  const rcp = await one(`INSERT INTO stock_receipts (created_by_id) VALUES ($1) RETURNING id`, [E.MANAGER]);
+  const rcp = await one(`INSERT INTO stock_receipts (created_by_id, request_key, request_hash) VALUES ($1, gen_random_uuid()::text, repeat('0', 64)) RETURNING id`, [E.MANAGER]);
   await q(`INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor, unit_price_per_input_unit) VALUES ($1, $2, 10, 'u', 1, 1)`, [rcp, d.ing]);
   const r1 = await race([(c) => c.query(`SELECT rc_confirm_receipt($1, $2)`, [rcp, E.MANAGER]), (c) => c.query(`SELECT rc_confirm_receipt($1, $2)`, [rcp, E.MANAGER])]);
   check('Xác nhận phiếu nhập hai lần đồng thời: 1 thành công, 1 RC409; chỉ 1 lô RAW +10 và 1 dòng sổ RECEIPT',
@@ -524,7 +525,7 @@ group('C9 · Mở bàn, chứng từ kho: xác nhận trùng đồng thời');
     && Number(await one(`SELECT count(*) FROM stock_movements WHERE event_key LIKE 'RECEIPT:%' AND raw_batch_id = (SELECT b.id FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id WHERE s.stock_receipt_id = $1)`, [rcp])) === 1);
   // xuất kho: hai phiếu cùng cần hết lô cuối
   const lotRaw = await one(`SELECT b.id FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id WHERE s.stock_receipt_id = $1`, [rcp]);
-  const mk = async () => { const i = await one(`INSERT INTO stock_issues (issued_by_id) VALUES ($1) RETURNING id`, [E.MANAGER]); await q(`INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) VALUES ($1, $2, 10, 'DIRECT')`, [i, lotRaw]); return i; };
+  const mk = async () => { const i = await one(`INSERT INTO stock_issues (issued_by_id, request_key, request_hash) VALUES ($1, gen_random_uuid()::text, repeat('0', 64)) RETURNING id`, [E.MANAGER]); await q(`INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) VALUES ($1, $2, 10, 'DIRECT')`, [i, lotRaw]); return i; };
   const i1 = await mk(), i2 = await mk();
   const r2 = await race([(c) => c.query(`SELECT rc_issue_stock($1, $2)`, [i1, E.MANAGER]), (c) => c.query(`SELECT rc_issue_stock($1, $2)`, [i2, E.MANAGER])]);
   check('Hai phiếu xuất cùng cần hết lô RAW cuối: 1 thành công, 1 từ chối; RAW = 0, không âm',
@@ -542,7 +543,7 @@ group('C10 · Sơ chế / hoàn trả / hủy hàng / kiểm kê đồng thời;
   const mkLot = async (qty, withType = false) => {
     const ing = await one(`INSERT INTO ingredients (name, base_unit, is_expiry_tracked) VALUES ($1, 'kg', false) RETURNING id`, [code('Raw')]);
     const type = withType ? await one(`INSERT INTO kitchen_ingredient_types (raw_ingredient_id, name, handling_type) VALUES ($1, $2, 'PREPARED') RETURNING id`, [ing, code('Pre')]) : null;
-    const rc = await one(`INSERT INTO stock_receipts (created_by_id) VALUES ($1) RETURNING id`, [E.MANAGER]);
+    const rc = await one(`INSERT INTO stock_receipts (created_by_id, request_key, request_hash) VALUES ($1, gen_random_uuid()::text, repeat('0', 64)) RETURNING id`, [E.MANAGER]);
     await q(`INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor, unit_price_per_input_unit) VALUES ($1, $2, $3, 'kg', 1, 1)`, [rc, ing, qty]);
     await q(`SELECT rc_confirm_receipt($1, $2)`, [rc, E.MANAGER]);
     const lot = await one(`SELECT b.id FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id WHERE s.stock_receipt_id = $1`, [rc]);
@@ -551,7 +552,7 @@ group('C10 · Sơ chế / hoàn trả / hủy hàng / kiểm kê đồng thời;
   // Sơ chế: hai phiếu đầu vào 0.6 trên WIP 1 → một phiếu thắng, WIP còn 0.4
   const L0 = await mkLot(10, true);
   const lot = L0.lot, typePre = L0.type;
-  const iss = await one(`INSERT INTO stock_issues (issued_by_id) VALUES ($1) RETURNING id`, [E.MANAGER]);
+  const iss = await one(`INSERT INTO stock_issues (issued_by_id, request_key, request_hash) VALUES ($1, gen_random_uuid()::text, repeat('0', 64)) RETURNING id`, [E.MANAGER]);
   const line = await one(`INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) VALUES ($1, $2, 1, 'PREPARE') RETURNING id`, [iss, lot]);
   await q(`SELECT rc_issue_stock($1, $2)`, [iss, E.MANAGER]); await q(`SELECT rc_receive_issue($1, $2)`, [iss, E.KITCHEN]);
   const prep = async (inQty) => {
@@ -571,7 +572,7 @@ group('C10 · Sơ chế / hoàn trả / hủy hàng / kiểm kê đồng thời;
   const big = 20 * (2 * ITER + 6);
   const lots = [(await mkLot(big)).lot, (await mkLot(big)).lot, (await mkLot(big)).lot];
   const mkIssueLines = async () => {
-    const i = await one(`INSERT INTO stock_issues (issued_by_id) VALUES ($1) RETURNING id`, [E.MANAGER]);
+    const i = await one(`INSERT INTO stock_issues (issued_by_id, request_key, request_hash) VALUES ($1, gen_random_uuid()::text, repeat('0', 64)) RETURNING id`, [E.MANAGER]);
     const ids = [];
     for (const l of lots) ids.push(await one(`INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) VALUES ($1, $2, 20, 'PREPARE') RETURNING id`, [i, l]));
     await q(`SELECT rc_issue_stock($1, $2)`, [i, E.MANAGER]); await q(`SELECT rc_receive_issue($1, $2)`, [i, E.KITCHEN]);
@@ -606,11 +607,96 @@ group('C10 · Sơ chế / hoàn trả / hủy hàng / kiểm kê đồng thời;
   check(`Hai phiếu hủy hàng chạm cùng lô theo thứ tự ngược nhau ${ITER} vòng: không deadlock`, bad === 0, `${bad} vòng sai`);
   // kiểm kê trùng
   const ids = await mkIssueLines();
-  const cnt = await one(`INSERT INTO stock_counts (created_by_id) VALUES ($1) RETURNING id`, [E.MANAGER]);
+  const cnt = await one(`INSERT INTO stock_counts (created_by_id, request_key, request_hash) VALUES ($1, gen_random_uuid()::text, repeat('0', 64)) RETURNING id`, [E.MANAGER]);
   await q(`INSERT INTO stock_count_items (stock_count_id, wip_issue_item_id, book_quantity, actual_quantity) VALUES ($1, $2, 20, 19)`, [cnt, ids[0]]);
   const rc = await race([(c) => c.query(`SELECT rc_confirm_count($1, $2)`, [cnt, E.MANAGER]), (c) => c.query(`SELECT rc_confirm_count($1, $2)`, [cnt, E.MANAGER])]);
   check('Xác nhận phiếu kiểm kê hai lần đồng thời: 1 thành công, 1 RC409; điều chỉnh một lần',
     rc.filter((z) => z.ok).length === 1 && Number(await one(`SELECT wip_remaining_quantity FROM stock_issue_items WHERE id = $1`, [ids[0]])) === 19);
+}
+
+group('C11 · Đóng băng thiết kế: miễn thu ↔ thanh toán, bỏ về ↔ webhook trễ, request_key đồng thời, hai Manager cùng xác nhận');
+{
+  const d = await newDish({ quota: null, stock: 400 });
+  // Miễn thu ↔ thu tiền mặt: không bao giờ cùng thành công
+  let paid = 0, waived = 0, bad = 0;
+  for (let k = 0; k < ITER * 2; k++) {
+    const p = await pendingInvoice(d);
+    const res = await race([(c) => c.query(`SELECT rc_pay_cash($1, $2, 100000)`, [p.inv, E.CASHIER]), (c) => c.query(`SELECT rc_waive_invoice($1, $2, 'miễn thu')`, [p.order, E.MANAGER])]);
+    const inv = await one(`SELECT status FROM invoices WHERE id = $1`, [p.inv]);
+    const pays = Number(await one(`SELECT count(*) FROM payments WHERE invoice_id = $1`, [p.inv]));
+    if (inv === 'PAID' && pays === 1 && res[0].ok && !res[1].ok && res[1].code === 'RC409') paid++;
+    else if (inv === 'WAIVED' && pays === 0 && res[1].ok && !res[0].ok && res[0].code === 'RC409') waived++;
+    else { bad++; unexpected++; }
+  }
+  check(`Miễn thu ↔ thu tiền mặt ${ITER * 2} vòng (PAID ${paid} / WAIVED ${waived}): đúng một bên thành công, không deadlock`, bad === 0, `${bad} vòng sai`);
+  {
+    const p = await pendingInvoice(d);
+    const r = await hold(`SELECT rc_waive_invoice(${p.order}, ${E.MANAGER}, 'miễn thu')`, `SELECT rc_pay_cash(${p.inv}, ${E.CASHIER}, 100000)`);
+    check('Miễn thu giữ khóa trước: thu tiền bị chặn rồi RC409; hóa đơn WAIVED, không payments',
+      r.blocked && r.a.ok && !r.b.ok && r.b.code === 'RC409' && (await one(`SELECT status FROM invoices WHERE id = $1`, [p.inv])) === 'WAIVED'
+      && Number(await one(`SELECT count(*) FROM payments WHERE invoice_id = $1`, [p.inv])) === 0, JSON.stringify(r));
+  }
+  // Miễn thu / bỏ về ↔ webhook QR đến cùng lúc: hoặc PAID (bên kia RC409), hoặc WAIVED/UNCOLLECTED + webhook AFTER_CANCEL lưu sự cố
+  for (const [label, fn, endStatus] of [['Miễn thu', (p) => [`SELECT rc_waive_invoice($1, $2, 'miễn thu')`, [p.order, E.MANAGER]], 'WAIVED'],
+                                        ['Bỏ về', (p) => [`SELECT rc_abandon_session($1, $2, 'bỏ về')`, [p.session, E.MANAGER]], 'UNCOLLECTED']]) {
+    let pd = 0, other = 0; bad = 0;
+    for (let k = 0; k < ITER; k++) {
+      const p = await pendingInvoice(d);
+      const ref = await one(`SELECT rc_start_qr($1, $2)`, [p.inv, E.CASHIER]);
+      const total = Number(await one(`SELECT total FROM invoices WHERE id = $1`, [p.inv]));
+      const ft = code('FT');
+      const [sql, args] = fn(p);
+      const res = await race([(c) => c.query(sql, args), (c) => c.query(`SELECT rc_process_verified_qr($1, $2, $3, '{}')`, [ft, ref, total])]);
+      const inv = await one(`SELECT status FROM invoices WHERE id = $1`, [p.inv]);
+      const pays = Number(await one(`SELECT count(*) FROM payments WHERE invoice_id = $1`, [p.inv]));
+      const ev = (await q(`SELECT processing_result, resolution_status FROM payment_webhook_events WHERE provider_transaction_code = $1`, [ft])).rows[0];
+      if (inv === 'PAID' && pays === 1 && ev && ev.processing_result === 'PROCESSED' && !res[0].ok && res[0].code === 'RC409') pd++;
+      else if (inv === endStatus && pays === 0 && res[0].ok && ev && ev.processing_result === 'AFTER_CANCEL' && ev.resolution_status === 'OPEN') other++;
+      else { bad++; unexpected++; }
+    }
+    check(`${label} ↔ webhook QR ${ITER} vòng (PAID ${pd} / ${endStatus} ${other}): không vừa thu vừa ${endStatus}; webhook trễ luôn được lưu để đối chiếu`, bad === 0, `${bad} vòng sai`);
+  }
+  // request_key đồng thời (QĐ-ID)
+  const payload = (qty) => JSON.stringify({ items: [{ ingredient_id: Number(d.ing), input_quantity: qty, input_unit: 'u', conversion_factor: 1, unit_price_per_input_unit: 1 }] });
+  bad = 0;
+  for (let k = 0; k < ITER; k++) {
+    const key = code('RK');
+    const res = await race([1, 2].map(() => (c) => c.query(`SELECT rc_create_stock_receipt($1, $2, $3::jsonb)`, [E.MANAGER, key, payload(5)])));
+    const n = Number(await one(`SELECT count(*) FROM stock_receipts WHERE request_key = $1`, [key]));
+    if (!(res.every((z) => z.ok) && val(res[0]) === val(res[1]) && n === 1)) { bad++; unexpected++; }
+  }
+  check(`Hai lần gửi cùng request_key + cùng payload đồng thời ${ITER} vòng: cùng một phiếu nhập, không nháp trùng`, bad === 0, `${bad} vòng sai`);
+  bad = 0;
+  for (let k = 0; k < ITER; k++) {
+    const key = code('RK');
+    const res = await race([(c) => c.query(`SELECT rc_create_stock_receipt($1, $2, $3::jsonb)`, [E.MANAGER, key, payload(5)]),
+                            (c) => c.query(`SELECT rc_create_stock_receipt($1, $2, $3::jsonb)`, [E.MANAGER, key, payload(6)])]);
+    const n = Number(await one(`SELECT count(*) FROM stock_receipts WHERE request_key = $1`, [key]));
+    if (!(res.filter((z) => z.ok).length === 1 && res.find((z) => !z.ok).code === 'RC409' && n === 1)) { bad++; unexpected++; }
+  }
+  check(`Cùng request_key khác payload đồng thời ${ITER} vòng: đúng một phiếu, yêu cầu kia RC409`, bad === 0, `${bad} vòng sai`);
+  {
+    const key = code('RK');
+    const r = await hold(`SELECT rc_create_stock_receipt(${E.MANAGER}, '${key}', '${payload(7)}'::jsonb)`, `SELECT rc_create_stock_receipt(${E.MANAGER}, '${key}', '${payload(7)}'::jsonb)`);
+    check('request_key: lần gửi thứ hai chờ lần đầu commit rồi trả đúng phiếu đó', r.blocked && r.a.ok && r.b.ok && val(r.a) === val(r.b), JSON.stringify(r));
+  }
+  // Hai Manager khác nhau cùng xác nhận một phiếu xuất: một thành công, RAW chỉ trừ một lần
+  bad = 0;
+  for (let k = 0; k < ITER; k++) {
+    const rc = await one(`SELECT rc_create_stock_receipt($1, $2, $3::jsonb)`, [E.MANAGER, code('RK'), payload(10)]);
+    await q(`SELECT rc_confirm_receipt($1, $2)`, [rc, E.MANAGER]);
+    const lotRaw = await one(`SELECT b.id FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id WHERE s.stock_receipt_id = $1`, [rc]);
+    const before = Number(await one(`SELECT SUM(quantity_on_hand) FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id WHERE s.ingredient_id = $1`, [d.ing]));
+    const iss = await one(`SELECT rc_create_stock_issue($1, $2, $3::jsonb)`, [E.MANAGER, code('RK'),
+      JSON.stringify({ items: [{ inventory_batch_id: Number(lotRaw), quantity: 10, fulfillment_mode: 'PREPARE' }] })]);   // xuất hết lô: FEFO không chặn vòng sau
+    const res = await race([(c) => c.query(`SELECT rc_issue_stock($1, $2)`, [iss, E.MANAGER]), (c) => c.query(`SELECT rc_issue_stock($1, $2)`, [iss, E.MANAGER2])]);
+    const after = Number(await one(`SELECT SUM(quantity_on_hand) FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id WHERE s.ingredient_id = $1`, [d.ing]));
+    const outs = Number(await one(`SELECT count(*) FROM stock_movements m JOIN stock_issue_items l ON l.id = m.ref_issue_item_id WHERE l.stock_issue_id = $1 AND m.movement_type = 'ISSUE_OUT'`, [iss]));
+    const okN = res.filter((z) => z.ok).length;
+    if (okN === 1 && res.find((z) => !z.ok).code === 'RC409' && outs === 1 && Math.abs(before - after - 10) < 1e-9) continue;
+    bad++; unexpected++;
+  }
+  check(`Hai Manager cùng xác nhận một phiếu xuất ${ITER} vòng: tối đa một lần trừ RAW, một bút toán ISSUE_OUT`, bad === 0, `${bad} vòng sai`);
 }
 
 group('Tổng hợp');
@@ -627,7 +713,9 @@ group('Tổng hợp');
     'I-6 bàn OCCUPIED ⇔ phiên OPEN': `SELECT t.id FROM dining_tables t WHERE (t.status = 'OCCUPIED') <> EXISTS (SELECT 1 FROM table_sessions s WHERE s.dining_table_id = t.id AND s.status = 'OPEN')`,
     'I-7 PAID ⇔ đúng một payment': `SELECT v.id FROM invoices v LEFT JOIN payments p ON p.invoice_id = v.id WHERE (v.status = 'PAID') <> (p.id IS NOT NULL)`,
     'I-8 không vượt quota': `SELECT d.id FROM daily_menu_items d WHERE d.quota_total IS NOT NULL AND rc_quota_used(d.id) > d.quota_total`,
-    'I-11 UNCOLLECTED không có payment': `SELECT v.id FROM invoices v WHERE v.status = 'UNCOLLECTED' AND EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = v.id)`,
+    'I-11 UNCOLLECTED/WAIVED không có payment': `SELECT v.id FROM invoices v WHERE v.status IN ('UNCOLLECTED', 'WAIVED') AND EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = v.id)`,
+    'I-16 không hóa đơn treo của đơn đã kết thúc': `SELECT v.id FROM invoices v JOIN orders o ON o.id = v.order_id WHERE o.status <> 'OPEN' AND v.status IN ('DRAFT', 'PAYMENT_PENDING')`,
+    'I-18 mỗi request_key một chứng từ': `SELECT request_key FROM stock_receipts GROUP BY request_key HAVING count(*) > 1`,
     'I-13 CONSUMED ⇔ có sổ COOK': `SELECT r.id FROM stock_reservations r WHERE (r.status = 'CONSUMED') <> EXISTS (SELECT 1 FROM stock_movements m WHERE m.event_key = 'COOK:' || r.id)`,
   };
   for (const [name, sql] of Object.entries(checks)) check(`Bất biến sau mọi ca đua — ${name}`, (await q(sql)).rows.length === 0);

@@ -1,6 +1,6 @@
 # 03 · Luồng dữ liệu của 27 nhóm chức năng
 
-> **Baseline:** Master Spec v4 (48 bảng · 5 phân hệ · 27 nhóm chức năng) — mô tả **schema v4.1 bản chốt**: 28 hàm nghiệp vụ `rc_*` (20 tên của v4 + 8 hàm mới), đã áp dụng QĐ-1…QĐ-8.
+> **Baseline:** Master Spec v4 (48 bảng · 5 phân hệ · 27 nhóm chức năng) — mô tả **schema v4.1 bản đóng băng**: 32 hàm nghiệp vụ `rc_*` (20 tên của v4 + 12 hàm mới), đã áp dụng QĐ-1…QĐ-8 và QĐ-MT, QĐ-ID, QĐ-NG, QĐ-BM ([07 §3](07-kiem-toan-ham-rc.md)). Actor ghi ở mỗi thẻ là vai trò DB **cưỡng chế** (`rc_authorize`); Manager làm được mọi thao tác vận hành.
 > Mỗi nhóm chức năng được mô tả theo đúng khuôn mục N của spec:
 > **Actor → Điều kiện vào → Bảng đọc → Bảng ghi → Transaction & khóa → Trạng thái/event → Ngoại lệ → Test**.
 > Ma trận CRUD và sơ đồ DFD mức 2 trong file này được **sinh tự động từ chính các thẻ chức năng** bên dưới,
@@ -26,7 +26,7 @@ Sơ đồ DFD: hình bo tròn = chức năng; hình trụ = bảng; **mũi tên 
 - Bảng không có chức năng đọc: **không có** → không có bảng thừa.
 - 48/48 bảng có ít nhất một chức năng ghi; `permissions` (và 4 vai trò mặc định trong `roles`) đến từ seed migration.
 - Bảng chỉ-thêm (bất biến): `stock_movements`, `payments`, `order_item_events`, `attendance_adjustments` — không chức năng nào U/D. `invoice_items` chỉ-thêm sau khi hóa đơn chốt; dòng chỉ bị xóa khi hóa đơn còn DRAFT (hủy ngoại lệ QĐ-2; trigger khóa từ PAYMENT_PENDING). `payment_webhook_events` chỉ được cập nhật các cột `resolution_*` (trigger chặn phần chứng cứ, DB-12).
-- 28/28 hàm `rc_*` nghiệp vụ của v4.1 (20 tên v4 + 8 hàm bổ sung) đều gắn với một thẻ; không còn thao tác chạm số dư/trạng thái nào thiếu routine — xem mục H.
+- 32/32 hàm `rc_*` nghiệp vụ của v4.1 (20 tên v4 + 12 hàm bổ sung) đều gắn với một thẻ; không còn thao tác chạm số dư/trạng thái nào thiếu routine — xem mục H.
 
 **Ma trận 48 bảng × chức năng** (ô ghi mã nhóm chức năng):
 
@@ -365,29 +365,29 @@ flowchart LR
 
 | Mục | Nội dung |
 | --- | --- |
-| **Actor** | WAITER (mở/đóng phiên); MANAGER (danh mục bàn; xử lý khách bỏ về — kiểm vai trò trong DB) |
+| **Actor** | WAITER/MANAGER (mở/đóng phiên); MANAGER (danh mục bàn; khách bỏ về) |
 | **Routine v4.1** | `rc_open_session`, `rc_close_empty_session`, `rc_abandon_session` *(mới — QĐ-3)* |
 | **Điều kiện vào** | Mở: bàn AVAILABLE, `is_active`. Đóng trống: chưa có món hoặc mọi dòng CANCELLED/REJECTED, chưa có `invoices`. Bỏ về: phiên OPEN, đơn OPEN, người gọi có vai trò MANAGER, lý do không rỗng |
 | **Đọc (R)** | `dining_tables`, `table_sessions`, `orders`, `order_batches`, `order_items`, `invoices`, `accounts`, `account_roles`, `roles` |
-| **Ghi (C/U)** | C/U `dining_tables` (danh mục: `code`, `capacity`) · Mở: C `table_sessions` (OPEN, `opened_by_id`) · C `orders` (OPEN) · U `dining_tables` → OCCUPIED · Đóng trống: U `orders` → CANCELLED · U `table_sessions` → CLOSED + `closed_at`, `closed_by_id` · U `dining_tables` → AVAILABLE. Bỏ về: U `order_items` → CANCELLED · C `order_item_events` (người + lý do) · U `stock_reservations` → RELEASED · U `kitchen_batches` (`reserved_quantity` −) · C `invoices` (nếu chưa có) · C `invoice_items` (dòng SERVED còn thiếu) · U `payment_requests` → CANCELLED · U `invoices` → UNCOLLECTED (`total`, `uncollected_*`) · U `orders` → CLOSED (CANCELLED nếu không có món SERVED) · U `table_sessions` → CLOSED + `closed_by_id` · U `dining_tables` → AVAILABLE |
+| **Ghi (C/U)** | C/U `dining_tables` (danh mục: `code`, `capacity`) · Mở: C `table_sessions` (OPEN, `opened_by_id`) · C `orders` (OPEN) · U `dining_tables` → OCCUPIED · Đóng trống: U `orders` → CANCELLED · U `table_sessions` → CLOSED + `closed_at`, `closed_by_id` · U `dining_tables` → AVAILABLE. Bỏ về: U `order_items` → CANCELLED · C `order_item_events` (người + lý do) · U `stock_reservations` → RELEASED · U `kitchen_batches` (`reserved_quantity` −) · C `invoices` (nếu chưa có) · C `invoice_items` (dòng SERVED còn thiếu) · U `payment_requests` → CANCELLED · U `invoices` → UNCOLLECTED (`total`, `uncollected_*`), hoặc WAIVED khi tổng 0 đồng (`waived_*`) · U `orders` → CLOSED (CANCELLED nếu không có món SERVED và chưa có hóa đơn) · U `table_sessions` → CLOSED + `closed_by_id` · U `dining_tables` → AVAILABLE |
 | **Transaction & khóa** | Khóa `dining_tables` FOR UPDATE; `ux_table_sessions_open` chặn hai phiên mở song song. Đóng trống/bỏ về: `orders` → `invoices` → `payment_requests` → `table_sessions`/`dining_tables` → `order_items` (id tăng dần) → lô bếp |
-| **Trạng thái / event** | Bàn AVAILABLE ⇄ OCCUPIED; phiên OPEN → CLOSED; order OPEN → CANCELLED (đóng trống / bỏ về không có món SERVED) hoặc CLOSED (bỏ về có nghĩa vụ); invoice → UNCOLLECTED |
-| **Ngoại lệ** | Không tạo invoice 0đ; không chuyển/gộp bàn (ngoài Core). Bỏ về: **không** tạo `payments`, **không** PAID, **không** doanh thu thực thu, không xóa dữ liệu; món COOKING/READY bị hủy không hoàn nguyên liệu/quota; QR đến muộn → AFTER_CANCEL. Phiên đã có hóa đơn DRAFT 0 đồng (Manager miễn phí toàn bộ món, QĐ-2) không đóng trống được → dùng bỏ về: trả NULL, đơn CANCELLED, hóa đơn DRAFT giữ nguyên, không thành nợ. Bàn đã có lịch sử không xóa được → đặt `is_active = false` (DB-15) |
-| **Test** | TABLE-01, TABLE-02, QĐ-3, QĐ-2/3, C8, C9 |
+| **Trạng thái / event** | Bàn AVAILABLE ⇄ OCCUPIED; phiên OPEN → CLOSED; order OPEN → CANCELLED (đóng trống / bỏ về không món SERVED, **chỉ khi chưa có hóa đơn**) hoặc CLOSED (bỏ về: hóa đơn UNCOLLECTED, hoặc WAIVED nếu 0 đồng) |
+| **Ngoại lệ** | Không tạo invoice 0đ; không chuyển/gộp bàn (ngoài Core). Bỏ về: **không** tạo `payments`, **không** PAID, **không** doanh thu thực thu, không xóa dữ liệu; món COOKING/READY bị hủy không hoàn nguyên liệu/quota; QR đến muộn → AFTER_CANCEL. Phiên đã có hóa đơn DRAFT 0 đồng (Manager miễn phí toàn bộ món, QĐ-2) không đóng trống được → Manager đóng bằng miễn thu (3.5) hoặc bỏ về: hóa đơn **WAIVED** 0 đồng, đơn CLOSED — không còn hóa đơn DRAFT treo (QĐ-MT). UNCOLLECTED là trạng thái cuối: không công nợ, thu bù hay xóa nợ trong Core. Bàn đã có lịch sử không xóa được → đặt `is_active = false` (DB-15) |
+| **Test** | TABLE-01, TABLE-02, QĐ-3, QĐ-2/3/MT, QĐ-BM, C8, C9, C11 |
 
 ### 3.2 Ghi/gửi món nhiều đợt
 
 | Mục | Nội dung |
 | --- | --- |
-| **Actor** | WAITER |
-| **Routine v4.1** | `rc_submit_batch` *(mới)* |
-| **Điều kiện vào** | `orders.status = OPEN`; chưa có invoice hoặc invoice DRAFT; thực đơn PUBLISHED đúng `business_date`; món `is_active`, không `is_paused`; `quantity > 0`; quota: `NULL` không kiểm, còn số suất thì cho qua, hết suất (kể cả `quota_total = 0`) thì báo sớm — kiểm mềm, kiểm cứng ở 3.4 (QĐ-1, QĐ-8) |
+| **Actor** | WAITER, MANAGER |
+| **Routine v4.1** | `rc_submit_batch` *(mới; trả JSONB `batch_id` + `warnings`)* |
+| **Điều kiện vào** | `orders.status = OPEN`; chưa có invoice hoặc invoice DRAFT; thực đơn PUBLISHED đúng `business_date`; món `is_active`, không `is_paused`; `quantity > 0`; quota **không chặn** (QĐ-4): dòng vượt phần suất còn lại (kể cả `quota_total = 0`) vẫn được ghi, kết quả kèm cảnh báo `QUOTA_EXCEEDED` (`remaining`); `NULL` không cảnh báo; kiểm cứng ở 3.3/3.4 khi Kitchen nhận (QĐ-1, QĐ-8) |
 | **Đọc (R)** | `orders`, `invoices`, `daily_menus`, `daily_menu_items`, `menu_items`, `order_items`, `order_item_events` |
 | **Ghi (C/U)** | C `order_batches` (`waiter_id`, `submitted_at`, `request_key`) · C `order_items` (PENDING, `item_name_snapshot` ← `menu_items.name`, `unit_price` ← `menu_items.price`, `has_stock_exception = false`) · C `order_item_events` (NULL → PENDING) |
 | **Transaction & khóa** | 1 transaction cho cả đợt; khóa `orders` FOR UPDATE (mức 1) để tuần tự với chốt hóa đơn, hủy ngoại lệ, bỏ về (QĐ-4) |
 | **Trạng thái / event** | Dòng món → PENDING |
-| **Ngoại lệ** | Idempotent theo `request_key`: gửi lại trả về đợt cũ; dùng lại key cho đơn khác → RC409. Hóa đơn PAYMENT_PENDING/PAID/UNCOLLECTED → từ chối (phải mở lại ở 3.5) |
-| **Test** | ORDER-01, ORDER-04, QĐ-1, QĐ-4, C5 |
+| **Ngoại lệ** | Idempotent theo `request_key`: gửi lại trả về đợt cũ; dùng lại key cho đơn khác → RC409. Hóa đơn PAYMENT_PENDING/PAID/UNCOLLECTED/WAIVED → từ chối (phải mở lại ở 3.5). UI hiển thị `warnings` cho Waiter |
+| **Test** | ORDER-01, ORDER-04, QĐ-1, QĐ-4, MENU-02, C5 |
 
 ### 3.3 Nhận/từ chối/chế biến/trả món
 
@@ -421,15 +421,15 @@ flowchart LR
 
 | Mục | Nội dung |
 | --- | --- |
-| **Actor** | CASHIER |
-| **Routine v4.1** | `rc_checkout_invoice`, `rc_reopen_invoice` |
+| **Actor** | CASHIER, MANAGER; miễn thu chỉ MANAGER |
+| **Routine v4.1** | `rc_checkout_invoice`, `rc_reopen_invoice`, `rc_waive_invoice` *(mới — QĐ-MT)* |
 | **Điều kiện vào** | Mọi dòng món ∈ {SERVED, CANCELLED, REJECTED}; ≥ 1 dòng SERVED; tổng > 0; `orders.status = OPEN`. Chốt: Cashier khi khách thanh toán tại quầy; mở lại: phải nêu lý do |
 | **Đọc (R)** | `orders`, `order_batches`, `order_items`, `invoices`, `invoice_items` |
-| **Ghi (C/U)** | C `invoices` (lần đầu, DRAFT, `created_by_id`) · C `invoice_items` (mỗi dòng SERVED chưa có: `item_name`, `quantity`, `unit_price`; `line_total` tự sinh) · U `invoices` (`total = Σ line_total` do hàm tự tính, → PAYMENT_PENDING). Mở lại: U `invoices` → DRAFT · U `payment_requests` (request đang mở → CANCELLED + `cancel_reason`, `cancelled_at`, `cancelled_by_id`) |
+| **Ghi (C/U)** | C `invoices` (lần đầu, DRAFT, `created_by_id`) · C `invoice_items` (mỗi dòng SERVED chưa có: `item_name`, `quantity`, `unit_price`; `line_total` tự sinh) · U `invoices` (`total = Σ line_total` do hàm tự tính, → PAYMENT_PENDING). Mở lại: U `invoices` → DRAFT · U `payment_requests` (request đang mở → CANCELLED + `cancel_reason`, `cancelled_at`, `cancelled_by_id`). Miễn thu: C/U như chốt (giữ nguyên `invoice_items`, giá bán) · U `payment_requests` đang mở → CANCELLED · U `invoices` → WAIVED + `waived_reason/by/at` · U `orders` → CLOSED · U `table_sessions` → CLOSED · U `dining_tables` → AVAILABLE |
 | **Transaction & khóa** | Khóa `orders` → `invoices` → `payment_requests` (chặn 3.2 gửi món chen vào, 3.3 hủy ngoại lệ, thanh toán). `rc_invoice_total_checked` đối chiếu: không sót dòng SERVED, mọi dòng hóa đơn là bản chụp đúng (tên, số lượng, đơn giá) của dòng SERVED cùng đơn; trigger khóa hóa đơn từ PAYMENT_PENDING |
-| **Trạng thái / event** | Invoice DRAFT → PAYMENT_PENDING; PAYMENT_PENDING → DRAFT (mở lại); PAID và UNCOLLECTED là cuối (QĐ-3, QĐ-4) |
-| **Ngoại lệ** | Thiếu dòng SERVED → chặn. Không nhận tổng từ client. Từ PAYMENT_PENDING Waiter không gửi thêm món; muốn đổi phải mở lại (hủy yêu cầu thanh toán hiện hành). Màn hình Cashier đọc `invoices` trước, `invoice_items` khi xem chi tiết; không lấy `payments.amount` làm số phải thu |
-| **Test** | INV-01, INV-02, ORDER-04, QĐ-4, C5 |
+| **Trạng thái / event** | Invoice DRAFT → PAYMENT_PENDING; PAYMENT_PENDING → DRAFT (mở lại); DRAFT/PAYMENT_PENDING → WAIVED (miễn thu); PAID, UNCOLLECTED, WAIVED là cuối (QĐ-3, QĐ-4, QĐ-MT) |
+| **Ngoại lệ** | Thiếu dòng SERVED → chặn. Không nhận tổng từ client. Từ PAYMENT_PENDING Waiter không gửi thêm món; muốn đổi phải mở lại (hủy yêu cầu thanh toán hiện hành). Màn hình Cashier đọc `invoices` trước, `invoice_items` khi xem chi tiết; không lấy `payments.amount` làm số phải thu. Tổng 0 đồng (món giá 0) không chốt chờ thu → miễn thu. Miễn thu: không `payments`, không doanh thu, không áp cho PAID; còn món chưa kết thúc → chặn; đồng thời với thu tiền chỉ một bên thành công; QR đến sau → AFTER_CANCEL |
+| **Test** | INV-01, INV-02, ORDER-04, QĐ-4, QĐ-MT, C5, C11 |
 
 ### 3.6 Thu tiền mặt tại quầy
 
@@ -554,10 +554,10 @@ flowchart LR
 | Mục | Nội dung |
 | --- | --- |
 | **Actor** | MANAGER |
-| **Routine v4.1** | `rc_confirm_receipt` |
+| **Routine v4.1** | `rc_create_stock_receipt` *(mới — QĐ-ID)*, `rc_confirm_receipt` |
 | **Điều kiện vào** | Phiếu DRAFT, không rỗng; `input_quantity > 0`, `conversion_factor > 0`; nguyên liệu còn `is_active`; nguyên liệu `is_expiry_tracked` phải có `expiry_date`; lô đã quá hạn (theo ngày kinh doanh) không được nhận vào kho |
 | **Đọc (R)** | `stock_receipts`, `stock_receipt_items`, `ingredients` |
-| **Ghi (C/U)** | Lập: C `stock_receipts` (DRAFT, `created_by_id`) · C/U/D `stock_receipt_items`. Xác nhận: U `stock_receipts` → CONFIRMED + `received_at`, `confirmed_by_id`, `confirmed_at` · C `inventory_batches` (1 lô/dòng, `quantity_on_hand = input_quantity × conversion_factor`) · C `stock_movements` (RECEIPT, +) |
+| **Ghi (C/U)** | Lập (một lời gọi, header + dòng): C `stock_receipts` (DRAFT, `created_by_id`, `request_key`, `request_hash`) · C `stock_receipt_items`; sửa nháp: C/U/D `stock_receipt_items`, bỏ nháp: D. Gửi lặp cùng `request_key` + payload → trả phiếu cũ, khác payload → RC409. Xác nhận (ghi sổ trước, đổi trạng thái sau): U `stock_receipts` → CONFIRMED + `received_at`, `confirmed_by_id`, `confirmed_at` · C `inventory_batches` (1 lô/dòng, `quantity_on_hand = input_quantity × conversion_factor`) · C `stock_movements` (RECEIPT, +) |
 | **Transaction & khóa** | Khóa `stock_receipts` FOR UPDATE (xác nhận lặp đồng thời: bên sau thấy CONFIRMED → RC409); `event_key` theo dòng nhập + `inventory_batches.stock_receipt_item_id` UNIQUE là hàng rào thứ hai. Lô RAW mới nên không cần khóa tài nguyên khác |
 | **Trạng thái / event** | DRAFT → CONFIRMED / CANCELLED |
 | **Ngoại lệ** | Không tự sinh khoản chi (tiền ghi ở 5.1). Hai đợt nhập cùng nguyên liệu → hai lô riêng, không gộp |
@@ -568,10 +568,10 @@ flowchart LR
 | Mục | Nội dung |
 | --- | --- |
 | **Actor** | MANAGER (lập, xuất, hủy, duyệt hoàn trả); KITCHEN (nhận, đề xuất hoàn trả) |
-| **Routine v4.1** | `rc_issue_stock`, `rc_receive_issue`, `rc_cancel_issue`, `rc_confirm_return` |
+| **Routine v4.1** | `rc_create_stock_issue` *(mới — QĐ-ID)*, `rc_issue_stock`, `rc_receive_issue`, `rc_cancel_issue`, `rc_confirm_return` |
 | **Điều kiện vào** | Xuất: lô `is_usable`, còn hạn, đủ số, đúng FEFO. Nhận: phiếu ISSUED, nhận đủ toàn phiếu. Hoàn trả: WIP ≤ `wip_remaining_quantity`; DIRECT ≤ `quantity_on_hand − reserved_quantity`; không trả lô PREPARED |
 | **Đọc (R)** | `stock_issues`, `stock_issue_items`, `inventory_batches`, `stock_receipt_items`, `kitchen_ingredient_types`, `kitchen_batches`, `stock_returns`, `stock_return_items` |
-| **Ghi (C/U)** | Lập: C `stock_issues` (DRAFT) · C/U/D `stock_issue_items` (`fulfillment_mode`, `wip_remaining_quantity = 0`). Xuất: U `inventory_batches` (−) · C `stock_movements` (ISSUE_OUT) · U `stock_issues` → ISSUED. Nhận PREPARE: U `stock_issue_items` (`wip_remaining_quantity = quantity`) · C `stock_movements` (ISSUE_RECEIVED). Nhận DIRECT: C `kitchen_batches` (`direct_issue_item_id`) · C `stock_movements` (DIRECT_IN). Hủy ISSUED: U `inventory_batches` (+) · C `stock_movements` (ISSUE_REVERSAL) · U `stock_issues` → CANCELLED + `cancel_reason`, `cancelled_at`, `cancelled_by_id`. Hoàn trả: C `stock_returns` · C `stock_return_items` · U `stock_issue_items` hoặc U `kitchen_batches` (−) · U `inventory_batches` (+) · C `stock_movements` (RETURN ×2) · U `stock_returns` → CONFIRMED |
+| **Ghi (C/U)** | Lập: C `stock_issues` (DRAFT, `request_key`, `request_hash`) · C `stock_issue_items` (`fulfillment_mode`, `wip_remaining_quantity = 0`) trong một lời gọi idempotent; sửa nháp C/U/D dòng. Xuất: U `inventory_batches` (−) · C `stock_movements` (ISSUE_OUT) · U `stock_issues` → ISSUED. Nhận PREPARE: U `stock_issue_items` (`wip_remaining_quantity = quantity`) · C `stock_movements` (ISSUE_RECEIVED). Nhận DIRECT: C `kitchen_batches` (`direct_issue_item_id`) · C `stock_movements` (DIRECT_IN). Hủy ISSUED: U `inventory_batches` (+) · C `stock_movements` (ISSUE_REVERSAL) · U `stock_issues` → CANCELLED + `cancel_reason`, `cancelled_at`, `cancelled_by_id`. Hoàn trả: C `stock_returns` · C `stock_return_items` · U `stock_issue_items` hoặc U `kitchen_batches` (−) · U `inventory_batches` (+) · C `stock_movements` (RETURN ×2) · U `stock_returns` → CONFIRMED |
 | **Transaction & khóa** | Khóa phiếu (header) rồi tài nguyên theo thứ tự chung: `inventory_batches` (7) theo `id` → `stock_issue_items` (8) → `kitchen_batches` (9) theo (loại, `id`). Xuất kho khóa mọi lô của các nguyên liệu liên quan để kiểm FEFO không bị chen. Hoàn trả khóa trước **toàn bộ** tài nguyên rồi mới ghi, không theo thứ tự dòng phiếu (hai phiếu ngược thứ tự không deadlock). Mỗi movement một `event_key` riêng (RETURN cần 2 khóa: chiều ra và chiều vào) |
 | **Trạng thái / event** | Phiếu xuất DRAFT → ISSUED → RECEIVED; DRAFT/ISSUED → CANCELLED. Phiếu trả DRAFT → CONFIRMED/CANCELLED |
 | **Ngoại lệ** | ISSUED chưa nhận = **đang chuyển** (suy ra từ phiếu, không có số dư riêng). RECEIVED không hủy lùi → dùng hoàn trả. Hàng đến thiếu → hủy phiếu, lập phiếu mới (không nhận một phần) |
@@ -624,10 +624,10 @@ flowchart LR
 | Mục | Nội dung |
 | --- | --- |
 | **Actor** | KITCHEN/MANAGER (lập); MANAGER (duyệt) |
-| **Routine v4.1** | `rc_confirm_adjustment`, `rc_confirm_count` |
+| **Routine v4.1** | `rc_create_stock_count` *(mới — QĐ-ID)*, `rc_confirm_adjustment`, `rc_confirm_count` |
 | **Điều kiện vào** | Hư hỏng: mỗi dòng đúng 1 nguồn, lượng giảm ≤ khả dụng (bếp: `quantity_on_hand − reserved_quantity`). Kiểm kê: `book_quantity` phải bằng số dư lúc duyệt; dòng bếp: `actual_quantity ≥ reserved_quantity` |
 | **Đọc (R)** | `stock_adjustments`, `stock_adjustment_items`, `stock_counts`, `stock_count_items`, `inventory_batches`, `stock_issue_items`, `kitchen_batches`, `stock_movements` |
-| **Ghi (C/U)** | Lập: C `stock_adjustments` (DRAFT, `adjustment_type`, `reason`, `request_key`) · C `stock_adjustment_items` (`quantity_delta` < 0) · C `stock_counts` (DRAFT, `created_by_id`) · C `stock_count_items` (`book_quantity`, `actual_quantity`, `reason`). Duyệt: U `inventory_batches` / U `stock_issue_items` / U `kitchen_batches` · C `stock_movements` (WASTE, hoặc COUNT_ADJUST = actual − book) · U `stock_adjustments` / U `stock_counts` → CONFIRMED |
+| **Ghi (C/U)** | Lập: C `stock_adjustments` (DRAFT, `adjustment_type`, `reason`, `request_key`) · C `stock_adjustment_items` (`quantity_delta` < 0) · C `stock_counts` (DRAFT, `created_by_id`, `request_key`, `request_hash`) · C `stock_count_items` (`book_quantity` chụp từ sổ lúc lập, `actual_quantity`, `reason`) — một lời gọi idempotent. Duyệt: U `inventory_batches` / U `stock_issue_items` / U `kitchen_batches` · C `stock_movements` (WASTE, hoặc COUNT_ADJUST = actual − book) · U `stock_adjustments` / U `stock_counts` → CONFIRMED |
 | **Transaction & khóa** | Khóa phiếu rồi **trước hết** mọi nguồn theo thứ tự chung RAW (`id`) → WIP (`id`) → kho bếp (loại, `id`), sau đó mới ghi theo dòng phiếu (hai phiếu liệt kê nguồn ngược thứ tự vẫn không deadlock); `book_quantity` lệch số dư đang khóa → báo stale, không ghi đè; xác nhận lặp → RC409 |
 | **Trạng thái / event** | DRAFT → CONFIRMED / CANCELLED |
 | **Ngoại lệ** | WASTE (bảo quản) ≠ hao hụt sơ chế. Kiểm kê không tạo thêm `stock_adjustments` cho cùng chênh lệch. Lịch sử = `stock_movements` theo vị trí (3 index audit) |
@@ -690,21 +690,21 @@ flowchart LR
 | Mục | Nội dung |
 | --- | --- |
 | **Actor** | MANAGER, CASHIER |
-| **Routine v4.1** | truy vấn |
+| **Routine v4.1** | `rpt_revenue_by_day`, `rpt_revenue_by_item`, `rpt_unpaid_closures` ([10](10-bao-cao-v4.1.sql)) |
 | **Điều kiện vào** | — |
 | **Đọc (R)** | `payments`, `invoices`, `invoice_items` |
 | **Ghi (C/U)** | — |
 | **Transaction & khóa** | Chỉ đọc; báo cáo nhiều truy vấn nên chạy REPEATABLE READ để số liệu cùng một thời điểm |
 | **Trạng thái / event** | — |
-| **Ngoại lệ** | Doanh thu = Σ `payments.amount` theo `business_date` (tách theo `method`). Invoice chưa PAID không tính; tiền QR không cộng vào quỹ tiền mặt |
-| **Test** | (báo cáo) |
+| **Ngoại lệ** | Doanh thu = Σ `payments.amount` theo `business_date` (tách theo `method`); webhook lặp/đến muộn không bao giờ thành payment nên không đếm trùng. UNCOLLECTED và WAIVED không tính (liệt kê riêng ở `rpt_unpaid_closures`); tiền QR không cộng vào quỹ tiền mặt. Không gọi chênh lệch thu − chi là lợi nhuận |
+| **Test** | 11-test-bao-cao (doanh thu, theo món, bỏ về/miễn thu), M21, M22 |
 
 ### 5.3 Đối soát tiền mặt
 
 | Mục | Nội dung |
 | --- | --- |
 | **Actor** | MANAGER (CASHIER đếm két) |
-| **Routine v4.1** | `rc_reconcile_cash` *(mới)* |
+| **Routine v4.1** | `rc_reconcile_cash` *(mới)*; xem số tươi bằng `rpt_cash_reconciliation` |
 | **Điều kiện vào** | Ngày kinh doanh đã kết thúc bán; nếu ngày đã có bản CURRENT thì bắt buộc `revision_reason` |
 | **Đọc (R)** | `payments`, `operating_expenses`, `daily_cash_reconciliations` |
 | **Ghi (C/U)** | U `daily_cash_reconciliations` (bản CURRENT cũ → SUPERSEDED) · C `daily_cash_reconciliations` (`version` + 1, CURRENT, `opening_cash`, `cash_sales`, `cash_expenses`, `actual_cash`, `reason`, `revision_reason`; `expected_cash`, `difference` tự tính) |
@@ -718,44 +718,46 @@ flowchart LR
 | Mục | Nội dung |
 | --- | --- |
 | **Actor** | MANAGER |
-| **Routine v4.1** | truy vấn |
+| **Routine v4.1** | `rpt_revenue_by_item`, `rpt_raw_stock`, `rpt_handover_and_wip`, `rpt_kitchen_stock`, `rpt_unusable_lots`, `rpt_stock_history` ([10](10-bao-cao-v4.1.sql)) |
 | **Điều kiện vào** | — |
 | **Đọc (R)** | `payments`, `invoices`, `invoice_items`, `order_items`, `order_batches`, `orders`, `daily_menu_items`, `menu_items`, `menu_categories`, `stock_movements`, `inventory_batches`, `stock_receipt_items`, `ingredients`, `stock_issue_items`, `kitchen_batches`, `kitchen_ingredient_types` |
 | **Ghi (C/U)** | — |
 | **Transaction & khóa** | Chỉ đọc, REPEATABLE READ |
 | **Trạng thái / event** | — |
 | **Ngoại lệ** | Bán theo món: `invoice_items` ⨝ `payments` (kỳ) ⨝ `order_items` → `daily_menu_items` → `menu_items` → `menu_categories`. Nhập–xuất–tồn: tồn đầu = Σ delta trước kỳ; phát sinh theo `movement_type` trong kỳ; tồn cuối = đầu + phát sinh; quy về `ingredient_id` qua 3 nhánh lô. Lọc theo kỳ dùng index BRIN `brin_stock_movements_created` (DB-27) |
-| **Test** | (báo cáo) |
+| **Test** | 11-test-bao-cao (tồn RAW/bàn giao/WIP/bếp khả dụng, lô hỏng, sổ kho theo nhóm), M24 |
 
 ### 5.5 Báo cáo hao hụt, xuất Excel/CSV
 
 | Mục | Nội dung |
 | --- | --- |
 | **Actor** | MANAGER, KITCHEN |
-| **Routine v4.1** | truy vấn |
+| **Routine v4.1** | `rpt_preparation_yield`, `rpt_stock_history` ([10](10-bao-cao-v4.1.sql)) |
 | **Điều kiện vào** | — |
 | **Đọc (R)** | `kitchen_preparations`, `kitchen_preparation_outputs`, `stock_adjustments`, `stock_adjustment_items`, `stock_counts`, `stock_count_items`, `stock_movements` |
 | **Ghi (C/U)** | — |
 | **Transaction & khóa** | Chỉ đọc |
 | **Trạng thái / event** | — |
 | **Ngoại lệ** | Ba chỉ tiêu tách riêng: hao hụt sơ chế (input − Σ output), WASTE bảo quản (theo `adjustment_type`), chênh lệch kiểm kê (actual − book). Xuất file ở tầng ứng dụng, không ghi DB |
-| **Test** | PREP-01, WASTE-01 |
+| **Test** | PREP-01, WASTE-01, 11-test-bao-cao (đầu vào/thành phẩm/hao hụt/tỷ lệ, truy lô + người) |
 
 ---
 
 ## H. Hàm bổ sung trong v4.1 (DB-34, QĐ-2, QĐ-3)
 
-Mục I4/M7 của spec yêu cầu thao tác tiền/tồn đi qua routine và **không cho DML trực tiếp**. Ở v4, 6 thao tác đầu bảng dưới chưa có hàm: nếu REVOKE quyền ghi thì không chạy được, còn nếu mở quyền ghi thì app role có thể đặt thẳng `order_items.status = COOKING` mà bỏ qua bước tiêu hao. v4.1 bổ sung đủ 6 hàm; vòng chốt nghiệp vụ thêm 2 hàm cho QĐ-2 và QĐ-3 (tổng 20 + 8 = 28 hàm). Cùng quy ước với 20 hàm còn lại: tham số `p_actor` là `employees.id`, chạy SECURITY DEFINER, khóa theo thứ tự chung, lỗi theo mã RC001/RC403/RC409/RC422/RC500 (xem [07-kiem-toan-ham-rc.md](07-kiem-toan-ham-rc.md)).
+Mục I4/M7 của spec yêu cầu thao tác tiền/tồn đi qua routine và **không cho DML trực tiếp**. Ở v4, 6 thao tác đầu bảng dưới chưa có hàm: nếu REVOKE quyền ghi thì không chạy được, còn nếu mở quyền ghi thì app role có thể đặt thẳng `order_items.status = COOKING` mà bỏ qua bước tiêu hao. v4.1 bổ sung đủ 6 hàm; vòng chốt nghiệp vụ thêm 2 hàm cho QĐ-2 và QĐ-3; vòng đóng băng thêm 4 hàm cho QĐ-MT và QĐ-ID (tổng 20 + 12 = 32 hàm). Cùng quy ước với 20 hàm còn lại: tham số `p_actor` là `employees.id` của principal đã xác thực và được kiểm vai trò (`rc_authorize`), chạy SECURITY DEFINER, khóa theo thứ tự chung, lỗi theo mã RC001/RC403/RC409/RC422/RC500 (xem [07-kiem-toan-ham-rc.md](07-kiem-toan-ham-rc.md)).
 
 | Hàm | Nhóm | Việc làm | Bảng ghi |
 | --- | --- | --- | --- |
-| `rc_submit_batch(order, actor, request_key, items jsonb)` | 3.2 | Gửi lặp cùng `request_key` → trả đợt cũ (key đã dùng cho đơn khác → RC409); chặn khi order không mở, hóa đơn đã chốt (từ PAYMENT_PENDING), món ngoài thực đơn hôm nay hoặc đang tạm dừng, hoặc quota không đủ (kiểm mềm, kiểm cứng ở lúc nhận); chụp tên + giá | `order_batches`, `order_items`, `order_item_events` |
+| `rc_submit_batch(order, actor, request_key, items jsonb)` | 3.2 | Gửi lặp cùng `request_key` → trả đợt cũ (key đã dùng cho đơn khác → RC409); chặn khi order không mở, hóa đơn đã chốt (từ PAYMENT_PENDING), món ngoài thực đơn hôm nay hoặc đang tạm dừng; quota không chặn — trả cảnh báo `QUOTA_EXCEEDED` (kiểm cứng ở lúc nhận); chụp tên + giá; trả JSONB | `order_batches`, `order_items`, `order_item_events` |
 | `rc_reject_item(item, actor, reason)` | 3.3 | PENDING → REJECTED, bắt buộc lý do; không chiếm quota | `order_items`, `order_item_events` |
 | `rc_serve_item(item, actor)` | 3.3 | READY → SERVED | `order_items`, `order_item_events` |
-| `rc_mark_batch_unusable(kind, batch, actor, reason)` | 4.1, 4.5 | Đánh dấu lô RAW/bếp không dùng được; lô bếp đang được giữ → bật `has_stock_exception` cho các món liên quan, trả về số món bị ảnh hưởng | `inventory_batches` hoặc `kitchen_batches`, `order_items` |
+| `rc_mark_batch_unusable(kind, batch, actor, reason)` | 4.1, 4.5 | Chỉ MANAGER (G7.8). Đánh dấu lô RAW/bếp không dùng được; lô bếp đang được giữ → bật `has_stock_exception` cho các món liên quan, trả về số món bị ảnh hưởng | `inventory_batches` hoặc `kitchen_batches`, `order_items` |
 | `rc_reallocate_item(item, actor)` | 3.4 | Giải phóng phần giữ trên lô hỏng/hết hạn (`BATCH_UNUSABLE`), giữ lại theo FEFO từ lô khác, xóa cờ; vẫn thiếu → lỗi, Kitchen hủy món | `stock_reservations`, `kitchen_batches`, `order_items` |
 | `rc_reconcile_cash(date, opening, actual, actor, reason, revision_reason)` | 5.3 | Khóa advisory theo ngày, tính `cash_sales`/`cash_expenses` từ dữ liệu thật, chuyển bản cũ SUPERSEDED, tạo version mới CURRENT | `daily_cash_reconciliations` |
 | `rc_cancel_item_exception(item, actor, reason)` | 3.3 | **QĐ-2.** Chỉ MANAGER (DB kiểm vai trò). Hủy món đã COOKING/READY/SERVED kèm lý do bắt buộc; không hoàn nguyên liệu/quota; chặn khi đơn không OPEN hoặc hóa đơn PAYMENT_PENDING (phải mở lại) / PAID; hóa đơn DRAFT → xóa dòng `invoice_items` tương ứng và tính lại tổng | `order_items`, `order_item_events`, `invoice_items`, `invoices` |
-| `rc_abandon_session(session, actor, reason)` | 3.1 | **QĐ-3.** Chỉ MANAGER. Hủy các dòng còn mở (trước COOKING giải phóng phần giữ), tạo/cập nhật hóa đơn đủ `invoice_items`, hủy yêu cầu thanh toán đang mở, hóa đơn → **UNCOLLECTED** (không `payments`, không PAID), đơn CLOSED (hoặc CANCELLED nếu không có món SERVED), phiên CLOSED, bàn AVAILABLE; trả id hóa đơn hoặc NULL | `order_items`, `order_item_events`, `stock_reservations`, `kitchen_batches`, `invoices`, `invoice_items`, `payment_requests`, `orders`, `table_sessions`, `dining_tables` |
+| `rc_abandon_session(session, actor, reason)` | 3.1 | **QĐ-3.** Chỉ MANAGER. Hủy các dòng còn mở (trước COOKING giải phóng phần giữ), tạo/cập nhật hóa đơn đủ `invoice_items`, hủy yêu cầu thanh toán đang mở, hóa đơn → **UNCOLLECTED** (không `payments`, không PAID) hoặc **WAIVED** nếu tổng 0 đồng, đơn CLOSED (CANCELLED nếu không món SERVED và chưa có hóa đơn), phiên CLOSED, bàn AVAILABLE; trả id hóa đơn hoặc NULL | `order_items`, `order_item_events`, `stock_reservations`, `kitchen_batches`, `invoices`, `invoice_items`, `payment_requests`, `orders`, `table_sessions`, `dining_tables` |
+| `rc_waive_invoice(order, actor, reason)` | 3.5 | **QĐ-MT.** Chỉ MANAGER. Mọi món đã kết thúc; tạo/bổ sung hóa đơn từ dòng SERVED (giữ giá), hủy yêu cầu thanh toán đang mở, hóa đơn → **WAIVED** (`waived_*`, total = giá trị được miễn, có thể 0), đơn/phiên CLOSED, bàn AVAILABLE; không `payments`; PAID/UNCOLLECTED/WAIVED → RC409 | `invoices`, `invoice_items`, `payment_requests`, `orders`, `table_sessions`, `dining_tables` |
+| `rc_create_stock_receipt(actor, request_key, payload)` · `rc_create_stock_issue(…)` · `rc_create_stock_count(…)` | 4.2, 4.3, 4.7 | **QĐ-ID.** Chỉ MANAGER. Tạo header + dòng nguyên tử; khóa tư vấn theo `request_key`; cùng khóa + cùng payload → id cũ, khác payload → RC409; kiểm kê chụp `book_quantity` | `stock_receipts` + `stock_receipt_items` / `stock_issues` + `stock_issue_items` / `stock_counts` + `stock_count_items` |
 
-Các thao tác còn lại ở mức `service` (danh mục, phiếu nháp, chấm công, khoản chi) không chạm số dư → ghi trực tiếp, được các CHECK/trigger trong [04-schema-v4.1.sql](04-schema-v4.1.sql) bảo vệ. Gợi ý phân quyền ở cuối file 04: REVOKE ghi trên bảng số dư/tiền khỏi role ứng dụng, chỉ GRANT EXECUTE các hàm `rc_*`. Ngoài 28 hàm nghiệp vụ, schema có 12 hàm hỗ trợ (`rc_raise`, `rc_require_role`, `rc_business_date`, `rc_usable_until`, `rc_quota_used`, `rc_check_balance`, `rc_item_transition`, `rc_allocate_item`, `rc_release_item_reservations`, `rc_lock_invoice`, `rc_invoice_total_checked`, `rc_settle_invoice`) và các hàm trigger bảo vệ trạng thái — bảng chi tiết ở file 07.
+Các thao tác còn lại ở mức `service` (danh mục, nhân sự, thực đơn, nháp chứng từ, chấm công, khoản chi, xử lý sự cố webhook) không chạm số dư → ghi trực tiếp, được CHECK/trigger trong [04-schema-v4.1.sql](04-schema-v4.1.sql) bảo vệ. Quyền ghi trực tiếp được giới hạn **theo bảng và theo cột** ở [09-acl-v4.1.sql](09-acl-v4.1.sql): role `rc_app` không có cột trạng thái/xác nhận nào của chứng từ, không ghi được bảng bán hàng, tiền, sổ kho, số dư, đối soát; header nhập/xuất/kiểm kê chỉ tạo qua `rc_create_*`. Chuyển chứng từ sang trạng thái có hiệu lực kho mà không có bút toán bị trigger chặn với mọi role. Ngoài 32 hàm nghiệp vụ, schema có 16 hàm hỗ trợ (không cấp cho ứng dụng) và 22 hàm trigger — bảng chi tiết ở file 07; báo cáo là 10 hàm `rpt_*` chỉ đọc.

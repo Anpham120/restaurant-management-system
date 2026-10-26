@@ -39,15 +39,16 @@ INSERT INTO dining_tables (code, capacity) VALUES ('B01', 4);
 -- Các bước 1–4: kho
 DO $$
 BEGIN
-    INSERT INTO stock_receipts (supplier_name, created_by_id) VALUES ('NCC', 1);
-    INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor,
-                                     unit_price_per_input_unit, lot_code, expiry_date)
-    VALUES (1, 1, 10, 'kg', 1, 250000, 'L1', rc_business_date(now()) + 5);
+    -- tạo phiếu bằng hàm idempotent (QĐ-ID): request_key do client sinh một lần cho mỗi lần bấm "Tạo"
+    PERFORM ex.eq('1 tạo phiếu nhập', rc_create_stock_receipt(1, 'ex-receipt-1', jsonb_build_object('supplier_name', 'NCC',
+                      'items', jsonb_build_array(jsonb_build_object('ingredient_id', 1, 'input_quantity', 10, 'input_unit', 'kg',
+                      'conversion_factor', 1, 'unit_price_per_input_unit', 250000, 'lot_code', 'L1',
+                      'expiry_date', rc_business_date(now()) + 5))))::text, '1');
     PERFORM rc_confirm_receipt(1, 1);
     PERFORM ex.eq('1 RAW sau nhập', (SELECT quantity_on_hand::text FROM inventory_batches WHERE id = 1), '10.000');
 
-    INSERT INTO stock_issues (issued_by_id) VALUES (1);
-    INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode) VALUES (1, 1, 7, 'PREPARE');
+    PERFORM ex.eq('2 tạo phiếu xuất', rc_create_stock_issue(1, 'ex-issue-1', jsonb_build_object('items', jsonb_build_array(
+                      jsonb_build_object('inventory_batch_id', 1, 'quantity', 7, 'fulfillment_mode', 'PREPARE'))))::text, '1');
     PERFORM rc_issue_stock(1, 1);
     PERFORM ex.eq('2 RAW sau xuất', (SELECT quantity_on_hand::text FROM inventory_batches WHERE id = 1), '3.000');
     PERFORM ex.eq('2 đang chuyển', (SELECT SUM(l.quantity)::text FROM stock_issue_items l JOIN stock_issues s ON s.id = l.stock_issue_id

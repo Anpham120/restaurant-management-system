@@ -4,9 +4,10 @@
 -- sửa 35 phát hiện DB-01…DB-35 và áp dụng các quyết định nghiệp vụ QĐ-1…QĐ-8
 -- (docs/02-danh-gia-database.md §10–§11; kiểm toán hàm ở docs/07-kiem-toan-ham-rc.md).
 --
--- Nội dung: 48 bảng · ràng buộc · index · trigger bảo vệ · 28 hàm nghiệp vụ rc_*
---           (20 tên của v4 + 8 hàm bổ sung) và các hàm trợ giúp nội bộ.
--- Chạy    : trên database TRỐNG, PostgreSQL 15+ (UNIQUE NULLS NOT DISTINCT, btree_gist); đã kiểm trên 15.18, 16.14, 17.5, 18.4.
+-- Nội dung: 48 bảng · ràng buộc · index · trigger bảo vệ · 32 hàm nghiệp vụ rc_*
+--           (20 tên của v4 + 12 hàm bổ sung) và các hàm trợ giúp nội bộ.
+--           Phân quyền role PostgreSQL (GRANT/REVOKE) nằm ở 09-acl-v4.1.sql; truy vấn báo cáo ở 10-bao-cao-v4.1.sql.
+-- Chạy    : trên database TRỐNG, PostgreSQL 15+ (UNIQUE NULLS NOT DISTINCT, btree_gist); đã kiểm trên 15, 16, 17, 18.
 --           Database phải hạ được chữ hoa có dấu tiếng Việt (UNIQUE lower(name) của DB-08), ví dụ:
 --             CREATE DATABASE restaurant_core TEMPLATE template0 ENCODING 'UTF8'
 --                    LOCALE_PROVIDER icu ICU_LOCALE 'vi-VN';        -- hoặc LC_COLLATE/LC_CTYPE 'en_US.UTF-8'
@@ -22,18 +23,31 @@
 --         rc_cancel_item_exception — không hoàn nguyên liệu, không hoàn quota, không tính tiền.
 --   QĐ-3  Khách bỏ về chưa thanh toán: rc_abandon_session (Manager, bắt buộc lý do). Ghi nhận nghĩa vụ ở
 --         invoices.status = 'UNCOLLECTED' (+ uncollected_*), đóng phiên, trả bàn; không có payments.
+--         UNCOLLECTED là trạng thái cuối của Core (không công nợ / thu bù); webhook QR đến sau chỉ được lưu
+--         AFTER_CANCEL (OPEN) để đối chiếu, không chuyển PAID.
 --   QĐ-4  rc_checkout_invoice (Cashier) tạo đủ invoice_items, tự tính tổng, đối chiếu với đơn, chuyển
 --         PAYMENT_PENDING; rc_submit_batch từ chối khi đang thanh toán; khóa orders → invoices.
---   QĐ-5  GIỮ HIỆN TRẠNG, chờ nhóm xác nhận: hủy theo cả dòng món rồi gửi lại số đúng (chưa có hủy một phần).
+--         Gửi món khi hết quota: KHÔNG chặn, rc_submit_batch trả cảnh báo QUOTA_EXCEEDED; kiểm cứng ở rc_accept_item.
+--   QĐ-5  Không hủy một phần số lượng: hủy cả dòng (rc_cancel_item / rc_cancel_item_exception) rồi gửi dòng mới
+--         với số lượng thay thế; dòng CANCELLED là trạng thái cuối, không dùng lại.
 --   QĐ-6  Áp dụng (quy ước sẵn có): mọi loại nguyên liệu bếp tính theo base_unit của nguyên liệu gốc.
 --   QĐ-7  Áp dụng: giữ bảng orders (1–1 với table_sessions), baseline 48 bảng.
 --   QĐ-8  Quota chiếm khi ACCEPTED; REJECTED không chiếm; hủy trước COOKING giải phóng đúng một lần
 --         (số đã chiếm được suy ra từ trạng thái, không lưu); từ COOKING không hoàn (rc_quota_used).
+--   QĐ-MT Miễn thu (rc_waive_invoice, Manager, bắt buộc lý do): invoices.status = 'WAIVED' (+ waived_*), giữ
+--         nguyên invoice_items/total (giá trị được miễn), không payments, không doanh thu. Hóa đơn 0 đồng cũng
+--         đóng bằng WAIVED — không còn hóa đơn DRAFT treo sau khi đơn kết thúc.
+--   QĐ-ID Chứng từ nhập / xuất / kiểm kê tạo bằng rc_create_stock_receipt / _issue / _count với request_key:
+--         cùng khóa + cùng payload → trả chứng từ cũ; cùng khóa khác payload → RC409.
+--   QĐ-NG Ngày kinh doanh: Asia/Ho_Chi_Minh, bắt đầu 04:00; tính bằng rc_business_date(), không phụ thuộc
+--         TimeZone của phiên kết nối.
 --
 -- Quy ước chung
---   * Người thao tác truyền vào hàm qua p_actor (= employees.id, backend lấy từ JWT). Phân quyền theo
---     permission ở tầng ứng dụng (spec A2); DB chỉ cưỡng chế vai trò MANAGER cho rc_cancel_item_exception
---     và rc_abandon_session (rc_require_role).
+--   * Ranh giới tin cậy: DB KHÔNG tự xác thực người dùng cuối. Backend (Spring Security) xác thực JWT và chỉ
+--     truyền p_actor = employees.id của principal đã xác thực — không bao giờ lấy từ body/query của client.
+--     DB cưỡng chế: role PostgreSQL của backend chỉ EXECUTE hàm rc_* (09-acl), và mọi hàm có p_actor kiểm
+--     nhân viên ACTIVE + tài khoản ACTIVE + vai trò được phép (rc_authorize, ma trận ở docs/07 §10) → lỗi
+--     ánh xạ endpoint ở backend không thể biến Waiter thành Manager. DB không dùng biến phiên tự đặt để định danh.
 --   * Mã lỗi (SQLSTATE) để backend ánh xạ HTTP/retry:
 --       RC001 thiếu nguyên liệu · RC403 không đủ quyền · RC409 xung đột trạng thái (gọi lặp, sai bước)
 --       RC422 dữ liệu không hợp lệ · 23505/23503/23514 vi phạm UNIQUE/FK/CHECK · 40001/40P01 thử lại.
@@ -42,7 +56,8 @@
 --       → 5 order_items → 6 daily_menu_items → 7 inventory_batches → 8 stock_issue_items → 9 kitchen_batches
 --     Chứng từ kho (header) được khóa trước tài nguyên mà nó chạm.
 --   * Ngày kinh doanh: một hàm duy nhất rc_business_date() (chốt ngày 04:00 giờ Việt Nam).
---   * Hàm rc_* là SECURITY DEFINER, REVOKE khỏi PUBLIC (khối cuối file).
+--   * Hàm rc_* là SECURITY DEFINER với search_path cố định, REVOKE khỏi PUBLIC (khối cuối file); chủ sở hữu và
+--     GRANT theo role ứng dụng ở 09-acl-v4.1.sql.
 -- =====================================================================
 BEGIN;
 
@@ -390,26 +405,37 @@ CREATE TABLE order_item_events (
 );
 CREATE INDEX idx_order_item_events_history ON order_item_events (order_item_id, created_at DESC);
 
--- QĐ-3: UNCOLLECTED = khách bỏ về chưa thanh toán. Hóa đơn giữ nguyên nghĩa vụ phải thu (total, invoice_items),
--- không có payments, không phải doanh thu thực thu; Manager ghi lý do/người/thời điểm.
+-- Bốn kết thúc của hóa đơn phân biệt rõ (không trạng thái nào tạo payments giả):
+--   PAID        — đã thu thật (payments khớp tổng);
+--   UNCOLLECTED — QĐ-3: có nghĩa vụ nhưng khách bỏ về; total > 0 là số chưa thu được;
+--   WAIVED      — QĐ-MT: Manager miễn thu hợp lệ; total (≥ 0) là giá trị được miễn, invoice_items giữ nguyên giá bán.
+-- UNCOLLECTED và WAIVED không phải doanh thu thực thu; Manager ghi lý do/người/thời điểm.
 CREATE TABLE invoices (
     id                 BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     order_id           BIGINT        NOT NULL UNIQUE REFERENCES orders (id),
     total              NUMERIC(12,2) NOT NULL DEFAULT 0 CONSTRAINT ck_invoices_total_nonneg CHECK (total >= 0),
     status             VARCHAR(20)   NOT NULL DEFAULT 'DRAFT'
-                       CONSTRAINT ck_invoices_status CHECK (status IN ('DRAFT', 'PAYMENT_PENDING', 'PAID', 'UNCOLLECTED')),
+                       CONSTRAINT ck_invoices_status CHECK (status IN ('DRAFT', 'PAYMENT_PENDING', 'PAID', 'UNCOLLECTED', 'WAIVED')),
     created_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),                                              -- DB-13
     created_by_id      BIGINT        NOT NULL REFERENCES employees (id),                                  -- DB-13
     uncollected_reason VARCHAR(255),
     uncollected_by_id  BIGINT REFERENCES employees (id),
     uncollected_at     TIMESTAMPTZ,
+    waived_reason      VARCHAR(255),
+    waived_by_id       BIGINT REFERENCES employees (id),
+    waived_at          TIMESTAMPTZ,
     CONSTRAINT ck_invoice_uncollected_fields CHECK (
         CASE WHEN status = 'UNCOLLECTED'
              THEN num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 3
                   AND btrim(uncollected_reason) <> '' AND total > 0
-             ELSE num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 0 END)
+             ELSE num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 0 END),
+    CONSTRAINT ck_invoice_waived_fields CHECK (
+        CASE WHEN status = 'WAIVED'
+             THEN num_nonnulls(waived_reason, waived_by_id, waived_at) = 3 AND btrim(waived_reason) <> ''
+             ELSE num_nonnulls(waived_reason, waived_by_id, waived_at) = 0 END)
 );
 CREATE INDEX idx_invoices_uncollected ON invoices (uncollected_at) WHERE status = 'UNCOLLECTED';
+CREATE INDEX idx_invoices_waived ON invoices (waived_at) WHERE status = 'WAIVED';
 
 CREATE TABLE payment_requests (
     id                BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -516,6 +542,8 @@ CREATE TABLE stock_receipts (
     received_at     TIMESTAMPTZ,
     confirmed_by_id BIGINT REFERENCES employees (id),
     confirmed_at    TIMESTAMPTZ,
+    request_key     VARCHAR(64)  NOT NULL UNIQUE,   -- QĐ-ID: một yêu cầu tạo phiếu = một chứng từ
+    request_hash    CHAR(64)     NOT NULL,          -- sha256 của payload tạo phiếu: cùng khóa khác payload → RC409
     CONSTRAINT ck_stock_receipt_confirm_fields CHECK (                                                    -- DB-03
         (status = 'CONFIRMED') = (num_nonnulls(received_at, confirmed_by_id, confirmed_at) = 3))
 );
@@ -567,6 +595,8 @@ CREATE TABLE stock_issues (
     cancelled_at    TIMESTAMPTZ,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),                                                  -- DB-25
     cancelled_by_id BIGINT REFERENCES employees (id),                                                     -- DB-25
+    request_key     VARCHAR(64)  NOT NULL UNIQUE,                                                         -- QĐ-ID
+    request_hash    CHAR(64)     NOT NULL,                                                                -- QĐ-ID
     CONSTRAINT ck_stock_issue_fields CHECK (                                                              -- DB-03
         CASE status
             WHEN 'DRAFT'     THEN num_nonnulls(issued_at, received_at, received_by_id,
@@ -740,6 +770,8 @@ CREATE TABLE stock_counts (
     created_by_id   BIGINT       NOT NULL REFERENCES employees (id),                                      -- DB-25
     confirmed_by_id BIGINT REFERENCES employees (id),
     confirmed_at    TIMESTAMPTZ,
+    request_key     VARCHAR(64)  NOT NULL UNIQUE,                                                         -- QĐ-ID
+    request_hash    CHAR(64)     NOT NULL,                                                                -- QĐ-ID
     CONSTRAINT ck_stock_count_confirm_fields CHECK (                                                      -- DB-03
         (status = 'CONFIRMED') = (num_nonnulls(confirmed_by_id, confirmed_at) = 2))
 );
@@ -879,8 +911,11 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = p_code, MESSAGE = p_message;
 END $$;
 
--- Cưỡng chế vai trò cho thao tác ngoại lệ (QĐ-2, QĐ-3): nhân viên ACTIVE có tài khoản ACTIVE mang vai trò p_role
-CREATE FUNCTION rc_require_role(p_actor BIGINT, p_role TEXT) RETURNS void
+-- QĐ-BM: mọi hàm nghiệp vụ có p_actor gọi hàm này ĐẦU TIÊN (trước khi khóa hay đọc dữ liệu nghiệp vụ).
+-- Đạt khi p_actor là nhân viên ACTIVE, có tài khoản ACTIVE mang ít nhất một vai trò trong p_roles; ngược lại RC403.
+-- Ma trận hàm → vai trò ở docs/07 §10. p_actor do backend lấy từ principal đã xác thực; hàm này chặn lỗi ánh xạ
+-- quyền (Waiter gọi hàm Manager, tài khoản bị khóa) chứ không thay việc xác thực danh tính.
+CREATE FUNCTION rc_authorize(p_actor BIGINT, VARIADIC p_roles TEXT[]) RETURNS void
 LANGUAGE plpgsql AS $$
 BEGIN
     IF p_actor IS NULL OR NOT EXISTS (
@@ -889,9 +924,34 @@ BEGIN
           JOIN accounts a ON a.employee_id = e.id AND a.account_status = 'ACTIVE'
           JOIN account_roles ar ON ar.account_id = a.id
           JOIN roles r ON r.id = ar.role_id
-         WHERE e.id = p_actor AND e.work_status = 'ACTIVE' AND r.role_code = p_role) THEN
-        PERFORM rc_raise('RC403', format('nhân viên %s không có vai trò %s đang hoạt động', p_actor, p_role));
+         WHERE e.id = p_actor AND e.work_status = 'ACTIVE' AND r.role_code = ANY (p_roles)) THEN
+        PERFORM rc_raise('RC403', format('nhân viên %s không có vai trò %s đang hoạt động', p_actor, array_to_string(p_roles, '/')));
     END IF;
+END $$;
+
+-- QĐ-ID: băm payload tạo chứng từ. jsonb chuẩn hóa thứ tự khóa và khoảng trắng nên cùng nội dung → cùng hash.
+CREATE FUNCTION rc_request_hash(p_payload JSONB) RETURNS CHAR(64)
+LANGUAGE sql IMMUTABLE AS $$
+    SELECT encode(sha256(convert_to(p_payload::text, 'UTF8')), 'hex')
+$$;
+
+-- QĐ-ID: tra chứng từ đã tạo bằng request_key. Không có → NULL; có và cùng payload → id; khác payload → RC409.
+-- Khóa tư vấn theo khóa yêu cầu tuần tự hóa hai lần gửi đồng thời cùng khóa (lần sau thấy bản lần trước đã commit).
+CREATE FUNCTION rc_request_lookup(p_table TEXT, p_request_key TEXT, p_hash CHAR(64)) RETURNS BIGINT
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_id   BIGINT;
+    v_hash TEXT;
+BEGIN
+    IF p_request_key IS NULL OR btrim(p_request_key) = '' OR length(p_request_key) > 64 THEN
+        PERFORM rc_raise('RC422', 'request_key bắt buộc, tối đa 64 ký tự');
+    END IF;
+    PERFORM pg_advisory_xact_lock(hashtext(p_table), hashtext(p_request_key));
+    EXECUTE format('SELECT id, request_hash FROM %I WHERE request_key = $1', p_table) INTO v_id, v_hash USING p_request_key;
+    IF v_id IS NOT NULL AND v_hash <> p_hash THEN
+        PERFORM rc_raise('RC409', format('request_key %s đã dùng cho một yêu cầu %s khác nội dung', p_request_key, p_table));
+    END IF;
+    RETURN v_id;
 END $$;
 
 -- QĐ-8: số suất đã chiếm của một dòng thực đơn ngày — SUY RA từ trạng thái, không lưu.
@@ -1077,15 +1137,16 @@ BEGIN
         IF OLD.status <> 'OPEN' THEN
             PERFORM rc_raise('RC409', format('đơn %s đã %s: bất biến', OLD.id, OLD.status));
         END IF;
-        -- CLOSED = kết thúc có nghĩa vụ rõ ràng: đã thanh toán (PAID) hoặc khách bỏ về (UNCOLLECTED, QĐ-3)
-        IF NEW.status = 'CLOSED' AND NOT EXISTS (SELECT 1 FROM invoices WHERE order_id = OLD.id AND status IN ('PAID', 'UNCOLLECTED')) THEN
-            PERFORM rc_raise('RC409', format('đơn %s chỉ đóng sau khi hóa đơn PAID hoặc UNCOLLECTED', OLD.id));
+        -- CLOSED = kết thúc có hóa đơn ở trạng thái cuối: PAID, UNCOLLECTED (QĐ-3) hoặc WAIVED (QĐ-MT)
+        IF NEW.status = 'CLOSED' AND NOT EXISTS (SELECT 1 FROM invoices WHERE order_id = OLD.id AND status IN ('PAID', 'UNCOLLECTED', 'WAIVED')) THEN
+            PERFORM rc_raise('RC409', format('đơn %s chỉ đóng sau khi hóa đơn PAID, UNCOLLECTED hoặc WAIVED', OLD.id));
         END IF;
+        -- CANCELLED = phiên không phát sinh chứng từ thu: không có hóa đơn (kể cả DRAFT — QĐ-MT không để hóa đơn treo)
         IF NEW.status = 'CANCELLED' AND (
-               EXISTS (SELECT 1 FROM invoices WHERE order_id = OLD.id AND status IN ('PAYMENT_PENDING', 'PAID', 'UNCOLLECTED'))
+               EXISTS (SELECT 1 FROM invoices WHERE order_id = OLD.id)
             OR EXISTS (SELECT 1 FROM order_items oi JOIN order_batches b ON b.id = oi.order_batch_id
                         WHERE b.order_id = OLD.id AND oi.status NOT IN ('CANCELLED', 'REJECTED'))) THEN
-            PERFORM rc_raise('RC409', format('đơn %s còn món/hóa đơn có nghĩa vụ: không hủy phiên trống được', OLD.id));
+            PERFORM rc_raise('RC409', format('đơn %s còn món hoặc đã có hóa đơn: không hủy phiên trống được', OLD.id));
         END IF;
     END IF;
     RETURN NEW;
@@ -1153,8 +1214,9 @@ CREATE CONSTRAINT TRIGGER trg_order_items_event_sync AFTER INSERT OR UPDATE OF s
     DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION rc_check_item_event_sync();
 
 -- 8.5 Hóa đơn và thanh toán
--- Hóa đơn: DRAFT → PAYMENT_PENDING → PAID; PAYMENT_PENDING → DRAFT (mở lại); DRAFT/PAYMENT_PENDING → UNCOLLECTED (QĐ-3).
--- PAID và UNCOLLECTED là cuối; PAID bắt buộc có payments khớp tổng.
+-- Hóa đơn: DRAFT → PAYMENT_PENDING → PAID; PAYMENT_PENDING → DRAFT (mở lại);
+-- DRAFT/PAYMENT_PENDING → UNCOLLECTED (QĐ-3) hoặc WAIVED (QĐ-MT). PAID, UNCOLLECTED, WAIVED là cuối;
+-- PAID bắt buộc có payments khớp tổng; UNCOLLECTED/WAIVED không được có payments; PAID không thể thành WAIVED.
 CREATE FUNCTION rc_guard_invoice() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -1164,15 +1226,15 @@ BEGIN
     IF (NEW.order_id, NEW.created_at, NEW.created_by_id) IS DISTINCT FROM (OLD.order_id, OLD.created_at, OLD.created_by_id) THEN
         PERFORM rc_raise('RC409', format('invoice %s: đơn, người lập, giờ lập bất biến', OLD.id));
     END IF;
-    IF OLD.status IN ('PAID', 'UNCOLLECTED') THEN
+    IF OLD.status IN ('PAID', 'UNCOLLECTED', 'WAIVED') THEN
         IF NEW IS DISTINCT FROM OLD THEN
             PERFORM rc_raise('RC409', format('invoice %s đã %s: bất biến', OLD.id, OLD.status));
         END IF;
         RETURN NEW;
     END IF;
     IF NEW.status <> OLD.status AND NOT (
-           (OLD.status = 'DRAFT' AND NEW.status IN ('PAYMENT_PENDING', 'UNCOLLECTED'))
-        OR (OLD.status = 'PAYMENT_PENDING' AND NEW.status IN ('DRAFT', 'PAID', 'UNCOLLECTED'))) THEN
+           (OLD.status = 'DRAFT' AND NEW.status IN ('PAYMENT_PENDING', 'UNCOLLECTED', 'WAIVED'))
+        OR (OLD.status = 'PAYMENT_PENDING' AND NEW.status IN ('DRAFT', 'PAID', 'UNCOLLECTED', 'WAIVED'))) THEN
         PERFORM rc_raise('RC409', format('invoice %s: không chuyển %s → %s', OLD.id, OLD.status, NEW.status));
     END IF;
     IF OLD.status = 'PAYMENT_PENDING' AND NEW.total <> OLD.total THEN
@@ -1181,8 +1243,8 @@ BEGIN
     IF NEW.status = 'PAID' AND NOT EXISTS (SELECT 1 FROM payments WHERE invoice_id = OLD.id AND amount = NEW.total) THEN
         PERFORM rc_raise('RC409', format('invoice %s chỉ PAID khi có payments bằng đúng số phải thu', OLD.id));
     END IF;
-    IF NEW.status = 'UNCOLLECTED' AND EXISTS (SELECT 1 FROM payments WHERE invoice_id = OLD.id) THEN
-        PERFORM rc_raise('RC409', format('invoice %s đã có payments: không thể UNCOLLECTED', OLD.id));
+    IF NEW.status IN ('UNCOLLECTED', 'WAIVED') AND EXISTS (SELECT 1 FROM payments WHERE invoice_id = OLD.id) THEN
+        PERFORM rc_raise('RC409', format('invoice %s đã có payments: không thể %s', OLD.id, NEW.status));
     END IF;
     RETURN NEW;
 END $$;
@@ -1371,7 +1433,53 @@ BEGIN
     IF NOT v_ok THEN
         PERFORM rc_raise('RC409', format('%s %s: không chuyển %s → %s', TG_TABLE_NAME, OLD.id, OLD.status, NEW.status));
     END IF;
+    -- Chuyển sang trạng thái có hiệu lực kho chỉ hợp lệ khi bút toán sổ kho của MỌI dòng đã được ghi trước
+    -- (hàm rc_* ghi sổ rồi mới đổi trạng thái). Chặn UPDATE trạng thái trực tiếp tạo/xóa tồn "từ không khí",
+    -- ví dụ đặt phiếu xuất ISSUED mà RAW chưa bị trừ rồi để bếp nhận.
+    IF rc_doc_effect_missing(TG_TABLE_NAME, OLD.id, OLD.status, NEW.status) THEN
+        PERFORM rc_raise('RC409', format('%s %s → %s: thiếu bút toán sổ kho của chứng từ — chỉ chuyển bằng hàm rc_*',
+                                         TG_TABLE_NAME, OLD.id, NEW.status));
+    END IF;
     RETURN NEW;
+END $$;
+
+-- true khi chứng từ chuyển sang trạng thái có hiệu lực kho mà còn dòng chưa có bút toán (event_key) tương ứng,
+-- hoặc chứng từ không có dòng nào. Chuyển không có hiệu lực kho (DRAFT → CANCELLED) luôn false.
+CREATE FUNCTION rc_doc_effect_missing(p_table TEXT, p_id BIGINT, p_from TEXT, p_to TEXT) RETURNS BOOLEAN
+LANGUAGE plpgsql AS $$
+BEGIN
+    RETURN CASE
+        WHEN p_table = 'stock_receipts' AND p_to = 'CONFIRMED' THEN
+            NOT EXISTS (SELECT 1 FROM stock_receipt_items WHERE stock_receipt_id = p_id)
+            OR EXISTS (SELECT 1 FROM stock_receipt_items l WHERE l.stock_receipt_id = p_id
+                          AND NOT EXISTS (SELECT 1 FROM stock_movements m WHERE m.event_key = 'RECEIPT:' || l.id))
+        WHEN p_table = 'stock_issues' AND p_to = 'ISSUED' THEN
+            NOT EXISTS (SELECT 1 FROM stock_issue_items WHERE stock_issue_id = p_id)
+            OR EXISTS (SELECT 1 FROM stock_issue_items l WHERE l.stock_issue_id = p_id
+                          AND NOT EXISTS (SELECT 1 FROM stock_movements m WHERE m.event_key = 'ISSUE_OUT:' || l.id))
+        WHEN p_table = 'stock_issues' AND p_to = 'RECEIVED' THEN
+            EXISTS (SELECT 1 FROM stock_issue_items l WHERE l.stock_issue_id = p_id
+                       AND NOT EXISTS (SELECT 1 FROM stock_movements m
+                                        WHERE m.event_key IN ('ISSUE_RECEIVED:' || l.id, 'DIRECT_IN:' || l.id)))
+        WHEN p_table = 'stock_issues' AND p_from = 'ISSUED' AND p_to = 'CANCELLED' THEN
+            EXISTS (SELECT 1 FROM stock_issue_items l WHERE l.stock_issue_id = p_id
+                       AND NOT EXISTS (SELECT 1 FROM stock_movements m WHERE m.event_key = 'ISSUE_REVERSAL:' || l.id))
+        WHEN p_table = 'kitchen_preparations' AND p_to = 'CONFIRMED' THEN
+            NOT EXISTS (SELECT 1 FROM stock_movements m WHERE m.event_key = 'PREP_INPUT:' || p_id)
+        WHEN p_table = 'stock_returns' AND p_to = 'CONFIRMED' THEN
+            NOT EXISTS (SELECT 1 FROM stock_return_items WHERE stock_return_id = p_id)
+            OR EXISTS (SELECT 1 FROM stock_return_items l WHERE l.stock_return_id = p_id
+                          AND NOT EXISTS (SELECT 1 FROM stock_movements m WHERE m.event_key = 'RETURN-IN:' || l.id))
+        WHEN p_table = 'stock_adjustments' AND p_to = 'CONFIRMED' THEN
+            NOT EXISTS (SELECT 1 FROM stock_adjustment_items WHERE stock_adjustment_id = p_id)
+            OR EXISTS (SELECT 1 FROM stock_adjustment_items l WHERE l.stock_adjustment_id = p_id
+                          AND NOT EXISTS (SELECT 1 FROM stock_movements m WHERE m.event_key = 'WASTE:' || l.id))
+        WHEN p_table = 'stock_counts' AND p_to = 'CONFIRMED' THEN
+            NOT EXISTS (SELECT 1 FROM stock_count_items WHERE stock_count_id = p_id)
+            OR EXISTS (SELECT 1 FROM stock_count_items l WHERE l.stock_count_id = p_id AND l.actual_quantity <> l.book_quantity
+                          AND NOT EXISTS (SELECT 1 FROM stock_movements m WHERE m.event_key = 'COUNT:' || l.id))
+        ELSE false
+    END;
 END $$;
 CREATE TRIGGER trg_stock_receipts_guard BEFORE UPDATE OR DELETE ON stock_receipts
     FOR EACH ROW EXECUTE FUNCTION rc_guard_doc_header();
@@ -1639,7 +1747,7 @@ BEGIN
 END $$;
 
 -- =====================================================================
--- 10. HÀM NGHIỆP VỤ rc_* (28 hàm)
+-- 10. HÀM NGHIỆP VỤ rc_* (32 hàm)
 -- =====================================================================
 
 -- ---------- 10.1 Bàn và phiên phục vụ (3.1)
@@ -1649,6 +1757,7 @@ DECLARE
     v_table   dining_tables%ROWTYPE;
     v_session BIGINT;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'WAITER', 'MANAGER');
     SELECT * INTO v_table FROM dining_tables WHERE id = p_table FOR UPDATE;
     IF NOT FOUND OR NOT v_table.is_active THEN
         PERFORM rc_raise('RC422', format('bàn %s không tồn tại hoặc ngừng sử dụng', p_table));
@@ -1669,6 +1778,7 @@ DECLARE
     v_order   orders%ROWTYPE;
     v_session table_sessions%ROWTYPE;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'WAITER', 'MANAGER');
     SELECT * INTO v_order FROM orders WHERE table_session_id = p_session FOR UPDATE;            -- mức 1
     IF NOT FOUND THEN
         PERFORM rc_raise('RC422', format('phiên %s không tồn tại', p_session));
@@ -1678,7 +1788,7 @@ BEGIN
         PERFORM rc_raise('RC409', format('phiên %s không mở', p_session));
     END IF;
     IF EXISTS (SELECT 1 FROM invoices WHERE order_id = v_order.id) THEN
-        PERFORM rc_raise('RC409', format('phiên %s đã có hóa đơn: chỉ đóng bằng thanh toán hoặc rc_abandon_session', p_session));
+        PERFORM rc_raise('RC409', format('phiên %s đã có hóa đơn: chỉ đóng bằng thanh toán, rc_waive_invoice hoặc rc_abandon_session', p_session));
     END IF;
     IF EXISTS (SELECT 1 FROM order_items oi JOIN order_batches b ON b.id = oi.order_batch_id
                 WHERE b.order_id = v_order.id AND oi.status NOT IN ('CANCELLED', 'REJECTED')) THEN
@@ -1692,8 +1802,11 @@ END $$;
 
 -- ---------- 10.2 Gửi món (3.2)
 -- p_items: [{"daily_menu_item_id": 1, "quantity": 2, "note": "ít cay"}, ...]
--- Idempotent theo request_key. Kiểm quota ở đây chỉ để báo sớm; kiểm cứng nằm ở rc_accept_item (QĐ-8).
-CREATE FUNCTION rc_submit_batch(p_order BIGINT, p_actor BIGINT, p_request_key TEXT, p_items JSONB) RETURNS BIGINT
+-- Trả về {"batch_id": n, "replayed": bool, "warnings": [{"code": "QUOTA_EXCEEDED", "order_item_id", "daily_menu_item_id",
+--          "item_name", "quantity", "quota_total", "quota_used", "remaining"}]}.
+-- Idempotent theo request_key (gửi lặp trả đợt cũ, cảnh báo tính lại theo số suất hiện tại).
+-- QĐ-4: hết quota KHÔNG chặn gửi món — chỉ cảnh báo; kiểm cứng (không nhận vượt quota) nằm ở rc_accept_item.
+CREATE FUNCTION rc_submit_batch(p_order BIGINT, p_actor BIGINT, p_request_key TEXT, p_items JSONB) RETURNS JSONB
 LANGUAGE plpgsql AS $$
 DECLARE
     v_batch    BIGINT;
@@ -1701,9 +1814,9 @@ DECLARE
     v_status   TEXT;
     v_inv      TEXT;
     v_item     BIGINT;
-    v_used     BIGINT;
     r          RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'WAITER', 'MANAGER');
     IF p_request_key IS NULL OR btrim(p_request_key) = '' THEN
         PERFORM rc_raise('RC422', 'thiếu request_key');
     END IF;
@@ -1712,7 +1825,7 @@ BEGIN
         IF v_existing <> p_order THEN
             PERFORM rc_raise('RC409', format('request_key %s đã dùng cho đơn khác', p_request_key));
         END IF;
-        RETURN v_batch;                                                       -- gửi lặp: trả đợt cũ (ORDER-01)
+        RETURN rc_batch_result(v_batch, true);                                -- gửi lặp: trả đợt cũ (ORDER-01)
     END IF;
     IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' OR jsonb_array_length(p_items) = 0 THEN
         PERFORM rc_raise('RC422', 'đợt món rỗng');
@@ -1726,7 +1839,7 @@ BEGIN
         IF v_existing <> p_order THEN
             PERFORM rc_raise('RC409', format('request_key %s đã dùng cho đơn khác', p_request_key));
         END IF;
-        RETURN v_batch;
+        RETURN rc_batch_result(v_batch, true);
     END IF;
     SELECT status INTO v_inv FROM invoices WHERE order_id = p_order;
     IF v_inv IN ('PAYMENT_PENDING', 'PAID', 'UNCOLLECTED') THEN
@@ -1755,20 +1868,32 @@ BEGIN
         IF r.is_paused THEN
             PERFORM rc_raise('RC409', format('món %s đang tạm dừng', r.name));
         END IF;
-        IF r.quota_total IS NOT NULL THEN                                      -- QĐ-1: NULL = không giới hạn suất
-            v_used := rc_quota_used(r.dmi_id);
-            IF v_used + r.quantity > r.quota_total THEN
-                PERFORM rc_raise('RC409', format('món %s không đủ suất: còn %s', r.name, GREATEST(r.quota_total - v_used, 0)));
-            END IF;
-        END IF;
         INSERT INTO order_items (order_batch_id, daily_menu_item_id, quantity, item_name_snapshot, unit_price, note)
         VALUES (v_batch, r.daily_menu_item_id, r.quantity, r.name, r.price, r.note)
         RETURNING id INTO v_item;
         INSERT INTO order_item_events (order_item_id, actor_id, from_status, to_status)
         VALUES (v_item, p_actor, NULL, 'PENDING');
     END LOOP;
-    RETURN v_batch;
+    RETURN rc_batch_result(v_batch, false);
 END $$;
+
+-- Kết quả gửi món: cảnh báo QUOTA_EXCEEDED cho dòng có số lượng vượt phần suất còn lại (quota NULL = không giới hạn,
+-- không cảnh báo). Chỉ đọc; số suất đã chiếm suy ra như rc_quota_used (QĐ-8).
+CREATE FUNCTION rc_batch_result(p_batch BIGINT, p_replayed BOOLEAN) RETURNS JSONB
+LANGUAGE sql AS $$
+    SELECT jsonb_build_object(
+        'batch_id', p_batch,
+        'replayed', p_replayed,
+        'warnings', COALESCE(jsonb_agg(jsonb_build_object(
+                        'code', 'QUOTA_EXCEEDED', 'order_item_id', w.id, 'daily_menu_item_id', w.daily_menu_item_id,
+                        'item_name', w.item_name_snapshot, 'quantity', w.quantity, 'quota_total', w.quota_total,
+                        'quota_used', w.used, 'remaining', GREATEST(w.quota_total - w.used, 0)) ORDER BY w.id), '[]'::jsonb))
+      FROM (SELECT oi.id, oi.daily_menu_item_id, oi.item_name_snapshot, oi.quantity, d.quota_total,
+                   rc_quota_used(d.id) AS used
+              FROM order_items oi JOIN daily_menu_items d ON d.id = oi.daily_menu_item_id
+             WHERE oi.order_batch_id = p_batch AND oi.status = 'PENDING' AND d.quota_total IS NOT NULL) w
+     WHERE w.quantity > GREATEST(w.quota_total - w.used, 0)
+$$;
 
 -- ---------- 10.3 Bếp xử lý món (3.3, 3.4)
 -- Nhận món (QĐ-8): quota chiếm khi ACCEPTED. Khóa dòng thực đơn ngày (mức 6) tuần tự hóa mọi lần nhận cùng một
@@ -1784,6 +1909,7 @@ DECLARE
     v_used   BIGINT;
     v_reason TEXT;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'KITCHEN', 'MANAGER');
     SELECT * INTO v_item FROM order_items WHERE id = p_item FOR UPDATE;                  -- mức 5
     IF NOT FOUND THEN
         PERFORM rc_raise('RC422', format('order_item %s không tồn tại', p_item));
@@ -1824,6 +1950,7 @@ END $$;
 CREATE FUNCTION rc_reject_item(p_item BIGINT, p_actor BIGINT, p_reason TEXT) RETURNS void
 LANGUAGE plpgsql AS $$
 BEGIN
+    PERFORM rc_authorize(p_actor, 'KITCHEN', 'MANAGER');
     IF p_reason IS NULL OR btrim(p_reason) = '' THEN
         PERFORM rc_raise('RC422', 'từ chối món bắt buộc có lý do');
     END IF;
@@ -1837,6 +1964,7 @@ DECLARE
     v_item order_items%ROWTYPE;
     r      RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'KITCHEN', 'MANAGER');
     SELECT * INTO v_item FROM order_items WHERE id = p_item FOR UPDATE;
     IF NOT FOUND THEN
         PERFORM rc_raise('RC422', format('order_item %s không tồn tại', p_item));
@@ -1873,6 +2001,7 @@ END $$;
 CREATE FUNCTION rc_finish_dish(p_item BIGINT, p_actor BIGINT) RETURNS void
 LANGUAGE plpgsql AS $$
 BEGIN
+    PERFORM rc_authorize(p_actor, 'KITCHEN', 'MANAGER');
     PERFORM rc_item_transition(p_item, ARRAY['COOKING'], 'READY', p_actor);
 END $$;
 
@@ -1880,6 +2009,7 @@ END $$;
 CREATE FUNCTION rc_serve_item(p_item BIGINT, p_actor BIGINT) RETURNS void
 LANGUAGE plpgsql AS $$
 BEGIN
+    PERFORM rc_authorize(p_actor, 'WAITER', 'MANAGER');
     PERFORM rc_item_transition(p_item, ARRAY['READY'], 'SERVED', p_actor);
 END $$;
 
@@ -1890,6 +2020,7 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_status TEXT;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'WAITER', 'KITCHEN', 'MANAGER');
     IF p_reason IS NULL OR btrim(p_reason) = '' THEN
         PERFORM rc_raise('RC422', 'hủy món bắt buộc có lý do');
     END IF;
@@ -1917,7 +2048,7 @@ DECLARE
     v_status  TEXT;
     v_invoice invoices%ROWTYPE;
 BEGIN
-    PERFORM rc_require_role(p_actor, 'MANAGER');
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     IF p_reason IS NULL OR btrim(p_reason) = '' THEN
         PERFORM rc_raise('RC422', 'hủy ngoại lệ bắt buộc có lý do');
     END IF;
@@ -1958,6 +2089,7 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_flagged INT := 0;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     IF p_reason IS NULL OR btrim(p_reason) = '' THEN
         PERFORM rc_raise('RC422', 'đánh dấu lô không dùng được bắt buộc có lý do');
     END IF;
@@ -1994,6 +2126,7 @@ DECLARE
     v_status TEXT;
     r        RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'KITCHEN', 'MANAGER');
     SELECT status INTO v_status FROM order_items WHERE id = p_item FOR UPDATE;
     IF v_status IS DISTINCT FROM 'ACCEPTED' THEN
         PERFORM rc_raise('RC409', format('order_item %s đang %s, không phải ACCEPTED', p_item, v_status));
@@ -2034,6 +2167,7 @@ DECLARE
     v_invoice invoices%ROWTYPE;
     v_total   NUMERIC;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'CASHIER', 'MANAGER');
     SELECT status INTO v_status FROM orders WHERE id = p_order FOR UPDATE;                -- mức 1
     IF v_status IS DISTINCT FROM 'OPEN' THEN
         PERFORM rc_raise('RC409', format('order %s không mở', p_order));
@@ -2059,8 +2193,8 @@ BEGIN
      WHERE b.order_id = p_order AND oi.status = 'SERVED'
        AND NOT EXISTS (SELECT 1 FROM invoice_items ii WHERE ii.order_item_id = oi.id);
     v_total := rc_invoice_total_checked(v_invoice.id);
-    IF v_total <= 0 THEN
-        PERFORM rc_raise('RC422', 'tổng hóa đơn phải lớn hơn 0');
+    IF v_total <= 0 THEN                                  -- không có gì để thu: Manager đóng bằng rc_waive_invoice (QĐ-MT)
+        PERFORM rc_raise('RC422', format('hóa đơn %s tổng 0 đồng: không chờ thu, Manager đóng bằng rc_waive_invoice', v_invoice.id));
     END IF;
     UPDATE invoices SET total = v_total, status = 'PAYMENT_PENDING' WHERE id = v_invoice.id;
     RETURN v_invoice.id;
@@ -2072,6 +2206,7 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_invoice invoices%ROWTYPE;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'CASHIER', 'MANAGER');
     IF p_reason IS NULL OR btrim(p_reason) = '' THEN
         PERFORM rc_raise('RC422', 'mở lại hóa đơn bắt buộc có lý do');
     END IF;
@@ -2093,6 +2228,7 @@ DECLARE
     v_request BIGINT;
     v_payment BIGINT;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'CASHIER', 'MANAGER');
     v_invoice := rc_lock_invoice(p_invoice);
     IF v_invoice.status IS DISTINCT FROM 'PAYMENT_PENDING' THEN
         PERFORM rc_raise('RC409', format('invoice %s đang %s, không chờ thanh toán', p_invoice, v_invoice.status));
@@ -2119,6 +2255,7 @@ DECLARE
     v_invoice invoices%ROWTYPE;
     v_ref     TEXT;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'CASHIER', 'MANAGER');
     v_invoice := rc_lock_invoice(p_invoice);
     IF v_invoice.status IS DISTINCT FROM 'PAYMENT_PENDING' THEN
         PERFORM rc_raise('RC409', format('invoice %s đang %s, không chờ thanh toán', p_invoice, v_invoice.status));
@@ -2193,6 +2330,7 @@ DECLARE
     v_invoice BIGINT;
     v_status  TEXT;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'CASHIER', 'MANAGER');
     IF p_reason IS NULL OR btrim(p_reason) = '' THEN
         PERFORM rc_raise('RC422', 'hủy yêu cầu thanh toán bắt buộc có lý do');
     END IF;
@@ -2214,8 +2352,9 @@ END $$;
 -- Một transaction: hủy/loại các dòng còn mở (trước COOKING giải phóng phần giữ; từ COOKING không hoàn nguyên liệu/quota),
 -- ghi nhận nghĩa vụ vào hóa đơn (tạo nếu chưa có; hủy yêu cầu thanh toán đang mở), hóa đơn → UNCOLLECTED,
 -- đơn → CLOSED, phiên → CLOSED, bàn → AVAILABLE. KHÔNG tạo payments, KHÔNG PAID, KHÔNG ghi doanh thu thực thu,
--- KHÔNG xóa dữ liệu. Không có món SERVED (không có nghĩa vụ) → đơn CANCELLED, trả NULL.
--- Trả về id hóa đơn UNCOLLECTED.
+-- KHÔNG xóa dữ liệu. Tổng phải thu bằng 0 (không còn món SERVED có giá, đã có hóa đơn) → hóa đơn WAIVED 0 đồng thay vì
+-- UNCOLLECTED (QĐ-MT). Không món SERVED và chưa có hóa đơn → đơn CANCELLED, trả NULL.
+-- Trả về id hóa đơn UNCOLLECTED/WAIVED.
 CREATE FUNCTION rc_abandon_session(p_session BIGINT, p_actor BIGINT, p_reason TEXT) RETURNS BIGINT
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -2227,7 +2366,7 @@ DECLARE
     v_total   NUMERIC;
     r         RECORD;
 BEGIN
-    PERFORM rc_require_role(p_actor, 'MANAGER');
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     IF p_reason IS NULL OR btrim(p_reason) = '' THEN
         PERFORM rc_raise('RC422', 'xử lý khách bỏ về bắt buộc có lý do');
     END IF;
@@ -2263,8 +2402,8 @@ BEGIN
     SELECT count(*) INTO v_served
       FROM order_items oi JOIN order_batches b ON b.id = oi.order_batch_id
      WHERE b.order_id = v_order.id AND oi.status = 'SERVED';
-    IF v_served = 0 THEN
-        UPDATE orders SET status = 'CANCELLED' WHERE id = v_order.id;
+    IF v_served = 0 AND v_invoice.id IS NULL THEN
+        UPDATE orders SET status = 'CANCELLED' WHERE id = v_order.id;          -- không món phải thu, không chứng từ thu
     ELSE
         IF v_invoice.id IS NULL THEN
             INSERT INTO invoices (order_id, created_by_id) VALUES (v_order.id, p_actor) RETURNING * INTO v_invoice;
@@ -2280,15 +2419,186 @@ BEGIN
         UPDATE payment_requests
            SET status = 'CANCELLED', cancel_reason = v_reason, cancelled_at = now(), cancelled_by_id = p_actor
          WHERE invoice_id = v_invoice.id AND status IN ('REQUESTED', 'WAITING_TRANSFER');
-        UPDATE invoices
-           SET total = v_total, status = 'UNCOLLECTED',
-               uncollected_reason = btrim(p_reason), uncollected_by_id = p_actor, uncollected_at = now()
-         WHERE id = v_invoice.id;
+        IF v_total > 0 THEN                                                     -- còn nghĩa vụ thu: UNCOLLECTED
+            UPDATE invoices
+               SET total = v_total, status = 'UNCOLLECTED',
+                   uncollected_reason = btrim(p_reason), uncollected_by_id = p_actor, uncollected_at = now()
+             WHERE id = v_invoice.id;
+        ELSE                                                                    -- hóa đơn 0 đồng: đóng dứt điểm bằng WAIVED
+            UPDATE invoices
+               SET total = 0, status = 'WAIVED',
+                   waived_reason = v_reason || ' (hóa đơn 0 đồng)', waived_by_id = p_actor, waived_at = now()
+             WHERE id = v_invoice.id;
+        END IF;
         UPDATE orders SET status = 'CLOSED' WHERE id = v_order.id;
     END IF;
     UPDATE table_sessions SET status = 'CLOSED', closed_at = now(), closed_by_id = p_actor WHERE id = p_session;
     UPDATE dining_tables SET status = 'AVAILABLE' WHERE id = v_session.dining_table_id;
-    RETURN CASE WHEN v_served = 0 THEN NULL ELSE v_invoice.id END;
+    RETURN v_invoice.id;
+END $$;
+
+-- ---------- 10.7b Miễn thu (QĐ-MT) — chỉ Manager, bắt buộc lý do
+-- Đóng hóa đơn không thu tiền: tạo hóa đơn nếu chưa có, bổ sung đủ dòng SERVED (giữ nguyên giá bán, không sửa snapshot),
+-- đối chiếu với đơn, hủy yêu cầu thanh toán đang mở, hóa đơn → WAIVED (total = giá trị được miễn, có thể 0),
+-- đơn → CLOSED, phiên → CLOSED, bàn → AVAILABLE. Không payments, không doanh thu. Mọi món phải đã kết thúc
+-- (SERVED/CANCELLED/REJECTED). PAID/UNCOLLECTED/WAIVED không miễn thu được. Khóa orders → invoices → payment_requests
+-- như thanh toán nên miễn thu và thu tiền đồng thời không thể cùng thành công. Trả về id hóa đơn.
+CREATE FUNCTION rc_waive_invoice(p_order BIGINT, p_actor BIGINT, p_reason TEXT) RETURNS BIGINT
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_order   orders%ROWTYPE;
+    v_session table_sessions%ROWTYPE;
+    v_invoice invoices%ROWTYPE;
+    v_total   NUMERIC;
+BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
+    IF p_reason IS NULL OR btrim(p_reason) = '' THEN
+        PERFORM rc_raise('RC422', 'miễn thu bắt buộc có lý do');
+    END IF;
+    SELECT * INTO v_order FROM orders WHERE id = p_order FOR UPDATE;                     -- mức 1
+    IF NOT FOUND THEN
+        PERFORM rc_raise('RC422', format('order %s không tồn tại', p_order));
+    END IF;
+    SELECT * INTO v_invoice FROM invoices WHERE order_id = p_order FOR UPDATE;           -- mức 2
+    IF FOUND AND v_invoice.status NOT IN ('DRAFT', 'PAYMENT_PENDING') THEN
+        PERFORM rc_raise('RC409', format('invoice %s đã %s: không miễn thu được', v_invoice.id, v_invoice.status));
+    END IF;
+    IF v_order.status <> 'OPEN' THEN
+        PERFORM rc_raise('RC409', format('order %s đã %s', p_order, v_order.status));
+    END IF;
+    IF v_invoice.id IS NOT NULL THEN
+        PERFORM 1 FROM payment_requests WHERE invoice_id = v_invoice.id AND status IN ('REQUESTED', 'WAITING_TRANSFER')
+         ORDER BY id FOR UPDATE;                                                         -- mức 3
+    END IF;
+    SELECT * INTO v_session FROM table_sessions WHERE id = v_order.table_session_id FOR UPDATE;   -- mức 4
+    PERFORM 1 FROM dining_tables WHERE id = v_session.dining_table_id FOR UPDATE;
+    IF EXISTS (SELECT 1 FROM order_items oi JOIN order_batches b ON b.id = oi.order_batch_id
+                WHERE b.order_id = p_order AND oi.status NOT IN ('SERVED', 'CANCELLED', 'REJECTED')) THEN
+        PERFORM rc_raise('RC409', format('order %s còn món chưa kết thúc: phục vụ hoặc hủy trước khi miễn thu', p_order));
+    END IF;
+    IF v_invoice.id IS NULL THEN
+        IF NOT EXISTS (SELECT 1 FROM order_items oi JOIN order_batches b ON b.id = oi.order_batch_id
+                        WHERE b.order_id = p_order AND oi.status = 'SERVED') THEN
+            PERFORM rc_raise('RC409', format('order %s không có món phải thu và chưa có hóa đơn: dùng rc_close_empty_session', p_order));
+        END IF;
+        INSERT INTO invoices (order_id, created_by_id) VALUES (p_order, p_actor) RETURNING * INTO v_invoice;
+    END IF;
+    IF v_invoice.status = 'DRAFT' THEN
+        INSERT INTO invoice_items (invoice_id, order_item_id, item_name, quantity, unit_price)
+        SELECT v_invoice.id, oi.id, oi.item_name_snapshot, oi.quantity, oi.unit_price
+          FROM order_items oi JOIN order_batches b ON b.id = oi.order_batch_id
+         WHERE b.order_id = p_order AND oi.status = 'SERVED'
+           AND NOT EXISTS (SELECT 1 FROM invoice_items ii WHERE ii.order_item_id = oi.id);
+    END IF;
+    v_total := rc_invoice_total_checked(v_invoice.id);
+    IF v_invoice.status = 'PAYMENT_PENDING' AND v_total <> v_invoice.total THEN
+        PERFORM rc_raise('RC500', format('invoice %s: tổng đã chốt %s khác tổng dòng %s', v_invoice.id, v_invoice.total, v_total));
+    END IF;
+    UPDATE payment_requests
+       SET status = 'CANCELLED', cancel_reason = 'Miễn thu: ' || btrim(p_reason), cancelled_at = now(), cancelled_by_id = p_actor
+     WHERE invoice_id = v_invoice.id AND status IN ('REQUESTED', 'WAITING_TRANSFER');
+    UPDATE invoices
+       SET total = v_total, status = 'WAIVED', waived_reason = btrim(p_reason), waived_by_id = p_actor, waived_at = now()
+     WHERE id = v_invoice.id;
+    UPDATE orders SET status = 'CLOSED' WHERE id = p_order;
+    UPDATE table_sessions SET status = 'CLOSED', closed_at = now(), closed_by_id = p_actor WHERE id = v_session.id;
+    UPDATE dining_tables SET status = 'AVAILABLE' WHERE id = v_session.dining_table_id;
+    RETURN v_invoice.id;
+END $$;
+
+-- ---------- 10.8a Tạo chứng từ kho idempotent (QĐ-ID) — header + dòng trong một transaction
+-- Cùng request_key + cùng payload → trả id chứng từ đã tạo (kể cả khi đã xác nhận); cùng khóa khác payload → RC409.
+-- Hai yêu cầu nghiệp vụ khác nhau dùng hai khóa khác nhau → hai chứng từ. Bước xác nhận vẫn idempotent riêng
+-- (chỉ chạy từ DRAFT; event_key UNIQUE của sổ kho chặn ghi trùng).
+
+-- p_payload: {"supplier_name", "note", "items": [{"ingredient_id", "input_quantity", "input_unit", "conversion_factor",
+--             "unit_price_per_input_unit", "lot_code", "expiry_date"}]}
+CREATE FUNCTION rc_create_stock_receipt(p_actor BIGINT, p_request_key TEXT, p_payload JSONB) RETURNS BIGINT
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_hash CHAR(64);
+    v_id   BIGINT;
+BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
+    IF jsonb_typeof(p_payload) IS DISTINCT FROM 'object' OR jsonb_typeof(p_payload -> 'items') IS DISTINCT FROM 'array'
+       OR jsonb_array_length(p_payload -> 'items') = 0 THEN
+        PERFORM rc_raise('RC422', 'phiếu nhập cần payload {"items": [...]} không rỗng');
+    END IF;
+    v_hash := rc_request_hash(p_payload);
+    v_id := rc_request_lookup('stock_receipts', p_request_key, v_hash);
+    IF v_id IS NOT NULL THEN
+        RETURN v_id;                                                           -- gửi lặp: trả phiếu đã tạo
+    END IF;
+    INSERT INTO stock_receipts (supplier_name, note, created_by_id, request_key, request_hash)
+    VALUES (p_payload ->> 'supplier_name', p_payload ->> 'note', p_actor, p_request_key, v_hash)
+    RETURNING id INTO v_id;
+    INSERT INTO stock_receipt_items (stock_receipt_id, ingredient_id, input_quantity, input_unit, conversion_factor,
+                                     unit_price_per_input_unit, lot_code, expiry_date)
+    SELECT v_id, x.ingredient_id, x.input_quantity, x.input_unit, x.conversion_factor,
+           x.unit_price_per_input_unit, x.lot_code, x.expiry_date
+      FROM jsonb_to_recordset(p_payload -> 'items')
+           AS x (ingredient_id BIGINT, input_quantity NUMERIC, input_unit TEXT, conversion_factor NUMERIC,
+                 unit_price_per_input_unit NUMERIC, lot_code TEXT, expiry_date DATE);
+    RETURN v_id;
+END $$;
+
+-- p_payload: {"note", "items": [{"inventory_batch_id", "quantity", "fulfillment_mode": "DIRECT"|"PREPARE"}]}
+CREATE FUNCTION rc_create_stock_issue(p_actor BIGINT, p_request_key TEXT, p_payload JSONB) RETURNS BIGINT
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_hash CHAR(64);
+    v_id   BIGINT;
+BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
+    IF jsonb_typeof(p_payload) IS DISTINCT FROM 'object' OR jsonb_typeof(p_payload -> 'items') IS DISTINCT FROM 'array'
+       OR jsonb_array_length(p_payload -> 'items') = 0 THEN
+        PERFORM rc_raise('RC422', 'phiếu xuất cần payload {"items": [...]} không rỗng');
+    END IF;
+    v_hash := rc_request_hash(p_payload);
+    v_id := rc_request_lookup('stock_issues', p_request_key, v_hash);
+    IF v_id IS NOT NULL THEN
+        RETURN v_id;
+    END IF;
+    INSERT INTO stock_issues (issued_by_id, note, request_key, request_hash)
+    VALUES (p_actor, p_payload ->> 'note', p_request_key, v_hash)
+    RETURNING id INTO v_id;
+    INSERT INTO stock_issue_items (stock_issue_id, inventory_batch_id, quantity, fulfillment_mode)
+    SELECT v_id, x.inventory_batch_id, x.quantity, x.fulfillment_mode
+      FROM jsonb_to_recordset(p_payload -> 'items') AS x (inventory_batch_id BIGINT, quantity NUMERIC, fulfillment_mode TEXT);
+    RETURN v_id;
+END $$;
+
+-- p_payload: {"note", "items": [{"raw_batch_id" | "wip_issue_item_id" | "kitchen_batch_id", "actual_quantity", "reason"}]}
+-- book_quantity chụp từ số sổ lúc tạo phiếu; rc_confirm_count chặn nếu sổ đã đổi (stale).
+CREATE FUNCTION rc_create_stock_count(p_actor BIGINT, p_request_key TEXT, p_payload JSONB) RETURNS BIGINT
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_hash CHAR(64);
+    v_id   BIGINT;
+BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
+    IF jsonb_typeof(p_payload) IS DISTINCT FROM 'object' OR jsonb_typeof(p_payload -> 'items') IS DISTINCT FROM 'array'
+       OR jsonb_array_length(p_payload -> 'items') = 0 THEN
+        PERFORM rc_raise('RC422', 'phiếu kiểm kê cần payload {"items": [...]} không rỗng');
+    END IF;
+    v_hash := rc_request_hash(p_payload);
+    v_id := rc_request_lookup('stock_counts', p_request_key, v_hash);
+    IF v_id IS NOT NULL THEN
+        RETURN v_id;
+    END IF;
+    INSERT INTO stock_counts (note, created_by_id, request_key, request_hash)
+    VALUES (p_payload ->> 'note', p_actor, p_request_key, v_hash)
+    RETURNING id INTO v_id;
+    INSERT INTO stock_count_items (stock_count_id, raw_batch_id, wip_issue_item_id, kitchen_batch_id,
+                                   book_quantity, actual_quantity, reason)
+    SELECT v_id, x.raw_batch_id, x.wip_issue_item_id, x.kitchen_batch_id,
+           COALESCE((SELECT quantity_on_hand FROM inventory_batches WHERE id = x.raw_batch_id),
+                    (SELECT wip_remaining_quantity FROM stock_issue_items WHERE id = x.wip_issue_item_id),
+                    (SELECT quantity_on_hand FROM kitchen_batches WHERE id = x.kitchen_batch_id)),
+           x.actual_quantity, x.reason
+      FROM jsonb_to_recordset(p_payload -> 'items')
+           AS x (raw_batch_id BIGINT, wip_issue_item_id BIGINT, kitchen_batch_id BIGINT, actual_quantity NUMERIC, reason TEXT);
+    RETURN v_id;
 END $$;
 
 -- ---------- 10.8 Nhập kho (4.2) — khóa header; lô RAW mới không cần khóa tài nguyên
@@ -2300,6 +2610,7 @@ DECLARE
     v_batch  BIGINT;
     r        RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     SELECT status INTO v_status FROM stock_receipts WHERE id = p_receipt FOR UPDATE;
     IF v_status IS NULL THEN
         PERFORM rc_raise('RC422', format('phiếu nhập %s không tồn tại', p_receipt));
@@ -2321,9 +2632,6 @@ BEGIN
     IF EXISTS (SELECT 1 FROM stock_receipt_items WHERE stock_receipt_id = p_receipt AND expiry_date < rc_business_date(now())) THEN
         PERFORM rc_raise('RC422', format('phiếu nhập %s có lô đã hết hạn: không nhận vào kho', p_receipt));
     END IF;
-    UPDATE stock_receipts
-       SET status = 'CONFIRMED', received_at = p_received_at, confirmed_by_id = p_actor, confirmed_at = now()
-     WHERE id = p_receipt;
     FOR r IN SELECT id, input_quantity * conversion_factor AS qty
                FROM stock_receipt_items WHERE stock_receipt_id = p_receipt ORDER BY id
     LOOP
@@ -2332,6 +2640,10 @@ BEGIN
         INSERT INTO stock_movements (movement_type, raw_batch_id, quantity_delta, event_key)
         VALUES ('RECEIPT', v_batch, r.qty, 'RECEIPT:' || r.id);
     END LOOP;
+    -- ghi sổ trước, đổi trạng thái sau: guard chứng từ kiểm mọi dòng đã có bút toán RECEIPT
+    UPDATE stock_receipts
+       SET status = 'CONFIRMED', received_at = p_received_at, confirmed_by_id = p_actor, confirmed_at = now()
+     WHERE id = p_receipt;
 END $$;
 
 -- ---------- 10.9 Xuất kho, nhận, hủy (4.3) — khóa header → inventory_batches (mức 7)
@@ -2341,6 +2653,7 @@ DECLARE
     v_status TEXT;
     r        RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     SELECT status INTO v_status FROM stock_issues WHERE id = p_issue FOR UPDATE;
     IF v_status IS NULL THEN
         PERFORM rc_raise('RC422', format('phiếu xuất %s không tồn tại', p_issue));
@@ -2420,6 +2733,7 @@ DECLARE
     v_kb     BIGINT;
     r        RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'KITCHEN', 'MANAGER');
     SELECT status INTO v_status FROM stock_issues WHERE id = p_issue FOR UPDATE;
     IF v_status IS NULL THEN
         PERFORM rc_raise('RC422', format('phiếu xuất %s không tồn tại', p_issue));
@@ -2459,6 +2773,7 @@ DECLARE
     v_status TEXT;
     r        RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     IF p_reason IS NULL OR btrim(p_reason) = '' THEN
         PERFORM rc_raise('RC422', 'hủy phiếu xuất bắt buộc có lý do');
     END IF;
@@ -2496,6 +2811,7 @@ DECLARE
     v_kb    BIGINT;
     r       RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'KITCHEN', 'MANAGER');
     SELECT * INTO v_prep FROM kitchen_preparations WHERE id = p_prep FOR UPDATE;
     IF NOT FOUND THEN
         PERFORM rc_raise('RC422', format('phiếu sơ chế %s không tồn tại', p_prep));
@@ -2565,6 +2881,7 @@ DECLARE
     v_status TEXT;
     r        RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     SELECT status INTO v_status FROM stock_returns WHERE id = p_return FOR UPDATE;
     IF v_status IS NULL THEN
         PERFORM rc_raise('RC422', format('phiếu trả %s không tồn tại', p_return));
@@ -2633,6 +2950,7 @@ DECLARE
     v_adj stock_adjustments%ROWTYPE;
     r     RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     SELECT * INTO v_adj FROM stock_adjustments WHERE id = p_adjustment FOR UPDATE;
     IF NOT FOUND THEN
         PERFORM rc_raise('RC422', format('phiếu hủy hàng %s không tồn tại', p_adjustment));
@@ -2684,6 +3002,7 @@ DECLARE
     v_diff     NUMERIC;
     r          RECORD;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     SELECT status INTO v_status FROM stock_counts WHERE id = p_count FOR UPDATE;
     IF v_status IS NULL THEN
         PERFORM rc_raise('RC422', format('phiếu kiểm kê %s không tồn tại', p_count));
@@ -2744,6 +3063,7 @@ DECLARE
     v_version INT;
     v_id      BIGINT;
 BEGIN
+    PERFORM rc_authorize(p_actor, 'MANAGER');
     IF p_business_date IS NULL OR p_business_date > rc_business_date(now()) THEN
         PERFORM rc_raise('RC422', 'ngày kinh doanh không hợp lệ hoặc ở tương lai');
     END IF;
@@ -2784,11 +3104,6 @@ BEGIN
         END IF;
     END LOOP;
 END $$;
--- Cấp quyền theo môi trường (tên role ví dụ):
---   GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO restaurant_app;
---   REVOKE INSERT, UPDATE, DELETE ON stock_movements, inventory_batches, kitchen_batches, stock_reservations,
---          payments, payment_requests, invoices, invoice_items, order_items, order_item_events,
---          daily_cash_reconciliations FROM restaurant_app;
---   GRANT EXECUTE ON FUNCTION rc_process_verified_qr(TEXT, TEXT, NUMERIC, TEXT) TO restaurant_webhook;
+-- GRANT/REVOKE theo role ứng dụng (rc_app, rc_webhook, rc_readonly) và chủ sở hữu rc_owner: 09-acl-v4.1.sql.
 
 COMMIT;
