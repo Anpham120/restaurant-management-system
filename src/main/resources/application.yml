@@ -1,0 +1,70 @@
+# Cấu hình chung. Mọi bí mật lấy từ biến môi trường (xem .env.example) — không ghi mật khẩu/secret vào file này.
+spring:
+  application:
+    name: restaurant-core
+  profiles:
+    default: dev
+  datasource:
+    # Ứng dụng đăng nhập bằng tài khoản thuộc role rc_app (docs/09-acl-v4.1.sql), KHÔNG dùng superuser.
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/restaurant_core}
+    username: ${DB_APP_USER:rms_api}
+    password: ${DB_APP_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  flyway:
+    # Baseline = database dựng từ docs/04 + 09 + 10 (version 1). Migration mới đặt ở db/migration, bắt đầu từ V2__.
+    # Flyway chạy bằng tài khoản quản trị riêng (FLYWAY_USER), vì rc_app không có quyền DDL.
+    enabled: ${FLYWAY_ENABLED:true}
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/restaurant_core}
+    user: ${FLYWAY_USER}
+    password: ${FLYWAY_PASSWORD}
+    locations: classpath:db/migration
+    baseline-version: 1
+    baseline-description: "v4.1 baseline (docs/04 + 09 + 10)"
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+  mvc:
+    problemdetails:
+      enabled: false
+
+server:
+  port: ${SERVER_PORT:8081}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: restaurant-core
+    ttl: ${JWT_TTL:PT8H}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  logging:
+    slow-service-ms: ${SLOW_SERVICE_MS:500}
+  sepay:
+    # Khóa API cấu hình ở webhook SePay (header "Authorization: Apikey <khóa>"). Trống → webhook trả 503.
+    api-key: ${SEPAY_API_KEY:}
+    # Tài khoản nhận tiền để dựng ảnh QR (qr.sepay.vn). Trống → API chỉ trả mã tham chiếu + số tiền.
+    bank-account: ${SEPAY_BANK_ACCOUNT:}
+    bank-name: ${SEPAY_BANK_NAME:}
+    # Login thuộc role rc_webhook (rc_app không có quyền rc_process_verified_qr).
+    webhook-db:
+      url: ${DB_URL:jdbc:postgresql://localhost:5433/restaurant_core}
+      username: ${DB_WEBHOOK_USER:}
+      password: ${DB_WEBHOOK_PASSWORD:}
+
+logging:
+  level:
+    root: INFO
+    com.restaurant.core: INFO

@@ -134,6 +134,7 @@ flowchart LR
 - Số đã bán, quota còn, suất khả dụng đều **suy ra**, không lưu.
 - **QĐ-1 — hạn mức suất:** `quota_total = NULL` là không giới hạn suất bán; `0` là không còn suất được bán; `> 0` là trần trong ngày. Không giới hạn suất **không** có nghĩa bỏ kiểm tra nguyên liệu: Kitchen chỉ nhận món khi đủ tồn khả dụng theo công thức.
 - Không hạ `quota_total` xuống dưới số suất đã chiếm (trigger); đã có món gọi thì không đổi món/công thức của dòng thực đơn ngày.
+- **QĐ-4 — gửi món khi hết suất:** Waiter vẫn gửi được; `rc_submit_batch` trả cảnh báo `QUOTA_EXCEEDED` (số suất còn lại) để UI hiển thị, **không** từ chối cả đợt. Kiểm cứng nằm ở Kitchen: chỉ `ACCEPTED` khi đủ suất **và** đủ nguyên liệu; hai Kitchen tranh suất cuối thì chỉ một bên nhận được.
 
 ### 5.1 Quota chiếm khi nào (QĐ-8)
 
@@ -230,10 +231,10 @@ stateDiagram-v2
 flowchart TB
     subgraph W["WAITER"]
         W1["Chọn bàn AVAILABLE"] --> W2["Mở phiên<br/>rc_open_session"]
-        W2 --> W3["Gửi đợt món<br/>rc_submit_batch"]
+        W2 --> W3["Gửi đợt món<br/>rc_submit_batch<br/>(hết suất: vẫn gửi + cảnh báo)"]
         W6["Mang món ra · SERVED<br/>rc_serve_item"]
         W7{"Khách gọi thêm?"}
-        W8["Yêu cầu hủy món<br/>(PENDING / ACCEPTED)"]
+        W8["Yêu cầu hủy món<br/>(PENDING / ACCEPTED)<br/>giảm số lượng = hủy cả dòng + gửi dòng mới"]
     end
     subgraph K["KITCHEN"]
         K1{"Món PENDING: menu PUBLISHED,<br/>không pause, quota NULL hoặc còn suất,<br/>đủ tồn FEFO?"}
@@ -246,6 +247,7 @@ flowchart TB
     subgraph M["MANAGER (ngoại lệ)"]
         M1["rc_cancel_item_exception<br/>COOKING / READY / SERVED → CANCELLED<br/>bắt buộc lý do · không hoàn nguyên liệu/quota"]
         M2["rc_abandon_session<br/>khách bỏ về → xem 8.4"]
+        M3["rc_waive_invoice<br/>miễn thu → xem 8.5"]
     end
     W3 --> K1
     K1 -- đủ --> K2
@@ -260,6 +262,7 @@ flowchart TB
     K5 -. "sai món / cháy" .-> M1
     W6 -. "khách không nhận" .-> M1
     W7 -. "khách bỏ về" .-> M2
+    W7 -. "miễn thu" .-> M3
 ```
 
 ### 7.2 Mỗi bước ghi gì vào CSDL
@@ -298,7 +301,7 @@ stateDiagram-v2
     CANCELLED --> [*]
 ```
 
-Từ `COOKING` trở đi chỉ còn đường hủy **ngoại lệ**: Manager, bắt buộc lý do, lưu `order_item_events` (trạng thái cũ → CANCELLED, `actor_id`, `reason`), không hoàn nguyên liệu đã tiêu hao, không hoàn quota, và món không được tính tiền. Hóa đơn `PAYMENT_PENDING` phải mở lại (`rc_reopen_invoice`) trước; sau khi `PAID` thì không hủy được. Hủy một phần số lượng của một dòng không có (QĐ-5): hủy cả dòng rồi gửi lại số đúng.
+Từ `COOKING` trở đi chỉ còn đường hủy **ngoại lệ**: Manager, bắt buộc lý do, lưu `order_item_events` (trạng thái cũ → CANCELLED, `actor_id`, `reason`), không hoàn nguyên liệu đã tiêu hao, không hoàn quota, và món không được tính tiền. Hóa đơn `PAYMENT_PENDING` phải mở lại (`rc_reopen_invoice`) trước; sau khi `PAID` thì không hủy được. **QĐ-5 — không hủy một phần số lượng.** Khách gọi 3 nhưng chỉ muốn 2: hủy **cả dòng** (trước COOKING: `rc_cancel_item`, phần giữ và suất được trả đúng một lần) rồi gửi **dòng mới** 2 suất. Dòng `CANCELLED` là trạng thái cuối, không mở lại hay sửa số lượng (snapshot bất biến), lịch sử của nó giữ nguyên; không thêm bảng hay API hủy một phần. Từ COOKING, hủy dòng đi qua hủy ngoại lệ của Manager và không hoàn nguyên liệu/suất.
 
 ## 8. L5 · Chốt hóa đơn và thanh toán
 
@@ -324,6 +327,8 @@ flowchart TB
     C2 -. "khách gọi thêm" .-> R["rc_reopen_invoice<br/>request đang mở → CANCELLED<br/>invoice → DRAFT"]
     R -.-> L4(["→ L4 gửi thêm món"])
     C2 -. "khách bỏ về" .-> AB["rc_abandon_session (MANAGER)<br/>invoice → UNCOLLECTED<br/>không payments · không doanh thu"]
+    C2 -. "miễn thu" .-> WV["rc_waive_invoice (MANAGER)<br/>invoice → WAIVED<br/>không payments · không doanh thu"]
+    C1 -. "tổng 0 đồng" .-> WV
 ```
 
 Quy tắc chốt hóa đơn (QĐ-4): Cashier chốt khi khách thanh toán tại quầy; hàm **tự tính** tổng từ `invoice_items` (client không gửi tổng), đối chiếu từng dòng với đơn hàng (đúng tập dòng SERVED, cùng tên/số lượng/đơn giá) rồi chuyển `PAYMENT_PENDING`. Từ lúc đó Waiter không gửi thêm món vào phiên (`rc_submit_batch` từ chối). Muốn thay đổi trước khi thu tiền phải đi qua `rc_reopen_invoice`: nó hủy yêu cầu thanh toán đang mở (ghi lý do, người, giờ) rồi trả hóa đơn về `DRAFT`. Gọi món, chốt hóa đơn và thanh toán cùng khóa `orders → invoices → payment_requests` nên không tranh chấp nhau.
@@ -372,8 +377,11 @@ stateDiagram-v2
         PAYMENT_PENDING --> PAID : có payment thành công
         DRAFT --> UNCOLLECTED : rc_abandon_session
         PAYMENT_PENDING --> UNCOLLECTED : rc_abandon_session
+        DRAFT --> WAIVED : rc_waive_invoice
+        PAYMENT_PENDING --> WAIVED : rc_waive_invoice
         PAID --> [*]
         UNCOLLECTED --> [*]
+        WAIVED --> [*]
     }
     state "payment_requests" as PR {
         [*] --> REQUESTED
@@ -423,8 +431,20 @@ sequenceDiagram
 
 - **Không** tạo `payments`, **không** đánh dấu `PAID`, **không** có doanh thu thực thu; **không** xóa dữ liệu (đơn, món, hóa đơn, nhật ký đều giữ).
 - `UNCOLLECTED` là trạng thái cuối: hóa đơn giữ nguyên nghĩa vụ phải thu (`total`, `invoice_items`) và bất biến. Báo cáo "nghĩa vụ chưa thu" là truy vấn `invoices WHERE status = 'UNCOLLECTED'` (chỉ mục `idx_invoices_uncollected`).
-- QR đến muộn sau khi bỏ về: yêu cầu đã bị hủy nên webhook được ghi `AFTER_CANCEL` và mở sự cố đối soát (`resolution_status = OPEN`) để Manager xử lý ngoài hệ thống.
+- QR đến muộn sau khi bỏ về: yêu cầu đã bị hủy nên webhook được ghi `AFTER_CANCEL` và mở sự cố đối soát (`resolution_status = OPEN`) để Manager xử lý ngoài hệ thống; hóa đơn **không** tự chuyển `PAID`. Gửi lại cùng webhook trả kết quả đã lưu.
+- Không công nợ, thu bù, xóa nợ trong Core: `rc_pay_cash`, `rc_reopen_invoice`, `rc_waive_invoice` trên hóa đơn `UNCOLLECTED` đều bị từ chối. Bàn được giải phóng ngay để mở phiên mới.
+- Món SERVED đều giá 0 (hoặc đã miễn phí hết): tổng 0 đồng không phải nợ → hóa đơn đóng `WAIVED` thay vì `UNCOLLECTED`.
 - Biểu diễn trạng thái: Core cũ chưa có chỗ ghi "kết thúc phiên không thu tiền" (hóa đơn kẹt `PAYMENT_PENDING`, bàn kẹt `OCCUPIED`). Điều chỉnh tối thiểu: thêm giá trị `UNCOLLECTED` vào `invoices.status` và 3 cột `uncollected_reason/by/at`; `orders.status = CLOSED` nay nghĩa là hóa đơn `PAID` **hoặc** `UNCOLLECTED`. Thu nợ/xóa nợ sau đó nằm ngoài Core.
+
+### 8.5 Miễn thu (QĐ-MT)
+
+`PAID` = đã thu thật · `UNCOLLECTED` = có nghĩa vụ nhưng không thu được · `WAIVED` = Manager miễn thu hợp lệ. Miễn thu là một transaction `rc_waive_invoice(order, manager, lý do)`:
+
+1. Chỉ Manager (kiểm vai trò trong DB), lý do bắt buộc; mọi dòng món đã kết thúc (SERVED/CANCELLED/REJECTED).
+2. Tạo/bổ sung hóa đơn từ đúng tập dòng SERVED **giữ nguyên giá bán** — `invoice_items` không bị sửa để che giá trị được miễn; `total` là giá trị được miễn.
+3. Hủy yêu cầu thanh toán đang mở; hóa đơn → `WAIVED` (`waived_reason/by/at`); đơn, phiên `CLOSED`; bàn `AVAILABLE`.
+4. **Không** tạo `payments` (kể cả 0 đồng), **không** vào doanh thu; hóa đơn `PAID` không miễn thu được; miễn thu và thu tiền đồng thời chỉ một bên thành công (cùng khóa `orders → invoices`).
+5. Hóa đơn 0 đồng (món giá 0, hoặc đã hủy ngoại lệ hết món) không chờ thu (`rc_checkout_invoice` từ chối) mà đóng bằng `WAIVED` — không còn hóa đơn `DRAFT` treo sau khi đơn kết thúc. Không có khuyến mãi/giảm giá nhiều cấp trong Core.
 
 ## 9. L6 · Ngoại lệ kho
 
@@ -469,7 +489,8 @@ flowchart LR
     SM["stock_movements"] --> RP
 ```
 
-- Doanh thu chỉ tính `payments` (đã thu), không tính hóa đơn chưa PAID hay `UNCOLLECTED`; tiền QR không vào quỹ tiền mặt. Nghĩa vụ khách bỏ về (`invoices.status = 'UNCOLLECTED'`) được báo cáo riêng, không cộng vào doanh thu.
+- Doanh thu chỉ tính `payments` (đã thu), không tính hóa đơn chưa PAID, `UNCOLLECTED` hay `WAIVED`; webhook lặp/đến muộn không tạo payment nên không bị đếm; tiền QR không vào quỹ tiền mặt. Khách bỏ về và miễn thu được báo cáo riêng (`rpt_unpaid_closures`), không cộng vào doanh thu. Truy vấn báo cáo và đối soát ở [10-bao-cao-v4.1.sql](10-bao-cao-v4.1.sql).
+- **QĐ-NG — ngày kinh doanh:** bắt đầu 04:00 giờ Việt Nam (`Asia/Ho_Chi_Minh`), kết thúc trước 04:00 hôm sau; giao dịch 03:59 thuộc ngày trước, 04:00 thuộc ngày mới. Thời điểm lưu `TIMESTAMPTZ`; `business_date` tính bằng `rc_business_date()` ở DB nên không phụ thuộc múi giờ của phiên kết nối.
 - Khoản chi trả bằng chuyển khoản hoặc từ quỹ chủ **không** trừ vào két; v4.1 cố định miền giá trị `payment_method`, `fund_source` và bắt buộc chi từ két (`CASH_DRAWER`) phải là tiền mặt (DB-30).
 - `expected_cash`, `difference` là cột tự tính; bản đối soát đã chốt chỉ được chuyển sang SUPERSEDED, không sửa số liệu.
 - Đây là báo cáo thu–chi, chưa phải lợi nhuận (chưa có giá vốn đầy đủ).

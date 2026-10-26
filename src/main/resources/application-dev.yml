@@ -1,0 +1,5 @@
+# Máy phát triển / Docker Compose local.
+logging:
+  level:
+    com.restaurant.core: DEBUG                 # thấy thời gian từng Service từ PerformanceLoggingAspect
+    org.springframework.security: INFO

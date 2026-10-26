@@ -1,0 +1,62 @@
+# Môi trường local: PostgreSQL v4.1 + Spring Boot. Không có dịch vụ nào khác.
+#   cp .env.example .env   # rồi đặt mật khẩu và JWT_SECRET
+#   docker compose up -d db          # chỉ database (chạy app bằng ./mvnw spring-boot:run)
+#   docker compose up -d --build     # database + app
+# Lần đầu (volume trống) PostgreSQL tự nạp docs/04 → 09 → 10 và tạo login ứng dụng. Volume đã có dữ liệu thì
+# các script này KHÔNG chạy lại (cơ chế initdb của image postgres) — không bao giờ chạy lại DDL trên dữ liệu thật.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${DB_NAME:-restaurant_core}
+      POSTGRES_USER: ${DB_ADMIN_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?Đặt DB_ADMIN_PASSWORD trong .env}
+      DB_APP_USER: ${DB_APP_USER:-rms_api}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?Đặt DB_APP_PASSWORD trong .env}
+      DB_WEBHOOK_USER: ${DB_WEBHOOK_USER:-}
+      DB_WEBHOOK_PASSWORD: ${DB_WEBHOOK_PASSWORD:-}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docs/04-schema-v4.1.sql:/docker-entrypoint-initdb.d/10-schema-v4.1.sql:ro
+      - ./docs/09-acl-v4.1.sql:/docker-entrypoint-initdb.d/20-acl-v4.1.sql:ro
+      - ./docs/10-bao-cao-v4.1.sql:/docker-entrypoint-initdb.d/30-bao-cao-v4.1.sql:ro
+      - ./docker/db-init/40-app-logins.sh:/docker-entrypoint-initdb.d/40-app-logins.sh:ro
+    ports:
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-restaurant_core}
+      DB_APP_USER: ${DB_APP_USER:-rms_api}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+      FLYWAY_USER: ${DB_ADMIN_USER:-postgres}
+      FLYWAY_PASSWORD: ${DB_ADMIN_PASSWORD}
+      FLYWAY_BASELINE_ON_MIGRATE: ${FLYWAY_BASELINE_ON_MIGRATE:-false}
+      JWT_SECRET: ${JWT_SECRET:?Đặt JWT_SECRET (≥ 32 ký tự) trong .env}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      DB_WEBHOOK_USER: ${DB_WEBHOOK_USER:-}
+      DB_WEBHOOK_PASSWORD: ${DB_WEBHOOK_PASSWORD:-}
+      SEPAY_API_KEY: ${SEPAY_API_KEY:-}
+      SEPAY_BANK_ACCOUNT: ${SEPAY_BANK_ACCOUNT:-}
+      SEPAY_BANK_NAME: ${SEPAY_BANK_NAME:-}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8081}:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  pgdata:

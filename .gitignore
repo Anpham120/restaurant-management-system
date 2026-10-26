@@ -1,0 +1,15 @@
+# Build
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Bí mật
+.env
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Node (chỉ dùng cho docs/06-test-concurrency)
+node_modules/
