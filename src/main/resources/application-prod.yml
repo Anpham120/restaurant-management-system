@@ -1,0 +1,7 @@
+# Production: mọi giá trị bắt buộc qua biến môi trường; baseline Flyway phải chạy có chủ đích (README).
+spring:
+  flyway:
+    baseline-on-migrate: false
+logging:
+  level:
+    com.restaurant.core: INFO
