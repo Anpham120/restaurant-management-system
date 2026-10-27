@@ -84,7 +84,7 @@ class FoundationIT extends IntegrationTestBase {
 
     @Test
     void performanceAspectLogsServiceCallsWithoutArguments(CapturedOutput output) {
-        tableService.listTables();
+        tableService.listTables(false);
         assertThat(output).contains("TableService.listTables");
         assertThatThrownBy(() -> tableService.openSession(987654321L, 987654321L)).isInstanceOf(DataAccessException.class);
         assertThat(output).contains("TableService.openSession lỗi sau").doesNotContain("987654321");

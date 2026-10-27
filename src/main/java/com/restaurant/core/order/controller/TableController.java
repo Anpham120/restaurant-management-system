@@ -2,6 +2,7 @@ package com.restaurant.core.order.controller;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -10,6 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -19,11 +22,12 @@ import com.restaurant.core.common.response.ApiResponse;
 import com.restaurant.core.order.dto.OpenSessionResponse;
 import com.restaurant.core.order.dto.PageResponse;
 import com.restaurant.core.order.dto.SessionResponse;
+import com.restaurant.core.order.dto.TableRequest;
 import com.restaurant.core.order.dto.TableResponse;
 import com.restaurant.core.order.service.TableService;
 import com.restaurant.core.security.CurrentUser;
 
-/** Bàn: danh sách, trạng thái, mở phiên, lịch sử phiên. Owner: Phạm Duy An. */
+/** Quản lý bàn và phiên: danh sách, thêm/sửa/ngừng/mở lại bàn, mở phiên, lịch sử phiên. Owner: Phạm Duy An. */
 @RestController
 @RequestMapping("/api/tables")
 public class TableController {
@@ -36,10 +40,36 @@ public class TableController {
         this.currentUser = currentUser;
     }
 
+    /** includeInactive=true (chỉ có tác dụng với Manager) để xem cả bàn ngừng sử dụng. */
     @GetMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'CASHIER')")
-    public ApiResponse<List<TableResponse>> list() {
-        return ApiResponse.ok(tableService.listTables());
+    public ApiResponse<List<TableResponse>> list(@RequestParam(defaultValue = "false") boolean includeInactive) {
+        return ApiResponse.ok(tableService.listTables(includeInactive && currentUser.roles().contains("MANAGER")));
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<TableResponse> create(@Valid @RequestBody TableRequest request) {
+        return ApiResponse.ok(tableService.createTable(request));
+    }
+
+    @PutMapping("/{tableId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<TableResponse> update(@PathVariable @Positive long tableId, @Valid @RequestBody TableRequest request) {
+        return ApiResponse.ok(tableService.updateTable(tableId, request));
+    }
+
+    @PostMapping("/{tableId}/deactivate")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<TableResponse> deactivate(@PathVariable @Positive long tableId) {
+        return ApiResponse.ok(tableService.deactivateTable(tableId));
+    }
+
+    @PostMapping("/{tableId}/activate")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<TableResponse> activate(@PathVariable @Positive long tableId) {
+        return ApiResponse.ok(tableService.activateTable(tableId));
     }
 
     @GetMapping("/{tableId}")

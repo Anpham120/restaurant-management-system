@@ -15,7 +15,10 @@ Service/Repository: `order.service.TableService`, `OrderService`, `KitchenServic
 
 | # | Endpoint | Actor | Request → Response | Bảng · hàm | Trước → Sau | Lỗi nghiệp vụ | Test |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| ✅ | `GET /api/tables` | M W C | — → `TableResponse[]` (`currentSessionId`, `currentOrderId`) | `dining_tables`, `table_sessions`, `orders` | — | — | TableIT, OrderLifecycleIT |
+| ✅ | `GET /api/tables?includeInactive` | M W C | — → `TableResponse[]` (`active`, `currentSessionId`, `currentOrderId`); `includeInactive=true` chỉ có tác dụng với M | `dining_tables`, `table_sessions`, `orders` | — | — | TableIT, OrderLifecycleIT |
+| ✅ | `POST /api/tables` | M | `TableRequest{code, capacity}` → 201 `TableResponse` | `dining_tables` (ghi trực tiếp cột `code`, `capacity` — rc_app được cấp) | → bàn AVAILABLE, đang dùng | 409 `DUPLICATE` mã bàn | TableIT |
+| ✅ | `PUT /api/tables/{tableId}` | M | `TableRequest` → `TableResponse` | `dining_tables` | đổi mã/sức chứa (kể cả khi có khách); **không** đổi trạng thái | 404 · 409 `DUPLICATE` | TableIT |
+| ✅ | `POST /api/tables/{tableId}/deactivate`, `/activate` | M | — → `TableResponse` | `dining_tables.is_active` | ngừng sử dụng **chỉ khi AVAILABLE** (một câu UPDATE, tuần tự với `rc_open_session`); bàn ngừng không mở phiên được (RC422) và ẩn khỏi danh sách thường. Không xóa bàn (có lịch sử phiên; rc_app không có quyền DELETE) | 409 `TABLE_OCCUPIED` · 404 | TableIT |
 | ✅ | `GET /api/tables/{tableId}` | M W C | — → `TableResponse` | như trên | — | 404 | OrderLifecycleIT |
 | ✅ | `POST /api/tables/{tableId}/sessions` | W M | — → 201 `OpenSessionResponse` (`sessionId`, `tableId`, `orderId`) | `rc_open_session` | bàn AVAILABLE, đang dùng → phiên OPEN + đơn OPEN, bàn OCCUPIED | 409 RC409 bàn có khách · 422 RC422 bàn không tồn tại/ngừng | TableIT, PaymentConcurrencyIT (3 Waiter mở cùng bàn) |
 | ✅ | `GET /api/tables/{tableId}/sessions?page&size` | M W C | — → `PageResponse<SessionResponse>` | `table_sessions`, `orders`, `invoices` | — | 404 | OrderLifecycleIT |
