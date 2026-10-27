@@ -139,6 +139,31 @@ public class KitchenStockRepository {
                 .param("a", id).query(AdjustmentLineView.class).list();
     }
 
+    // ---------- danh sách (mới nhất trước)
+    public List<PreparationResponse.Header> findPreparations(String status, int page, int size) {
+        return jdbc.sql("""
+                        SELECT id, status, stock_issue_item_id, input_quantity, loss_reason, prepared_by_id, prepared_at, request_key
+                          FROM kitchen_preparations WHERE CAST(:s AS text) IS NULL OR status = :s
+                         ORDER BY id DESC LIMIT :size OFFSET :off""")
+                .param("s", status).param("size", size).param("off", (long) page * size).query(PreparationResponse.Header.class).list();
+    }
+
+    public List<ReturnResponse.Header> findReturns(String status, int page, int size) {
+        return jdbc.sql("""
+                        SELECT id, status, reason, requested_by_id, confirmed_by_id, created_at, confirmed_at, request_key
+                          FROM stock_returns WHERE CAST(:s AS text) IS NULL OR status = :s
+                         ORDER BY id DESC LIMIT :size OFFSET :off""")
+                .param("s", status).param("size", size).param("off", (long) page * size).query(ReturnResponse.Header.class).list();
+    }
+
+    public List<AdjustmentResponse.Header> findAdjustments(String status, int page, int size) {
+        return jdbc.sql("""
+                        SELECT id, status, adjustment_type, reason, created_by_id, confirmed_by_id, created_at, confirmed_at, request_key
+                          FROM stock_adjustments WHERE CAST(:s AS text) IS NULL OR status = :s
+                         ORDER BY id DESC LIMIT :size OFFSET :off""")
+                .param("s", status).param("size", size).param("off", (long) page * size).query(AdjustmentResponse.Header.class).list();
+    }
+
     // ---------- lô hỏng
     /** rc_mark_batch_unusable(p_kind 'RAW'|'KITCHEN', p_batch, p_actor, p_reason) → số món đang giữ lô này bị gắn cờ. */
     public int markUnusable(String kind, long batchId, long actorId, String reason) {

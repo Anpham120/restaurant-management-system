@@ -51,6 +51,7 @@ src/main/java/com/restaurant/core/
 ├── inventory/   nguyên liệu, nhập/xuất/kiểm kê, sơ chế, hoàn trả, báo cáo  (Đỗ Tuấn Anh)
 ├── finance/     Invoice*, Payment*, strategy/ (CASH/QR), sepay/ (webhook)  (Phạm Duy An)
 │                Expense*, CashReconciliation*, FinanceReport*              (Bùi Đào Đức Anh)
+frontend/            React + Vite: vận hành ca và các màn quản lý (frontend/README.md)
 src/main/resources/  application.yml, application-dev.yml, application-prod.yml, db/migration/
 docker/              script khởi tạo login DB, tạo Manager đầu tiên
 compose.yaml, Dockerfile, .env.example

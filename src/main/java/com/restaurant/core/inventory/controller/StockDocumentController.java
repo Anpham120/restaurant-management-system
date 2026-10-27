@@ -55,7 +55,7 @@ public class StockDocumentController {
     @GetMapping("/stock-receipts")
     @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<List<ReceiptResponse.Header>> receipts(
-            @RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED") String status,
+            @RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ApiResponse.ok(service.receipts(status, page, size));
     }
@@ -129,6 +129,13 @@ public class StockDocumentController {
     @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<CountResponse> createCount(@Valid @RequestBody CountRequest request) {
         return ApiResponse.ok(service.createCount(currentUser.employeeId(), request));
+    }
+
+    @GetMapping("/stock-counts")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<List<CountResponse.Header>> counts(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+            @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return ApiResponse.ok(service.counts(status, page, size));
     }
 
     @GetMapping("/stock-counts/{id}")

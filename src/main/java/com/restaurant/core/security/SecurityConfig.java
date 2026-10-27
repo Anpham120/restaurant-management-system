@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,7 +27,8 @@ import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * Stateless JWT: client gửi "Authorization: Bearer <token>". Vai trò và trạng thái tài khoản đọc lại từ DB mỗi request
- * ({@link AccountStateJwtConverter}). Phân quyền theo endpoint bằng @PreAuthorize trên controller. 401 = thiếu/sai token
+ * ({@link AccountStateJwtConverter}). Phân quyền theo endpoint bằng @PreAuthorize trên controller, được kiểm ở tầng filter
+ * trước khi đọc body ({@link HandlerAuthorizationManager}). 401 = thiếu/sai token
  * hoặc tài khoản không còn hoạt động, 403 = thiếu vai trò hoặc chưa đổi mật khẩu bắt buộc.
  */
 @Configuration
@@ -37,7 +37,7 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, AccountStateJwtConverter jwtConverter,
-                                            RestSecurityErrorHandler errors) throws Exception {
+                                            HandlerAuthorizationManager handlerAuthorization, RestSecurityErrorHandler errors) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())                       // không dùng cookie session → không cần CSRF
                 .cors(Customizer.withDefaults())
@@ -51,7 +51,8 @@ public class SecurityConfig {
                         // tài khoản phải đổi mật khẩu: chỉ được đổi mật khẩu và xem /me
                         .requestMatchers(HttpMethod.POST, "/api/auth/change-password").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
-                        .anyRequest().access((authentication, context) -> new AuthorizationDecision(passwordChanged(authentication.get()))))
+                        // còn lại: quyền theo @PreAuthorize của controller, kiểm TRƯỚC khi đọc body
+                        .anyRequest().access(handlerAuthorization))
                 .oauth2ResourceServer(o -> o
                         .jwt(j -> j.jwtAuthenticationConverter(jwtConverter))
                         .authenticationEntryPoint(errors)

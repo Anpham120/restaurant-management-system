@@ -41,7 +41,8 @@ public final class InventoryReportDtos {
                             Instant receivedAt, BigDecimal quantityOnHand, boolean usable) {
     }
 
+    /** directIssueItemId: dòng xuất DIRECT sinh ra lô (null nếu lô từ sơ chế) — cần khi hoàn trả về kho. */
     public record KitchenLotRow(long kitchenBatchId, long kitchenIngredientTypeId, String typeName, BigDecimal quantityOnHand,
-                                BigDecimal reservedQuantity, Instant usableUntil, boolean usable) {
+                                BigDecimal reservedQuantity, Instant usableUntil, boolean usable, Long directIssueItemId) {
     }
 }

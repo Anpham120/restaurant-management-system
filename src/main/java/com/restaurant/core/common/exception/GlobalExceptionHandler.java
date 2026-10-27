@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -86,6 +87,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
     ResponseEntity<ApiResponse<Void>> handleUnreadable(Exception ex, HttpServletRequest req) {
         return error(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "Yêu cầu sai định dạng", List.of(), req);
+    }
+
+    /** Thiếu tham số query bắt buộc (?from=&to=…) → 400, không rơi xuống 500. */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    ResponseEntity<ApiResponse<Void>> handleMissingParam(MissingServletRequestParameterException ex, HttpServletRequest req) {
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Thiếu tham số " + ex.getParameterName(),
+                List.of(new ApiError.FieldViolation(ex.getParameterName(), "bắt buộc")), req);
     }
 
     /** @PreAuthorize từ chối → 403 (chưa đăng nhập thì Spring Security trả 401 trước khi tới đây). */

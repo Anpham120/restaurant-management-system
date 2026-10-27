@@ -75,6 +75,15 @@ class FoundationIT extends IntegrationTestBase {
     }
 
     @Test
+    void missingRequiredQueryParamIs400NotServerError() throws Exception {
+        String token = bearer(data.staff("MANAGER"));
+        mvc.perform(get("/api/reports/revenue-by-day?from=2026-10-01").header("Authorization", token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.details[0].field").value("to"));
+    }
+
+    @Test
     void unknownPathIs404Json() throws Exception {
         String token = bearer(data.staff("MANAGER"));
         mvc.perform(get("/api/khong-ton-tai").header("Authorization", token))
