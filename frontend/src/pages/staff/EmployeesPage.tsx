@@ -92,7 +92,7 @@ export function EmployeesPage() {
 
   return (
     <main className="main">
-      <PageHead title="Nhân viên" subtitle="Tài khoản mới dùng mật khẩu tạm và phải đổi ở lần đăng nhập đầu."
+      <PageHead title="Nhân viên"
                 actions={tab === 'employees'
                   ? <button className="btn btn-primary" onClick={() => openEdit('new')}>Thêm nhân viên</button>
                   : <button className="btn btn-primary" onClick={() => { setDeptName(''); saveDept.reset(); setDeptEdit('new'); }}>Thêm phòng ban</button>} />
@@ -132,7 +132,7 @@ export function EmployeesPage() {
             )}
           </div>
           <aside className="panel stack">
-            {!e ? <p className="muted">Chọn nhân viên để xem hồ sơ và tài khoản.</p> : (
+            {!e ? <p className="muted pick-hint">Chọn nhân viên để xem hồ sơ và tài khoản.</p> : (
               <>
                 <div className="row-between"><h2>{e.fullName}</h2><StatusTag tone={WORK[e.workStatus][1]}>{WORK[e.workStatus][0]}</StatusTag></div>
                 <dl className="kv">

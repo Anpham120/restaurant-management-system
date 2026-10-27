@@ -6,7 +6,7 @@ import type { DailyMenuItem, DailyMenuResponse, MenuItem } from '../../api/types
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { ReasonDialog } from '../../components/ReasonDialog';
-import { DataTable, Field, FormModal, PageHead, StatusTag, num, useAction } from '../../components/ui';
+import { DataTable, Field, FormModal, PageHead, StatusTag, num, useAction, Stepper } from '../../components/ui';
 import { addDays, businessToday, dateTime, day, vnd } from '../../lib/format';
 
 const STATUS: Record<string, [string, 'wait' | 'go' | 'ink']> = {
@@ -76,9 +76,9 @@ export function DailyMenuPage() {
         subtitle={m ? <>Ngày {day(m.businessDate)} · {m.items.length} món{m.publishedAt ? ` · công bố lúc ${dateTime(m.publishedAt)}` : ''}</> : `Ngày ${day(date)}`}
         actions={
           <>
-            <button className="btn btn-sm" onClick={() => setDate(addDays(date, -1))}>Ngày trước</button>
-            <input className="input" type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} style={{ width: 170 }} />
-            <button className="btn btn-sm" onClick={() => setDate(addDays(date, 1))}>Ngày sau</button>
+            <Stepper unit="Ngày" onPrev={() => setDate(addDays(date, -1))} onNext={() => setDate(addDays(date, 1))}>
+              <input className="input" type="date" aria-label="Ngày" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
+            </Stepper>
             {date !== businessToday() && <button className="btn btn-sm" onClick={() => setDate(businessToday())}>Hôm nay</button>}
           </>
         }

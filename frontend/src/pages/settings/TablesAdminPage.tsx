@@ -36,7 +36,6 @@ export function TablesAdminPage() {
     <main className="main">
       <PageHead
         title="Quản lý bàn"
-        subtitle="Bàn ngừng dùng không mở được phiên mới. Chỉ ngừng được bàn đang trống."
         actions={<button className="btn btn-primary" onClick={() => open('new')}>Thêm bàn</button>}
       />
       <ErrorNotice error={tables.error ?? toggle.error} />

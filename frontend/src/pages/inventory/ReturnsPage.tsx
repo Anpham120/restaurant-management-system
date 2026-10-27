@@ -80,7 +80,6 @@ export function ReturnsPage() {
   return (
     <main className="main">
       <PageHead title="Hoàn trả, hủy hàng"
-                subtitle="Hoàn trả: hàng bếp chưa dùng về lại lô gốc trong kho. Hủy hàng: bỏ hàng hư hỏng, hết hạn khỏi sổ."
                 actions={<button className="btn btn-primary" onClick={start}>{tab === 'returns' ? 'Lập phiếu hoàn trả' : 'Lập phiếu hủy hàng'}</button>} />
       <Tabs value={tab} onChange={(t) => { setTab(t); setSelectedId(null); }} options={[['returns', 'Hoàn trả về kho'], ['adjustments', 'Hủy hàng']]} />
       <div className="split">
@@ -96,7 +95,7 @@ export function ReturnsPage() {
             ]} />
         </div>
         <aside className="panel stack">
-          {!d ? <p className="muted">Chọn một phiếu để xem chi tiết.</p> : (
+          {!d ? <p className="muted pick-hint">Chọn một phiếu để xem chi tiết.</p> : (
             <>
               <div className="row-between"><h2>{tab === 'returns' ? 'Phiếu hoàn trả' : 'Phiếu hủy hàng'} #{d.id}</h2><DocStatus status={d.status} /></div>
               <dl className="kv">

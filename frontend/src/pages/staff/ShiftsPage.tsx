@@ -5,7 +5,7 @@ import { api } from '../../api/client';
 import type { Shift, ShiftAssignment } from '../../api/types';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { ReasonDialog } from '../../components/ReasonDialog';
-import { DataTable, Field, FormModal, PageHead, StatusTag, Tabs, num, useAction } from '../../components/ui';
+import { DataTable, Field, FormModal, PageHead, StatusTag, Tabs, num, useAction, Stepper } from '../../components/ui';
 import { addDays, businessToday, day, hm, weekStart, weekdayLabel } from '../../lib/format';
 import { ASSIGNMENT_STATUS, span, useActiveEmployees, useAssignments } from './shared';
 
@@ -59,7 +59,7 @@ export function ShiftsPage() {
 
   return (
     <main className="main">
-      <PageHead title="Ca và phân ca" subtitle="Giờ ca theo giờ Việt Nam; ca có giờ kết thúc trước giờ bắt đầu là ca qua đêm."
+      <PageHead title="Ca và phân ca"
                 actions={tab === 'week'
                   ? <button className="btn btn-primary" onClick={() => openAssign(today)}>Phân ca</button>
                   : <button className="btn btn-primary" onClick={() => openShift('new')}>Thêm ca</button>} />
@@ -78,9 +78,9 @@ export function ShiftsPage() {
         <>
           <div className="filters">
             <div className="toolbar">
-              <button className="btn btn-sm" onClick={() => setMonday(addDays(monday, -7))}>Tuần trước</button>
-              <b>{day(monday)} – {day(sunday)}</b>
-              <button className="btn btn-sm" onClick={() => setMonday(addDays(monday, 7))}>Tuần sau</button>
+              <Stepper unit="Tuần" onPrev={() => setMonday(addDays(monday, -7))} onNext={() => setMonday(addDays(monday, 7))}>
+                <b className="stepper-label num">{day(monday)} – {day(sunday)}</b>
+              </Stepper>
               {monday !== weekStart(today) && <button className="btn btn-sm" onClick={() => setMonday(weekStart(today))}>Tuần này</button>}
             </div>
             <Field label="Nhân viên">

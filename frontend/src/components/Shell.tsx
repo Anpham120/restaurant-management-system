@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 
 import type { Role } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { TableMark } from './AuthLayout';
 import { roleLabel } from '../lib/format';
 
 const M: Role[] = ['MANAGER'];
@@ -54,9 +55,12 @@ export const NAV: { group: string; items: { to: string; label: string; roles: Ro
     ],
   },
   {
+    group: 'Cài đặt',
+    items: [{ to: '/settings/tables', label: 'Quản lý bàn', roles: M }],
+  },
+  {
     group: 'Cá nhân',
     items: [
-      { to: '/settings/tables', label: 'Quản lý bàn', roles: M },
       { to: '/me/schedule', label: 'Lịch làm của tôi', roles: ALL },
       { to: '/change-password', label: 'Đổi mật khẩu', roles: ALL },
     ],
@@ -72,38 +76,41 @@ export function Shell() {
   return (
     <div className="shell">
       <aside className="rail" data-open={open}>
-        <div className="wordmark">
-          Restaurant Core
-          <small>Vận hành nhà hàng</small>
-        </div>
-        <button type="button" className="btn btn-sm menu-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-          {open ? 'Đóng' : 'Menu'}
-        </button>
-        <nav aria-label="Chức năng">
-          {NAV.map((g) => {
-            const items = g.items.filter((n) => hasRole(...n.roles));
-            if (items.length === 0) return null;
-            return (
-              <div key={g.group} style={{ display: 'contents' }}>
-                <div className="group">{g.group}</div>
-                {items.map((n) => (
-                  <NavLink key={n.to} to={n.to} end={n.to === '/staff'}>
-                    {n.label}
-                  </NavLink>
-                ))}
-              </div>
-            );
-          })}
-        </nav>
-        <div className="who">
-          <span>
-            <strong>{user?.fullName ?? user?.username}</strong>
-            <br />
-            {user?.roles.map((r) => roleLabel[r]).join(', ')}
-          </span>
-          <button type="button" className="btn btn-sm" onClick={logout}>
-            Đăng xuất
+        <div className="rail-top">
+          <div className="wordmark">
+            <TableMark className="wordmark-mark" />
+            Atlas Restaurant
+          </div>
+          <button type="button" className="btn btn-sm menu-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {open ? 'Đóng' : 'Menu'}
           </button>
+        </div>
+        <div className="rail-panel">
+          <nav aria-label="Chức năng">
+            {NAV.map((g) => {
+              const items = g.items.filter((n) => hasRole(...n.roles));
+              if (items.length === 0) return null;
+              return (
+                <div key={g.group} className="nav-group">
+                  <div className="group">{g.group}</div>
+                  {items.map((n) => (
+                    <NavLink key={n.to} to={n.to} end={n.to === '/staff'}>
+                      {n.label}
+                    </NavLink>
+                  ))}
+                </div>
+              );
+            })}
+          </nav>
+          <div className="who">
+            <span>
+              <strong>{user?.fullName ?? user?.username}</strong>
+              {user?.roles.map((r) => roleLabel[r]).join(', ')}
+            </span>
+            <button type="button" className="btn btn-sm" onClick={logout}>
+              Đăng xuất
+            </button>
+          </div>
         </div>
       </aside>
       <Outlet />

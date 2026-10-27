@@ -38,7 +38,7 @@ export function StockPage() {
 
   return (
     <main className="main">
-      <PageHead title="Tồn kho" subtitle="Số liệu lấy trực tiếp từ sổ kho; chỉ đổi qua nhập, xuất, sơ chế, hủy, kiểm kê." />
+      <PageHead title="Tồn kho" />
       <Tabs value={tab} onChange={setTab} options={tabs} />
       <ErrorNotice error={raw.error ?? kitchen.error ?? handover.error ?? unusable.error ?? mark.error} />
 

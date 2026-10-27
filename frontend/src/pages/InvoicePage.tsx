@@ -232,7 +232,6 @@ export function InvoicePage() {
                   </form>
                 ) : (
                   <div className="stack">
-                    <p className="muted">Tạo mã QR có sẵn số tiền và nội dung. Hóa đơn tự chuyển sang đã thanh toán khi ngân hàng báo tiền về.</p>
                     <ErrorNotice error={pay.error} />
                     <button type="button" className="btn btn-primary btn-block" disabled={pay.isPending}
                             onClick={() => pay.mutate({ method: 'QR' })}>

@@ -1,4 +1,4 @@
-# Frontend — Restaurant Core
+# Frontend — Atlas Restaurant
 
 React 19 + TypeScript + Vite. Gọi REST API của backend (`/api/...`, hợp đồng: [API_CONTRACT](../docs/backend/API_CONTRACT.md)).
 

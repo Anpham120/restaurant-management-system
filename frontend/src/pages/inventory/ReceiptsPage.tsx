@@ -56,7 +56,7 @@ export function ReceiptsPage() {
 
   return (
     <main className="main">
-      <PageHead title="Nhập kho" subtitle="Lập phiếu khi nhận hàng từ nhà cung cấp; kho chỉ tăng khi xác nhận phiếu."
+      <PageHead title="Nhập kho"
                 actions={<button className="btn btn-primary" onClick={startCreate}>Lập phiếu nhập</button>} />
       <div className="split">
         <div>
@@ -77,7 +77,7 @@ export function ReceiptsPage() {
             ]} />
         </div>
         <aside className="panel stack">
-          {!r ? <p className="muted">Chọn một phiếu để xem chi tiết.</p> : (
+          {!r ? <p className="muted pick-hint">Chọn một phiếu để xem chi tiết.</p> : (
             <>
               <div className="row-between"><h2>Phiếu nhập #{r.id}</h2><DocStatus status={r.status} /></div>
               <dl className="kv">

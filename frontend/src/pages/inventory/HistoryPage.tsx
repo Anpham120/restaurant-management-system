@@ -33,7 +33,7 @@ export function HistoryPage() {
 
   return (
     <main className="main">
-      <PageHead title="Lịch sử kho" subtitle="Mọi thay đổi số dư đều có một dòng trong sổ kho, kèm chứng từ gốc." />
+      <PageHead title="Lịch sử kho" />
       <Tabs value={tab} onChange={setTab} options={[['history', 'Sổ kho'], ['yield', 'Hiệu suất sơ chế']]} />
       <div className="filters">
         <Field label="Từ ngày"><input className="input" type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} /></Field>

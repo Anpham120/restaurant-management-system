@@ -148,7 +148,7 @@ export function OrderPage() {
         <div>
           <h1>Bàn {session.tableCode}</h1>
           <p className="muted">
-            Ngồi được {elapsed(session.openedAt)} · phiếu #{orderId}
+            Đã ngồi {elapsed(session.openedAt)} · phiếu #{orderId}
           </p>
         </div>
         <Link to="/tables" className="btn">Về sơ đồ bàn</Link>
@@ -156,7 +156,6 @@ export function OrderPage() {
 
       <div className="order-layout">
         <section aria-label="Thực đơn hôm nay">
-          {!canOrder && <p className="muted">Thu ngân xem phiếu và thu tiền ở cột bên phải.</p>}
           {canOrder && menu.error instanceof ApiError && menu.error.status === 404 && (
             <div className="notice notice-warn">Chưa có thực đơn cho hôm nay. Quản lý cần tạo và công bố thực đơn.</div>
           )}
@@ -230,7 +229,7 @@ export function OrderPage() {
 
           <div className="ticket-section">
             <h3>Đã gọi</h3>
-            {items.length === 0 && <p className="muted">Chưa gọi món nào. Chọn món trong thực đơn hôm nay.</p>}
+            {items.length === 0 && <p className="muted">Chưa gọi món nào.</p>}
             {items.map((i) => {
               const dead = i.status === 'CANCELLED' || i.status === 'REJECTED';
               return (

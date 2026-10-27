@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/client';
 import type { CashReconciliation } from '../../api/types';
 import { ErrorNotice } from '../../components/ErrorNotice';
-import { DataTable, Field, FormModal, PageHead, StatusTag, num, useAction } from '../../components/ui';
+import { DataTable, Field, FormModal, PageHead, StatusTag, num, useAction, Stepper } from '../../components/ui';
 import { addDays, businessToday, dateTime, day, vnd } from '../../lib/format';
 
 /** Đối soát tiền mặt cuối ngày: quỹ đầu ngày + thu tiền mặt − chi từ quầy = tiền phải có; so với tiền đếm thực tế. */
@@ -32,9 +32,9 @@ export function CashPage() {
     <main className="main">
       <PageHead title="Đối soát tiền mặt" subtitle={`Ngày kinh doanh ${day(date)}`}
                 actions={<>
-                  <button className="btn btn-sm" onClick={() => setDate(addDays(date, -1))}>Ngày trước</button>
-                  <input className="input" type="date" value={date} max={businessToday()} onChange={(e) => e.target.value && setDate(e.target.value)} style={{ width: 170 }} />
-                  <button className="btn btn-sm" disabled={date >= businessToday()} onClick={() => setDate(addDays(date, 1))}>Ngày sau</button>
+                  <Stepper unit="Ngày" onPrev={() => setDate(addDays(date, -1))} onNext={() => setDate(addDays(date, 1))} nextDisabled={date >= businessToday()}>
+                    <input className="input" type="date" aria-label="Ngày" value={date} max={businessToday()} onChange={(e) => e.target.value && setDate(e.target.value)} />
+                  </Stepper>
                   <button className="btn btn-primary" disabled={!r} onClick={() => {
                     setForm({ openingCash: r?.openingCash != null ? String(r.openingCash) : '', actualCash: '', reason: '', revisionReason: '' });
                     save.reset();

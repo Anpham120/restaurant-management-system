@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { ErrorNotice } from '../../components/ErrorNotice';
-import { PageHead } from '../../components/ui';
+import { PageHead, Stepper } from '../../components/ui';
 import { addDays, businessToday, clock, day, hm, weekStart, weekdayLabel } from '../../lib/format';
 import { ASSIGNMENT_STATUS, span, useAssignments, useAttendances } from '../staff/shared';
 
@@ -20,9 +20,10 @@ export function SchedulePage() {
     <main className="main">
       <PageHead title="Lịch làm của tôi" subtitle={`${day(monday)} – ${day(sunday)} · ${list.length} ca · đã chấm ${hm(worked)}`}
                 actions={<>
-                  <button className="btn btn-sm" onClick={() => setMonday(addDays(monday, -7))}>Tuần trước</button>
+                  <Stepper unit="Tuần" onPrev={() => setMonday(addDays(monday, -7))} onNext={() => setMonday(addDays(monday, 7))}>
+                    <b className="stepper-label num">{day(monday)} – {day(sunday)}</b>
+                  </Stepper>
                   {monday !== weekStart(today) && <button className="btn btn-sm" onClick={() => setMonday(weekStart(today))}>Tuần này</button>}
-                  <button className="btn btn-sm" onClick={() => setMonday(addDays(monday, 7))}>Tuần sau</button>
                 </>} />
       <ErrorNotice error={assignments.error ?? attendances.error} />
       <div className="week">

@@ -54,7 +54,7 @@ export function PreparationsPage() {
 
   return (
     <main className="main">
-      <PageHead title="Sơ chế" subtitle="Hàng xuất ở chế độ chờ sơ chế phải qua bước này mới thành nguyên liệu dùng được trong món."
+      <PageHead title="Sơ chế"
                 actions={<button className="btn btn-primary" onClick={start} disabled={wip.length === 0}>Lập phiếu sơ chế</button>} />
       {handover.isSuccess && wip.length === 0 && <div className="notice notice-warn" style={{ marginBottom: '1rem' }}>Không có hàng chờ sơ chế. Kho cần xuất hàng ở chế độ "Chờ sơ chế" và bếp xác nhận đã nhận.</div>}
       <div className="split">
@@ -70,7 +70,7 @@ export function PreparationsPage() {
             ]} />
         </div>
         <aside className="panel stack">
-          {!d ? <p className="muted">Chọn một phiếu để xem chi tiết.</p> : (
+          {!d ? <p className="muted pick-hint">Chọn một phiếu để xem chi tiết.</p> : (
             <>
               <div className="row-between"><h2>Phiếu sơ chế #{d.id}</h2><DocStatus status={d.status} /></div>
               <dl className="kv">

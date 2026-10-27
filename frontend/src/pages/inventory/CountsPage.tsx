@@ -47,7 +47,7 @@ export function CountsPage() {
   const d = detail.data;
   return (
     <main className="main">
-      <PageHead title="Kiểm kê" subtitle="Đếm thực tế từng lô; xác nhận để sổ kho khớp với số đếm."
+      <PageHead title="Kiểm kê"
                 actions={<button className="btn btn-primary" onClick={() => { setRequestKey(newRequestKey()); setNote(''); setLines([{ source: '', actual: '', reason: '' }]); create.reset(); setCreating(true); }}>Lập phiếu kiểm kê</button>} />
       <div className="split">
         <div>
@@ -61,7 +61,7 @@ export function CountsPage() {
             ]} />
         </div>
         <aside className="panel stack">
-          {!d ? <p className="muted">Chọn một phiếu để xem chi tiết.</p> : (
+          {!d ? <p className="muted pick-hint">Chọn một phiếu để xem chi tiết.</p> : (
             <>
               <div className="row-between"><h2>Phiếu kiểm kê #{d.id}</h2><DocStatus status={d.status} /></div>
               <DataTable rows={d.lines} rowKey={(l) => l.id} empty="—"

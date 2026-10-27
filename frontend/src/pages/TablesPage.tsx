@@ -52,36 +52,28 @@ export function TablesPage() {
       <div className="page-head">
         <div>
           <h1>Sơ đồ bàn</h1>
-          <p className="muted">
-            {tables.isSuccess ? `${freeCount} bàn trống / ${list.length} bàn` : 'Đang tải…'}
-          </p>
-        </div>
-        <div className="legend" aria-hidden="true">
-          <span><i style={{ background: 'var(--jade)' }} />Trống</span>
-          <span><i style={{ background: 'var(--turmeric)' }} />Đang phục vụ</span>
-          <span><i style={{ background: 'var(--chili)' }} />Chờ thanh toán</span>
+          <p className="muted">{tables.isSuccess ? `${freeCount}/${list.length} bàn trống` : 'Đang tải…'}</p>
         </div>
       </div>
 
       <ErrorNotice error={tables.error ?? open.error} />
 
       {tables.isSuccess && list.length === 0 && (
-        <div className="center-screen">Chưa có bàn nào. Quản lý thêm bàn trước khi mở ca.</div>
+        <div className="center-screen">Chưa có bàn nào. Thêm bàn ở mục Quản lý bàn.</div>
       )}
 
       <div className="floor">
         {list.map((t) => {
           const s = sessionByTable.get(t.id);
           const state = t.status === 'AVAILABLE' ? 'free' : s?.invoiceStatus === 'PAYMENT_PENDING' ? 'bill' : 'busy';
-          const label =
-            state === 'free' ? `Trống · ${t.capacity} chỗ` : state === 'bill' ? 'Chờ thanh toán' : 'Đang phục vụ';
+          const label = state === 'free' ? 'Trống' : state === 'bill' ? 'Chờ thanh toán' : 'Đang phục vụ';
           return (
             <button
               key={t.id}
               type="button"
               className="table-tile"
               data-state={state}
-              aria-label={`Bàn ${t.code}, ${label}`}
+              aria-label={`Bàn ${t.code}, ${label}, ${t.capacity} chỗ`}
               onClick={() => {
                 if (t.currentOrderId != null) navigate(`/orders/${t.currentOrderId}`);
                 else if (canOpen) setOpening(t);
@@ -89,13 +81,16 @@ export function TablesPage() {
               disabled={t.currentOrderId == null && !canOpen}
             >
               <span className="code">{t.code}</span>
-              <span className="meta">
-                <b>{label}</b>
-                {s && <span>Ngồi được {elapsed(s.openedAt, now)}</span>}
-                {s?.invoiceStatus && s.invoiceStatus !== 'PAYMENT_PENDING' && <span>{invoiceStatusLabel[s.invoiceStatus]}</span>}
-                {s?.invoiceTotal != null && <span className="num">{vnd(s.invoiceTotal)}</span>}
-                {state !== 'free' && <span>{t.capacity} chỗ</span>}
-              </span>
+              {state === 'free' ? (
+                <span className="meta">{t.capacity} chỗ</span>
+              ) : (
+                <span className="meta">
+                  <b>{label}</b>
+                  {s && <span>Đã ngồi {elapsed(s.openedAt, now)}</span>}
+                  {s?.invoiceStatus && s.invoiceStatus !== 'PAYMENT_PENDING' && <span>{invoiceStatusLabel[s.invoiceStatus]}</span>}
+                  {s?.invoiceTotal != null && <span className="num total">{vnd(s.invoiceTotal)}</span>}
+                </span>
+              )}
             </button>
           );
         })}

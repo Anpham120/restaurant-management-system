@@ -53,7 +53,6 @@ export function IngredientsPage() {
     <main className="main">
       <PageHead
         title="Nguyên liệu"
-        subtitle="Nguyên liệu thô nhập vào kho; loại nguyên liệu bếp là thứ công thức dùng: dùng thẳng (cắt từ lô xuất) hoặc qua sơ chế."
         actions={isManager && (tab === 'raw'
           ? <button className="btn btn-primary" onClick={() => openIng('new')}>Thêm nguyên liệu</button>
           : <button className="btn btn-primary" onClick={() => openType('new')}>Thêm loại bếp</button>)}

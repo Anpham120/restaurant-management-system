@@ -86,7 +86,6 @@ export function MenuItemsPage() {
     <main className="main">
       <PageHead
         title="Món và công thức"
-        subtitle="Món cần công thức hiện hành mới đưa được vào thực đơn ngày."
         actions={
           view === 'items'
             ? <button className="btn btn-primary" onClick={() => openItem('new')}>Thêm món</button>
@@ -141,7 +140,7 @@ export function MenuItemsPage() {
 
           <aside className="panel stack">
             {!current ? (
-              <p className="muted">Chọn một món để xem và sửa công thức.</p>
+              <p className="muted pick-hint">Chọn một món để xem và sửa công thức.</p>
             ) : (
               <>
                 <div className="row-between">

@@ -49,7 +49,6 @@ export function IssuesPage() {
   return (
     <main className="main">
       <PageHead title="Xuất cho bếp"
-                subtitle={isManager ? 'Xuất lô sớm hết hạn trước. Dùng thẳng: thành lô bếp; chờ sơ chế: bếp sơ chế rồi mới dùng.' : 'Phiếu kho đã xuất đang chờ bếp xác nhận nhận hàng.'}
                 actions={isManager && <button className="btn btn-primary" onClick={() => { setNote(''); setRequestKey(newRequestKey()); setLines([{ batchId: '', quantity: '', mode: 'DIRECT' }]); create.reset(); setCreating(true); }}>Lập phiếu xuất</button>} />
       <div className="split">
         <div>
@@ -71,7 +70,7 @@ export function IssuesPage() {
             ]} />
         </div>
         <aside className="panel stack">
-          {!d ? <p className="muted">Chọn một phiếu để xem chi tiết.</p> : (
+          {!d ? <p className="muted pick-hint">Chọn một phiếu để xem chi tiết.</p> : (
             <>
               <div className="row-between"><h2>Phiếu xuất #{d.id}</h2><DocStatus status={d.status} /></div>
               <dl className="kv">

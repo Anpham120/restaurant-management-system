@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/client';
 import type { Attendance, AttendanceAdjustment, ShiftAssignment } from '../../api/types';
 import { ErrorNotice } from '../../components/ErrorNotice';
-import { DataTable, Field, FormModal, PageHead, StatusTag, num, useAction } from '../../components/ui';
+import { DataTable, Field, FormModal, PageHead, StatusTag, num, useAction, Stepper } from '../../components/ui';
 import { addDays, businessToday, clock, dateTime, day, fromLocalInput, hm, toLocalInput } from '../../lib/format';
 import { span, useAssignments, useAttendances } from './shared';
 
@@ -59,9 +59,9 @@ export function AttendancePage() {
     <main className="main">
       <PageHead title="Chấm công" subtitle={`Ngày ${day(date)} · ${rows.length} ca`}
                 actions={<>
-                  <button className="btn btn-sm" onClick={() => setDate(addDays(date, -1))}>Ngày trước</button>
-                  <input className="input" type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} style={{ width: 170 }} />
-                  <button className="btn btn-sm" onClick={() => setDate(addDays(date, 1))}>Ngày sau</button>
+                  <Stepper unit="Ngày" onPrev={() => setDate(addDays(date, -1))} onNext={() => setDate(addDays(date, 1))}>
+                    <input className="input" type="date" aria-label="Ngày" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
+                  </Stepper>
                 </>} />
       <ErrorNotice error={assignments.error ?? attendances.error} />
       <DataTable rows={assignments.data ? rows : undefined} rowKey={(a) => a.id} empty="Không có ca nào được phân trong ngày này."

@@ -34,7 +34,7 @@ export function ReportsPage() {
 
   return (
     <main className="main">
-      <PageHead title="Báo cáo" subtitle={`${day(from)} – ${day(to)} · theo ngày kinh doanh (mốc 4 giờ sáng)`} />
+      <PageHead title="Báo cáo" subtitle={`${day(from)} – ${day(to)}`} />
       <div className="filters">
         <Field label="Từ ngày"><input className="input" type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} /></Field>
         <Field label="Đến ngày"><input className="input" type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} /></Field>
@@ -90,7 +90,6 @@ export function ReportsPage() {
             ]} />
         </section>
       </div>
-      <p className="muted" style={{ marginTop: '1rem' }}>Doanh thu chỉ tính tiền đã thu thật; khách bỏ về và miễn thu liệt kê riêng. Chênh lệch thu − chi là dòng tiền, không phải lợi nhuận.</p>
     </main>
   );
 }

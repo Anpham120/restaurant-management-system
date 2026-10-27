@@ -95,6 +95,13 @@ export interface Column<T> {
   width?: string;
 }
 
+/** Màn hẹp: khung chi tiết nằm dưới danh sách, chọn dòng xong thì cuộn tới để người dùng thấy ngay. */
+function revealDetail(row: HTMLElement) {
+  if (!window.matchMedia('(max-width: 1100px)').matches) return;
+  const detail = row.closest('.split')?.querySelector<HTMLElement>(':scope > .panel');
+  if (detail) requestAnimationFrame(() => detail.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+}
+
 export function DataTable<T>({
   rows,
   columns,
@@ -130,10 +137,10 @@ export function DataTable<T>({
               key={rowKey(r)}
               className={onRowClick ? 'clickable' : undefined}
               aria-selected={selectedKey != null && selectedKey === rowKey(r)}
-              onClick={onRowClick ? () => onRowClick(r) : undefined}
+              onClick={onRowClick ? (e) => { onRowClick(r); revealDetail(e.currentTarget); } : undefined}
             >
               {columns.map((c) => (
-                <td key={c.header} className={c.align === 'right' ? 'r num' : undefined}>
+                <td key={c.header} className={c.align === 'right' ? 'r num' : undefined} data-label={c.header || undefined}>
                   {c.render(r)}
                 </td>
               ))}
@@ -141,6 +148,23 @@ export function DataTable<T>({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Chuyển ngày/tuần: hai nút mũi tên ôm lấy ô ngày, luôn nằm trên một hàng kể cả trên điện thoại. */
+export function Stepper({ unit, onPrev, onNext, nextDisabled, children }: {
+  unit: 'Ngày' | 'Tuần';
+  onPrev: () => void;
+  onNext: () => void;
+  nextDisabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="stepper">
+      <button type="button" className="btn btn-sm" aria-label={`${unit} trước`} title={`${unit} trước`} onClick={onPrev}>‹</button>
+      {children}
+      <button type="button" className="btn btn-sm" aria-label={`${unit} sau`} title={`${unit} sau`} disabled={nextDisabled} onClick={onNext}>›</button>
     </div>
   );
 }

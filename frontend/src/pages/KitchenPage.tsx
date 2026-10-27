@@ -66,7 +66,6 @@ export function KitchenPage() {
       <div className="page-head">
         <div>
           <h1>Bếp</h1>
-          <p className="muted">Món cũ nhất ở trên cùng. Viền nghệ: chờ quá 10 phút, viền ớt: quá 20 phút.</p>
         </div>
       </div>
       <ErrorNotice error={queue.error ?? act.error} />
