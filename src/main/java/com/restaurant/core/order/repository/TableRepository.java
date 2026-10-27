@@ -17,7 +17,7 @@ import com.restaurant.core.order.dto.TableResponse;
 public class TableRepository {
 
     private static final String TABLE_SELECT = """
-            SELECT t.id, t.code, t.capacity, t.status, s.id AS current_session_id, o.id AS current_order_id
+            SELECT t.id, t.code, t.capacity, t.status, t.is_active AS active, s.id AS current_session_id, o.id AS current_order_id
               FROM dining_tables t
               LEFT JOIN table_sessions s ON s.dining_table_id = t.id AND s.status = 'OPEN'
               LEFT JOIN orders o ON o.table_session_id = s.id
@@ -39,8 +39,33 @@ public class TableRepository {
         this.jdbc = jdbc;
     }
 
-    public List<TableResponse> findActiveTables() {
-        return jdbc.sql(TABLE_SELECT + " WHERE t.is_active ORDER BY t.code").query(TableResponse.class).list();
+    public List<TableResponse> findTables(boolean includeInactive) {
+        return jdbc.sql(TABLE_SELECT + " WHERE t.is_active OR :all ORDER BY t.code")
+                .param("all", includeInactive).query(TableResponse.class).list();
+    }
+
+    /** rc_app chỉ được ghi code, capacity, is_active (docs/09-acl-v4.1.sql); trạng thái bàn do rc_* quản lý. */
+    public long insertTable(String code, int capacity) {
+        return jdbc.sql("INSERT INTO dining_tables (code, capacity) VALUES (:code, :capacity) RETURNING id")
+                .param("code", code).param("capacity", capacity).query(Long.class).single();
+    }
+
+    public int updateTable(long tableId, String code, int capacity) {
+        return jdbc.sql("UPDATE dining_tables SET code = :code, capacity = :capacity WHERE id = :id")
+                .param("id", tableId).param("code", code).param("capacity", capacity).update();
+    }
+
+    /**
+     * Ngừng sử dụng chỉ khi bàn trống. Một câu UPDATE giữ khóa dòng nên tuần tự với rc_open_session (hàm này cũng
+     * khóa dòng bàn và kiểm is_active) — không thể ngừng bàn đang mở phiên. Trả số dòng đổi (0 = bàn đang có khách).
+     */
+    public int deactivateIfAvailable(long tableId) {
+        return jdbc.sql("UPDATE dining_tables SET is_active = false WHERE id = :id AND status = 'AVAILABLE'")
+                .param("id", tableId).update();
+    }
+
+    public int activate(long tableId) {
+        return jdbc.sql("UPDATE dining_tables SET is_active = true WHERE id = :id").param("id", tableId).update();
     }
 
     public Optional<TableResponse> findTable(long tableId) {

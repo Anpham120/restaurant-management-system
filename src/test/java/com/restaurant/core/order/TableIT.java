@@ -63,4 +63,59 @@ class TableIT extends IntegrationTestBase {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("RC403"));
     }
+
+    private org.springframework.test.web.servlet.ResultActions json(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder req,
+                                                                    String token, String body) throws Exception {
+        return mvc.perform(req.header("Authorization", token).contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body));
+    }
+
+    @Test
+    void managerCreatesAndUpdatesTables() throws Exception {
+        String manager = bearer(data.staff("MANAGER"));
+        String code = "QL" + System.nanoTime() % 100000;
+        String body = mvc.perform(post("/api/tables").header("Authorization", manager)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"code\":\"" + code + "\",\"capacity\":4}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.code").value(code))
+                .andExpect(jsonPath("$.data.status").value("AVAILABLE"))
+                .andExpect(jsonPath("$.data.active").value(true))
+                .andReturn().getResponse().getContentAsString();
+        long id = ((Number) com.jayway.jsonpath.JsonPath.read(body, "$.data.id")).longValue();
+        json(post("/api/tables"), manager, "{\"code\":\"" + code + "\",\"capacity\":2}")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("DUPLICATE"));
+        json(post("/api/tables"), manager, "{\"code\":\"\",\"capacity\":0}")
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+        json(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/tables/{id}", id), manager,
+                "{\"code\":\"" + code + "V\",\"capacity\":6}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.capacity").value(6)).andExpect(jsonPath("$.data.code").value(code + "V"));
+        json(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/tables/{id}", 999999999L), manager,
+                "{\"code\":\"X1\",\"capacity\":2}").andExpect(status().isNotFound());
+        json(post("/api/tables"), bearer(data.staff("WAITER")), "{\"code\":\"W1X\",\"capacity\":2}").andExpect(status().isForbidden());
+    }
+
+    /** Ngừng sử dụng chỉ khi bàn trống; bàn ngừng thì không mở phiên được, ẩn khỏi danh sách thường. */
+    @Test
+    void deactivateOnlyAvailableTables() throws Exception {
+        String manager = bearer(data.staff("MANAGER"));
+        String waiter = bearer(data.staff("WAITER"));
+        long busy = data.table();
+        mvc.perform(post("/api/tables/{id}/sessions", busy).header("Authorization", waiter)).andExpect(status().isCreated());
+        mvc.perform(post("/api/tables/{id}/deactivate", busy).header("Authorization", manager))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("TABLE_OCCUPIED"));
+
+        long free = data.table();
+        mvc.perform(post("/api/tables/{id}/deactivate", free).header("Authorization", manager))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.active").value(false));
+        mvc.perform(post("/api/tables/{id}/sessions", free).header("Authorization", waiter))
+                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("RC422"));
+        mvc.perform(get("/api/tables").header("Authorization", waiter))
+                .andExpect(jsonPath("$.data[?(@.id == " + free + ")]").doesNotExist());
+        mvc.perform(get("/api/tables?includeInactive=true").header("Authorization", waiter))
+                .andExpect(jsonPath("$.data[?(@.id == " + free + ")]").doesNotExist());
+        mvc.perform(get("/api/tables?includeInactive=true").header("Authorization", manager))
+                .andExpect(jsonPath("$.data[?(@.id == " + free + ")].active").value(org.hamcrest.Matchers.hasItem(false)));
+        mvc.perform(post("/api/tables/{id}/activate", free).header("Authorization", manager))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.active").value(true));
+        mvc.perform(post("/api/tables/{id}/sessions", free).header("Authorization", waiter)).andExpect(status().isCreated());
+    }
 }

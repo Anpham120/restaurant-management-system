@@ -10,6 +10,7 @@ import com.restaurant.core.order.dto.AbandonResponse;
 import com.restaurant.core.order.dto.OpenSessionResponse;
 import com.restaurant.core.order.dto.PageResponse;
 import com.restaurant.core.order.dto.SessionResponse;
+import com.restaurant.core.order.dto.TableRequest;
 import com.restaurant.core.order.dto.TableResponse;
 import com.restaurant.core.order.repository.OrderRepository;
 import com.restaurant.core.order.repository.TableRepository;
@@ -26,8 +27,36 @@ public class TableService {
         this.orders = orders;
     }
 
-    public List<TableResponse> listTables() {
-        return tables.findActiveTables();
+    public List<TableResponse> listTables(boolean includeInactive) {
+        return tables.findTables(includeInactive);
+    }
+
+    /** Thêm bàn (Manager). Trùng mã → 23505 → 409 DUPLICATE. */
+    public TableResponse createTable(TableRequest request) {
+        return getTable(tables.insertTable(request.code().strip(), request.capacity()));
+    }
+
+    public TableResponse updateTable(long tableId, TableRequest request) {
+        if (tables.updateTable(tableId, request.code().strip(), request.capacity()) == 0) {
+            throw notFound("Không tìm thấy bàn " + tableId);
+        }
+        return getTable(tableId);
+    }
+
+    /** Ngừng sử dụng bàn trống (không xóa — bàn có lịch sử phiên). Bàn đang có khách → 409. */
+    public TableResponse deactivateTable(long tableId) {
+        TableResponse table = getTable(tableId);
+        if (tables.deactivateIfAvailable(tableId) == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "TABLE_OCCUPIED", "Bàn " + table.code() + " đang có khách: đóng phiên trước khi ngừng sử dụng");
+        }
+        return getTable(tableId);
+    }
+
+    public TableResponse activateTable(long tableId) {
+        if (tables.activate(tableId) == 0) {
+            throw notFound("Không tìm thấy bàn " + tableId);
+        }
+        return getTable(tableId);
     }
 
     public TableResponse getTable(long tableId) {
