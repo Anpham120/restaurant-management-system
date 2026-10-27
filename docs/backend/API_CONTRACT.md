@@ -2,7 +2,7 @@
 
 Hợp đồng chốt cho 5 phân hệ. Quy ước chung (định dạng `ApiResponse`, mã lỗi, phân trang, idempotency): [API_CONVENTIONS](API_CONVENTIONS.md). Vai trò khớp ma trận [docs/07 §10](../07-kiem-toan-ham-rc.md); DB kiểm lại vai trò trong mọi hàm `rc_*` (RC403). Chữ ký hàm đã đối chiếu với database thật (`pg_get_function_identity_arguments`).
 
-- **✅** đã cài và có integration test chạy trên PostgreSQL thật · **📝** hợp đồng để thành viên cài.
+- **✅** đã cài và có integration test chạy trên PostgreSQL thật.
 - Actor: **M** MANAGER · **W** WAITER · **K** KITCHEN · **C** CASHIER. Mọi endpoint trừ `login` và webhook cần JWT (401 nếu thiếu, 403 nếu sai vai trò).
 - Lỗi chung không nhắc lại: 400 `VALIDATION_ERROR`, 401, 403 `FORBIDDEN`/`RC403`, 404 `NOT_FOUND`.
 - Mọi thao tác ghi có hàm `rc_*` là **một lời gọi** — không `@Transactional`, không ghi bổ sung bằng Java.
@@ -69,63 +69,71 @@ Chỉ dùng cách xác thực **API Key** mà SePay mô tả cho webhook ([docs.
 
 ## 2. Quản lý nhân viên — Nguyễn Quang Hiếu
 
-Package `employee`, `security`. Bảng ghi trực tiếp (`rc_app` được cấp) → **@PreAuthorize là lớp kiểm duy nhất**; nhiều bảng một thao tác → `@Transactional` ở Service.
+Package `employee` (`EmployeeController/Service/Repository`, `ShiftController/Service/Repository`, `AuthController/Service`, `AccountRepository`), `security`. Bảng ghi trực tiếp (`rc_app` được cấp) → **@PreAuthorize là lớp kiểm quyền**; nhiều bảng một thao tác → `@Transactional` ở Service. Test: `EmployeeIT`, `AuthIT`.
 
-| # | Endpoint | Actor | Request → Response | Bảng | Trước → Sau | Lỗi | Test bắt buộc |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| ✅ | `POST /api/auth/login` | công khai | `LoginRequest` → `LoginResponse{accessToken, roles, mustChangePassword}` | `accounts`, `employees`, `account_roles`, `roles` | tài khoản + nhân viên ACTIVE, có vai trò | 401 `INVALID_CREDENTIALS` | AuthIT |
-| ✅ | `GET /api/auth/me` | mọi vai trò | — → `MeResponse` | `employees` | — | 401 | AuthIT |
-| 📝 | `POST /api/auth/change-password` | mọi vai trò | `ChangePasswordRequest{currentPassword, newPassword}` → 204 | `accounts` | mật khẩu cũ đúng → hash mới, `must_change_password = false` | 401 sai mật khẩu cũ · 400 | đúng/sai mật khẩu cũ, token cũ vẫn dùng được tới hết hạn |
-| 📝 | `GET /api/employees?page&size&status` | M | — → `PageResponse<EmployeeResponse>` | `employees`, `departments`, `accounts` | — | — | phân trang, 403 vai trò khác |
-| 📝 | `POST /api/employees` | M | `CreateEmployeeRequest{employeeCode, fullName, departmentId, username, initialPassword, roles[]}` → 201 | `employees`, `accounts`, `account_roles` (một transaction) | → nhân viên ACTIVE, tài khoản `must_change_password = true` | 409 `DUPLICATE` mã/username · 422 phòng ban sai | trùng username, vai trò không tồn tại |
-| 📝 | `PUT /api/employees/{id}` | M | `UpdateEmployeeRequest` → `EmployeeResponse` | `employees` | — | 422 `INVALID_DATA` (CHECK ngày) | — |
-| 📝 | `POST /api/employees/{id}/leave` | M | `LeaveRequest{endDate}` → `EmployeeResponse` | `employees` | → LEFT + `end_date` (rc_authorize sẽ chặn nhân viên này) | 422 | sau khi nghỉ, token cũ gọi `rc_*` → RC403 |
-| 📝 | `PUT /api/accounts/{id}/roles`, `POST /api/accounts/{id}/lock`, `/unlock`, `/reset-password` | M | `RolesRequest{roles[]}` / — | `account_roles`, `accounts` | — | 404 | Manager tự khóa mình → chặn ở Service |
-| 📝 | `GET /api/roles` | M | — → `RoleResponse[]` (4 vai trò seed) | `roles` | — | — | — |
-| 📝 | `GET/POST/PUT /api/shifts` | M | `ShiftRequest` → `ShiftResponse` | `shifts` | — | — | — |
-| 📝 | `POST /api/shift-assignments`, `GET /api/shift-assignments?from&to&employeeId` | M (GET: mọi vai trò xem ca của mình) | `AssignShiftRequest{employeeId, shiftId, workDate}` → 201 | `shift_assignments` | → SCHEDULED; chồng ca bị EXCLUDE chặn | 409 `OVERLAP` (SQLSTATE 23P01) | chồng ca |
-| 📝 | `POST /api/shift-assignments/{id}/cancel` | M | `ReasonRequest` | `shift_assignments` | SCHEDULED → CANCELLED (+ người, lý do, giờ) | 422 | — |
-| 📝 | `POST /api/attendances`, `POST /api/attendances/{id}/adjustments` | M | `AttendanceRequest` / `AdjustAttendanceRequest{…, reason}` | `attendances`, `attendance_adjustments` (chỉ-thêm, cùng transaction) | chấm một lần/ca; điều chỉnh lưu giá trị cũ/mới | 409 `DUPLICATE` · 422 `INVALID_DATA` | chấm lặp, phút công > khoảng có mặt |
+| # | Endpoint | Actor | Request → Response | Bảng | Trước → Sau | Lỗi |
+| --- | --- | --- | --- | --- | --- | --- |
+| ✅ | `POST /api/auth/login` | công khai | `LoginRequest` → `LoginResponse{accessToken, roles, mustChangePassword}` | `accounts`, `employees`, `account_roles`, `roles` | tài khoản + nhân viên ACTIVE, có vai trò | 401 `INVALID_CREDENTIALS` |
+| ✅ | `GET /api/auth/me` | mọi vai trò | — → `MeResponse` | `employees` | — | 401 |
+| ✅ | `POST /api/auth/change-password` | mọi vai trò | `ChangePasswordRequest{currentPassword, newPassword (8–72)}` → 200 `data: null` | `accounts` | mật khẩu cũ đúng → hash mới, `must_change_password = false`; token đang dùng được mở khóa ngay. Trước khi đổi, mọi endpoint khác trả 403 `PASSWORD_CHANGE_REQUIRED` | 401 sai mật khẩu cũ · 422 `SAME_PASSWORD` |
+| ✅ | `GET /api/departments`, `POST`, `PUT /{id}` | M | `DepartmentRequest{name}` → `DepartmentResponse` | `departments` | — | 409 `DUPLICATE` |
+| ✅ | `GET /api/roles` | M | — → `RoleResponse[]` (4 vai trò seed) | `roles` (chỉ đọc) | — | — |
+| ✅ | `GET /api/employees?status&page&size`, `GET /api/employees/{id}` | M | — → `PageResponse<EmployeeResponse>` / `EmployeeResponse` (kèm `accountId`, `username`, `accountStatus`, `mustChangePassword`, `roles[]`; không có hash) | `employees`, `departments`, `accounts`, `account_roles` | — | 404 |
+| ✅ | `POST /api/employees` | M | `CreateEmployeeRequest{employeeCode, fullName, departmentId, …, username, initialPassword, roles[]}` → 201 | `employees`, `accounts`, `account_roles` (một transaction) | → ACTIVE, tài khoản `must_change_password = true` | 409 `DUPLICATE` mã/username · 422 `UNKNOWN_ROLE`, `REFERENCE_NOT_FOUND` |
+| ✅ | `PUT /api/employees/{id}` | M | `UpdateEmployeeRequest{…, workStatus: ACTIVE\|INACTIVE}` → `EmployeeResponse` | `employees` | không sửa nhân viên đã LEFT | 409 `EMPLOYEE_LEFT`, `SELF_LOCKOUT` · 422 `INVALID_DATA` |
+| ✅ | `POST /api/employees/{id}/leave` | M | `LeaveRequest{endDate}` → `EmployeeResponse` | `employees` | → LEFT + `end_date`; đăng nhập bị từ chối, token cũ → 401 ở mọi endpoint | 409 `SELF_LOCKOUT` · 422 `INVALID_DATA` (end < hire) |
+| ✅ | `PUT /api/accounts/{id}/roles` | M | `RolesRequest{roles[]}` → `EmployeeResponse` | `account_roles` (transaction) | thay toàn bộ vai trò; có hiệu lực ngay với token đang dùng | 422 `UNKNOWN_ROLE` · 409 `SELF_LOCKOUT` (tự bỏ MANAGER) |
+| ✅ | `POST /api/accounts/{id}/lock`, `/unlock` | M | — → `EmployeeResponse` | `accounts` | ACTIVE ↔ LOCKED; token của tài khoản bị khóa → 401 ngay | 409 `ACCOUNT_NOT_ACTIVE` / `ACCOUNT_NOT_LOCKED` / `SELF_LOCKOUT` |
+| ✅ | `POST /api/accounts/{id}/reset-password` | M | `ResetPasswordRequest{newPassword}` → `EmployeeResponse` | `accounts` | mật khẩu tạm, `must_change_password = true` | 404 |
+| ✅ | `GET /api/shifts?activeOnly` · `POST`, `PUT /api/shifts/{id}` | GET mọi vai trò · M | `ShiftRequest{name, startTime, endTime, breakMinutes, active}` → `ShiftResponse` | `shifts` | `endTime ≤ startTime` = ca qua đêm | — |
+| ✅ | `POST /api/shift-assignments` | M | `AssignShiftRequest{employeeId, shiftId, workDate, note}` → 201 `ShiftAssignmentResponse` | `shift_assignments` | → SCHEDULED, chụp giờ ca theo giờ Việt Nam (`scheduledStartAt/EndAt`, phút nghỉ) | 409 `OVERLAP` (EXCLUDE, 23P01) · 422 `INVALID_ASSIGNMENT` (ca ngừng / nhân viên không ACTIVE) |
+| ✅ | `GET /api/shift-assignments?from&to&employeeId` | mọi vai trò | — → `ShiftAssignmentResponse[]` | như trên | không phải M: luôn chỉ ca của mình | 400 khoảng > 62 ngày |
+| ✅ | `POST /api/shift-assignments/{id}/cancel` | M | `ReasonRequest` → `ShiftAssignmentResponse` | `shift_assignments` | SCHEDULED chưa chấm → CANCELLED (+ người, lý do, giờ); khung giờ được phân lại | 409 `NOT_CANCELLABLE` |
+| ✅ | `POST /api/attendances` | M | `AttendanceRequest{shiftAssignmentId, status: PRESENT\|ABSENT, actualStartAt, actualEndAt, workedMinutes?, note}` → 201 | `attendances` + phân ca → COMPLETED (một transaction) | chấm một lần/ca; công mặc định = có mặt − phút nghỉ | 409 `DUPLICATE`, `ASSIGNMENT_CANCELLED` · 422 `INVALID_DATA` |
+| ✅ | `GET /api/attendances?from&to&employeeId` | mọi vai trò (không phải M: của mình) | — → `AttendanceResponse[]` | `attendances` | — | — |
+| ✅ | `POST /api/attendances/{id}/adjustments` · `GET` | M | `AdjustAttendanceRequest{status, actualStartAt, actualEndAt, workedMinutes?, reason}` → `AttendanceResponse` · `AttendanceAdjustmentView[]` | `attendance_adjustments` (chỉ-thêm, giá trị cũ/mới) + `attendances` (một transaction) | — | 422 `INVALID_DATA` (phút công > khoảng có mặt) |
 
 ## 3. Quản lý thực đơn — Lê Anh
 
-Package `menu`. Bảng ghi trực tiếp; trigger DB chặn sửa công thức đã dùng, hạ hạn mức dưới số suất đã chiếm, sai thứ tự trạng thái thực đơn.
+Package `menu` (`MenuCatalogController/Service/Repository`, `DailyMenuController/Service/Repository`). Bảng ghi trực tiếp; trigger DB chặn sửa công thức đã dùng, hạ hạn mức dưới số suất đã chiếm, sai thứ tự trạng thái thực đơn. Test: `MenuIT`.
 
-| # | Endpoint | Actor | Request → Response | Bảng · hàm | Trước → Sau | Lỗi | Test bắt buộc |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 📝 | `GET/POST/PUT /api/menu-categories` | M (GET: mọi vai trò) | `CategoryRequest{name, sortOrder, active}` → `CategoryResponse` | `menu_categories` | — | 409 `DUPLICATE` tên (không phân biệt hoa thường) | trùng tên |
-| 📝 | `GET/POST/PUT /api/menu-items` | M (GET: mọi vai trò) | `MenuItemRequest{categoryId, name, price, imageUrl, active}` → `MenuItemResponse` | `menu_items` | đổi giá **không** ảnh hưởng món đã gọi (snapshot) | 409 `DUPLICATE` · 422 giá âm | đổi giá sau khi gọi món |
-| 📝 | `POST /api/menu-items/{id}/recipes`, `GET /api/menu-items/{id}/recipes` | M | `RecipeRequest{ingredients[{kitchenIngredientTypeId, quantityPerServing}]}` → `RecipeResponse{version, current}` | `recipes`, `recipe_ingredients` (một transaction) | → version mới `is_current`, version cũ bỏ cờ | 409 RC409 sửa công thức đã dùng | sửa công thức đã dùng phải tạo version mới |
-| 📝 | `POST /api/daily-menus`, `POST /api/daily-menus/{id}/items`, `PUT /api/daily-menu-items/{id}` | M | `DailyMenuRequest{businessDate}`, `DailyMenuItemRequest{menuItemId, quotaTotal}` (NULL = không giới hạn, 0 = hết suất) | `daily_menus`, `daily_menu_items` | DRAFT; đã có món gọi thì không đổi món/công thức | 409 RC409 hạ quota dưới số đã chiếm | hạ quota |
-| 📝 | `POST /api/daily-menus/{id}/publish`, `/close` | M | — | `daily_menus` | DRAFT → PUBLISHED (có ≥ 1 món) → CLOSED | 409 RC409 | publish rỗng |
-| 📝 | `POST /api/daily-menu-items/{id}/pause` (`ReasonRequest`), `/resume` | K M | — | `daily_menu_items` | tạm dừng: Waiter không gửi được, Kitchen nhận → REJECTED | 422 thiếu lý do | gửi món đang tạm dừng → 409 |
-| 📝 | `GET /api/daily-menus/today` | W K C M | — → `TodayMenuResponse{businessDate, items[{dailyMenuItemId, name, price, quotaTotal, quotaUsed, remaining, paused}]}` | `daily_menus`, `daily_menu_items`, `menu_items`, `rc_quota_used`, `rc_business_date` | **Hợp đồng với Order**: màn hình gọi món dùng `dailyMenuItemId` này | — | món hết suất vẫn hiển thị (remaining 0) |
+| # | Endpoint | Actor | Request → Response | Bảng · hàm | Trước → Sau | Lỗi |
+| --- | --- | --- | --- | --- | --- | --- |
+| ✅ | `GET /api/menu-categories?activeOnly` · `POST` · `PUT /{id}` | GET mọi vai trò · M | `CategoryRequest{name, sortOrder, active}` → `CategoryResponse` | `menu_categories` | — | 409 `DUPLICATE` tên (không phân biệt hoa thường) |
+| ✅ | `GET /api/menu-items?categoryId&activeOnly`, `GET /{id}` · `POST` · `PUT /{id}` | GET mọi vai trò · M | `MenuItemRequest{categoryId, name, price, imageUrl, active}` → `MenuItemResponse{…, currentRecipeVersion}` | `menu_items` | đổi giá **không** ảnh hưởng món đã gọi (snapshot) | 409 `DUPLICATE` · 422 `REFERENCE_NOT_FOUND` |
+| ✅ | `GET /api/menu-items/{id}/recipes` (M K) · `POST` (M) | | `RecipeRequest{ingredients[{kitchenIngredientTypeId, quantityPerServing}]}` → 201 `RecipeResponse{version, current, ingredients[]}` | `recipes`, `recipe_ingredients` (một transaction) | version mới thành hiện hành; version cũ giữ nguyên cho thực đơn đã dùng | 404 · 422 |
+| ✅ | `GET /api/daily-menus/today`, `?date=`, `/{id}` | mọi vai trò | — → `DailyMenuResponse{id, businessDate, status, items[{dailyMenuItemId, name, price, quotaTotal, quotaUsed, remaining, paused, …}]}` | `daily_menus`, `daily_menu_items`, `rc_quota_used`, `rc_business_date` | **hợp đồng với Order**: Waiter gọi món bằng `dailyMenuItemId` | 404 |
+| ✅ | `POST /api/daily-menus` · `POST /{id}/items` · `PUT`, `DELETE /api/daily-menu-items/{id}` | M | `DailyMenuRequest{businessDate}`, `DailyMenuItemRequest{menuItemId, quotaTotal}` (null = không giới hạn), `QuotaRequest` | `daily_menus`, `daily_menu_items` | món dùng công thức hiện hành | 409 `MENU_CLOSED`, `MENU_ITEM_NOT_READY` (chưa có công thức / ngừng bán), `DUPLICATE` · 409/422 trigger hạn mức |
+| ✅ | `POST /api/daily-menus/{id}/publish`, `/close` | M | — → `DailyMenuResponse` | `daily_menus` | DRAFT → PUBLISHED (≥ 1 món) → CLOSED | 409 RC409 |
+| ✅ | `POST /api/daily-menu-items/{id}/pause` (`ReasonRequest`), `/resume` | K M | — → `DailyMenuItemResponse` | `daily_menu_items` | tạm dừng: Waiter gửi → 409, Kitchen nhận → REJECTED | 409 `ALREADY_PAUSED` / `NOT_PAUSED` |
 
 ## 4. Quản lý kho — Đỗ Tuấn Anh
 
-Package `inventory`. Chứng từ nhập/xuất/kiểm kê tạo bằng `rc_create_*` (idempotent `requestKey`); xác nhận bằng `rc_confirm_*`. Không cập nhật số dư/sổ kho bằng SQL.
+Package `inventory` (`IngredientController/Service/Repository`, `StockDocumentController/Service/Repository`, `KitchenStockController/Service/Repository`, `InventoryReportController/Service/Repository`). Chứng từ nhập/xuất/kiểm kê tạo bằng `rc_create_*` (payload snake_case, idempotent `requestKey`); xác nhận bằng `rc_*`. Không cập nhật số dư/sổ kho bằng SQL. Test: `InventoryIT`.
 
-| # | Endpoint | Actor | Request → Response | Hàm / bảng | Trước → Sau | Lỗi | Idempotency / Test |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 📝 | `GET/POST/PUT /api/ingredients`, `/api/kitchen-ingredient-types` | M (GET: K) | `IngredientRequest`, `KitchenTypeRequest{rawIngredientId, name, handlingType, shelfLifeHours}` | `ingredients`, `kitchen_ingredient_types` | mỗi nguyên liệu tối đa 1 loại DIRECT | 409 `DUPLICATE` | — |
-| 📝 | `POST /api/stock-receipts` | M | `CreateReceiptRequest{requestKey, supplierName, note, items[]}` → 201 `ReceiptResponse` | `rc_create_stock_receipt` | → DRAFT | 409 RC409 cùng khóa khác nội dung · 422 | cùng khóa → phiếu cũ; test lặp/khác nội dung |
-| 📝 | `POST /api/stock-receipts/{id}/confirm` | M | `{receivedAt?}` → `ReceiptResponse` | `rc_confirm_receipt` | DRAFT → CONFIRMED, tạo lô RAW + sổ RECEIPT | 409 · 422 lô quá hạn/thiếu hạn | xác nhận lặp → 409 |
-| 📝 | `POST /api/stock-issues`, `/{id}/issue`, `/{id}/cancel` | M | `CreateIssueRequest{requestKey, items[{inventoryBatchId, quantity, fulfillmentMode}]}` | `rc_create_stock_issue`, `rc_issue_stock`, `rc_cancel_issue` | DRAFT → ISSUED (trừ RAW, FEFO) → CANCELLED (hoàn RAW) | 409 không FEFO / thiếu tồn / lô hỏng | 2 phiếu tranh lô cuối |
-| 📝 | `POST /api/stock-issues/{id}/receive` | K M | — | `rc_receive_issue` | ISSUED → RECEIVED (WIP hoặc lô bếp DIRECT) | 409 nhận lặp | — |
-| 📝 | `POST /api/kitchen-preparations` + `/{id}/confirm` | K M | `PreparationRequest{requestKey, stockIssueItemId, inputQuantity, lossReason, outputs[]}` | `kitchen_preparations`, `kitchen_preparation_outputs` (nháp, một transaction) + `rc_confirm_preparation` | → lô bếp PREPARED, hao hụt = vào − ra | 409 vượt WIP · 422 đầu ra > đầu vào | `DUPLICATE` requestKey → đọc lại bản ghi |
-| 📝 | `POST /api/stock-returns` + `/{id}/confirm`, `POST /api/stock-adjustments` + `/{id}/confirm` | K M tạo · M xác nhận | `ReturnRequest`, `AdjustmentRequest{requestKey, type, reason, items[]}` | nháp + `rc_confirm_return`, `rc_confirm_adjustment` | trả về RAW / ghi WASTE | 409 vượt khả dụng (phần đang giữ) | — |
-| 📝 | `POST /api/stock-counts` + `/{id}/confirm` | M | `CreateCountRequest{requestKey, items[{rawBatchId \| wipIssueItemId \| kitchenBatchId, actualQuantity, reason}]}` | `rc_create_stock_count`, `rc_confirm_count` | ghi COUNT_ADJUST chênh lệch | 409 số sổ đã đổi (stale) | — |
-| 📝 | `POST /api/stock-batches/{kind}/{batchId}/mark-unusable` | M | `ReasonRequest` → `{affectedOrderItems}` | `rc_mark_batch_unusable` | lô hỏng; món đang giữ bật `hasStockException` (bếp gọi `/order-items/{id}/reallocate`) | 409 | tích hợp với Order |
-| 📝 | `GET /api/inventory/raw-stock`, `/handover`, `/kitchen-stock`, `/unusable-lots`, `/history?from&to&ingredientId`, `/preparation-yield?from&to` | M (kitchen-stock: K) | — → bảng báo cáo | `rpt_raw_stock`, `rpt_handover_and_wip`, `rpt_kitchen_stock`, `rpt_unusable_lots`, `rpt_stock_history`, `rpt_preparation_yield` | — | — | số liệu như docs/11 |
+| # | Endpoint | Actor | Request → Response | Hàm / bảng | Trước → Sau | Lỗi · Idempotency |
+| --- | --- | --- | --- | --- | --- | --- |
+| ✅ | `GET/POST/PUT /api/ingredients`, `/api/kitchen-ingredient-types?ingredientId` | GET M K · ghi M | `IngredientRequest{name, baseUnit, minQuantity, expiryTracked}`, `KitchenTypeRequest{rawIngredientId, name, handlingType: DIRECT\|PREPARED, shelfLifeHours, minimumQuantity}` | `ingredients`, `kitchen_ingredient_types` | mỗi nguyên liệu tối đa 1 loại DIRECT; không đổi nguyên liệu gốc/cách dùng sau khi tạo | 409 `DUPLICATE` · 422 `IMMUTABLE_FIELD` |
+| ✅ | `POST /api/stock-receipts` · `GET ?status&page&size` · `GET /{id}` · `DELETE /{id}` | M | `ReceiptRequest{requestKey, supplierName, note, items[{ingredientId, inputQuantity, inputUnit, conversionFactor, unitPricePerInputUnit, lotCode, expiryDate}]}` → 201 `ReceiptResponse{…, totalAmount, lines[{baseQuantity, lineAmount, inventoryBatchId}]}` | `rc_create_stock_receipt`; xóa nháp (transaction) | → DRAFT | cùng khóa → phiếu cũ · khác nội dung → 409 RC409 · xóa phiếu đã xác nhận → 409 `NOT_DRAFT` |
+| ✅ | `POST /api/stock-receipts/{id}/confirm` | M | `{receivedAt?}` → `ReceiptResponse` | `rc_confirm_receipt` | DRAFT → CONFIRMED, tạo lô RAW + sổ RECEIPT | 409 xác nhận lặp · 422 lô quá hạn/thiếu hạn |
+| ✅ | `POST /api/stock-issues` · `GET ?status` · `GET /{id}` · `/{id}/issue` · `/{id}/cancel` | M (GET: K) | `IssueRequest{requestKey, note, items[{inventoryBatchId, quantity, fulfillmentMode: DIRECT\|PREPARE}]}` → `IssueResponse{lines[{wipRemainingQuantity, kitchenBatchId}]}` | `rc_create_stock_issue`, `rc_issue_stock`, `rc_cancel_issue` | DRAFT → ISSUED (trừ RAW, FEFO) → CANCELLED hoàn RAW | 409 sai FEFO / sai bước |
+| ✅ | `POST /api/stock-issues/{id}/receive` | K M | — → `IssueResponse` | `rc_receive_issue` | ISSUED → RECEIVED (DIRECT → lô bếp; PREPARE → WIP) | 409 nhận lặp · 422 chưa khai báo loại DIRECT |
+| ✅ | `POST /api/kitchen-preparations` · `GET /{id}` · `/{id}/confirm` | K M | `PreparationRequest{requestKey, stockIssueItemId, inputQuantity, lossReason, outputs[{kitchenIngredientTypeId, outputQuantity, usableUntil?}]}` → `PreparationResponse{outputQuantity, lossQuantity, outputs[{kitchenBatchId}]}` | nháp (transaction) + `rc_confirm_preparation` | trừ WIP, tạo lô PREPARED, ghi hao hụt | cùng khóa → phiếu cũ · 409/422 từ hàm |
+| ✅ | `POST /api/stock-returns` (K M) · `GET /{id}` · `/{id}/confirm` (M) | | `ReturnRequest{requestKey, reason, items[{sourceIssueItemId, directKitchenBatchId?, quantity}]}` | nháp + `rc_confirm_return` | hàng về lại lô RAW gốc | cùng khóa → phiếu cũ · 409 vượt khả dụng |
+| ✅ | `POST /api/stock-adjustments` (K M) · `GET /{id}` · `/{id}/confirm` (M) | | `AdjustmentRequest{requestKey, adjustmentType: DAMAGE\|EXPIRED\|QUALITY\|OTHER, reason, items[{rawBatchId \| wipIssueItemId \| kitchenBatchId, quantity, note}]}` (lượng hủy dương; DB lưu delta âm) | nháp + `rc_confirm_adjustment` | ghi WASTE | 400 không đúng một nguồn |
+| ✅ | `POST /api/stock-counts` · `GET /{id}` · `/{id}/confirm` | M | `CountRequest{requestKey, note, items[{rawBatchId \| wipIssueItemId \| kitchenBatchId, actualQuantity, reason}]}` → `CountResponse{lines[{bookQuantity, difference}]}` | `rc_create_stock_count`, `rc_confirm_count` | ghi COUNT_ADJUST chênh lệch | 409 sổ đã đổi từ lúc lập phiếu |
+| ✅ | `POST /api/stock-batches/{RAW\|KITCHEN}/{batchId}/mark-unusable` | M | `ReasonRequest` → `{kind, batchId, affectedOrderItems}` | `rc_mark_batch_unusable` | lô hỏng; món đang giữ bật `hasStockException` (bếp gọi `/order-items/{id}/reallocate`) | 422 thiếu lý do |
+| ✅ | `GET /api/inventory/raw-stock`, `/history?from&to&ingredientId` (Instant ISO), `/preparation-yield?from&to`, `/raw-lots?ingredientId` | M | — → bảng | `rpt_raw_stock`, `rpt_stock_history`, `rpt_preparation_yield`; lô RAW theo FEFO | — | 400 khoảng sai |
+| ✅ | `GET /api/inventory/handover`, `/kitchen-stock`, `/unusable-lots`, `/kitchen-lots?typeId` | K M | — → bảng | `rpt_handover_and_wip`, `rpt_kitchen_stock`, `rpt_unusable_lots`; lô bếp | — | — |
 
 ## 5. Quản lý tài chính — Bùi Đào Đức Anh
 
-Package `finance` (lớp `Expense*`, `CashReconciliation*`, `FinanceReport*`). **Chỉ đọc** dữ liệu thanh toán do phần của Phạm Duy An tạo; không tạo/sửa payment, hóa đơn, webhook.
+Package `finance` (lớp `Expense*`, `CashReconciliation*`, `FinanceReport*`). **Chỉ đọc** dữ liệu thanh toán do phần của Phạm Duy An tạo; không tạo/sửa payment, hóa đơn, webhook. Test: `FinanceIT`.
 
-| # | Endpoint | Actor | Request → Response | Hàm / bảng | Trước → Sau | Lỗi | Test bắt buộc |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 📝 | `POST /api/expenses` | M | `ExpenseRequest{requestKey, category, description, amount, paymentMethod, fundSource, stockReceiptId?, paidAt}` → 201 | `operating_expenses` (`business_date = rc_business_date(paidAt)` trong SQL) | → PAID | 409 `DUPLICATE` requestKey / phiếu nhập đã có khoản chi · 422 quỹ quầy phải tiền mặt | gửi lặp |
-| 📝 | `GET /api/expenses?from&to&category`, `POST /api/expenses/{id}/void` | M | `ReasonRequest` | `operating_expenses` | PAID → VOIDED (không sửa nội dung) | 409 đã VOIDED | — |
-| 📝 | `POST /api/cash-reconciliations` | M | `ReconcileRequest{businessDate, openingCash, actualCash, reason?, revisionReason?}` → 201 | `rc_reconcile_cash` | → phiên bản mới CURRENT, bản cũ SUPERSEDED | 422 ngày tương lai, lệch tiền thiếu lý do (CHECK) | lập lại không `revisionReason` |
-| 📝 | `GET /api/cash-reconciliations/{businessDate}` | M | — → `CashReconciliationResponse{…, stale}` | `rpt_cash_reconciliation` | — | — | stale khi có thu/chi sau khi đối soát |
-| 📝 | `GET /api/reports/revenue-by-day?from&to`, `/revenue-by-item`, `/unpaid-closures` | M | — → bảng báo cáo | `rpt_revenue_by_day`, `rpt_revenue_by_item`, `rpt_unpaid_closures` | doanh thu chỉ từ `payments`; UNCOLLECTED/WAIVED liệt kê riêng | 400 khoảng ngày sai | số liệu như docs/11; webhook lặp không làm tăng doanh thu |
+| # | Endpoint | Actor | Request → Response | Hàm / bảng | Trước → Sau | Lỗi |
+| --- | --- | --- | --- | --- | --- | --- |
+| ✅ | `POST /api/expenses` | M | `ExpenseRequest{requestKey, category, description, amount, paymentMethod: CASH\|BANK_TRANSFER, fundSource: CASH_DRAWER\|OWNER\|BANK, stockReceiptId?, paidAt?}` → 201 `ExpenseResponse` | `operating_expenses` (`business_date = rc_business_date(paidAt)` trong SQL) | → PAID; cùng `requestKey` → trả khoản đã ghi | 422 `INVALID_DATA` (quỹ quầy phải tiền mặt, paidAt tương lai) · 409 `DUPLICATE` phiếu nhập đã có khoản chi |
+| ✅ | `GET /api/expenses?from&to&category&status`, `GET /{id}` · `POST /{id}/void` | M | `ReasonRequest` → `ExpenseResponse` | `operating_expenses` | PAID → VOIDED (không sửa nội dung) | 409 `ALREADY_VOIDED` |
+| ✅ | `POST /api/cash-reconciliations` | M | `ReconcileRequest{businessDate, openingCash, actualCash, reason?, revisionReason?}` → 201 `CashReconciliationResponse` | `rc_reconcile_cash` | → phiên bản mới CURRENT, bản cũ SUPERSEDED | 422 RC422 ngày tương lai · 422 `INVALID_DATA` lệch tiền thiếu `reason` / lập lại thiếu `revisionReason` |
+| ✅ | `GET /api/cash-reconciliations/{businessDate}` | M | — → `CashReconciliationResponse{…, stale, versions[]}` | `rpt_cash_reconciliation`, `daily_cash_reconciliations` | `stale = true` khi có thu/chi sau lần đối soát hiện hành | — |
+| ✅ | `GET /api/reports/revenue-by-day?from&to`, `/revenue-by-item`, `/unpaid-closures`, `/expenses-by-category` | M | — → bảng báo cáo | `rpt_revenue_by_day`, `rpt_revenue_by_item`, `rpt_unpaid_closures`; chi PAID theo nhóm | doanh thu chỉ từ `payments`; UNCOLLECTED/WAIVED liệt kê riêng, không là doanh thu | 400 khoảng ngày sai (> 366 ngày) |

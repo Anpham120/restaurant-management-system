@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
@@ -34,6 +35,11 @@ public class RestSecurityErrorHandler implements AuthenticationEntryPoint, Acces
 
     @Override
     public void handle(HttpServletRequest req, HttpServletResponse res, AccessDeniedException ex) throws IOException {
+        if (SecurityConfig.requiresPasswordChange(SecurityContextHolder.getContext().getAuthentication())) {
+            write(res, HttpStatus.FORBIDDEN, ApiError.of("PASSWORD_CHANGE_REQUIRED",
+                    "Cần đổi mật khẩu trước khi sử dụng hệ thống (POST /api/auth/change-password)", req.getRequestURI()));
+            return;
+        }
         write(res, HttpStatus.FORBIDDEN, ApiError.of("FORBIDDEN", "Không có quyền thực hiện thao tác này", req.getRequestURI()));
     }
 

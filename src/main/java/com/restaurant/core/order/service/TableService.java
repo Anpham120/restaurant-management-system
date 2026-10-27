@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.order.dto.AbandonResponse;
 import com.restaurant.core.order.dto.OpenSessionResponse;
-import com.restaurant.core.order.dto.PageResponse;
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.order.dto.SessionResponse;
 import com.restaurant.core.order.dto.TableRequest;
 import com.restaurant.core.order.dto.TableResponse;

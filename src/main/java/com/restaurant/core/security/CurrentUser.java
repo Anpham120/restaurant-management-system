@@ -22,9 +22,14 @@ public class CurrentUser {
         return jwt().getClaimAsString("username");
     }
 
+    /** Vai trò hiện hành trong DB (AccountStateJwtConverter), không phải claim lúc phát token. */
     public List<String> roles() {
-        List<String> roles = jwt().getClaimAsStringList("roles");
-        return roles == null ? List.of() : roles;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return List.of();
+        }
+        return auth.getAuthorities().stream().map(a -> a.getAuthority()).filter(a -> a.startsWith("ROLE_"))
+                .map(a -> a.substring(5)).sorted().toList();
     }
 
     private static Jwt jwt() {

@@ -1,4 +1,4 @@
-package com.restaurant.core.order.dto;
+package com.restaurant.core.common.response;
 
 import java.util.List;
 

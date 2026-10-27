@@ -45,11 +45,12 @@ Chi tiết: [TEAM_ASSIGNMENT](docs/backend/TEAM_ASSIGNMENT.md) · hợp đồng 
 src/main/java/com/restaurant/core/
 ├── common/      config (CORS) · aspect (PerformanceLoggingAspect) · exception · response
 ├── security/    JWT, SecurityConfig, CurrentUser                         (Nguyễn Quang Hiếu)
-├── employee/    đăng nhập                                                 (Nguyễn Quang Hiếu)
+├── employee/    đăng nhập, đổi mật khẩu, nhân viên/tài khoản, ca, chấm công (Nguyễn Quang Hiếu)
+├── menu/        danh mục, món, công thức, thực đơn ngày, hạn mức            (Lê Anh)
 ├── order/       bàn, phiên, đơn, gọi món, bếp, phục vụ, hủy, bỏ về         (Phạm Duy An)
+├── inventory/   nguyên liệu, nhập/xuất/kiểm kê, sơ chế, hoàn trả, báo cáo  (Đỗ Tuấn Anh)
 ├── finance/     Invoice*, Payment*, strategy/ (CASH/QR), sepay/ (webhook)  (Phạm Duy An)
-│                Expense*, CashReconciliation*, FinanceReport*              (Bùi Đào Đức Anh — chưa có)
-│   (menu/ — Lê Anh, inventory/ — Đỗ Tuấn Anh: tạo khi bắt đầu)
+│                Expense*, CashReconciliation*, FinanceReport*              (Bùi Đào Đức Anh)
 src/main/resources/  application.yml, application-dev.yml, application-prod.yml, db/migration/
 docker/              script khởi tạo login DB, tạo Manager đầu tiên
 compose.yaml, Dockerfile, .env.example
