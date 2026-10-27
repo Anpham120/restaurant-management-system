@@ -23,11 +23,11 @@ Phân công theo **vòng đời nghiệp vụ**, không máy móc theo package. 
 
 | Thành viên | Đã chạy (có integration test) | Tiếp theo |
 | --- | --- | --- |
-| Phạm Duy An | Toàn bộ API vòng đời đơn hàng + thanh toán + webhook SePay ([API_CONTRACT §1](API_CONTRACT.md#1-quản-lý-đơn-hàng--phạm-duy-an)) | Điều phối tích hợp với menu (danh sách món hôm nay cho Waiter), review PR, kiểm thử E2E với frontend |
-| Nguyễn Quang Hiếu | `POST /api/auth/login`, `GET /api/auth/me`, Security Foundation | Đổi mật khẩu bắt buộc lần đầu; CRUD nhân viên/tài khoản/vai trò; ca, phân ca, chấm công |
-| Lê Anh | — | Danh mục, món, công thức (version), thực đơn ngày + hạn mức + tạm dừng |
-| Đỗ Tuấn Anh | — | Danh mục nguyên liệu/loại bếp; phiếu nhập/xuất/kiểm kê (`rc_create_*`), nhận bàn giao, sơ chế, hoàn trả, hủy hàng, báo cáo kho |
-| Bùi Đào Đức Anh | — | Khoản chi, đối soát tiền mặt, báo cáo doanh thu (`rpt_revenue_*`, `rpt_unpaid_closures`, `rpt_cash_reconciliation`) |
+| Phạm Duy An | Toàn bộ API vòng đời đơn hàng + quản lý bàn + thanh toán + webhook SePay ([API_CONTRACT §1](API_CONTRACT.md#1-quản-lý-đơn-hàng--phạm-duy-an)) — `OrderLifecycleIT`, `KitchenAndCancelIT`, `SessionEndIT`, `TableIT`, `PaymentIT`, `SepayWebhookIT` | Review PR, kiểm thử E2E với frontend |
+| Nguyễn Quang Hiếu | Đăng nhập, đổi mật khẩu, phòng ban, nhân viên/tài khoản/vai trò, khóa/mở, đặt lại mật khẩu, ca, phân ca, chấm công + điều chỉnh ([§2](API_CONTRACT.md#2-quản-lý-nhân-viên--nguyễn-quang-hiếu)) — `AuthIT`, `EmployeeIT` | Kiểm chéo `@PreAuthorize` các module với ma trận docs/07 §10 |
+| Lê Anh | Danh mục, món, công thức (version), thực đơn ngày + hạn mức + tạm dừng, `GET /api/daily-menus/today` ([§3](API_CONTRACT.md#3-quản-lý-thực-đơn--lê-anh)) — `MenuIT` | Ảnh món, sắp xếp hiển thị cho màn hình gọi món |
+| Đỗ Tuấn Anh | Nguyên liệu/loại bếp, nhập/xuất/kiểm kê (`rc_create_*`), bếp nhận, sơ chế, hoàn trả, hủy hàng, lô hỏng, báo cáo kho ([§4](API_CONTRACT.md#4-quản-lý-kho--đỗ-tuấn-anh)) — `InventoryIT` | Kiểm thử luồng lô hỏng → `reallocate` cùng Order |
+| Bùi Đào Đức Anh | Khoản chi (idempotent, hủy), đối soát tiền mặt (phiên bản, stale), báo cáo doanh thu/không thu/chi theo nhóm ([§5](API_CONTRACT.md#5-quản-lý-tài-chính--bùi-đào-đức-anh)) — `FinanceIT` | Đối chiếu số liệu báo cáo với docs/11 trên dữ liệu thật |
 
 ## Trách nhiệm kiểm thử
 

@@ -9,10 +9,13 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -21,20 +24,19 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Stateless JWT: client gửi "Authorization: Bearer <token>". Claim "roles" (MANAGER/WAITER/KITCHEN/CASHIER) → ROLE_*.
- * Phân quyền theo endpoint bằng @PreAuthorize trên controller. 401 = thiếu/sai token, 403 = có token nhưng thiếu vai trò.
+ * Stateless JWT: client gửi "Authorization: Bearer <token>". Vai trò và trạng thái tài khoản đọc lại từ DB mỗi request
+ * ({@link AccountStateJwtConverter}). Phân quyền theo endpoint bằng @PreAuthorize trên controller. 401 = thiếu/sai token
+ * hoặc tài khoản không còn hoạt động, 403 = thiếu vai trò hoặc chưa đổi mật khẩu bắt buộc.
  */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationConverter jwtConverter,
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AccountStateJwtConverter jwtConverter,
                                             RestSecurityErrorHandler errors) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())                       // không dùng cookie session → không cần CSRF
@@ -46,7 +48,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/webhooks/sepay").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .anyRequest().authenticated())
+                        // tài khoản phải đổi mật khẩu: chỉ được đổi mật khẩu và xem /me
+                        .requestMatchers(HttpMethod.POST, "/api/auth/change-password").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+                        .anyRequest().access((authentication, context) -> new AuthorizationDecision(passwordChanged(authentication.get()))))
                 .oauth2ResourceServer(o -> o
                         .jwt(j -> j.jwtAuthenticationConverter(jwtConverter))
                         .authenticationEntryPoint(errors)
@@ -72,14 +77,14 @@ public class SecurityConfig {
         return decoder;
     }
 
-    @Bean
-    JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter roles = new JwtGrantedAuthoritiesConverter();
-        roles.setAuthoritiesClaimName("roles");
-        roles.setAuthorityPrefix("ROLE_");
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(roles);
-        return converter;
+    static boolean passwordChanged(Authentication authentication) {
+        return authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken)
+                && !requiresPasswordChange(authentication);
+    }
+
+    static boolean requiresPasswordChange(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> AccountStateJwtConverter.PASSWORD_CHANGE_REQUIRED.equals(a.getAuthority()));
     }
 
     private static SecretKey secretKey(JwtProperties props) {

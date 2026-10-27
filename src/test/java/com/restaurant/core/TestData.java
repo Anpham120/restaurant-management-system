@@ -29,7 +29,7 @@ public class TestData {
         long emp = admin.sql("INSERT INTO employees (employee_code, full_name, department_id) VALUES (:c, :n, :d) RETURNING id")
                 .param("c", "T" + n).param("n", "Nhân viên " + role + " " + n).param("d", dept).query(Long.class).single();
         String username = role.toLowerCase() + n;
-        long acc = admin.sql("INSERT INTO accounts (employee_id, username, password_hash) VALUES (:e, :u, :h) RETURNING id")
+        long acc = admin.sql("INSERT INTO accounts (employee_id, username, password_hash, must_change_password) VALUES (:e, :u, :h, false) RETURNING id")
                 .param("e", emp).param("u", username).param("h", passwordHash).query(Long.class).single();
         admin.sql("INSERT INTO account_roles (account_id, role_id) SELECT :a, id FROM roles WHERE role_code = :r")
                 .param("a", acc).param("r", role).update();

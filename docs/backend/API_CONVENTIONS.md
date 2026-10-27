@@ -54,10 +54,11 @@ Thao tác client có thể gửi lặp và DB hỗ trợ khóa yêu cầu (`rc_s
 | --- | --- | --- | --- |
 | 400 | `VALIDATION_ERROR` | Bean Validation | Body/tham số sai; xem `details` |
 | 400 | `BAD_REQUEST` | Spring | JSON hỏng, sai kiểu tham số |
-| 401 | `UNAUTHORIZED` | Security | Thiếu/sai/hết hạn token |
+| 401 | `UNAUTHORIZED` | Security | Thiếu/sai/hết hạn token, hoặc token còn hạn nhưng tài khoản đã khóa / nhân viên đã nghỉ / không còn vai trò (đọc lại DB mỗi request) |
 | 401 | `INVALID_CREDENTIALS` | AuthService | Sai đăng nhập, tài khoản khóa hoặc nhân viên nghỉ |
-| 403 | `FORBIDDEN` | `@PreAuthorize` | Vai trò không được gọi endpoint |
-| 403 | `RC403` | DB `rc_authorize` | `p_actor` không còn vai trò/tài khoản hoạt động |
+| 403 | `FORBIDDEN` | `@PreAuthorize` | Vai trò không được gọi endpoint (vai trò lấy từ DB, đổi vai trò có hiệu lực ngay) |
+| 403 | `PASSWORD_CHANGE_REQUIRED` | Security | Tài khoản `must_change_password`: chỉ được gọi `POST /api/auth/change-password` và `GET /api/auth/me` |
+| 403 | `RC403` | DB `rc_authorize` | `p_actor` không còn vai trò/tài khoản hoạt động (lớp thứ hai, khi tài khoản đổi trạng thái giữa request) |
 | 404 | `NOT_FOUND` | Spring / `ApiException` | Không có đường dẫn / bản ghi |
 | 409 | `RC409` | DB | Xung đột trạng thái: gọi lặp, sai bước, đối tượng đã đổi |
 | 409 | `RC001` | DB | Thiếu nguyên liệu |

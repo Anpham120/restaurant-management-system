@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
+import com.restaurant.core.employee.dto.ChangePasswordRequest;
 import com.restaurant.core.employee.dto.LoginRequest;
 import com.restaurant.core.employee.dto.LoginResponse;
 import com.restaurant.core.employee.dto.MeResponse;
@@ -30,6 +31,13 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
+    }
+
+    /** Mọi người đã đăng nhập; bắt buộc khi LoginResponse.mustChangePassword = true. */
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(currentUser.employeeId(), request);
+        return ApiResponse.ok(null);
     }
 
     /** Mọi người đã đăng nhập. */

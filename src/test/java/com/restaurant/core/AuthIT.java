@@ -23,7 +23,7 @@ class AuthIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.data.employeeId").value(waiter.employeeId()))
                 .andExpect(jsonPath("$.data.roles[0]").value("WAITER"))
-                .andExpect(jsonPath("$.data.mustChangePassword").value(true))
+                .andExpect(jsonPath("$.data.mustChangePassword").value(false))
                 .andExpect(jsonPath("$.data.accessToken").isString());
     }
 
@@ -44,7 +44,11 @@ class AuthIT extends IntegrationTestBase {
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
         login("{\"username\":\"khong-ton-tai\",\"password\":\"x\"}")
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
+        String token = bearer(kitchen);
         data.lockAccount(kitchen);
+        // token còn hạn nhưng tài khoản đã khóa → 401 ở mọi endpoint
+        mvc.perform(get("/api/auth/me").header("Authorization", token))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
         login("{\"username\":\"" + kitchen.username() + "\",\"password\":\"" + TestData.PASSWORD + "\"}")
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
     }

@@ -15,6 +15,10 @@ public class AccountRepository {
                                      String workStatus, boolean mustChangePassword) {
     }
 
+    /** Trạng thái hiện tại để kiểm mỗi request (token còn hạn không có nghĩa tài khoản còn dùng được). */
+    public record AccountState(String accountStatus, String workStatus, boolean mustChangePassword, String roleCodes) {
+    }
+
     private final JdbcClient jdbc;
 
     public AccountRepository(JdbcClient jdbc) {
@@ -32,6 +36,30 @@ public class AccountRepository {
                 .param("username", username)
                 .query(AccountCredentials.class)
                 .optional();
+    }
+
+    public Optional<AccountState> findState(long employeeId) {
+        return jdbc.sql("""
+                        SELECT a.account_status, e.work_status, a.must_change_password,
+                               (SELECT string_agg(r.role_code, ',' ORDER BY r.role_code)
+                                  FROM account_roles ar JOIN roles r ON r.id = ar.role_id WHERE ar.account_id = a.id) AS role_codes
+                          FROM accounts a
+                          JOIN employees e ON e.id = a.employee_id
+                         WHERE a.employee_id = :e
+                        """)
+                .param("e", employeeId)
+                .query(AccountState.class)
+                .optional();
+    }
+
+    /** Mật khẩu hiện tại của chính người đăng nhập (đổi mật khẩu). */
+    public Optional<String> findPasswordHash(long employeeId) {
+        return jdbc.sql("SELECT password_hash FROM accounts WHERE employee_id = :e").param("e", employeeId).query(String.class).optional();
+    }
+
+    public int changePassword(long employeeId, String passwordHash) {
+        return jdbc.sql("UPDATE accounts SET password_hash = :h, must_change_password = false WHERE employee_id = :e")
+                .param("e", employeeId).param("h", passwordHash).update();
     }
 
     public List<String> findRoleCodes(long employeeId) {

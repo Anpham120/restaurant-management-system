@@ -53,15 +53,18 @@ class TableIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
     }
 
-    /** Token còn hạn nhưng tài khoản vừa bị khóa: @PreAuthorize cho qua, DB (rc_authorize) vẫn chặn → RC403. */
+    /**
+     * Token còn hạn nhưng tài khoản vừa bị khóa: tầng security đọc lại trạng thái trong DB → 401 trước khi tới controller.
+     * rc_authorize (RC403) vẫn là lớp thứ hai nếu tài khoản bị khóa đúng lúc request đang chạy.
+     */
     @Test
-    void databaseRechecksActorAfterAccountLocked() throws Exception {
+    void lockedAccountTokenIsRejected() throws Exception {
         TestData.Staff waiter = data.staff("WAITER");
         String token = bearer(waiter);
         data.lockAccount(waiter);
         mvc.perform(post("/api/tables/{id}/sessions", data.table()).header("Authorization", token))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("RC403"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 
     private org.springframework.test.web.servlet.ResultActions json(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder req,
