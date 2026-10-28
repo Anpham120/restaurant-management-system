@@ -146,6 +146,10 @@ public class StockDocumentService {
         return count(id);
     }
 
+    public List<CountResponse.Header> counts(String status, int page, int size) {
+        return repo.findCounts(status, page, size);
+    }
+
     public CountResponse count(long id) {
         CountResponse.Header h = repo.findCount(id).orElseThrow(() -> notFound("Không tìm thấy phiếu kiểm kê " + id));
         return new CountResponse(h.id(), h.status(), h.note(), h.requestKey(), h.createdAt(), h.createdById(), h.confirmedById(),

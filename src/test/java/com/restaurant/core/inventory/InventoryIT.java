@@ -182,6 +182,14 @@ class InventoryIT extends OrderApiTestBase {
         postEmpty(manager, "/api/stock-counts/{id}/confirm", count).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CONFIRMED"));
         assertThat(rawOnHand(batch).intValue()).isEqualTo(5350);
 
+        // danh sách phiếu (mới nhất trước) cho màn hình duyệt nháp
+        getAs(kitchen, "/api/kitchen-preparations?status=CONFIRMED&size=5").andExpect(jsonPath("$.data[*].id", hasItem((int) prep)));
+        getAs(kitchen, "/api/stock-adjustments").andExpect(jsonPath("$.data[*].id", hasItem((int) adj)));
+        getAs(manager, "/api/stock-returns?status=CONFIRMED").andExpect(jsonPath("$.data[*].id", hasItem((int) ret)));
+        getAs(manager, "/api/stock-counts").andExpect(jsonPath("$.data[*].id", hasItem((int) count)));
+        getAs(kitchen, "/api/stock-counts").andExpect(status().isForbidden());
+        getAs(kitchen, "/api/inventory/kitchen-lots?typeId=" + whole).andExpect(jsonPath("$.data[0].directIssueItemId").value(directLine.get(0).intValue()));
+
         Instant now = Instant.now();
         getAs(manager, "/api/inventory/history?from=" + now.minus(1, ChronoUnit.HOURS) + "&to=" + now.plus(1, ChronoUnit.HOURS) + "&ingredientId=" + fish)
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(6)));

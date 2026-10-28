@@ -11,5 +11,9 @@ target/
 .vscode/
 .DS_Store
 
-# Node (chỉ dùng cho docs/06-test-concurrency)
+# Node (frontend/, docs/06-test-concurrency)
 node_modules/
+
+# Frontend build
+frontend/dist/
+*.tsbuildinfo

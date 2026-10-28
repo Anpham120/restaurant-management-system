@@ -133,6 +133,14 @@ public class StockDocumentRepository {
                 .param("id", id).query(CountResponse.Header.class).optional();
     }
 
+    public List<CountResponse.Header> findCounts(String status, int page, int size) {
+        return jdbc.sql("""
+                        SELECT id, status, note, request_key, created_at, created_by_id, confirmed_by_id, confirmed_at
+                          FROM stock_counts WHERE CAST(:s AS text) IS NULL OR status = :s
+                         ORDER BY id DESC LIMIT :size OFFSET :off""")
+                .param("s", status).param("size", size).param("off", (long) page * size).query(CountResponse.Header.class).list();
+    }
+
     public List<CountLineView> findCountLines(long countId) {
         return jdbc.sql("""
                         SELECT id, raw_batch_id, wip_issue_item_id, kitchen_batch_id, book_quantity, actual_quantity,

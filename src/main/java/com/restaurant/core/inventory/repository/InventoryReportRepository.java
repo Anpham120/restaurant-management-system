@@ -70,7 +70,8 @@ public class InventoryReportRepository {
         return jdbc.sql("""
                         SELECT k.id AS kitchen_batch_id, k.kitchen_ingredient_type_id, t.name AS type_name, k.quantity_on_hand,
                                k.reserved_quantity, k.usable_until,
-                               k.is_usable AND (k.usable_until IS NULL OR k.usable_until > now()) AS usable
+                               k.is_usable AND (k.usable_until IS NULL OR k.usable_until > now()) AS usable,
+                               k.direct_issue_item_id
                           FROM kitchen_batches k JOIN kitchen_ingredient_types t ON t.id = k.kitchen_ingredient_type_id
                          WHERE k.quantity_on_hand > 0 AND (CAST(:t AS bigint) IS NULL OR k.kitchen_ingredient_type_id = :t)
                          ORDER BY t.name, k.usable_until NULLS LAST, k.id""")

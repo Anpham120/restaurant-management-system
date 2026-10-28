@@ -117,6 +117,18 @@ public class KitchenStockService {
                 h.createdAt(), h.confirmedAt(), h.requestKey(), repo.findAdjustmentLines(id));
     }
 
+    public List<PreparationResponse.Header> preparations(String status, int page, int size) {
+        return repo.findPreparations(status, page, size);
+    }
+
+    public List<ReturnResponse.Header> returns(String status, int page, int size) {
+        return repo.findReturns(status, page, size);
+    }
+
+    public List<AdjustmentResponse.Header> adjustments(String status, int page, int size) {
+        return repo.findAdjustments(status, page, size);
+    }
+
     // ---------- lô hỏng
     public MarkUnusableResponse markUnusable(String kind, long batchId, long actorId, String reason) {
         return new MarkUnusableResponse(kind, batchId, repo.markUnusable(kind, batchId, actorId, reason.strip()));

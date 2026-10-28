@@ -52,7 +52,7 @@ Không hủy một phần số lượng (QĐ-5): hủy cả dòng rồi gửi l�
 | # | Endpoint | Actor | Request → Response | Hàm | Trước → Sau | Lỗi nghiệp vụ | Test |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | ✅ | `POST /api/orders/{orderId}/invoice` | C M | — → `InvoiceResponse` | `rc_checkout_invoice` | mọi món kết thúc, ≥ 1 SERVED, tổng > 0 → hóa đơn **PAYMENT_PENDING**, đủ `invoice_items`, **tổng do DB tính**; Waiter không gửi thêm được | 409 đã chốt / còn món chưa xong / không món phải thu · 422 tổng 0 đồng (→ waive) | OrderLifecycleIT, SessionEndIT |
-| ✅ | `GET /api/orders/{orderId}/invoice`, `GET /api/invoices/{invoiceId}` | C M W | — → `InvoiceResponse` (dòng, yêu cầu thanh toán, payment, `uncollected*`, `waived*`) | — | — | 404 | SessionEndIT, OrderLifecycleIT |
+| ✅ | `GET /api/orders/{orderId}/invoice`, `GET /api/invoices/{invoiceId}` | C M W | — → `InvoiceResponse` (dòng, yêu cầu thanh toán — QR đang chờ kèm `qrImageUrl` để hiện lại mã khi tải lại trang —, payment, `uncollected*`, `waived*`) | — | — | 404 | SessionEndIT, OrderLifecycleIT |
 | ✅ | `POST /api/invoices/{invoiceId}/reopen` | C M | `ReasonRequest` → `InvoiceResponse` | `rc_reopen_invoice` | PAYMENT_PENDING → DRAFT, hủy yêu cầu thanh toán đang mở; sau đó gọi thêm món / hủy ngoại lệ / chốt lại | 409 không PAYMENT_PENDING | OrderLifecycleIT |
 | ✅ | `POST /api/orders/{orderId}/waive` | M | `ReasonRequest` → `InvoiceResponse` | `rc_waive_invoice` | DRAFT/PAYMENT_PENDING (mọi món kết thúc) → **WAIVED**, giữ giá trị, không payment, phiên CLOSED, bàn AVAILABLE; cũng là cách đóng hóa đơn 0 đồng | 409 PAID/UNCOLLECTED/WAIVED, còn món chưa xong | SessionEndIT |
 
@@ -122,9 +122,10 @@ Package `inventory` (`IngredientController/Service/Repository`, `StockDocumentCo
 | ✅ | `POST /api/stock-returns` (K M) · `GET /{id}` · `/{id}/confirm` (M) | | `ReturnRequest{requestKey, reason, items[{sourceIssueItemId, directKitchenBatchId?, quantity}]}` | nháp + `rc_confirm_return` | hàng về lại lô RAW gốc | cùng khóa → phiếu cũ · 409 vượt khả dụng |
 | ✅ | `POST /api/stock-adjustments` (K M) · `GET /{id}` · `/{id}/confirm` (M) | | `AdjustmentRequest{requestKey, adjustmentType: DAMAGE\|EXPIRED\|QUALITY\|OTHER, reason, items[{rawBatchId \| wipIssueItemId \| kitchenBatchId, quantity, note}]}` (lượng hủy dương; DB lưu delta âm) | nháp + `rc_confirm_adjustment` | ghi WASTE | 400 không đúng một nguồn |
 | ✅ | `POST /api/stock-counts` · `GET /{id}` · `/{id}/confirm` | M | `CountRequest{requestKey, note, items[{rawBatchId \| wipIssueItemId \| kitchenBatchId, actualQuantity, reason}]}` → `CountResponse{lines[{bookQuantity, difference}]}` | `rc_create_stock_count`, `rc_confirm_count` | ghi COUNT_ADJUST chênh lệch | 409 sổ đã đổi từ lúc lập phiếu |
+| ✅ | `GET /api/kitchen-preparations`, `/api/stock-returns`, `/api/stock-adjustments` (K M) · `GET /api/stock-counts` (M) `?status&page&size` | | — → danh sách header, mới nhất trước | các bảng chứng từ tương ứng | để màn hình duyệt phiếu nháp | — |
 | ✅ | `POST /api/stock-batches/{RAW\|KITCHEN}/{batchId}/mark-unusable` | M | `ReasonRequest` → `{kind, batchId, affectedOrderItems}` | `rc_mark_batch_unusable` | lô hỏng; món đang giữ bật `hasStockException` (bếp gọi `/order-items/{id}/reallocate`) | 422 thiếu lý do |
 | ✅ | `GET /api/inventory/raw-stock`, `/history?from&to&ingredientId` (Instant ISO), `/preparation-yield?from&to`, `/raw-lots?ingredientId` | M | — → bảng | `rpt_raw_stock`, `rpt_stock_history`, `rpt_preparation_yield`; lô RAW theo FEFO | — | 400 khoảng sai |
-| ✅ | `GET /api/inventory/handover`, `/kitchen-stock`, `/unusable-lots`, `/kitchen-lots?typeId` | K M | — → bảng | `rpt_handover_and_wip`, `rpt_kitchen_stock`, `rpt_unusable_lots`; lô bếp | — | — |
+| ✅ | `GET /api/inventory/handover`, `/kitchen-stock`, `/unusable-lots`, `/kitchen-lots?typeId` | K M | — → bảng | `rpt_handover_and_wip`, `rpt_kitchen_stock`, `rpt_unusable_lots`; lô bếp (kèm `directIssueItemId` để lập phiếu hoàn trả) | — | — |
 
 ## 5. Quản lý tài chính — Bùi Đào Đức Anh
 

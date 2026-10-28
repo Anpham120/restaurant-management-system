@@ -20,8 +20,15 @@ public record InvoiceResponse(long invoiceId, long orderId, String status, BigDe
     public record Line(long orderItemId, String itemName, int quantity, BigDecimal unitPrice, BigDecimal lineTotal) {
     }
 
+    /** qrImageUrl chỉ có với yêu cầu QR đang chờ chuyển khoản (để hiện lại mã khi tải lại trang). */
     public record PaymentRequestView(long id, String method, String status, BigDecimal amountDue, BigDecimal cashReceived,
-                                     BigDecimal changeAmount, String paymentReference, Instant createdAt, String cancelReason) {
+                                     BigDecimal changeAmount, String paymentReference, Instant createdAt, String cancelReason,
+                                     String qrImageUrl) {
+
+        public PaymentRequestView withQrImageUrl(String url) {
+            return new PaymentRequestView(id, method, status, amountDue, cashReceived, changeAmount, paymentReference, createdAt,
+                    cancelReason, url);
+        }
     }
 
     public record PaymentView(long id, String method, BigDecimal amount, Instant paidAt, LocalDate businessDate) {

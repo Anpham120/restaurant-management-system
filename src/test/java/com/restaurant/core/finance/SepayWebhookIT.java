@@ -39,7 +39,12 @@ class SepayWebhookIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.status").value("WAITING_TRANSFER"))
                 .andExpect(jsonPath("$.data.paymentId").doesNotExist())
                 .andExpect(jsonPath("$.data.qrImageUrl").value(containsString("https://qr.sepay.vn/img?acc=0010000000355&bank=Vietcombank")));
-        return read(r, "$.data.paymentReference");
+        String ref = read(r, "$.data.paymentReference");
+        // tải lại hóa đơn vẫn có ảnh QR của yêu cầu đang chờ
+        getAs(cashier, "/api/invoices/{id}", invoice)
+                .andExpect(jsonPath("$.data.paymentRequests[-1].status").value("WAITING_TRANSFER"))
+                .andExpect(jsonPath("$.data.paymentRequests[-1].qrImageUrl").value(containsString("des=" + ref)));
+        return ref;
     }
 
     @Test

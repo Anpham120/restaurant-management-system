@@ -54,7 +54,8 @@ public class InvoiceRepository {
 
     public List<InvoiceResponse.PaymentRequestView> findPaymentRequests(long invoiceId) {
         return jdbc.sql("""
-                        SELECT id, method, status, amount_due, cash_received, change_amount, payment_reference, created_at, cancel_reason
+                        SELECT id, method, status, amount_due, cash_received, change_amount, payment_reference, created_at, cancel_reason,
+                               CAST(NULL AS text) AS qr_image_url
                           FROM payment_requests WHERE invoice_id = :i ORDER BY id
                         """)
                 .param("i", invoiceId).query(InvoiceResponse.PaymentRequestView.class).list();
