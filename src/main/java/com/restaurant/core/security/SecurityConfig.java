@@ -47,6 +47,8 @@ public class SecurityConfig {
                         // webhook SePay: không có JWT, xác thực bằng API key trong SepayWebhookService
                         .requestMatchers(HttpMethod.POST, "/api/webhooks/sepay").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        // Prometheus scrape qua 127.0.0.1:8081; nginx máy chủ KHÔNG proxy đường dẫn này ra ngoài
+                        .requestMatchers("/actuator/prometheus").permitAll()
                         .requestMatchers("/error").permitAll()
                         // tài khoản phải đổi mật khẩu: chỉ được đổi mật khẩu và xem /me
                         .requestMatchers(HttpMethod.POST, "/api/auth/change-password").authenticated()
