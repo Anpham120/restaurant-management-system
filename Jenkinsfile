@@ -72,16 +72,20 @@ pipeline {
         stage('Deploy production') {
             when { branch 'main' }
             steps {
-                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                // rms-prod-env: toàn bộ nội dung .env production (Secret text). Chỉ ghi ra đĩa trong lúc deploy.
+                withCredentials([
+                    string(credentialsId: 'github-token', variable: 'GH_TOKEN'),
+                    string(credentialsId: 'rms-prod-env', variable: 'ENV_CONTENT')
+                ]) {
                     // Chạy trong container docker CLI, mount thư mục triển khai đúng đường dẫn trên host.
-                    // Sau khi deploy, trả quyền thư mục về user coder (uid 1000 — kiểm tra bằng: id -u coder).
+                    // Sau khi deploy, xóa .env và trả quyền thư mục về user coder (uid 1000 — kiểm tra bằng: id -u coder).
                     sh '''
                         docker run --rm --network host \
                           -v /var/run/docker.sock:/var/run/docker.sock \
                           -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$DEPLOY_DIR" \
-                          -e GH_TOKEN \
+                          -e GH_TOKEN -e ENV_CONTENT \
                           docker:27-cli \
-                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" main && git reset -q --hard FETCH_HEAD && scripts/deploy.sh; rc=\\$?; chown -R 1000:1000 .; exit \\$rc"
+                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" main && git reset -q --hard FETCH_HEAD && (umask 077; printf '%s\\n' \\"\\$ENV_CONTENT\\" > .env) && scripts/deploy.sh; rc=\\$?; rm -f .env; chown -R 1000:1000 .; exit \\$rc"
                     '''
                 }
             }
