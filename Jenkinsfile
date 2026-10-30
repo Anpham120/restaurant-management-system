@@ -28,6 +28,8 @@ pipeline {
         stage('Test backend') {
             steps {
                 sh '''
+                    # Volume cache Maven mới tạo thuộc root, đổi quyền để user Jenkins ghi được
+                    docker run --rm -v rms-m2-cache:/m2 alpine:3.20 chown "$(id -u):$(id -g)" /m2
                     docker run --rm --network host \
                       --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE" \
                       --user "$(id -u):$(id -g)" --group-add "$(stat -c %g /var/run/docker.sock)" \
