@@ -81,7 +81,7 @@ pipeline {
                           -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$DEPLOY_DIR" \
                           -e GH_TOKEN \
                           docker:27-cli \
-                          sh -c "apk add -q --no-cache docker-cli-compose git curl && git config --global --add safe.directory \\"\\$PWD\\" && scripts/deploy.sh; rc=\\$?; chown -R 1000:1000 .; exit \\$rc"
+                          sh -c "apk add -q --no-cache docker-cli-compose git curl && git config --global --add safe.directory \\"\\$PWD\\" && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" main && git reset -q --hard FETCH_HEAD && scripts/deploy.sh; rc=\\$?; chown -R 1000:1000 .; exit \\$rc"
                     '''
                 }
             }
