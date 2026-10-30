@@ -39,13 +39,24 @@ Deploy (`scripts/deploy.sh`):
 
 ## 3. Thiết lập một lần
 
-### 3.1 Token GitHub
-Tạo token (fine-grained, quyền Contents: read/write trên repo này). Lưu vào Jenkins:
-**Manage Jenkins → Credentials → Secret text**, ID: `github-token`.
+### 3.1 Credentials trong Jenkins
+**Manage Jenkins → Credentials → (global) → Add Credentials**. Cần ba credential:
+
+| ID | Loại | Nội dung | Dùng cho |
+|---|---|---|---|
+| `github-token` | Secret text | Token GitHub classic, scope `repo` | Pipeline push merge và lấy mã `main` |
+| `github-branch-source` | Username with password | Username GitHub + cùng token | Multibranch quét repo và checkout |
+| `rms-prod-env` | Secret text | Toàn bộ nội dung file `.env` production (nhiều dòng, theo `.env.example`) | Deploy production |
+
+Quản lý secret:
+- Máy dev dùng `.env` riêng (mẫu `.env.example`, giá trị thử), không bao giờ chứa secret production.
+- Secret production chỉ nằm trong credential `rms-prod-env`. Khi deploy, pipeline ghi ra `.env` trong thư mục triển khai (quyền 600), chạy compose rồi xóa ngay.
+- Đổi secret: sửa credential `rms-prod-env` trên giao diện Jenkins, sau đó chạy lại build `main`. Không cần SSH vào máy chủ.
+- Lưu ý: mật khẩu `DB_*` phải khớp với database đã khởi tạo. Đổi mật khẩu trong credential không tự đổi mật khẩu trong Postgres.
 
 ### 3.2 Job Jenkins
-**New Item → Multibranch Pipeline**, tên `rms`:
-- Branch Sources → GitHub → repo `Anpham120/restaurant-management-system`, credential là token ở trên.
+**New Item → Multibranch Pipeline**, tên `rsm`:
+- Branch Sources → GitHub → repo `Anpham120/restaurant-management-system`, credential `github-branch-source`.
 - Build Configuration: Jenkinsfile tại `Jenkinsfile`.
 - Scan Multibranch Pipeline Triggers: định kỳ 1 phút (đã có `pollSCM` trong Jenkinsfile).
 
@@ -54,9 +65,8 @@ Tùy chọn: thêm webhook GitHub tới `https://jenkins.atlasplatform12.tech/gi
 ### 3.3 Thư mục triển khai
 ```bash
 git clone --branch main https://github.com/Anpham120/restaurant-management-system.git /home/coder/rms-deploy
-cp /home/coder/projects/RSM/restaurant-management-system/.env /home/coder/rms-deploy/.env
 ```
-`.env` chứa bí mật, chỉ nằm trên máy chủ, không commit. Kiểm tra uid của user `coder` bằng `id -u coder`. Nếu khác 1000 thì sửa `chown -R 1000:1000` trong `Jenkinsfile`.
+Không cần tạo `.env` tay: pipeline tự ghi từ credential `rms-prod-env` mỗi lần deploy. Kiểm tra uid của user `coder` bằng `id -u coder`. Nếu khác 1000 thì sửa `chown -R 1000:1000` trong `Jenkinsfile`.
 
 ### 3.4 Giám sát
 ```bash
