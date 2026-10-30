@@ -8,11 +8,8 @@ set -euo pipefail
 export COMPOSE_PROJECT_NAME=restaurant-management-system
 APP=restaurant-management-system-app
 WEB=restaurant-management-system-web
-REPO="https://x-access-token:${GH_TOKEN:?Thiếu GH_TOKEN}@github.com/Anpham120/restaurant-management-system.git"
 
-# Đồng bộ mã nguồn main (token không được lưu vào remote)
-git fetch --quiet "$REPO" main
-git reset --hard --quiet FETCH_HEAD
+# Mã nguồn main đã được Jenkinsfile đồng bộ vào thư mục này trước khi gọi script
 SHA=$(git rev-parse --short HEAD)
 echo "[deploy] commit $SHA"
 
