@@ -14,8 +14,12 @@ SHA=$(git rev-parse --short HEAD)
 echo "[deploy] commit $SHA"
 
 # Ghi nhớ image đang chạy để quay lui
-PREV_APP=$(docker inspect --format '{{.Image}}' "$APP" 2>/dev/null || true)
-PREV_WEB=$(docker inspect --format '{{.Image}}' "$WEB" 2>/dev/null || true)
+# (tên container thật là <project>-<service>-1 nên tìm theo label của compose)
+image_of() {
+  docker inspect --format '{{.Image}}' "$(docker ps -q --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" --filter "label=com.docker.compose.service=$1")" 2>/dev/null || true
+}
+PREV_APP=$(image_of app)
+PREV_WEB=$(image_of web)
 
 healthy() {
   curl -fsS http://127.0.0.1:8081/actuator/health | grep -q '"UP"' && curl -fsS -o /dev/null http://127.0.0.1:8083/

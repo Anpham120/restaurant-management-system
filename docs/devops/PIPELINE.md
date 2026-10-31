@@ -46,12 +46,13 @@ Deploy (`scripts/deploy.sh`):
 |---|---|---|---|
 | `github-token` | Secret text | Token GitHub classic, scope `repo` | Pipeline push merge và lấy mã `main` |
 | `github-branch-source` | Username with password | Username GitHub + cùng token | Multibranch quét repo và checkout |
-| `rms-prod-env` | Secret text | Toàn bộ nội dung file `.env` production (nhiều dòng, theo `.env.example`) | Deploy production |
+| `rms-prod-env` | Secret text | File `.env` production mã hóa base64 trên MỘT dòng: `base64 -w0 .env` | Deploy production |
 
 Quản lý secret:
 - Máy dev dùng `.env` riêng (mẫu `.env.example`, giá trị thử), không bao giờ chứa secret production.
 - Secret production chỉ nằm trong credential `rms-prod-env`. Khi deploy, pipeline ghi ra `.env` trong thư mục triển khai (quyền 600), chạy compose rồi xóa ngay.
 - Đổi secret: sửa credential `rms-prod-env` trên giao diện Jenkins, sau đó chạy lại build `main`. Không cần SSH vào máy chủ.
+- Lý do dùng base64: ô Secret của Jenkins là một dòng, dán nhiều dòng sẽ mất xuống dòng và `.env` hỏng.
 - Lưu ý: mật khẩu `DB_*` phải khớp với database đã khởi tạo. Đổi mật khẩu trong credential không tự đổi mật khẩu trong Postgres.
 
 ### 3.2 Job Jenkins
