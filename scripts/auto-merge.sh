@@ -24,3 +24,13 @@ fi
 
 git push --quiet "$REMOTE" "$TARGET"
 echo "[auto-merge] $SOURCE_NAME → $TARGET xong"
+
+# Nhánh feature đã vào develop thì xóa trên GitHub. --force-with-lease: chỉ xóa nếu nhánh vẫn đúng commit vừa merge,
+# có ai push thêm trong lúc build thì giữ lại để lần build sau merge tiếp. Xóa lỗi không làm hỏng build.
+if [ "$TARGET" = develop ] && [[ "$SOURCE_NAME" == feature/* ]]; then
+  if git push --quiet --force-with-lease="refs/heads/$SOURCE_NAME:$SOURCE_SHA" "$REMOTE" ":refs/heads/$SOURCE_NAME"; then
+    echo "[auto-merge] đã xóa nhánh $SOURCE_NAME"
+  else
+    echo "[auto-merge] giữ nhánh $SOURCE_NAME (có commit mới hoặc đã bị xóa)"
+  fi
+fi
