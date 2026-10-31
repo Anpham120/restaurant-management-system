@@ -3,6 +3,8 @@
 //   develop    : test → staging tạm thời + smoke test → tự promote lên main (fast-forward)
 //   main       : test → deploy production (tự quay lui nếu lỗi)
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
+// Kích hoạt: webhook GitHub. Dự phòng là quét multibranch mỗi phút (cấu hình job). Không dùng pollSCM:
+// poll trùng lúc với webhook sẽ xếp thêm một build thứ hai cho cùng commit.
 
 pipeline {
     agent any
@@ -12,11 +14,6 @@ pipeline {
         timestamps()
         timeout(time: 40, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '20'))
-    }
-
-    triggers {
-        // Webhook GitHub chạy ngay khi có push; pollSCM chỉ là dự phòng nếu webhook lỗi
-        pollSCM('H/15 * * * *')
     }
 
     environment {

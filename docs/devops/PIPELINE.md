@@ -59,7 +59,7 @@ Quản lý secret:
 **New Item → Multibranch Pipeline**, tên `rsm`:
 - Branch Sources → GitHub → repo `Anpham120/restaurant-management-system`, credential `github-branch-source`.
 - Build Configuration: Jenkinsfile tại `Jenkinsfile`.
-- Scan Multibranch Pipeline Triggers: định kỳ 1 phút (đã có `pollSCM` trong Jenkinsfile).
+- Scan Multibranch Pipeline Triggers: định kỳ 1 phút. Đây là phương án dự phòng khi webhook lỗi.
 
 Webhook GitHub để chạy ngay khi push (không chờ polling):
 1. Tạo chuỗi bí mật: `openssl rand -hex 32`.
@@ -67,7 +67,7 @@ Webhook GitHub để chạy ngay khi push (không chờ polling):
 3. GitHub: **Settings → Webhooks → Add webhook**. Payload URL `https://jenkins.atlasplatform12.tech/github-webhook/`, Content type `application/json`, Secret là chuỗi ở bước 1, chỉ chọn sự kiện **push**.
 4. Kiểm tra: **Recent Deliveries** → lần `ping` phải có mã 200. Jenkins bản này từ chối webhook không có chữ ký (400), nên bắt buộc phải đặt Secret ở cả hai nơi và hai chuỗi phải giống nhau.
 
-`pollSCM` trong `Jenkinsfile` giữ ở mức 15 phút làm phương án dự phòng khi webhook lỗi.
+Không thêm `pollSCM` vào `Jenkinsfile`. Quét multibranch đã làm dự phòng. Nếu thêm, lần poll trùng lúc với webhook sẽ xếp một build thứ hai cho cùng commit, và nhánh `main` sẽ deploy hai lần.
 
 ### 3.3 Thư mục triển khai
 ```bash
