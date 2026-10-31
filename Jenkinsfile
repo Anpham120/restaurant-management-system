@@ -1,6 +1,6 @@
 // CI/CD tự động, không có bước duyệt tay.
 //   feature/*  : test → tự merge vào develop
-//   develop    : test → tự promote lên main (fast-forward)
+//   develop    : test → staging tạm thời + smoke test → tự promote lên main (fast-forward)
 //   main       : test → deploy production (tự quay lui nếu lỗi)
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
 
@@ -22,6 +22,8 @@ pipeline {
         JENKINS_CONTAINER = 'jenkins'
         // Thư mục triển khai trên máy chủ (clone nhánh main, có .env thật). Xem docs/devops/PIPELINE.md
         DEPLOY_DIR = '/home/coder/rms-deploy'
+        // Thư mục staging tạm thời (clone nhánh develop, tự tạo lần đầu). Không chứa secret thật.
+        STAGING_DIR = '/home/coder/rms-staging'
     }
 
     stages {
@@ -56,6 +58,23 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     sh 'scripts/auto-merge.sh develop'
+                }
+            }
+        }
+
+        stage('Staging smoke test') {
+            when { branch 'develop' }
+            steps {
+                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                    // Dựng bản develop ở môi trường tách biệt, thử các chức năng chính rồi hủy. Lỗi thì không promote.
+                    sh '''
+                        docker run --rm --network host \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          -v "$STAGING_DIR:$STAGING_DIR" -w "$STAGING_DIR" \
+                          -e GH_TOKEN \
+                          docker:27-cli \
+                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && ([ -d .git ] || git init -q) && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" develop && git reset -q --hard FETCH_HEAD && scripts/staging-test.sh; rc=\\$?; chown -R 1000:1000 .; exit \\$rc"
+                    '''
                 }
             }
         }
