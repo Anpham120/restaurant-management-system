@@ -91,4 +91,11 @@ pipeline {
             }
         }
     }
+
+    // Dọn sau mỗi lần chạy: image mồ côi và cache build quá 48 giờ. Không đụng container, volume, image đang dùng.
+    post {
+        always {
+            sh 'docker image prune -f || true; docker builder prune -f --filter until=48h || true'
+        }
+    }
 }
