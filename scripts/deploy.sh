@@ -13,6 +13,10 @@ WEB=restaurant-management-system-web
 SHA=$(git rev-parse --short HEAD)
 echo "[deploy] commit $SHA"
 
+# Sao lưu DB trước: bản mới có thể chạy migration Flyway mà quay lui image không hoàn tác được.
+# Không sao lưu được thì dừng, chưa đụng vào gì.
+scripts/backup-db.sh pre-deploy
+
 # Giữ bản đang chạy bằng tag riêng ":previous" để quay lui. Không dùng ID image: sau khi build lại, image cũ
 # mất tag và có thể bị Docker dọn, lúc đó quay lui báo "No such image".
 tag_previous() {
