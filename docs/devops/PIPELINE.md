@@ -17,7 +17,10 @@ feature/xxx ──(CI pass, tự merge --no-ff)──► develop ──(CI pass,
 Quy tắc phát triển:
 1. `git switch develop && git switch -c feature/ten-tinh-nang`
 2. Làm việc, commit, `git push -u origin feature/ten-tinh-nang`
-3. Jenkins test. Nếu pass, nhánh tự merge vào `develop`. Nếu fail, nhánh không được merge.
+3. Jenkins test. Nếu pass, nhánh tự merge vào `develop` rồi bị xóa trên GitHub. Nếu fail, nhánh không được merge và vẫn giữ để sửa tiếp.
+   - Nếu có người push thêm commit vào nhánh trong lúc build, nhánh được giữ lại và lần build sau sẽ merge tiếp.
+   - Nhánh ở máy cá nhân không bị xóa. Dọn bằng `git fetch --prune && git branch -d feature/ten-tinh-nang`.
+   - Jenkins tự xóa job của nhánh đã xóa, kèm lịch sử build của nhánh đó. Commit merge trong `develop` vẫn ghi tên nhánh.
 4. `develop` test lại. Nếu pass, tự đẩy lên `main` và `main` tự deploy.
 
 Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm vậy, lần promote sau sẽ không fast-forward được và pipeline báo đỏ.
