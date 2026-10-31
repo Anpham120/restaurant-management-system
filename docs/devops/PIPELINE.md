@@ -28,7 +28,10 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 |---|---|---|
 | Test backend | mọi nhánh | `mvn verify` (unit + `*IT` dùng Testcontainers) trong container `maven:3.9-eclipse-temurin-21` |
 | Test frontend | mọi nhánh | `npm ci`, `typecheck`, `build` trong container `node:22-alpine` |
+| Quét bảo mật mã nguồn | mọi nhánh | `scripts/security-scan.sh fs`: Trivy quét thư viện Maven, npm và secret lộ trong mã |
 | Merge feature vào develop | `feature/*` | `scripts/auto-merge.sh develop` |
+| Staging smoke test | `develop` | `scripts/staging-test.sh`: dựng bản tạm, thử các chức năng chính rồi hủy |
+| Quét bảo mật image | `develop` | `scripts/security-scan.sh image`: Trivy quét image `app` và `web` vừa build ở staging |
 | Promote develop lên main | `develop` | `scripts/auto-merge.sh main` |
 | Deploy production | `main` | `scripts/deploy.sh` trong thư mục `/home/coder/rms-deploy` |
 
@@ -36,6 +39,14 @@ Deploy (`scripts/deploy.sh`):
 - Lấy mã `main` mới nhất, build image `app` và `web`, chạy `docker compose up --no-deps --wait`.
 - Kiểm tra `/actuator/health` và trang web. Lỗi thì tự tag lại image cũ và chạy lại.
 - Không đụng container `db` và volume `restaurant-management-system_pgdata`.
+
+Quét bảo mật (Trivy):
+- Pipeline dừng khi có lỗ hổng mức HIGH hoặc CRITICAL **đã có bản vá**, hoặc khi phát hiện secret trong mã. Lỗ hổng chưa có bản vá chỉ được bỏ qua vì chưa có cách sửa.
+- Quét image ở `develop` là đủ cho production: `main` được fast-forward từ `develop` nên build từ đúng commit đó.
+- Trivy được ghim theo digest của bản 0.69.3. Các bản 0.69.4 đến 0.69.6 từng bị cài mã độc (CVE-2026-33634), nên không đổi sang tag khác mà không kiểm tra digest.
+- CSDL lỗ hổng nằm trong volume `rms-trivy-cache` và tự cập nhật. Vì vậy một commit không đổi gì vẫn có thể bị chặn khi có CVE mới công bố.
+- Khi image bị chặn: nâng image nền trong `Dockerfile` hoặc `frontend/Dockerfile`. Nếu bản vá đã có trong kho Alpine nhưng cache build Docker còn giữ lớp `apk upgrade` cũ, chạy `docker builder prune` trên máy chủ rồi chạy lại.
+- Chạy tay trên máy chủ: `docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.69.3@sha256:bcc376de8d77cfe086a917230e818dc9f8528e3c852f7b1aff648949b6258d1c image --severity HIGH,CRITICAL <image>`.
 
 ## 3. Thiết lập một lần
 

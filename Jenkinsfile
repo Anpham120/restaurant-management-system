@@ -1,7 +1,7 @@
 // CI/CD tự động, không có bước duyệt tay.
-//   feature/*  : test → tự merge vào develop
-//   develop    : test → staging tạm thời + smoke test → tự promote lên main (fast-forward)
-//   main       : test → deploy production (tự quay lui nếu lỗi)
+//   feature/*  : test → quét bảo mật → tự merge vào develop
+//   develop    : test → quét bảo mật → staging tạm thời + smoke test → quét image → tự promote lên main (fast-forward)
+//   main       : test → quét bảo mật → deploy production (tự quay lui nếu lỗi)
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
 // Kích hoạt: webhook GitHub. Dự phòng là quét multibranch mỗi phút (cấu hình job). Không dùng pollSCM:
 // poll trùng lúc với webhook sẽ xếp thêm một build thứ hai cho cùng commit.
@@ -51,6 +51,13 @@ pipeline {
             }
         }
 
+        stage('Quét bảo mật mã nguồn') {
+            steps {
+                // Trivy: thư viện Maven/npm có lỗ hổng HIGH/CRITICAL đã có bản vá, hoặc secret lộ trong mã
+                sh 'scripts/security-scan.sh fs'
+            }
+        }
+
         stage('Merge feature vào develop') {
             when { branch pattern: 'feature/.*', comparator: 'REGEXP' }
             steps {
@@ -74,6 +81,14 @@ pipeline {
                           sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && ([ -d .git ] || git init -q) && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" develop && git reset -q --hard FETCH_HEAD && scripts/staging-test.sh; rc=\\$?; chown -R 1000:1000 .; exit \\$rc"
                     '''
                 }
+            }
+        }
+
+        stage('Quét bảo mật image') {
+            when { branch 'develop' }
+            steps {
+                // Image vừa build ở staging. main fast-forward từ develop nên production build từ cùng commit này.
+                sh 'scripts/security-scan.sh image rms-staging-app rms-staging-web'
             }
         }
 
