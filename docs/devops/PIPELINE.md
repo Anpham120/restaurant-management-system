@@ -80,6 +80,19 @@ Import dashboard có sẵn từ grafana.com: **4701** (JVM Micrometer) và **186
 
 Prometheus chỉ thấy app sau khi bản có `micrometer-registry-prometheus` được deploy. Trước đó target `rms-app` sẽ báo DOWN.
 
+### 3.5 Cảnh báo (Alertmanager + Telegram)
+Prometheus đánh giá các luật trong `monitoring/prometheus/alerts.yml` (app chết, lỗi 5xx cao, heap JVM, ổ đĩa dưới 15%, RAM và CPU trên 90%). Khi vi phạm, Alertmanager gửi tin nhắn Telegram và gửi thêm tin "đã khôi phục" khi hết lỗi.
+
+Thiết lập bot một lần:
+1. Trong Telegram, chat với `@BotFather`, gửi `/newbot`, đặt tên. Nhận **bot token**.
+2. Mở chat với bot vừa tạo và gửi một tin bất kỳ.
+3. Lấy chat id: `curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates"`, tìm `"chat":{"id":<số>`.
+4. Ghi token vào file không commit: `printf '%s' '<TOKEN>' > monitoring/secrets/telegram_bot_token && chmod 600 monitoring/secrets/telegram_bot_token`.
+5. Đặt `chat_id` trong `monitoring/alertmanager/alertmanager.yml` (chat id không phải bí mật). Bot không nhắn trước được: phải bấm Start với bot ít nhất một lần.
+6. `cd monitoring && docker compose up -d`. Alertmanager chạy bằng uid 1000 (user `coder`) để file token giữ quyền `600`; nếu user khác thì sửa `user:` trong `monitoring/compose.yaml`.
+
+Thử bắn một cảnh báo giả: `curl -XPOST 127.0.0.1:9093/api/v2/alerts -H 'Content-Type: application/json' -d '[{"labels":{"alertname":"Thu","severity":"warning"},"annotations":{"summary":"Thử gửi cảnh báo"}}]'`
+
 ## 4. Quay lui và giới hạn
 
 - Quay lui tự động chỉ áp dụng cho image `app` và `web`. Flyway là migration tiến một chiều: nếu bản mới đã migrate schema thì quay lui image không hoàn tác được DB. Vì vậy thay đổi schema phải tương thích ngược.

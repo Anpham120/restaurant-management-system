@@ -1,0 +1,21 @@
+# Gửi cảnh báo qua Telegram. Token bot nằm trong monitoring/secrets/telegram_bot_token (không commit).
+# chat_id không phải bí mật. Đổi số 0 thành chat id của bạn (xem docs/devops/PIPELINE.md).
+route:
+  receiver: telegram
+  group_by: [alertname]
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token_file: /etc/alertmanager/secrets/telegram_bot_token
+        chat_id: 6822487436
+        parse_mode: ""
+        send_resolved: true
+        message: |-
+          {{ if eq .Status "firing" }}🔥 CẢNH BÁO{{ else }}✅ ĐÃ KHÔI PHỤC{{ end }}: {{ .CommonLabels.alertname }}
+          {{ range .Alerts }}{{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}

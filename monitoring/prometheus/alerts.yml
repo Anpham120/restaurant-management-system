@@ -1,0 +1,64 @@
+# Luật cảnh báo. Prometheus đánh giá mỗi 15 giây; "for" là thời gian phải vi phạm liên tục mới bắn,
+# để tránh báo nhầm khi app khởi động lại (deploy) vài chục giây.
+groups:
+  - name: rms
+    rules:
+      - alert: AppDown
+        expr: up{job="rms-app"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Ứng dụng RMS không phản hồi"
+          description: "Prometheus không lấy được số liệu từ app trong hơn 1 phút."
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            / sum(rate(http_server_requests_seconds_count[5m])) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Tỉ lệ lỗi 5xx trên 5%"
+          description: "Hơn 5% request trả lỗi máy chủ trong 5 phút gần nhất."
+
+      - alert: JvmHeapHigh
+        expr: sum(jvm_memory_used_bytes{area="heap"}) / sum(jvm_memory_max_bytes{area="heap"}) > 0.9
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Bộ nhớ heap JVM trên 90%"
+          description: "App có thể sắp hết bộ nhớ (rò rỉ hoặc tải cao)."
+
+  - name: host
+    rules:
+      - alert: NodeExporterDown
+        expr: up{job="node"} == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "Mất số liệu máy chủ"
+          description: "node-exporter không phản hồi, không theo dõi được CPU, RAM, ổ đĩa."
+
+      - alert: DiskAlmostFull
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.15
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Ổ đĩa còn dưới 15%"
+          description: "Phân vùng gốc sắp đầy, pipeline và database có thể lỗi."
+
+      - alert: HighMemory
+        expr: 1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes > 0.9
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "RAM máy chủ trên 90%"
+          description: "RAM khả dụng thấp liên tục trong 10 phút."
+
+      - alert: HighCpu
+        expr: 100 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100 > 90
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "CPU máy chủ trên 90%"
+          description: "CPU quá tải liên tục trong 10 phút."
