@@ -22,6 +22,10 @@ pipeline {
         DEPLOY_DIR = '/home/coder/rms-deploy'
         // Thư mục staging tạm thời (clone nhánh develop, tự tạo lần đầu). Không chứa secret thật.
         STAGING_DIR = '/home/coder/rms-staging'
+        // Bản sao lưu database (scripts/backup-db.sh), deploy tạo một bản trước khi build
+        BACKUP_DIR = '/home/coder/rms-backups'
+        // Chat nhận thông báo pipeline (cùng bot với Alertmanager). Chat id không phải bí mật, token nằm trong credential.
+        TELEGRAM_CHAT_ID = '6822487436'
     }
 
     stages {
@@ -114,20 +118,47 @@ pipeline {
                     sh '''
                         docker run --rm --network host \
                           -v /var/run/docker.sock:/var/run/docker.sock \
-                          -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$DEPLOY_DIR" \
-                          -e GH_TOKEN -e ENV_B64 \
+                          -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$DEPLOY_DIR" -v "$BACKUP_DIR:$BACKUP_DIR" \
+                          -e GH_TOKEN -e ENV_B64 -e BACKUP_DIR \
                           docker:27-cli \
-                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" main && git reset -q --hard FETCH_HEAD && (umask 077; printf '%s' \\"\\$ENV_B64\\" | base64 -d > .env) && scripts/deploy.sh; rc=\\$?; rm -f .env; chown -R 1000:1000 .; exit \\$rc"
+                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" main && git reset -q --hard FETCH_HEAD && (umask 077; printf '%s' \\"\\$ENV_B64\\" | base64 -d > .env) && scripts/deploy.sh; rc=\\$?; rm -f .env; chown -R 1000:1000 . \\$BACKUP_DIR; exit \\$rc"
                     '''
                 }
             }
         }
     }
 
-    // Dọn sau mỗi lần chạy: image mồ côi và cache build quá 48 giờ. Không đụng container, volume, image đang dùng.
     post {
+        // Telegram: báo build lỗi ở mọi nhánh, chỉ báo thành công khi main deploy xong (tránh 3 tin cho mỗi lần push)
+        failure {
+            script { notifyTelegram("❌ Build ${env.BRANCH_NAME} #${env.BUILD_NUMBER} THẤT BẠI") }
+        }
+        success {
+            script {
+                if (env.BRANCH_NAME == 'main') {
+                    notifyTelegram("✅ Đã deploy lên production")
+                }
+            }
+        }
+        // Dọn sau mỗi lần chạy: image mồ côi và cache build quá 48 giờ. Không đụng container, volume, image đang dùng.
         always {
             sh 'docker image prune -f || true; docker builder prune -f --filter until=48h || true'
         }
+    }
+}
+
+// Gửi tin Telegram kèm commit và link build. Thiếu credential telegram-bot-token hoặc mạng lỗi thì chỉ ghi log,
+// không làm hỏng build. Token chỉ dùng trong sh nháy đơn để không lộ qua Groovy.
+def notifyTelegram(String title) {
+    try {
+        def commit = sh(script: 'git log -1 --format="%h %s"', returnStdout: true).trim()
+        withCredentials([string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN')]) {
+            withEnv(["TG_TEXT=${title}\n${commit}\n${env.BUILD_URL}console"]) {
+                sh '''curl -fsS -o /dev/null --max-time 10 "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+                      --data-urlencode chat_id="$TELEGRAM_CHAT_ID" --data-urlencode text="$TG_TEXT"'''
+            }
+        }
+    } catch (err) {
+        echo "Không gửi được Telegram: ${err.message}"
     }
 }

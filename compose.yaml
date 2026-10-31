@@ -7,6 +7,8 @@
 services:
   db:
     image: postgres:17
+    # Tự chạy lại khi container lỗi hoặc máy chủ khởi động lại (trừ khi bị dừng tay)
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME:-restaurant_core}
       POSTGRES_USER: ${DB_ADMIN_USER:-postgres}
@@ -31,6 +33,7 @@ services:
 
   app:
     build: .
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -61,6 +64,7 @@ services:
   # Frontend (React, file tĩnh). nginx máy chủ: "/" → 127.0.0.1:8083, "/api/" → app.
   web:
     build: ./frontend
+    restart: unless-stopped
     depends_on:
       - app
     ports:

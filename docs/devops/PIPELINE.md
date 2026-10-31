@@ -40,8 +40,11 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 
 Deploy (`scripts/deploy.sh`):
 - Lấy mã `main` mới nhất, build image `app` và `web`, chạy `docker compose up --no-deps --wait`.
+- Trước khi build: sao lưu database (`scripts/backup-db.sh pre-deploy`). Sao lưu lỗi thì dừng, chưa đụng gì.
 - Kiểm tra `/actuator/health` và trang web. Lỗi thì tự tag lại image cũ và chạy lại.
 - Không đụng container `db` và volume `restaurant-management-system_pgdata`.
+- `app`, `web`, `db` đặt `restart: unless-stopped`: tự chạy lại khi container lỗi hoặc máy chủ khởi động lại.
+- Telegram: build lỗi ở bất kỳ nhánh nào và mỗi lần `main` deploy xong đều có tin nhắn kèm commit và link log.
 
 Quét bảo mật (Trivy):
 - Pipeline dừng khi có lỗ hổng mức HIGH hoặc CRITICAL **đã có bản vá**, hoặc khi phát hiện secret trong mã. Lỗ hổng chưa có bản vá chỉ được bỏ qua vì chưa có cách sửa.
@@ -54,13 +57,14 @@ Quét bảo mật (Trivy):
 ## 3. Thiết lập một lần
 
 ### 3.1 Credentials trong Jenkins
-**Manage Jenkins → Credentials → (global) → Add Credentials**. Cần ba credential:
+**Manage Jenkins → Credentials → (global) → Add Credentials**. Cần các credential sau:
 
 | ID | Loại | Nội dung | Dùng cho |
 |---|---|---|---|
 | `github-token` | Secret text | Token GitHub classic, scope `repo` | Pipeline push merge và lấy mã `main` |
 | `github-branch-source` | Username with password | Username GitHub + cùng token | Multibranch quét repo và checkout |
 | `rms-prod-env` | Secret text | File `.env` production mã hóa base64 trên MỘT dòng: `base64 -w0 .env` | Deploy production |
+| `telegram-bot-token` | Secret text | Bot token Telegram (cùng bot với mục 3.5) | Báo kết quả pipeline. Thiếu thì pipeline vẫn chạy, chỉ không có tin nhắn |
 
 Quản lý secret:
 - Máy dev dùng `.env` riêng (mẫu `.env.example`, giá trị thử), không bao giờ chứa secret production.
@@ -113,9 +117,27 @@ Thiết lập bot một lần:
 
 Thử bắn một cảnh báo giả: `curl -XPOST 127.0.0.1:9093/api/v2/alerts -H 'Content-Type: application/json' -d '[{"labels":{"alertname":"Thu","severity":"warning"},"annotations":{"summary":"Thử gửi cảnh báo"}}]'`
 
+### 3.6 Sao lưu database
+`scripts/backup-db.sh` chạy `pg_dump` (định dạng custom, đã nén) vào `/home/coder/rms-backups`, quyền 600. Có hai loại, mỗi loại giữ 7 bản mới nhất:
+- `pre-deploy-*.dump`: deploy tự tạo trước mỗi lần build.
+- `daily-*.dump`: cron của user `coder`, 02:30 giờ Việt Nam (19:30 UTC). Cài một lần:
+  ```bash
+  (crontab -l 2>/dev/null; echo '30 19 * * * cd /home/coder/rms-deploy && scripts/backup-db.sh daily >> /home/coder/rms-backups/backup.log 2>&1') | crontab -
+  ```
+
+Khôi phục (xóa dữ liệu hiện tại của DB, chỉ làm khi thật sự cần):
+```bash
+docker stop restaurant-management-system-app-1
+docker exec -i restaurant-management-system-db-1 sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < /home/coder/rms-backups/<file>.dump
+docker start restaurant-management-system-app-1
+```
+Thử khôi phục an toàn vào một PostgreSQL tạm (không đụng production) để kiểm tra bản sao lưu còn dùng được: tạo container `postgres:17` không mở cổng, `createdb` rồi `pg_restore --no-owner --no-privileges`.
+
+Giới hạn: bản sao lưu nằm cùng máy chủ. Hỏng ổ đĩa thì mất cả hai. Nên định kỳ chép thư mục này ra máy khác.
+
 ## 4. Quay lui và giới hạn
 
-- Quay lui tự động chỉ áp dụng cho image `app` và `web`. Flyway là migration tiến một chiều: nếu bản mới đã migrate schema thì quay lui image không hoàn tác được DB. Vì vậy thay đổi schema phải tương thích ngược.
+- Quay lui tự động chỉ áp dụng cho image `app` và `web`. Flyway là migration tiến một chiều: nếu bản mới đã migrate schema thì quay lui image không hoàn tác được DB. Vì vậy thay đổi schema phải tương thích ngược. Nếu cần quay DB về trước khi deploy, khôi phục bản `pre-deploy-*.dump` mới nhất (mục 3.6).
 - Không có cổng duyệt tay nghĩa là lỗi logic không bị test bắt được sẽ lên production sau khi pass CI. Đây là đánh đổi của yêu cầu tự động hóa hoàn toàn.
 - `/actuator/prometheus` được permitAll để Prometheus scrape. Nginx máy chủ chỉ proxy `/api/` và `/actuator/health`, nên đường dẫn này không lộ ra internet. App chỉ lắng nghe `127.0.0.1:8081`.
 
