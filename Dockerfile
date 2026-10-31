@@ -13,4 +13,4 @@ WORKDIR /app
 COPY --from=build /src/target/restaurant-core-*.jar app.jar
 USER app
 EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-XX:+KhongTonTai", "-jar", "/app/app.jar"]
