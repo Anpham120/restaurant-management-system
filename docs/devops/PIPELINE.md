@@ -61,7 +61,13 @@ Quản lý secret:
 - Build Configuration: Jenkinsfile tại `Jenkinsfile`.
 - Scan Multibranch Pipeline Triggers: định kỳ 1 phút (đã có `pollSCM` trong Jenkinsfile).
 
-Tùy chọn: thêm webhook GitHub tới `https://jenkins.atlasplatform12.tech/github-webhook/` để chạy ngay khi push, thay cho polling.
+Webhook GitHub để chạy ngay khi push (không chờ polling):
+1. Tạo chuỗi bí mật: `openssl rand -hex 32`.
+2. Jenkins: credential Secret text ID `github-webhook-secret` chứa chuỗi đó. Ở **Manage Jenkins → System → GitHub → Advanced → Shared secrets** chọn credential này rồi Save.
+3. GitHub: **Settings → Webhooks → Add webhook**. Payload URL `https://jenkins.atlasplatform12.tech/github-webhook/`, Content type `application/json`, Secret là chuỗi ở bước 1, chỉ chọn sự kiện **push**.
+4. Kiểm tra: **Recent Deliveries** → lần `ping` phải có mã 200. Jenkins bản này từ chối webhook không có chữ ký (400), nên bắt buộc phải đặt Secret ở cả hai nơi và hai chuỗi phải giống nhau.
+
+`pollSCM` trong `Jenkinsfile` giữ ở mức 15 phút làm phương án dự phòng khi webhook lỗi.
 
 ### 3.3 Thư mục triển khai
 ```bash
