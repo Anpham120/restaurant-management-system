@@ -13,13 +13,13 @@ WEB=restaurant-management-system-web
 SHA=$(git rev-parse --short HEAD)
 echo "[deploy] commit $SHA"
 
-# Ghi nhớ image đang chạy để quay lui
-# (tên container thật là <project>-<service>-1 nên tìm theo label của compose)
-image_of() {
-  docker inspect --format '{{.Image}}' "$(docker ps -q --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" --filter "label=com.docker.compose.service=$1")" 2>/dev/null || true
+# Giữ bản đang chạy bằng tag riêng ":previous" để quay lui. Không dùng ID image: sau khi build lại, image cũ
+# mất tag và có thể bị Docker dọn, lúc đó quay lui báo "No such image".
+tag_previous() {
+  docker image inspect "$1:latest" >/dev/null 2>&1 && docker tag "$1:latest" "$1:previous"
 }
-PREV_APP=$(image_of app)
-PREV_WEB=$(image_of web)
+HAVE_PREV=0
+if tag_previous "$APP" && tag_previous "$WEB"; then HAVE_PREV=1; fi
 
 healthy() {
   curl -fsS http://127.0.0.1:8081/actuator/health | grep -q '"UP"' && curl -fsS -o /dev/null http://127.0.0.1:8083/
@@ -35,9 +35,9 @@ check() {
 
 rollback() {
   echo "[deploy] LỖI, quay lui về image trước"
-  if [ -n "$PREV_APP" ] && [ -n "$PREV_WEB" ]; then
-    docker tag "$PREV_APP" "$APP:latest"
-    docker tag "$PREV_WEB" "$WEB:latest"
+  if [ "$HAVE_PREV" = 1 ]; then
+    docker tag "$APP:previous" "$APP:latest"
+    docker tag "$WEB:previous" "$WEB:latest"
     docker compose up -d --no-deps --no-build --wait app web || echo "[deploy] quay lui cũng lỗi, cần kiểm tra tay"
   else
     echo "[deploy] chưa có image trước để quay lui (lần triển khai đầu)"
@@ -45,6 +45,8 @@ rollback() {
 }
 
 if docker compose up -d --no-deps --build --wait app web && check; then
+  # Thành công: bỏ tag quay lui để image cũ được dọn, không chiếm ổ đĩa
+  docker rmi "$APP:previous" "$WEB:previous" >/dev/null 2>&1 || true
   docker image prune -f >/dev/null
   echo "[deploy] xong: $SHA"
 else
