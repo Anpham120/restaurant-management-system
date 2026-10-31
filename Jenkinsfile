@@ -15,7 +15,8 @@ pipeline {
     }
 
     triggers {
-        pollSCM('H/2 * * * *')
+        // Webhook GitHub chạy ngay khi có push; pollSCM chỉ là dự phòng nếu webhook lỗi
+        pollSCM('H/15 * * * *')
     }
 
     environment {
