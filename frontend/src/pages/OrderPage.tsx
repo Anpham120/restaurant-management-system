@@ -10,7 +10,7 @@ import { ErrorNotice } from '../components/ErrorNotice';
 import { ReasonDialog } from '../components/ReasonDialog';
 import { InvoiceStatusChip, ItemStatusChip } from '../components/StatusChip';
 import { useToast } from '../components/Toast';
-import { elapsed, vnd } from '../lib/format';
+import { elapsed, notOpened, vnd } from '../lib/format';
 
 interface DraftLine {
   item: DailyMenuItem;
@@ -101,7 +101,7 @@ export function OrderPage() {
   const groups = useMemo(() => {
     const m = new Map<string, DailyMenuItem[]>();
     for (const it of menu.data?.items ?? []) {
-      if (!it.menuItemActive) continue;
+      if (!it.menuItemActive || notOpened(it)) continue;   // món quản lý chưa mở bán hôm nay thì không hiện
       m.set(it.categoryName, [...(m.get(it.categoryName) ?? []), it]);
     }
     return [...m.entries()];
