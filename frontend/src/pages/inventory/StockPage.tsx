@@ -48,9 +48,9 @@ export function StockPage() {
             columns={[
               { header: 'Nguyên liệu', render: (r) => <b>{r.ingredientName}</b> },
               { header: 'Dùng được', render: (r) => amount(r.usableQuantity, r.baseUnit), align: 'right' },
-              { header: 'Hỏng', render: (r) => amount(r.unusableQuantity), align: 'right' },
-              { header: 'Quá hạn', render: (r) => amount(r.expiredQuantity), align: 'right' },
-              { header: 'Tối thiểu', render: (r) => amount(r.minQuantity), align: 'right' },
+              { header: 'Hỏng', render: (r) => amount(r.unusableQuantity, r.baseUnit), align: 'right' },
+              { header: 'Quá hạn', render: (r) => amount(r.expiredQuantity, r.baseUnit), align: 'right' },
+              { header: 'Tối thiểu', render: (r) => amount(r.minQuantity, r.baseUnit), align: 'right' },
               { header: '', render: (r) => r.belowMinimum && <StatusTag tone="wait">Dưới mức tối thiểu</StatusTag> },
             ]} />
           <h2>Các lô còn hàng (thứ tự xuất trước)</h2>
@@ -60,7 +60,7 @@ export function StockPage() {
               { header: 'Nguyên liệu', render: (l) => l.ingredientName },
               { header: 'Hạn dùng', render: (l) => day(l.expiryDate) },
               { header: 'Nhập lúc', render: (l) => dateTime(l.receivedAt) },
-              { header: 'Còn', render: (l) => amount(l.quantityOnHand), align: 'right' },
+              { header: 'Còn', render: (l) => amount(l.quantityOnHand, l.baseUnit), align: 'right' },
               { header: '', render: (l) => (l.usable
                 ? <button className="btn btn-sm btn-danger" onClick={() => setMarking({ kind: 'RAW', id: l.inventoryBatchId, label: `lô #${l.inventoryBatchId} ${l.ingredientName}` })}>Đánh dấu hỏng</button>
                 : <StatusTag tone="stop">Không dùng được</StatusTag>) },
@@ -74,9 +74,9 @@ export function StockPage() {
             columns={[
               { header: 'Nguyên liệu bếp', render: (r) => <b>{r.typeName}</b> },
               { header: 'Dùng được', render: (r) => amount(r.usableOnHand, r.baseUnit), align: 'right' },
-              { header: 'Đang giữ cho món', render: (r) => amount(r.reservedQuantity), align: 'right' },
-              { header: 'Khả dụng', render: (r) => amount(r.availableQuantity), align: 'right' },
-              { header: 'Hỏng / hết hạn', render: (r) => amount(r.unusableOrExpired), align: 'right' },
+              { header: 'Đang giữ cho món', render: (r) => amount(r.reservedQuantity, r.baseUnit), align: 'right' },
+              { header: 'Khả dụng', render: (r) => amount(r.availableQuantity, r.baseUnit), align: 'right' },
+              { header: 'Hỏng / hết hạn', render: (r) => amount(r.unusableOrExpired, r.baseUnit), align: 'right' },
               { header: '', render: (r) => r.availableQuantity < r.minimumQuantity && <StatusTag tone="wait">Sắp hết</StatusTag> },
             ]} />
           <h2>Các lô tại bếp</h2>
@@ -85,8 +85,8 @@ export function StockPage() {
               { header: 'Lô bếp', render: (l) => `#${l.kitchenBatchId}` },
               { header: 'Loại', render: (l) => l.typeName },
               { header: 'Dùng trước', render: (l) => dateTime(l.usableUntil) },
-              { header: 'Còn', render: (l) => amount(l.quantityOnHand), align: 'right' },
-              { header: 'Đang giữ', render: (l) => amount(l.reservedQuantity), align: 'right' },
+              { header: 'Còn', render: (l) => amount(l.quantityOnHand, l.baseUnit), align: 'right' },
+              { header: 'Đang giữ', render: (l) => amount(l.reservedQuantity, l.baseUnit), align: 'right' },
               { header: '', render: (l) => (!l.usable ? <StatusTag tone="stop">Không dùng được</StatusTag>
                 : isManager && <button className="btn btn-sm btn-danger" onClick={() => setMarking({ kind: 'KITCHEN', id: l.kitchenBatchId, label: `lô bếp #${l.kitchenBatchId} ${l.typeName}` })}>Đánh dấu hỏng</button>) },
             ]} />
@@ -99,7 +99,7 @@ export function StockPage() {
             { header: 'Giai đoạn', render: (r) => (r.stage === 'IN_TRANSIT' ? <StatusTag tone="wait">Đã xuất, bếp chưa nhận</StatusTag> : <StatusTag>Chờ sơ chế</StatusTag>) },
             { header: 'Nguyên liệu', render: (r) => <b>{r.ingredientName}</b> },
             { header: 'Phiếu xuất', render: (r) => `#${r.stockIssueId} · dòng ${r.stockIssueItemId}` },
-            { header: 'Số lượng', render: (r) => amount(r.quantity), align: 'right' },
+            { header: 'Số lượng', render: (r) => amount(r.quantity, r.baseUnit), align: 'right' },
           ]} />
       )}
 

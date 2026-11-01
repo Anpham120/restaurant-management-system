@@ -64,6 +64,8 @@ export interface OrderItem {
   note: string | null;
   submittedAt: string;
   tableCode: string;
+  /** Lý do bếp từ chối / lý do hủy; null với trạng thái khác. */
+  statusReason: string | null;
 }
 
 export interface OrderResponse {
@@ -278,6 +280,7 @@ export interface Issue extends IssueHeader {
     fulfillmentMode: 'DIRECT' | 'PREPARE';
     wipRemainingQuantity: number | null;
     kitchenBatchId: number | null;
+    baseUnit: string;
   }[];
 }
 
@@ -383,6 +386,7 @@ export interface HandoverRow {
   stockIssueItemId: number;
   inventoryBatchId: number;
   quantity: number;
+  baseUnit: string;
 }
 
 export interface UnusableLotRow {
@@ -406,6 +410,7 @@ export interface StockHistoryRow {
   quantityDelta: number;
   reference: string | null;
   reason: string | null;
+  baseUnit: string;
 }
 
 export interface PreparationYieldRow {
@@ -421,6 +426,7 @@ export interface PreparationYieldRow {
   yieldRatio: number;
   lossRatio: number;
   lossReason: string | null;
+  baseUnit: string;
 }
 
 export interface RawLot {
@@ -432,6 +438,7 @@ export interface RawLot {
   receivedAt: string;
   quantityOnHand: number;
   usable: boolean;
+  baseUnit: string;
 }
 
 export interface KitchenLot {
@@ -443,6 +450,7 @@ export interface KitchenLot {
   usableUntil: string | null;
   usable: boolean;
   directIssueItemId: number | null;
+  baseUnit: string;
 }
 
 // ---------- nhân sự

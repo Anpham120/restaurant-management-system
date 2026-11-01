@@ -36,6 +36,8 @@ export function OrderPage() {
   const [cancelling, setCancelling] = useState<OrderItem | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
+  // Cảnh báo vượt suất của lần gửi gần nhất (QĐ-4): đợt món vẫn được ghi, bếp có thể từ chối món vượt
+  const [quotaWarnings, setQuotaWarnings] = useState<SubmitBatchResponse['warnings']>([]);
 
   const order = useQuery({
     queryKey: ['order', orderId],
@@ -65,7 +67,8 @@ export function OrderPage() {
     onSuccess: (res) => {
       setDraft([]);
       setRequestKey(newRequestKey());
-      toast(res.replayed ? 'Đợt này đã được gửi trước đó' : 'Đã gửi bếp');
+      setQuotaWarnings(res.warnings ?? []);
+      toast(res.replayed ? 'Đợt này đã được gửi trước đó' : res.warnings?.length ? 'Đã gửi bếp, có món vượt số suất' : 'Đã gửi bếp');
       refresh();
     },
   });
@@ -106,6 +109,8 @@ export function OrderPage() {
     }
     return [...m.entries()];
   }, [menu.data]);
+  // Suất còn lại mới nhất (thực đơn tự làm mới), để cảnh báo ngay trong phiếu trước khi gửi bếp
+  const remainingNow = useMemo(() => new Map((menu.data?.items ?? []).map((i) => [i.dailyMenuItemId, i.remaining])), [menu.data]);
 
   if (order.isLoading) return <main className="main center-screen">Đang tải phiếu…</main>;
   if (order.error || !order.data) {
@@ -205,7 +210,10 @@ export function OrderPage() {
           {draft.length > 0 && (
             <div className="ticket-section">
               <h3>Món sắp gửi bếp</h3>
-              {draft.map((d) => (
+              {draft.map((d) => {
+                const id = d.item.dailyMenuItemId;
+                const left = remainingNow.has(id) ? remainingNow.get(id) : d.item.remaining;   // null = không giới hạn
+                return (
                 <div className="line" key={d.item.dailyMenuItemId}>
                   <div className="stepper" aria-label={`Số lượng ${d.item.name}`}>
                     <button type="button" onClick={() => setQty(d.item.dailyMenuItemId, d.quantity - 1)} aria-label="Bớt">−</button>
@@ -214,16 +222,30 @@ export function OrderPage() {
                   </div>
                   <div className="what">
                     <span>{d.item.name}</span>
+                    {left != null && d.quantity > left && (
+                      <span className="chip chip-wait">Chỉ còn {left} suất, bếp có thể từ chối phần vượt</span>
+                    )}
                     <input className="input" style={{ minHeight: 34 }} placeholder="Ghi chú cho bếp" maxLength={255} value={d.note}
                            onChange={(e) => setDraft((all) => all.map((x) => (x === d ? { ...x, note: e.target.value } : x)))} />
                   </div>
                   <span className="num">{vnd(d.item.price * d.quantity)}</span>
                 </div>
-              ))}
+                );
+              })}
               <ErrorNotice error={submit.error} />
               <button type="button" className="btn btn-primary btn-block" disabled={submit.isPending} onClick={() => submit.mutate()}>
                 {submit.isPending ? 'Đang gửi…' : `Gửi bếp · ${vnd(draftTotal)}`}
               </button>
+            </div>
+          )}
+
+          {quotaWarnings.length > 0 && (
+            <div className="notice notice-warn stack" role="alert">
+              <b>Đã gửi bếp, nhưng có món vượt số suất còn lại. Bếp sẽ từ chối nếu không đủ suất:</b>
+              {quotaWarnings.map((w, k) => (
+                <span key={k}>{w.itemName}: gọi {w.quantity}, chỉ còn {w.remaining} suất</span>
+              ))}
+              <button type="button" className="btn btn-sm" onClick={() => setQuotaWarnings([])}>Đã hiểu</button>
             </div>
           )}
 
@@ -239,6 +261,7 @@ export function OrderPage() {
                     <span>{i.itemName}</span>
                     {i.note && <span className="muted" style={{ fontSize: 'var(--step--1)' }}>{i.note}</span>}
                     <span><ItemStatusChip status={i.status} /></span>
+                    {i.statusReason && <span className="muted" style={{ fontSize: 'var(--step--1)' }}>Lý do: {i.statusReason}</span>}
                   </div>
                   <div className="actions">
                     {canOrder && i.status === 'READY' && (

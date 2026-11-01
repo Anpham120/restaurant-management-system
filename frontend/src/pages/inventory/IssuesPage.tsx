@@ -83,9 +83,9 @@ export function IssuesPage() {
               {d.lines.map((l) => (
                 <div key={l.id} className="row-between" style={{ borderTop: '1px dashed var(--line)', paddingTop: '0.5rem', fontSize: 'var(--step--1)' }}>
                   <span><b>{l.ingredientName}</b> · lô #{l.inventoryBatchId}{l.lotCode && ` (${l.lotCode})`}<br />
-                    <span className="muted">{l.fulfillmentMode === 'DIRECT' ? `Dùng thẳng${l.kitchenBatchId ? ` → lô bếp #${l.kitchenBatchId}` : ''}` : `Chờ sơ chế · dòng ${l.id}${l.wipRemainingQuantity != null ? ` · còn ${amount(l.wipRemainingQuantity)}` : ''}`}</span>
+                    <span className="muted">{l.fulfillmentMode === 'DIRECT' ? `Dùng thẳng${l.kitchenBatchId ? ` → lô bếp #${l.kitchenBatchId}` : ''}` : `Chờ sơ chế · dòng ${l.id}${l.wipRemainingQuantity != null ? ` · còn ${amount(l.wipRemainingQuantity, l.baseUnit)}` : ''}`}</span>
                   </span>
-                  <span className="num">{amount(l.quantity)}</span>
+                  <span className="num">{amount(l.quantity, l.baseUnit)}</span>
                 </div>
               ))}
               <div className="toolbar">
@@ -111,10 +111,10 @@ export function IssuesPage() {
                 <Field label="Lô trong kho">
                   <select className="input" required value={l.batchId} onChange={(e) => setLine(i, { batchId: e.target.value ? Number(e.target.value) : '' })}>
                     <option value="">Chọn…</option>
-                    {usableLots.map((x) => <option key={x.inventoryBatchId} value={x.inventoryBatchId}>{x.ingredientName} · lô #{x.inventoryBatchId}{x.expiryDate ? ` · hạn ${day(x.expiryDate)}` : ''} · còn {amount(x.quantityOnHand)}</option>)}
+                    {usableLots.map((x) => <option key={x.inventoryBatchId} value={x.inventoryBatchId}>{x.ingredientName} · lô #{x.inventoryBatchId}{x.expiryDate ? ` · hạn ${day(x.expiryDate)}` : ''} · còn {amount(x.quantityOnHand, x.baseUnit)}</option>)}
                   </select>
                 </Field>
-                <Field label="Số lượng"><input className="input" type="number" min={0} max={lot?.quantityOnHand} step="any" required value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} /></Field>
+                <Field label={lot ? `Số lượng (${lot.baseUnit})` : 'Số lượng'}><input className="input" type="number" min={0} max={lot?.quantityOnHand} step="any" required value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} /></Field>
                 <Field label="Cách dùng">
                   <select className="input" value={l.mode} onChange={(e) => setLine(i, { mode: e.target.value as Line['mode'] })}>
                     <option value="DIRECT">Dùng thẳng</option><option value="PREPARE">Chờ sơ chế</option>

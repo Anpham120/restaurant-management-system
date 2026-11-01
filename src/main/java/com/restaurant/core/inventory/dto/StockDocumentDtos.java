@@ -77,7 +77,8 @@ public final class StockDocumentDtos {
     }
 
     public record IssueLineView(long id, long inventoryBatchId, long ingredientId, String ingredientName, String lotCode,
-                                BigDecimal quantity, String fulfillmentMode, BigDecimal wipRemainingQuantity, Long kitchenBatchId) {
+                                BigDecimal quantity, String fulfillmentMode, BigDecimal wipRemainingQuantity, Long kitchenBatchId,
+                                String baseUnit) {
     }
 
     // ---------- Phiếu kiểm kê

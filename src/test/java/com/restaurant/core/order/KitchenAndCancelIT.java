@@ -20,7 +20,7 @@ class KitchenAndCancelIT extends OrderApiTestBase {
         long item = submitOne(openTable()[2], data.dish(10000, null, null).dailyMenuItemId(), 1);
         postJson(kitchen, "/api/order-items/{id}/reject", "{\"reason\":\"\"}", item).andExpect(status().isBadRequest());
         postJson(kitchen, "/api/order-items/{id}/reject", reason("Hết món"), item).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("REJECTED"));
+                .andExpect(jsonPath("$.data.status").value("REJECTED")).andExpect(jsonPath("$.data.statusReason").value("Hết món"));
         postEmpty(kitchen, "/api/order-items/{id}/accept", item).andExpect(status().isConflict());
     }
 
@@ -69,7 +69,7 @@ class KitchenAndCancelIT extends OrderApiTestBase {
         postEmpty(kitchen, "/api/order-items/{id}/accept", item);
         postJson(waiter, "/api/order-items/{id}/cancel", "{}", item).andExpect(status().isBadRequest());
         postJson(waiter, "/api/order-items/{id}/cancel", reason("Khách đổi món"), item).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("CANCELLED"));
+                .andExpect(jsonPath("$.data.status").value("CANCELLED")).andExpect(jsonPath("$.data.statusReason").value("Khách đổi món"));
         postJson(waiter, "/api/order-items/{id}/cancel", reason("lần 2"), item).andExpect(status().isConflict());
         assertThat(data.kitchenReserved(dish.kitchenTypeId())).isEqualByComparingTo("0");
         assertThat(data.kitchenOnHand(dish.kitchenTypeId())).isEqualByComparingTo("5");

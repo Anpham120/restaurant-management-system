@@ -33,12 +33,12 @@ export function ReturnsPage() {
   const keys = [[path], ...STOCK_KEYS];
 
   const wip = (handover.data ?? []).filter((r) => r.stage === 'WIP');
-  const options: { value: Source; label: string; max: number }[] = [
+  const options: { value: Source; label: string; max: number; unit: string }[] = [
     ...(kitchenLots.data ?? [])
       .filter((l) => tab === 'adjustments' || l.directIssueItemId != null)
-      .map((l) => ({ value: `kitchen:${l.kitchenBatchId}`, label: `Bếp · ${l.typeName} · lô #${l.kitchenBatchId} · còn ${amount(l.quantityOnHand - l.reservedQuantity)} (không tính phần đang giữ)`, max: l.quantityOnHand - l.reservedQuantity })),
-    ...wip.map((r) => ({ value: `wip:${r.stockIssueItemId}`, label: `Chờ sơ chế · ${r.ingredientName} · dòng xuất ${r.stockIssueItemId} · còn ${amount(r.quantity)}`, max: r.quantity })),
-    ...(tab === 'adjustments' ? (rawLots.data ?? []).map((l) => ({ value: `raw:${l.inventoryBatchId}`, label: `Kho · ${l.ingredientName} · lô #${l.inventoryBatchId} · còn ${amount(l.quantityOnHand)}`, max: l.quantityOnHand })) : []),
+      .map((l) => ({ value: `kitchen:${l.kitchenBatchId}`, label: `Bếp · ${l.typeName} · lô #${l.kitchenBatchId} · còn ${amount(l.quantityOnHand - l.reservedQuantity, l.baseUnit)} (không tính phần đang giữ)`, unit: l.baseUnit, max: l.quantityOnHand - l.reservedQuantity })),
+    ...wip.map((r) => ({ value: `wip:${r.stockIssueItemId}`, label: `Chờ sơ chế · ${r.ingredientName} · dòng xuất ${r.stockIssueItemId} · còn ${amount(r.quantity, r.baseUnit)}`, unit: r.baseUnit, max: r.quantity })),
+    ...(tab === 'adjustments' ? (rawLots.data ?? []).map((l) => ({ value: `raw:${l.inventoryBatchId}`, label: `Kho · ${l.ingredientName} · lô #${l.inventoryBatchId} · còn ${amount(l.quantityOnHand, l.baseUnit)}`, unit: l.baseUnit, max: l.quantityOnHand })) : []),
   ];
 
   const create = useAction(
@@ -148,7 +148,7 @@ export function ReturnsPage() {
                     {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </Field>
-                <Field label="Số lượng"><input className="input" type="number" min={0} max={opt?.max} step="any" required value={l.quantity} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, quantity: e.target.value } : x)))} /></Field>
+                <Field label={opt ? `Số lượng (${opt.unit})` : 'Số lượng'}><input className="input" type="number" min={0} max={opt?.max} step="any" required value={l.quantity} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, quantity: e.target.value } : x)))} /></Field>
                 {tab === 'adjustments' && <Field label="Ghi chú"><input className="input" maxLength={255} value={l.note} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))} /></Field>}
                 <button type="button" className="btn btn-quiet" disabled={lines.length === 1} onClick={() => setLines(lines.filter((_, j) => j !== i))}>Bỏ</button>
               </div>

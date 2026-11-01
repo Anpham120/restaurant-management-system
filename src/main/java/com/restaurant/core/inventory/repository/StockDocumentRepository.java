@@ -108,7 +108,7 @@ public class StockDocumentRepository {
     public List<IssueLineView> findIssueLines(long issueId) {
         return jdbc.sql("""
                         SELECT l.id, l.inventory_batch_id, s.ingredient_id, g.name AS ingredient_name, s.lot_code, l.quantity,
-                               l.fulfillment_mode, l.wip_remaining_quantity, k.id AS kitchen_batch_id
+                               l.fulfillment_mode, l.wip_remaining_quantity, k.id AS kitchen_batch_id, g.base_unit
                           FROM stock_issue_items l
                           JOIN inventory_batches b ON b.id = l.inventory_batch_id
                           JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id

@@ -111,7 +111,8 @@ class InventoryIT extends OrderApiTestBase {
 
         getAs(manager, "/api/inventory/raw-stock").andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[?(@.ingredientId == " + rice + ")].usableQuantity").value(hasItem(10000.0)));
-        getAs(manager, "/api/inventory/raw-lots?ingredientId=" + rice).andExpect(jsonPath("$.data.length()").value(1));
+        getAs(manager, "/api/inventory/raw-lots?ingredientId=" + rice).andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].baseUnit").value("g"));
     }
 
     @Test
@@ -133,13 +134,15 @@ class InventoryIT extends OrderApiTestBase {
         postEmpty(kitchen, "/api/stock-issues/{id}/receive", issue).andExpect(status().isConflict());   // chưa xuất
         postEmpty(manager, "/api/stock-issues/{id}/issue", issue).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("ISSUED"));
         assertThat(rawOnHand(batch).intValue()).isEqualTo(5000);
-        getAs(kitchen, "/api/inventory/handover").andExpect(jsonPath("$.data[*].stockIssueId", hasItem((int) issue)));
+        getAs(kitchen, "/api/inventory/handover").andExpect(jsonPath("$.data[*].stockIssueId", hasItem((int) issue)))
+                .andExpect(jsonPath("$.data[?(@.stockIssueId == " + issue + ")].baseUnit", hasItem("g")));
         ResultActions received = postEmpty(kitchen, "/api/stock-issues/{id}/receive", issue).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("RECEIVED"));
         List<Number> kitchenBatches = read(received, "$.data.lines[?(@.fulfillmentMode == 'DIRECT')].kitchenBatchId");
         long directBatch = kitchenBatches.get(0).longValue();
         postJson(manager, "/api/stock-issues/{id}/cancel", reason("nhầm"), issue).andExpect(status().isConflict());
-        getAs(kitchen, "/api/inventory/kitchen-lots?typeId=" + whole).andExpect(jsonPath("$.data[0].quantityOnHand").value(2000.0));
+        getAs(kitchen, "/api/inventory/kitchen-lots?typeId=" + whole).andExpect(jsonPath("$.data[0].quantityOnHand").value(2000.0))
+                .andExpect(jsonPath("$.data[0].baseUnit").value("g"));
 
         // sơ chế 3000 g WIP → 2500 g cá cắt, hao hụt 500
         String prepBody = "{\"requestKey\":\"" + key() + "\",\"stockIssueItemId\":" + prepLine.get(0) + ",\"inputQuantity\":3000,"
