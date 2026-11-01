@@ -1,0 +1,7 @@
+# Chỉ dùng cho staging (scripts/staging-test.sh), ghép sau compose.yaml.
+# Staging chạy profile prod như production. Database staging luôn mới tạo từ docs/04 + 09 + 10, chưa có lịch sử Flyway,
+# nên cho phép baseline ở đây. Biến SPRING_* ghi đè được application-prod.yml; production không dùng file này.
+services:
+  app:
+    environment:
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"

@@ -43,6 +43,9 @@ Deploy (`scripts/deploy.sh`):
 - Trước khi build: sao lưu database (`scripts/backup-db.sh pre-deploy`). Sao lưu lỗi thì dừng, chưa đụng gì.
 - Kiểm tra `/actuator/health` và trang web. Lỗi thì tự tag lại image cũ và chạy lại.
 - Không đụng container `db` và volume `restaurant-management-system_pgdata`.
+- Profile Spring luôn là `prod`: `deploy.sh` export `SPRING_PROFILES_ACTIVE=prod`, ghi đè giá trị trong `.env`. Profile `prod` cấm Flyway tự baseline; database production đã có lịch sử Flyway nên không ảnh hưởng.
+- Staging cũng chạy `prod` để kiểm tra đúng cấu hình production. Riêng staging ghép thêm `compose.staging.yaml` để cho phép baseline trên database mới tạo. Production không dùng file này.
+- `staging-test.sh` ghi đè rồi xóa `.env` ở thư mục đang chạy. Script tự dừng nếu thấy `.env` không phải do nó tạo, nên đừng chạy nó trong thư mục dự án hay thư mục deploy.
 - `app`, `web`, `db` đặt `restart: unless-stopped`: tự chạy lại khi container lỗi hoặc máy chủ khởi động lại.
 - Telegram: build lỗi ở bất kỳ nhánh nào và mỗi lần `main` deploy xong đều có tin nhắn kèm commit và link log.
 
