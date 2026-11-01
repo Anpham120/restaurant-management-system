@@ -21,7 +21,12 @@ public class OrderRepository {
 
     private static final String ITEM_SELECT = """
             SELECT oi.id, b.order_id, oi.order_batch_id AS batch_id, oi.daily_menu_item_id, oi.item_name_snapshot AS item_name,
-                   oi.quantity, oi.unit_price, oi.status, oi.has_stock_exception, oi.note, b.submitted_at, t.code AS table_code
+                   oi.quantity, oi.unit_price, oi.status, oi.has_stock_exception, oi.note, b.submitted_at, t.code AS table_code,
+                   CASE WHEN oi.status IN ('REJECTED', 'CANCELLED') THEN
+                        (SELECT e.reason FROM order_item_events e
+                          WHERE e.order_item_id = oi.id AND e.to_status = oi.status
+                          ORDER BY e.created_at DESC, e.id DESC LIMIT 1)
+                   END AS status_reason
               FROM order_items oi
               JOIN order_batches b ON b.id = oi.order_batch_id
               JOIN orders o ON o.id = b.order_id

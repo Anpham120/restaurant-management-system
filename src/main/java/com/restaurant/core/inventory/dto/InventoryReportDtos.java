@@ -15,7 +15,7 @@ public final class InventoryReportDtos {
     }
 
     public record HandoverRow(String stage, long ingredientId, String ingredientName, long stockIssueId, long stockIssueItemId,
-                              long inventoryBatchId, BigDecimal quantity) {
+                              long inventoryBatchId, BigDecimal quantity, String baseUnit) {
     }
 
     public record KitchenStockRow(long kitchenIngredientTypeId, String typeName, String baseUnit, BigDecimal usableOnHand,
@@ -28,21 +28,22 @@ public final class InventoryReportDtos {
 
     public record StockHistoryRow(long movementId, Instant createdAt, LocalDate businessDate, String category, String movementType,
                                   String location, long ingredientId, String ingredientName, BigDecimal quantityDelta,
-                                  String reference, String reason) {
+                                  String reference, String reason, String baseUnit) {
     }
 
     public record PreparationYieldRow(long preparationId, LocalDate businessDate, Instant preparedAt, long ingredientId,
                                       String ingredientName, long inventoryBatchId, String lotCode, long preparedById,
                                       String preparedBy, BigDecimal inputQuantity, BigDecimal outputQuantity, BigDecimal lossQuantity,
-                                      BigDecimal yieldRatio, BigDecimal lossRatio, String lossReason) {
+                                      BigDecimal yieldRatio, BigDecimal lossRatio, String lossReason, String baseUnit) {
     }
 
     public record RawLotRow(long inventoryBatchId, long ingredientId, String ingredientName, String lotCode, LocalDate expiryDate,
-                            Instant receivedAt, BigDecimal quantityOnHand, boolean usable) {
+                            Instant receivedAt, BigDecimal quantityOnHand, boolean usable, String baseUnit) {
     }
 
     /** directIssueItemId: dòng xuất DIRECT sinh ra lô (null nếu lô từ sơ chế) — cần khi hoàn trả về kho. */
     public record KitchenLotRow(long kitchenBatchId, long kitchenIngredientTypeId, String typeName, BigDecimal quantityOnHand,
-                                BigDecimal reservedQuantity, Instant usableUntil, boolean usable, Long directIssueItemId) {
+                                BigDecimal reservedQuantity, Instant usableUntil, boolean usable, Long directIssueItemId,
+                                String baseUnit) {
     }
 }

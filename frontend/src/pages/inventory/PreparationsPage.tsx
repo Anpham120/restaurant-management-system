@@ -94,15 +94,15 @@ export function PreparationsPage() {
 
       <FormModal open={creating} wide title="Lập phiếu sơ chế" submitLabel="Lưu nháp" busy={create.isPending} error={create.error}
                  onSubmit={() => create.mutate(undefined)} onClose={() => setCreating(false)}
-                 description={inQty > 0 ? `Hao hụt dự kiến: ${amount(Math.max(0, inQty - outTotal))} (${Math.round(Math.max(0, inQty - outTotal) / inQty * 100)}%)` : 'Hạn dùng thành phẩm để trống = tự tính theo loại bếp, không vượt hạn lô gốc.'}>
+                 description={inQty > 0 ? `Hao hụt dự kiến: ${amount(Math.max(0, inQty - outTotal), src?.baseUnit)} (${Math.round(Math.max(0, inQty - outTotal) / inQty * 100)}%)` : 'Hạn dùng thành phẩm để trống = tự tính theo loại bếp, không vượt hạn lô gốc.'}>
         <div className="form-grid">
           <Field label="Hàng chờ sơ chế" span>
             <select className="input" required value={wipLine} onChange={(e) => setWipLine(e.target.value ? Number(e.target.value) : '')}>
               <option value="">Chọn…</option>
-              {wip.map((r) => <option key={r.stockIssueItemId} value={r.stockIssueItemId}>{r.ingredientName} · phiếu xuất #{r.stockIssueId} · còn {amount(r.quantity)}</option>)}
+              {wip.map((r) => <option key={r.stockIssueItemId} value={r.stockIssueItemId}>{r.ingredientName} · phiếu xuất #{r.stockIssueId} · còn {amount(r.quantity, r.baseUnit)}</option>)}
             </select>
           </Field>
-          <Field label="Lượng đem sơ chế"><input className="input" type="number" min={0} max={src?.quantity} step="any" required value={input} onChange={(e) => setInput(e.target.value)} /></Field>
+          <Field label={src ? `Lượng đem sơ chế (${src.baseUnit})` : 'Lượng đem sơ chế'}><input className="input" type="number" min={0} max={src?.quantity} step="any" required value={input} onChange={(e) => setInput(e.target.value)} /></Field>
           <Field label="Lý do hao hụt"><input className="input" maxLength={255} value={lossReason} onChange={(e) => setLossReason(e.target.value)} placeholder="Gọt vỏ, lọc xương…" /></Field>
         </div>
         <div className="lines-editor">
@@ -114,7 +114,7 @@ export function PreparationsPage() {
                   {outTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </Field>
-              <Field label="Số lượng"><input className="input" type="number" min={0} step="any" required value={o.qty} onChange={(e) => setOuts(outs.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)))} /></Field>
+              <Field label={src ? `Số lượng (${src.baseUnit})` : 'Số lượng'}><input className="input" type="number" min={0} step="any" required value={o.qty} onChange={(e) => setOuts(outs.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)))} /></Field>
               <Field label="Dùng trước"><input className="input" type="datetime-local" value={o.usableUntil} onChange={(e) => setOuts(outs.map((x, j) => (j === i ? { ...x, usableUntil: e.target.value } : x)))} /></Field>
               <button type="button" className="btn btn-quiet" disabled={outs.length === 1} onClick={() => setOuts(outs.filter((_, j) => j !== i))}>Bỏ</button>
             </div>

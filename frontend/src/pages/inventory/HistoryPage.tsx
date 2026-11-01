@@ -55,7 +55,7 @@ export function HistoryPage() {
             { header: 'Loại', render: (r) => movementTypeLabel[r.movementType] ?? r.movementType },
             { header: 'Nơi', render: (r) => ({ RAW: 'Kho', WIP: 'Chờ sơ chế', KITCHEN: 'Bếp' })[r.location] ?? r.location },
             { header: 'Nguyên liệu', render: (r) => r.ingredientName },
-            { header: 'Thay đổi', render: (r) => <span style={{ color: r.quantityDelta < 0 ? 'var(--chili)' : 'var(--jade)' }}>{r.quantityDelta > 0 ? '+' : ''}{amount(r.quantityDelta)}</span>, align: 'right' },
+            { header: 'Thay đổi', render: (r) => <span style={{ color: r.quantityDelta < 0 ? 'var(--chili)' : 'var(--jade)' }}>{r.quantityDelta > 0 ? '+' : ''}{amount(r.quantityDelta, r.baseUnit)}</span>, align: 'right' },
             { header: 'Chứng từ', render: (r) => r.reference ?? '—' },
             { header: 'Lý do', render: (r) => r.reason ?? '' },
           ]} />
@@ -65,9 +65,9 @@ export function HistoryPage() {
             { header: 'Ngày', render: (r) => day(r.businessDate) },
             { header: 'Nguyên liệu', render: (r) => <><b>{r.ingredientName}</b>{r.lotCode && <div className="muted">lô {r.lotCode}</div>}</> },
             { header: 'Người làm', render: (r) => r.preparedBy },
-            { header: 'Đầu vào', render: (r) => amount(r.inputQuantity), align: 'right' },
-            { header: 'Thành phẩm', render: (r) => amount(r.outputQuantity), align: 'right' },
-            { header: 'Hao hụt', render: (r) => `${amount(r.lossQuantity)} (${Math.round(r.lossRatio * 100)}%)`, align: 'right' },
+            { header: 'Đầu vào', render: (r) => amount(r.inputQuantity, r.baseUnit), align: 'right' },
+            { header: 'Thành phẩm', render: (r) => amount(r.outputQuantity, r.baseUnit), align: 'right' },
+            { header: 'Hao hụt', render: (r) => `${amount(r.lossQuantity, r.baseUnit)} (${Math.round(r.lossRatio * 100)}%)`, align: 'right' },
             { header: 'Lý do', render: (r) => r.lossReason ?? '' },
           ]} />
       )}

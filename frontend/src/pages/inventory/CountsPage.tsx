@@ -26,9 +26,9 @@ export function CountsPage() {
   const keys = [['counts'], ['count'], ...STOCK_KEYS];
 
   const options = [
-    ...(raw.data ?? []).map((l) => ({ value: `raw:${l.inventoryBatchId}`, label: `Kho · ${l.ingredientName} · lô #${l.inventoryBatchId}`, book: l.quantityOnHand })),
-    ...(handover.data ?? []).filter((r) => r.stage === 'WIP').map((r) => ({ value: `wip:${r.stockIssueItemId}`, label: `Chờ sơ chế · ${r.ingredientName} · dòng ${r.stockIssueItemId}`, book: r.quantity })),
-    ...(kitchen.data ?? []).map((l) => ({ value: `kitchen:${l.kitchenBatchId}`, label: `Bếp · ${l.typeName} · lô #${l.kitchenBatchId}`, book: l.quantityOnHand })),
+    ...(raw.data ?? []).map((l) => ({ value: `raw:${l.inventoryBatchId}`, label: `Kho · ${l.ingredientName} · lô #${l.inventoryBatchId}`, book: l.quantityOnHand, unit: l.baseUnit })),
+    ...(handover.data ?? []).filter((r) => r.stage === 'WIP').map((r) => ({ value: `wip:${r.stockIssueItemId}`, label: `Chờ sơ chế · ${r.ingredientName} · dòng ${r.stockIssueItemId}`, book: r.quantity, unit: r.baseUnit })),
+    ...(kitchen.data ?? []).map((l) => ({ value: `kitchen:${l.kitchenBatchId}`, label: `Bếp · ${l.typeName} · lô #${l.kitchenBatchId}`, book: l.quantityOnHand, unit: l.baseUnit })),
   ];
 
   const create = useAction(
@@ -86,13 +86,13 @@ export function CountsPage() {
             const opt = options.find((o) => o.value === l.source);
             return (
               <div className="le-row" key={i} style={{ gridTemplateColumns: 'minmax(0,3fr) minmax(0,1fr) minmax(0,1.5fr) auto' }}>
-                <Field label={opt ? `Lô (sổ: ${amount(opt.book)})` : 'Lô'}>
+                <Field label={opt ? `Lô (sổ: ${amount(opt.book, opt.unit)})` : 'Lô'}>
                   <select className="input" required value={l.source} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, source: e.target.value } : x)))}>
                     <option value="">Chọn…</option>
                     {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </Field>
-                <Field label="Đếm thực tế"><input className="input" type="number" min={0} step="any" required value={l.actual} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, actual: e.target.value } : x)))} /></Field>
+                <Field label={opt ? `Đếm thực tế (${opt.unit})` : 'Đếm thực tế'}><input className="input" type="number" min={0} step="any" required value={l.actual} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, actual: e.target.value } : x)))} /></Field>
                 <Field label="Lý do chênh lệch"><input className="input" maxLength={255} value={l.reason} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, reason: e.target.value } : x)))} /></Field>
                 <button type="button" className="btn btn-quiet" disabled={lines.length === 1} onClick={() => setLines(lines.filter((_, j) => j !== i))}>Bỏ</button>
               </div>
