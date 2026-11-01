@@ -5,13 +5,23 @@
 set -euo pipefail
 
 export COMPOSE_PROJECT_NAME=rms-staging
+# compose.staging.yaml: cho phép baseline Flyway trên database staging mới tạo
+export COMPOSE_FILE=compose.yaml:compose.staging.yaml
 APP_URL=http://127.0.0.1:8091
 WEB_URL=http://127.0.0.1:8093
 
 rand() { head -c 48 /dev/urandom | base64 | tr -d '/+=\n' | cut -c1-"$1"; }
 SMOKE_PASSWORD=$(rand 20)
 
+# Script ghi đè rồi xóa .env. Không chạy ở thư mục có .env thật (thư mục dự án của dev, thư mục deploy).
+MARKER='# rms-staging: file tự sinh, bị xóa khi chạy xong'
+if [ -f .env ] && [ "$(head -1 .env)" != "$MARKER" ]; then
+  echo "[staging] DỪNG: thư mục này có .env không phải do staging tạo. Chạy trong thư mục staging riêng."
+  exit 1
+fi
+
 cat > .env <<EOF
+$MARKER
 DB_NAME=restaurant_core
 DB_PORT=5439
 DB_ADMIN_USER=postgres
@@ -20,11 +30,12 @@ DB_APP_USER=rms_api
 DB_APP_PASSWORD=$(rand 24)
 APP_PORT=8091
 WEB_PORT=8093
-FLYWAY_BASELINE_ON_MIGRATE=true
+SPRING_PROFILES_ACTIVE=prod
 JWT_SECRET=$(rand 48)
 CORS_ALLOWED_ORIGINS=$WEB_URL
 EOF
 
+# Đặt trap sau khi kiểm tra .env, để lần dừng ở trên không xóa nhầm file thật
 cleanup() {
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
   rm -f .env

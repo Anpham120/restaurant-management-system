@@ -6,6 +6,8 @@ set -euo pipefail
 
 # Cố định tên project để dùng đúng volume pgdata đang có (mặc định compose lấy theo tên thư mục)
 export COMPOSE_PROJECT_NAME=restaurant-management-system
+# Production luôn chạy profile prod. Biến shell được compose ưu tiên hơn .env, nên giá trị trong credential không ghi đè được.
+export SPRING_PROFILES_ACTIVE=prod
 APP=restaurant-management-system-app
 WEB=restaurant-management-system-web
 
