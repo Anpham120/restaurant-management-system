@@ -144,3 +144,8 @@ export const movementTypeLabel: Record<string, string> = {
   WASTE: 'Hủy hàng',
   COUNT_ADJUST: 'Chênh lệch kiểm kê',
 };
+
+/** Hạn mức 0 và chưa bán suất nào: món có trong thực đơn ngày nhưng quản lý chưa mở bán. */
+export function notOpened(i: { quotaTotal: number | null; quotaUsed: number }): boolean {
+  return i.quotaTotal === 0 && i.quotaUsed === 0;
+}

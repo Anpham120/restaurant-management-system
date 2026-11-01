@@ -108,6 +108,23 @@ export interface DailyMenuResponse {
   items: DailyMenuItem[];
 }
 
+export interface FillQuotasResponse {
+  sourceDate: string;
+  updated: number;
+  menu: DailyMenuResponse;
+}
+
+/** Số lượng theo đơn vị gốc của nguyên liệu. planned null khi có món không giới hạn suất. */
+export interface IngredientUsageRow {
+  kitchenIngredientTypeId: number;
+  typeName: string;
+  baseUnit: string;
+  planned: number | null;
+  hasUnlimited: boolean;
+  used: number;
+  onHandAtEnd: number;
+}
+
 export type InvoiceStatus = 'DRAFT' | 'PAYMENT_PENDING' | 'PAID' | 'UNCOLLECTED' | 'WAIVED';
 
 export interface InvoiceResponse {

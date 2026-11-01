@@ -1,6 +1,7 @@
 package com.restaurant.core.menu.controller;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -23,7 +24,11 @@ import com.restaurant.core.menu.dto.DailyMenuItemRequest;
 import com.restaurant.core.menu.dto.DailyMenuItemResponse;
 import com.restaurant.core.menu.dto.DailyMenuRequest;
 import com.restaurant.core.menu.dto.DailyMenuResponse;
+import com.restaurant.core.menu.dto.FillQuotasRequest;
+import com.restaurant.core.menu.dto.FillQuotasResponse;
+import com.restaurant.core.menu.dto.IngredientUsageRow;
 import com.restaurant.core.menu.dto.QuotaRequest;
+import com.restaurant.core.menu.dto.QuotasRequest;
 import com.restaurant.core.menu.dto.ReasonRequest;
 import com.restaurant.core.menu.service.DailyMenuService;
 import com.restaurant.core.security.CurrentUser;
@@ -64,7 +69,28 @@ public class DailyMenuController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<DailyMenuResponse> create(@Valid @RequestBody DailyMenuRequest request) {
-        return ApiResponse.ok(service.create(request.businessDate()));
+        return ApiResponse.ok(service.create(request.businessDate(), Boolean.TRUE.equals(request.fromCatalog())));
+    }
+
+    /** Nhập số suất cho nhiều món một lần (màn thực đơn ngày sửa trực tiếp trên bảng). */
+    @PutMapping("/daily-menus/{id}/quotas")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<DailyMenuResponse> updateQuotas(@PathVariable @Positive long id, @Valid @RequestBody QuotasRequest request) {
+        return ApiResponse.ok(service.updateQuotas(id, request.items()));
+    }
+
+    /** Điền hạn mức theo số suất đã bán của thực đơn trước (hoặc của ngày fromDate). */
+    @PostMapping("/daily-menus/{id}/fill-quotas")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<FillQuotasResponse> fillQuotas(@PathVariable @Positive long id, @RequestBody(required = false) FillQuotasRequest request) {
+        return ApiResponse.ok(service.fillQuotas(id, request == null ? null : request.fromDate()));
+    }
+
+    /** Tóm tắt cuối ngày phần nguyên liệu: dự kiến theo hạn mức, đã dùng khi nấu, tồn bếp cuối ngày. */
+    @GetMapping("/daily-menus/{id}/ingredient-usage")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<List<IngredientUsageRow>> ingredientUsage(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.ingredientUsage(id));
     }
 
     @PostMapping("/daily-menus/{id}/items")

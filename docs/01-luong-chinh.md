@@ -135,6 +135,9 @@ flowchart LR
 - **QĐ-1 — hạn mức suất:** `quota_total = NULL` là không giới hạn suất bán; `0` là không còn suất được bán; `> 0` là trần trong ngày. Không giới hạn suất **không** có nghĩa bỏ kiểm tra nguyên liệu: Kitchen chỉ nhận món khi đủ tồn khả dụng theo công thức.
 - Không hạ `quota_total` xuống dưới số suất đã chiếm (trigger); đã có món gọi thì không đổi món/công thức của dòng thực đơn ngày.
 - **QĐ-4 — gửi món khi hết suất:** Waiter vẫn gửi được; `rc_submit_batch` trả cảnh báo `QUOTA_EXCEEDED` (số suất còn lại) để UI hiển thị, **không** từ chối cả đợt. Kiểm cứng nằm ở Kitchen: chỉ `ACCEPTED` khi đủ suất **và** đủ nguyên liệu; hai Kitchen tranh suất cuối thì chỉ một bên nhận được.
+- **Thực đơn mặc định (quy trình mỗi ngày):** tạo thực đơn ngày "từ danh mục" đưa sẵn mọi món đang kinh doanh (nhóm đang dùng, có công thức hiện hành) với `quota_total = 0` = **chưa mở bán**; màn phục vụ ẩn các món này. Quản lý nhập số suất cho món bán trong ngày (có thể "điền theo số bán ngày trước" = số suất đã chiếm của cùng món ở thực đơn gần nhất trước đó), lưu rồi công bố. Không đổi schema: chỉ dùng `quota_total` sẵn có, không dùng `is_paused` (cần người và lý do, dành cho sự cố).
+- **Đóng thực đơn:** chặn gọi/nhận món mới của ngày đó; món đã nhận vẫn chạy tiếp. Sau 04:00 thực đơn ngày cũ đã tự không bán được (so `rc_business_date`); tạo thực đơn mới sẽ đóng các thực đơn `PUBLISHED` của ngày đã qua cho đúng trạng thái. Suất chưa bán không dồn sang ngày sau, không tạo biến động kho.
+- **Tóm tắt cuối ngày** (suy ra, không lưu): theo món: hạn mức / đã bán / dư / tỷ lệ bán; theo loại nguyên liệu bếp: dự kiến = Σ hạn mức × định lượng (không tính khi có món không giới hạn suất), đã dùng = sổ `COOK` của các món trong thực đơn, tồn bếp cuối ngày = Σ `stock_movements` của lô bếp tới 04:00 hôm sau (hoặc tới hiện tại).
 
 ### 5.1 Quota chiếm khi nào (QĐ-8)
 
