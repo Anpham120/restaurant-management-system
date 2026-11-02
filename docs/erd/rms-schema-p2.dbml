@@ -1,0 +1,164 @@
+// Phân hệ 2: Thực đơn • món • công thức • thực đơn ngày — 6 bảng, kèm 2 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table menu_categories {
+  id bigint [pk, increment]
+  name varchar(100) [not null]
+  sort_order int [not null, default: 0]
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (`lower((name)::text)`) [unique, name: 'ux_menu_categories_name']
+  }
+}
+
+Table menu_items {
+  id bigint [pk, increment]
+  menu_category_id bigint [not null]
+  name varchar(100) [not null]
+  price numeric(12,2) [not null]
+  image_url varchar(255)
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (`lower((name)::text)`) [unique, name: 'ux_menu_items_name']
+  }
+
+  Note: '''
+  ck_price_nonnegative: CHECK ((price >= (0)::numeric))
+  '''
+}
+
+Table recipes {
+  id bigint [pk, increment]
+  menu_item_id bigint [not null]
+  version int [not null]
+  is_current boolean [not null, default: false]
+
+  indexes {
+    (id, menu_item_id) [unique, name: 'ux_recipes_id_item']
+    (menu_item_id, version) [unique, name: 'ux_recipes_item_version']
+    (menu_item_id) [unique, name: 'ux_recipes_current', note: 'WHERE (is_current IS TRUE)']
+  }
+}
+
+Table recipe_ingredients {
+  id bigint [pk, increment]
+  recipe_id bigint [not null]
+  kitchen_ingredient_type_id bigint [not null]
+  quantity_per_serving numeric(12,3) [not null]
+
+  indexes {
+    (recipe_id, kitchen_ingredient_type_id) [unique, name: 'ux_recipe_ingredient_once']
+  }
+
+  Note: '''
+  ck_recipe_qty_positive: CHECK ((quantity_per_serving > (0)::numeric))
+  '''
+}
+
+Table daily_menus {
+  id bigint [pk, increment]
+  business_date date [not null, unique]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | PUBLISHED | CLOSED']
+  published_at timestamptz
+
+  Note: '''
+  ck_daily_menu_published_at: CHECK ((((status)::text = 'DRAFT'::text) = (published_at IS NULL)))
+  '''
+}
+
+Table daily_menu_items {
+  id bigint [pk, increment]
+  daily_menu_id bigint [not null]
+  menu_item_id bigint [not null]
+  recipe_id bigint [not null]
+  quota_total int
+  is_paused boolean [not null, default: false]
+  pause_reason varchar(255)
+  paused_by_id bigint [note: 'DB-07']
+  paused_at timestamptz [note: 'DB-07']
+
+  indexes {
+    (daily_menu_id, menu_item_id) [unique, name: 'ux_daily_menu_items_once']
+  }
+
+  Note: '''
+  ck_daily_menu_pause_fields: CHECK (
+CASE
+    WHEN is_paused THEN (num_nonnulls(pause_reason, paused_by_id, paused_at) = 3)
+    ELSE (num_nonnulls(pause_reason, paused_by_id, paused_at) = 0)
+END)
+  ck_daily_menu_quota_nonneg: CHECK ((quota_total >= 0))
+  '''
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Table kitchen_ingredient_types {
+  id bigint [pk, increment]
+  raw_ingredient_id bigint [not null]
+  name varchar(100) [not null]
+  handling_type varchar(12) [not null, note: 'Giá trị: DIRECT | PREPARED']
+  shelf_life_hours int
+  minimum_quantity numeric(12,3) [not null, default: 0]
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (raw_ingredient_id) [unique, name: 'ux_kitchen_direct_one', note: 'WHERE ((handling_type)::text = \'DIRECT\'::text)']
+    (raw_ingredient_id, `lower((name)::text)`) [unique, name: 'ux_kitchen_types_name']
+  }
+
+  Note: '''
+  ck_kitchen_minimum_nonnegative: CHECK ((minimum_quantity >= (0)::numeric))
+  ck_kitchen_shelf_life_positive: CHECK ((shelf_life_hours > 0))
+  '''
+}
+
+Ref daily_menu_items_daily_menu_id_fkey: daily_menu_items.daily_menu_id > daily_menus.id
+Ref daily_menu_items_menu_item_id_fkey: daily_menu_items.menu_item_id > menu_items.id
+Ref daily_menu_items_paused_by_id_fkey: daily_menu_items.paused_by_id > employees.id
+Ref daily_menu_items_recipe_id_fkey: daily_menu_items.recipe_id > recipes.id
+Ref fk_daily_menu_items_recipe_of_item: daily_menu_items.(recipe_id, menu_item_id) > recipes.(id, menu_item_id)
+Ref menu_items_menu_category_id_fkey: menu_items.menu_category_id > menu_categories.id
+Ref recipe_ingredients_kitchen_ingredient_type_id_fkey: recipe_ingredients.kitchen_ingredient_type_id > kitchen_ingredient_types.id
+Ref recipe_ingredients_recipe_id_fkey: recipe_ingredients.recipe_id > recipes.id
+Ref recipes_menu_item_id_fkey: recipes.menu_item_id > menu_items.id
+
+TableGroup "P2 · Thực đơn • món • công thức • thực đơn ngày" {
+  menu_categories
+  menu_items
+  recipes
+  recipe_ingredients
+  daily_menus
+  daily_menu_items
+}
+
+TableGroup "Liên kết ngoài" {
+  employees
+  kitchen_ingredient_types
+}

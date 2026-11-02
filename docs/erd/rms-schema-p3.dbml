@@ -1,0 +1,297 @@
+// Phân hệ 3: Bàn • đơn hàng • hóa đơn • thanh toán — 11 bảng, kèm 2 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table dining_tables {
+  id bigint [pk, increment]
+  code varchar(20) [not null, unique]
+  capacity int [not null]
+  status varchar(20) [not null, default: 'AVAILABLE', note: 'cache của "có phiên OPEN", chỉ đổi trong rc_* (DB-15); Giá trị: AVAILABLE | OCCUPIED']
+  is_active boolean [not null, default: true, note: 'DB-15']
+
+  Note: '''
+  ck_dining_tables_capacity_positive: CHECK ((capacity > 0))
+  '''
+}
+
+Table table_sessions {
+  id bigint [pk, increment]
+  dining_table_id bigint [not null]
+  opened_at timestamptz [not null, default: `now()`]
+  closed_at timestamptz
+  status varchar(20) [not null, default: 'OPEN', note: 'Giá trị: OPEN | CLOSED']
+  opened_by_id bigint [not null, note: 'DB-16']
+  closed_by_id bigint [note: 'DB-16']
+
+  indexes {
+    (dining_table_id) [unique, name: 'ux_table_sessions_open', note: 'WHERE ((status)::text = \'OPEN\'::text)']
+  }
+
+  Note: '''
+  ck_table_session_closed: CHECK (((((status)::text = 'OPEN'::text) = (closed_at IS NULL)) AND (((status)::text = 'OPEN'::text) = (closed_by_id IS NULL)) AND ((closed_at IS NULL) OR (closed_at >= opened_at))))
+  '''
+}
+
+Table orders {
+  id bigint [pk, increment]
+  table_session_id bigint [not null, unique]
+  status varchar(20) [not null, default: 'OPEN', note: 'Giá trị: OPEN | CLOSED | CANCELLED']
+}
+
+Table order_batches {
+  id bigint [pk, increment]
+  order_id bigint [not null]
+  waiter_id bigint [not null]
+  submitted_at timestamptz [not null, default: `now()`]
+  request_key varchar(64) [not null, unique]
+}
+
+Table order_items {
+  id bigint [pk, increment]
+  order_batch_id bigint [not null]
+  daily_menu_item_id bigint [not null]
+  quantity int [not null]
+  item_name_snapshot varchar(100) [not null]
+  unit_price numeric(12,2) [not null]
+  status varchar(20) [not null, default: 'PENDING', note: 'Giá trị: PENDING | ACCEPTED | COOKING | READY | SERVED | CANCELLED | REJECTED']
+  has_stock_exception boolean [not null, default: false]
+  note varchar(255)
+
+  Note: '''
+  ck_order_item_exception_accepted: CHECK (((NOT has_stock_exception) OR ((status)::text = 'ACCEPTED'::text)))
+  ck_order_items_quantity_positive: CHECK ((quantity > 0))
+  ck_order_items_unit_price_nonneg: CHECK ((unit_price >= (0)::numeric))
+  '''
+}
+
+Table order_item_events {
+  id bigint [pk, increment]
+  order_item_id bigint [not null]
+  actor_id bigint [not null]
+  from_status varchar(20) [note: 'Giá trị: PENDING | ACCEPTED | COOKING | READY | SERVED | CANCELLED | REJECTED']
+  to_status varchar(20) [not null, note: 'Giá trị: PENDING | ACCEPTED | COOKING | READY | SERVED | CANCELLED | REJECTED']
+  reason varchar(255)
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: '''
+  ck_order_item_event_first: CHECK (((from_status IS NOT NULL) OR ((to_status)::text = 'PENDING'::text)))
+  ck_order_item_event_reason: CHECK ((((to_status)::text <> ALL ((ARRAY['REJECTED'::character varying, 'CANCELLED'::character varying])::text[])) OR (btrim((COALESCE(reason, ''::character varying))::text) <> ''::text)))
+  '''
+}
+
+Table invoices {
+  id bigint [pk, increment]
+  order_id bigint [not null, unique]
+  total numeric(12,2) [not null, default: 0]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | PAYMENT_PENDING | PAID | UNCOLLECTED | WAIVED']
+  created_at timestamptz [not null, default: `now()`, note: 'DB-13']
+  created_by_id bigint [not null, note: 'DB-13']
+  uncollected_reason varchar(255)
+  uncollected_by_id bigint
+  uncollected_at timestamptz
+  waived_reason varchar(255)
+  waived_by_id bigint
+  waived_at timestamptz
+
+  Note: '''
+  ck_invoice_uncollected_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'UNCOLLECTED'::text) THEN ((num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 3) AND (btrim((uncollected_reason)::text) <> ''::text) AND (total > (0)::numeric))
+    ELSE (num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 0)
+END)
+  ck_invoice_waived_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'WAIVED'::text) THEN ((num_nonnulls(waived_reason, waived_by_id, waived_at) = 3) AND (btrim((waived_reason)::text) <> ''::text))
+    ELSE (num_nonnulls(waived_reason, waived_by_id, waived_at) = 0)
+END)
+  ck_invoices_total_nonneg: CHECK ((total >= (0)::numeric))
+  '''
+}
+
+Table payment_requests {
+  id bigint [pk, increment]
+  invoice_id bigint [not null]
+  cashier_id bigint [not null, note: 'DB-11']
+  amount_due numeric(12,2) [not null]
+  cash_received numeric(12,2)
+  change_amount numeric(12,2) [note: 'DB-10; Cột tính toán: GENERATED ALWAYS AS ((cash_received - amount_due)) STORED']
+  method varchar(20) [not null, note: 'Giá trị: CASH | QR']
+  status varchar(30) [not null, default: 'REQUESTED', note: 'Giá trị: REQUESTED | WAITING_TRANSFER | PAID | CANCELLED']
+  payment_reference varchar(64) [unique]
+  cancel_reason varchar(255)
+  created_at timestamptz [not null, default: `now()`, note: 'DB-11']
+  cancelled_at timestamptz [note: 'DB-11']
+  cancelled_by_id bigint [note: 'DB-11']
+
+  indexes {
+    (id, invoice_id, method) [unique, name: 'ux_payment_requests_id_invoice_method']
+    (invoice_id) [unique, name: 'ux_payment_request_active', note: 'WHERE ((status)::text = ANY ((ARRAY[\'REQUESTED\'::character varying, \'WAITING_TRANSFER\'::character varying])::text[]))']
+  }
+
+  Note: '''
+  ck_payment_method_fields: CHECK (((((method)::text = 'CASH'::text) AND (cash_received IS NOT NULL) AND (cash_received >= amount_due) AND (payment_reference IS NULL)) OR (((method)::text = 'QR'::text) AND (cash_received IS NULL) AND (payment_reference IS NOT NULL))))
+  ck_payment_request_cancel_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'CANCELLED'::text) THEN (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 3)
+    ELSE (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 0)
+END)
+  ck_payment_requests_amount_due_nonneg: CHECK ((amount_due >= (0)::numeric))
+  '''
+}
+
+Table payment_webhook_events {
+  id bigint [pk, increment]
+  payment_request_id bigint
+  provider_transaction_code varchar(64) [not null, unique]
+  payment_reference varchar(64) [not null]
+  amount numeric(12,2) [not null]
+  processing_result varchar(20) [not null, note: 'Giá trị: PROCESSED | MISMATCH | AFTER_CANCEL']
+  received_at timestamptz [not null, default: `now()`]
+  raw_payload text [not null]
+  resolution_status varchar(20) [note: 'DB-12; Giá trị: OPEN | RESOLVED']
+  resolved_by_id bigint [note: 'DB-12']
+  resolved_at timestamptz [note: 'DB-12']
+  resolution_note varchar(255) [note: 'DB-12']
+
+  indexes {
+    (id, payment_request_id) [unique, name: 'ux_webhook_id_request']
+  }
+
+  Note: '''
+  ck_webhook_resolution: CHECK (
+CASE
+    WHEN ((processing_result)::text = 'PROCESSED'::text) THEN (num_nonnulls(resolution_status, resolved_by_id, resolved_at, resolution_note) = 0)
+    WHEN ((resolution_status)::text = 'OPEN'::text) THEN (num_nonnulls(resolved_by_id, resolved_at, resolution_note) = 0)
+    WHEN ((resolution_status)::text = 'RESOLVED'::text) THEN (num_nonnulls(resolved_by_id, resolved_at, resolution_note) = 3)
+    ELSE false
+END)
+  '''
+}
+
+Table payments {
+  id bigint [pk, increment]
+  invoice_id bigint [not null, unique]
+  payment_request_id bigint [not null, unique]
+  payment_webhook_event_id bigint [unique]
+  amount numeric(12,2) [not null]
+  method varchar(20) [not null, note: 'Giá trị: CASH | QR']
+  paid_at timestamptz [not null, default: `now()`]
+  business_date date [not null]
+
+  Note: '''
+  ck_payments_amount_nonneg: CHECK ((amount >= (0)::numeric))
+  ck_payments_qr_webhook: CHECK ((((method)::text = 'QR'::text) = (payment_webhook_event_id IS NOT NULL)))
+  '''
+}
+
+Table invoice_items {
+  id bigint [pk, increment]
+  invoice_id bigint [not null]
+  order_item_id bigint [not null, unique]
+  item_name varchar(100) [not null]
+  quantity int [not null]
+  unit_price numeric(12,2) [not null]
+  line_total numeric(12,2) [note: 'Cột tính toán: GENERATED ALWAYS AS (((quantity)::numeric * unit_price)) STORED']
+
+  Note: '''
+  ck_invoice_items_quantity_positive: CHECK ((quantity > 0))
+  ck_invoice_items_unit_price_nonneg: CHECK ((unit_price >= (0)::numeric))
+  '''
+}
+
+Table daily_menu_items {
+  id bigint [pk, increment]
+  daily_menu_id bigint [not null]
+  menu_item_id bigint [not null]
+  recipe_id bigint [not null]
+  quota_total int
+  is_paused boolean [not null, default: false]
+  pause_reason varchar(255)
+  paused_by_id bigint [note: 'DB-07']
+  paused_at timestamptz [note: 'DB-07']
+
+  indexes {
+    (daily_menu_id, menu_item_id) [unique, name: 'ux_daily_menu_items_once']
+  }
+
+  Note: '''
+  ck_daily_menu_pause_fields: CHECK (
+CASE
+    WHEN is_paused THEN (num_nonnulls(pause_reason, paused_by_id, paused_at) = 3)
+    ELSE (num_nonnulls(pause_reason, paused_by_id, paused_at) = 0)
+END)
+  ck_daily_menu_quota_nonneg: CHECK ((quota_total >= 0))
+  '''
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Ref daily_menu_items_paused_by_id_fkey: daily_menu_items.paused_by_id > employees.id
+Ref invoice_items_invoice_id_fkey: invoice_items.invoice_id > invoices.id
+Ref invoice_items_order_item_id_fkey: invoice_items.order_item_id > order_items.id
+Ref invoices_created_by_id_fkey: invoices.created_by_id > employees.id
+Ref invoices_order_id_fkey: invoices.order_id > orders.id
+Ref invoices_uncollected_by_id_fkey: invoices.uncollected_by_id > employees.id
+Ref invoices_waived_by_id_fkey: invoices.waived_by_id > employees.id
+Ref order_batches_order_id_fkey: order_batches.order_id > orders.id
+Ref order_batches_waiter_id_fkey: order_batches.waiter_id > employees.id
+Ref order_item_events_actor_id_fkey: order_item_events.actor_id > employees.id
+Ref order_item_events_order_item_id_fkey: order_item_events.order_item_id > order_items.id
+Ref order_items_daily_menu_item_id_fkey: order_items.daily_menu_item_id > daily_menu_items.id
+Ref order_items_order_batch_id_fkey: order_items.order_batch_id > order_batches.id
+Ref orders_table_session_id_fkey: orders.table_session_id > table_sessions.id
+Ref payment_requests_cancelled_by_id_fkey: payment_requests.cancelled_by_id > employees.id
+Ref payment_requests_cashier_id_fkey: payment_requests.cashier_id > employees.id
+Ref payment_requests_invoice_id_fkey: payment_requests.invoice_id > invoices.id
+Ref payment_webhook_events_payment_request_id_fkey: payment_webhook_events.payment_request_id > payment_requests.id
+Ref payment_webhook_events_resolved_by_id_fkey: payment_webhook_events.resolved_by_id > employees.id
+Ref fk_payments_request_invoice_method: payments.(payment_request_id, invoice_id, method) > payment_requests.(id, invoice_id, method)
+Ref fk_payments_webhook_request: payments.(payment_webhook_event_id, payment_request_id) > payment_webhook_events.(id, payment_request_id)
+Ref payments_invoice_id_fkey: payments.invoice_id > invoices.id
+Ref payments_payment_request_id_fkey: payments.payment_request_id > payment_requests.id
+Ref payments_payment_webhook_event_id_fkey: payments.payment_webhook_event_id > payment_webhook_events.id
+Ref table_sessions_closed_by_id_fkey: table_sessions.closed_by_id > employees.id
+Ref table_sessions_dining_table_id_fkey: table_sessions.dining_table_id > dining_tables.id
+Ref table_sessions_opened_by_id_fkey: table_sessions.opened_by_id > employees.id
+
+TableGroup "P3 · Bàn • đơn hàng • hóa đơn • thanh toán" {
+  dining_tables
+  table_sessions
+  orders
+  order_batches
+  order_items
+  order_item_events
+  invoices
+  payment_requests
+  payment_webhook_events
+  payments
+  invoice_items
+}
+
+TableGroup "Liên kết ngoài" {
+  daily_menu_items
+  employees
+}

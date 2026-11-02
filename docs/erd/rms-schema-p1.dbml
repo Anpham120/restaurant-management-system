@@ -1,0 +1,170 @@
+// Phân hệ 1: Nhân viên • tài khoản • ca • chấm công — 11 bảng, kèm 0 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table departments {
+  id bigint [pk, increment]
+  department_name varchar(50) [not null, unique]
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Table accounts {
+  id bigint [pk, increment]
+  employee_id bigint [not null, unique]
+  username varchar(50) [not null, unique]
+  password_hash varchar(255) [not null]
+  must_change_password boolean [not null, default: true]
+  account_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | LOCKED | DISABLED']
+}
+
+Table roles {
+  id bigint [pk, increment]
+  role_code varchar(30) [not null, unique]
+  role_name varchar(50) [not null]
+}
+
+Table permissions {
+  id bigint [pk, increment]
+  permission_code varchar(50) [not null, unique]
+  description varchar(255) [not null]
+}
+
+Table account_roles {
+  id bigint [pk, increment]
+  account_id bigint [not null]
+  role_id bigint [not null]
+
+  indexes {
+    (account_id, role_id) [unique, name: 'ux_account_role']
+  }
+}
+
+Table role_permissions {
+  id bigint [pk, increment]
+  role_id bigint [not null]
+  permission_id bigint [not null]
+
+  indexes {
+    (role_id, permission_id) [unique, name: 'ux_role_permission']
+  }
+}
+
+Table shifts {
+  id bigint [pk, increment]
+  shift_name varchar(50) [not null]
+  start_time time [not null]
+  end_time time [not null]
+  break_minutes int [not null, default: 0]
+  is_active boolean [not null, default: true]
+}
+
+Table shift_assignments {
+  id bigint [pk, increment]
+  employee_id bigint [not null]
+  shift_id bigint [not null]
+  work_date date [not null]
+  scheduled_start_at timestamptz [not null]
+  scheduled_end_at timestamptz [not null]
+  scheduled_break_minutes int [not null]
+  status varchar(20) [not null, default: 'SCHEDULED', note: 'Giá trị: SCHEDULED | COMPLETED | CANCELLED']
+  note varchar(255)
+  cancel_reason varchar(255)
+  cancelled_by_id bigint
+  cancelled_at timestamptz
+
+  Note: '''
+  ck_shift_assignment_cancel_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'CANCELLED'::text) THEN (num_nonnulls(cancel_reason, cancelled_by_id, cancelled_at) = 3)
+    ELSE (num_nonnulls(cancel_reason, cancelled_by_id, cancelled_at) = 0)
+END)
+  ck_shift_assignment_window: CHECK ((scheduled_end_at > scheduled_start_at))
+  ex_shift_assignment_no_overlap: EXCLUDE USING gist (employee_id WITH =, tstzrange(scheduled_start_at, scheduled_end_at) WITH &&) WHERE (((status)::text <> 'CANCELLED'::text))
+  '''
+}
+
+Table attendances {
+  id bigint [pk, increment]
+  shift_assignment_id bigint [not null, unique]
+  attendance_status varchar(20) [not null, note: 'DB-01; Giá trị: PRESENT | ABSENT']
+  actual_start_at timestamptz
+  actual_end_at timestamptz
+  worked_minutes int
+  note varchar(255)
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+
+  Note: '''
+  ck_attendance_confirm_pair: CHECK (((confirmed_by_id IS NULL) = (confirmed_at IS NULL)))
+  ck_attendance_present_fields: CHECK ((((attendance_status)::text <> 'PRESENT'::text) OR ((actual_start_at IS NOT NULL) AND (actual_end_at > actual_start_at) AND (worked_minutes >= 0))))
+  ck_attendance_worked_le_span: CHECK ((((attendance_status)::text <> 'PRESENT'::text) OR ((worked_minutes)::numeric <= ceil((EXTRACT(epoch FROM (actual_end_at - actual_start_at)) / (60)::numeric)))))
+  '''
+}
+
+Table attendance_adjustments {
+  id bigint [pk, increment]
+  attendance_id bigint [not null]
+  old_status varchar(20) [not null, note: 'Giá trị: PRESENT | ABSENT']
+  new_status varchar(20) [not null, note: 'Giá trị: PRESENT | ABSENT']
+  old_start_at timestamptz
+  new_start_at timestamptz
+  old_end_at timestamptz
+  new_end_at timestamptz
+  old_worked_minutes int
+  new_worked_minutes int
+  reason varchar(255) [not null]
+  adjusted_by_id bigint [not null]
+  adjusted_at timestamptz [not null, default: `now()`]
+}
+
+Ref account_roles_account_id_fkey: account_roles.account_id > accounts.id
+Ref account_roles_role_id_fkey: account_roles.role_id > roles.id
+Ref accounts_employee_id_fkey: accounts.employee_id > employees.id
+Ref attendance_adjustments_adjusted_by_id_fkey: attendance_adjustments.adjusted_by_id > employees.id
+Ref attendance_adjustments_attendance_id_fkey: attendance_adjustments.attendance_id > attendances.id
+Ref attendances_confirmed_by_id_fkey: attendances.confirmed_by_id > employees.id
+Ref attendances_shift_assignment_id_fkey: attendances.shift_assignment_id > shift_assignments.id
+Ref employees_department_id_fkey: employees.department_id > departments.id
+Ref role_permissions_permission_id_fkey: role_permissions.permission_id > permissions.id
+Ref role_permissions_role_id_fkey: role_permissions.role_id > roles.id
+Ref shift_assignments_cancelled_by_id_fkey: shift_assignments.cancelled_by_id > employees.id
+Ref shift_assignments_employee_id_fkey: shift_assignments.employee_id > employees.id
+Ref shift_assignments_shift_id_fkey: shift_assignments.shift_id > shifts.id
+
+TableGroup "P1 · Nhân viên • tài khoản • ca • chấm công" {
+  departments
+  employees
+  accounts
+  roles
+  permissions
+  account_roles
+  role_permissions
+  shifts
+  shift_assignments
+  attendances
+  attendance_adjustments
+}

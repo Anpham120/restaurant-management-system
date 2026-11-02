@@ -80,117 +80,179 @@ flowchart LR
 ## 3. Phân hệ 1 — Nhân viên • tài khoản • ca • chấm công (11 bảng)
 
 <!-- GEN:ERD-1 -->
-**ERD phân hệ 1 (schema v4.1)** — bản draw.io: [erd/erd-p1-nhan-vien.drawio](erd/erd-p1-nhan-vien.drawio) · ảnh xem nhanh: [erd/erd-p1-nhan-vien.png](erd/erd-p1-nhan-vien.png). Sơ đồ Mermaid dưới đây sinh từ cùng schema; cột người thao tác ghi chú `employees` thay vì vẽ cạnh, bảng phân hệ khác chỉ hiện `id`.
+**ERD phân hệ 1 (schema v4.1)** — mã DBML cho [dbdiagram.io](https://dbdiagram.io/d): mở trang, dán khối dưới đây (hoặc file [erd/rms-schema-p1.dbml](erd/rms-schema-p1.dbml)) vào ô code. Toàn bộ 48 bảng: [erd/rms-schema.dbml](erd/rms-schema.dbml). Sinh từ catalog schema thật bằng [erd/sinh-dbml.sh](erd/sinh-dbml.sh); bảng phân hệ khác mà phân hệ này trỏ tới nằm ở nhóm "Liên kết ngoài". Bản draw.io: [erd/erd-p1-nhan-vien.drawio](erd/erd-p1-nhan-vien.drawio) · ảnh: [erd/erd-p1-nhan-vien.png](erd/erd-p1-nhan-vien.png).
 
-```mermaid
-erDiagram
-    departments {
-        bigint id PK
-        varchar department_name UK
-    }
-    employees {
-        bigint id PK
-        varchar employee_code UK
-        varchar full_name
-        varchar gender "null"
-        date date_of_birth "null"
-        varchar phone "null"
-        varchar email "null"
-        varchar address "null"
-        date hire_date "null"
-        date end_date "null"
-        varchar work_status "ACTIVE / INACTIVE / LEFT"
-        bigint department_id FK
-    }
-    accounts {
-        bigint id PK
-        bigint employee_id FK, UK
-        varchar username UK
-        varchar password_hash
-        bool must_change_password
-        varchar account_status "ACTIVE / LOCKED / DISABLED"
-    }
-    roles {
-        bigint id PK
-        varchar role_code UK
-        varchar role_name
-    }
-    permissions {
-        bigint id PK
-        varchar permission_code UK
-        varchar description
-    }
-    account_roles {
-        bigint id PK
-        bigint account_id FK
-        bigint role_id FK
-    }
-    role_permissions {
-        bigint id PK
-        bigint role_id FK
-        bigint permission_id FK
-    }
-    shifts {
-        bigint id PK
-        varchar shift_name
-        time start_time
-        time end_time
-        int break_minutes
-        bool is_active
-    }
-    shift_assignments {
-        bigint id PK
-        bigint employee_id FK
-        bigint shift_id FK
-        date work_date
-        tstz scheduled_start_at
-        tstz scheduled_end_at
-        int scheduled_break_minutes
-        varchar status "SCHEDULED / COMPLETED / CANCELLED"
-        varchar note "null"
-        varchar cancel_reason "null"
-        bigint cancelled_by_id FK "null"
-        tstz cancelled_at "null"
-    }
-    attendances {
-        bigint id PK
-        bigint shift_assignment_id FK, UK
-        varchar attendance_status "PRESENT / ABSENT"
-        tstz actual_start_at "null"
-        tstz actual_end_at "null"
-        int worked_minutes "null"
-        varchar note "null"
-        bigint confirmed_by_id FK "null"
-        tstz confirmed_at "null"
-    }
-    attendance_adjustments {
-        bigint id PK
-        bigint attendance_id FK
-        varchar old_status "PRESENT / ABSENT"
-        varchar new_status "PRESENT / ABSENT"
-        tstz old_start_at "null"
-        tstz new_start_at "null"
-        tstz old_end_at "null"
-        tstz new_end_at "null"
-        int old_worked_minutes "null"
-        int new_worked_minutes "null"
-        varchar reason
-        bigint adjusted_by_id FK
-        tstz adjusted_at
-    }
-    accounts ||--o{ account_roles : "account_id"
-    roles ||--o{ account_roles : "role_id"
-    employees ||--o| accounts : "employee_id"
-    employees ||--o{ attendance_adjustments : "adjusted_by_id"
-    attendances ||--o{ attendance_adjustments : "attendance_id"
-    employees |o--o{ attendances : "confirmed_by_id"
-    shift_assignments ||--o| attendances : "shift_assignment_id"
-    departments ||--o{ employees : "department_id"
-    permissions ||--o{ role_permissions : "permission_id"
-    roles ||--o{ role_permissions : "role_id"
-    employees |o--o{ shift_assignments : "cancelled_by_id"
-    employees ||--o{ shift_assignments : "employee_id"
-    shifts ||--o{ shift_assignments : "shift_id"
+```dbml
+// Phân hệ 1: Nhân viên • tài khoản • ca • chấm công — 11 bảng, kèm 0 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table departments {
+  id bigint [pk, increment]
+  department_name varchar(50) [not null, unique]
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Table accounts {
+  id bigint [pk, increment]
+  employee_id bigint [not null, unique]
+  username varchar(50) [not null, unique]
+  password_hash varchar(255) [not null]
+  must_change_password boolean [not null, default: true]
+  account_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | LOCKED | DISABLED']
+}
+
+Table roles {
+  id bigint [pk, increment]
+  role_code varchar(30) [not null, unique]
+  role_name varchar(50) [not null]
+}
+
+Table permissions {
+  id bigint [pk, increment]
+  permission_code varchar(50) [not null, unique]
+  description varchar(255) [not null]
+}
+
+Table account_roles {
+  id bigint [pk, increment]
+  account_id bigint [not null]
+  role_id bigint [not null]
+
+  indexes {
+    (account_id, role_id) [unique, name: 'ux_account_role']
+  }
+}
+
+Table role_permissions {
+  id bigint [pk, increment]
+  role_id bigint [not null]
+  permission_id bigint [not null]
+
+  indexes {
+    (role_id, permission_id) [unique, name: 'ux_role_permission']
+  }
+}
+
+Table shifts {
+  id bigint [pk, increment]
+  shift_name varchar(50) [not null]
+  start_time time [not null]
+  end_time time [not null]
+  break_minutes int [not null, default: 0]
+  is_active boolean [not null, default: true]
+}
+
+Table shift_assignments {
+  id bigint [pk, increment]
+  employee_id bigint [not null]
+  shift_id bigint [not null]
+  work_date date [not null]
+  scheduled_start_at timestamptz [not null]
+  scheduled_end_at timestamptz [not null]
+  scheduled_break_minutes int [not null]
+  status varchar(20) [not null, default: 'SCHEDULED', note: 'Giá trị: SCHEDULED | COMPLETED | CANCELLED']
+  note varchar(255)
+  cancel_reason varchar(255)
+  cancelled_by_id bigint
+  cancelled_at timestamptz
+
+  Note: '''
+  ck_shift_assignment_cancel_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'CANCELLED'::text) THEN (num_nonnulls(cancel_reason, cancelled_by_id, cancelled_at) = 3)
+    ELSE (num_nonnulls(cancel_reason, cancelled_by_id, cancelled_at) = 0)
+END)
+  ck_shift_assignment_window: CHECK ((scheduled_end_at > scheduled_start_at))
+  ex_shift_assignment_no_overlap: EXCLUDE USING gist (employee_id WITH =, tstzrange(scheduled_start_at, scheduled_end_at) WITH &&) WHERE (((status)::text <> 'CANCELLED'::text))
+  '''
+}
+
+Table attendances {
+  id bigint [pk, increment]
+  shift_assignment_id bigint [not null, unique]
+  attendance_status varchar(20) [not null, note: 'DB-01; Giá trị: PRESENT | ABSENT']
+  actual_start_at timestamptz
+  actual_end_at timestamptz
+  worked_minutes int
+  note varchar(255)
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+
+  Note: '''
+  ck_attendance_confirm_pair: CHECK (((confirmed_by_id IS NULL) = (confirmed_at IS NULL)))
+  ck_attendance_present_fields: CHECK ((((attendance_status)::text <> 'PRESENT'::text) OR ((actual_start_at IS NOT NULL) AND (actual_end_at > actual_start_at) AND (worked_minutes >= 0))))
+  ck_attendance_worked_le_span: CHECK ((((attendance_status)::text <> 'PRESENT'::text) OR ((worked_minutes)::numeric <= ceil((EXTRACT(epoch FROM (actual_end_at - actual_start_at)) / (60)::numeric)))))
+  '''
+}
+
+Table attendance_adjustments {
+  id bigint [pk, increment]
+  attendance_id bigint [not null]
+  old_status varchar(20) [not null, note: 'Giá trị: PRESENT | ABSENT']
+  new_status varchar(20) [not null, note: 'Giá trị: PRESENT | ABSENT']
+  old_start_at timestamptz
+  new_start_at timestamptz
+  old_end_at timestamptz
+  new_end_at timestamptz
+  old_worked_minutes int
+  new_worked_minutes int
+  reason varchar(255) [not null]
+  adjusted_by_id bigint [not null]
+  adjusted_at timestamptz [not null, default: `now()`]
+}
+
+Ref account_roles_account_id_fkey: account_roles.account_id > accounts.id
+Ref account_roles_role_id_fkey: account_roles.role_id > roles.id
+Ref accounts_employee_id_fkey: accounts.employee_id > employees.id
+Ref attendance_adjustments_adjusted_by_id_fkey: attendance_adjustments.adjusted_by_id > employees.id
+Ref attendance_adjustments_attendance_id_fkey: attendance_adjustments.attendance_id > attendances.id
+Ref attendances_confirmed_by_id_fkey: attendances.confirmed_by_id > employees.id
+Ref attendances_shift_assignment_id_fkey: attendances.shift_assignment_id > shift_assignments.id
+Ref employees_department_id_fkey: employees.department_id > departments.id
+Ref role_permissions_permission_id_fkey: role_permissions.permission_id > permissions.id
+Ref role_permissions_role_id_fkey: role_permissions.role_id > roles.id
+Ref shift_assignments_cancelled_by_id_fkey: shift_assignments.cancelled_by_id > employees.id
+Ref shift_assignments_employee_id_fkey: shift_assignments.employee_id > employees.id
+Ref shift_assignments_shift_id_fkey: shift_assignments.shift_id > shifts.id
+
+TableGroup "P1 · Nhân viên • tài khoản • ca • chấm công" {
+  departments
+  employees
+  accounts
+  roles
+  permissions
+  account_roles
+  role_permissions
+  shifts
+  shift_assignments
+  attendances
+  attendance_adjustments
+}
 ```
 <!-- /GEN:ERD-1 -->
 
@@ -220,67 +282,173 @@ erDiagram
 ## 4. Phân hệ 2 — Thực đơn • món • công thức • thực đơn ngày (6 bảng)
 
 <!-- GEN:ERD-2 -->
-**ERD phân hệ 2 (schema v4.1)** — bản draw.io: [erd/erd-p2-thuc-don.drawio](erd/erd-p2-thuc-don.drawio) · ảnh xem nhanh: [erd/erd-p2-thuc-don.png](erd/erd-p2-thuc-don.png). Sơ đồ Mermaid dưới đây sinh từ cùng schema; cột người thao tác ghi chú `employees` thay vì vẽ cạnh, bảng phân hệ khác chỉ hiện `id`.
+**ERD phân hệ 2 (schema v4.1)** — mã DBML cho [dbdiagram.io](https://dbdiagram.io/d): mở trang, dán khối dưới đây (hoặc file [erd/rms-schema-p2.dbml](erd/rms-schema-p2.dbml)) vào ô code. Toàn bộ 48 bảng: [erd/rms-schema.dbml](erd/rms-schema.dbml). Sinh từ catalog schema thật bằng [erd/sinh-dbml.sh](erd/sinh-dbml.sh); bảng phân hệ khác mà phân hệ này trỏ tới nằm ở nhóm "Liên kết ngoài". Bản draw.io: [erd/erd-p2-thuc-don.drawio](erd/erd-p2-thuc-don.drawio) · ảnh: [erd/erd-p2-thuc-don.png](erd/erd-p2-thuc-don.png).
 
-```mermaid
-erDiagram
-    menu_categories {
-        bigint id PK
-        varchar name
-        int sort_order
-        bool is_active
-    }
-    menu_items {
-        bigint id PK
-        bigint menu_category_id FK
-        varchar name
-        numeric price
-        varchar image_url "null"
-        bool is_active
-    }
-    recipes {
-        bigint id PK
-        bigint menu_item_id FK
-        int version
-        bool is_current
-    }
-    recipe_ingredients {
-        bigint id PK
-        bigint recipe_id FK
-        bigint kitchen_ingredient_type_id FK
-        numeric quantity_per_serving
-    }
-    daily_menus {
-        bigint id PK
-        date business_date UK
-        varchar status "DRAFT / PUBLISHED / CLOSED"
-        tstz published_at "null"
-    }
-    daily_menu_items {
-        bigint id PK
-        bigint daily_menu_id FK
-        bigint menu_item_id FK
-        bigint recipe_id FK
-        int quota_total "null"
-        bool is_paused
-        varchar pause_reason "null"
-        bigint paused_by_id FK "null; employees"
-        tstz paused_at "null"
-    }
-    order_items {
-        bigint id PK "phan he 3"
-    }
-    kitchen_ingredient_types {
-        bigint id PK "phan he 4"
-    }
-    daily_menus ||--o{ daily_menu_items : "daily_menu_id"
-    menu_items ||--o{ daily_menu_items : "menu_item_id"
-    recipes ||--o{ daily_menu_items : "recipe_id"
-    menu_categories ||--o{ menu_items : "menu_category_id"
-    daily_menu_items ||--o{ order_items : "daily_menu_item_id"
-    kitchen_ingredient_types ||--o{ recipe_ingredients : "kitchen_ingredient_type_id"
-    recipes ||--o{ recipe_ingredients : "recipe_id"
-    menu_items ||--o{ recipes : "menu_item_id"
+```dbml
+// Phân hệ 2: Thực đơn • món • công thức • thực đơn ngày — 6 bảng, kèm 2 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table menu_categories {
+  id bigint [pk, increment]
+  name varchar(100) [not null]
+  sort_order int [not null, default: 0]
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (`lower((name)::text)`) [unique, name: 'ux_menu_categories_name']
+  }
+}
+
+Table menu_items {
+  id bigint [pk, increment]
+  menu_category_id bigint [not null]
+  name varchar(100) [not null]
+  price numeric(12,2) [not null]
+  image_url varchar(255)
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (`lower((name)::text)`) [unique, name: 'ux_menu_items_name']
+  }
+
+  Note: '''
+  ck_price_nonnegative: CHECK ((price >= (0)::numeric))
+  '''
+}
+
+Table recipes {
+  id bigint [pk, increment]
+  menu_item_id bigint [not null]
+  version int [not null]
+  is_current boolean [not null, default: false]
+
+  indexes {
+    (id, menu_item_id) [unique, name: 'ux_recipes_id_item']
+    (menu_item_id, version) [unique, name: 'ux_recipes_item_version']
+    (menu_item_id) [unique, name: 'ux_recipes_current', note: 'WHERE (is_current IS TRUE)']
+  }
+}
+
+Table recipe_ingredients {
+  id bigint [pk, increment]
+  recipe_id bigint [not null]
+  kitchen_ingredient_type_id bigint [not null]
+  quantity_per_serving numeric(12,3) [not null]
+
+  indexes {
+    (recipe_id, kitchen_ingredient_type_id) [unique, name: 'ux_recipe_ingredient_once']
+  }
+
+  Note: '''
+  ck_recipe_qty_positive: CHECK ((quantity_per_serving > (0)::numeric))
+  '''
+}
+
+Table daily_menus {
+  id bigint [pk, increment]
+  business_date date [not null, unique]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | PUBLISHED | CLOSED']
+  published_at timestamptz
+
+  Note: '''
+  ck_daily_menu_published_at: CHECK ((((status)::text = 'DRAFT'::text) = (published_at IS NULL)))
+  '''
+}
+
+Table daily_menu_items {
+  id bigint [pk, increment]
+  daily_menu_id bigint [not null]
+  menu_item_id bigint [not null]
+  recipe_id bigint [not null]
+  quota_total int
+  is_paused boolean [not null, default: false]
+  pause_reason varchar(255)
+  paused_by_id bigint [note: 'DB-07']
+  paused_at timestamptz [note: 'DB-07']
+
+  indexes {
+    (daily_menu_id, menu_item_id) [unique, name: 'ux_daily_menu_items_once']
+  }
+
+  Note: '''
+  ck_daily_menu_pause_fields: CHECK (
+CASE
+    WHEN is_paused THEN (num_nonnulls(pause_reason, paused_by_id, paused_at) = 3)
+    ELSE (num_nonnulls(pause_reason, paused_by_id, paused_at) = 0)
+END)
+  ck_daily_menu_quota_nonneg: CHECK ((quota_total >= 0))
+  '''
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Table kitchen_ingredient_types {
+  id bigint [pk, increment]
+  raw_ingredient_id bigint [not null]
+  name varchar(100) [not null]
+  handling_type varchar(12) [not null, note: 'Giá trị: DIRECT | PREPARED']
+  shelf_life_hours int
+  minimum_quantity numeric(12,3) [not null, default: 0]
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (raw_ingredient_id) [unique, name: 'ux_kitchen_direct_one', note: 'WHERE ((handling_type)::text = \'DIRECT\'::text)']
+    (raw_ingredient_id, `lower((name)::text)`) [unique, name: 'ux_kitchen_types_name']
+  }
+
+  Note: '''
+  ck_kitchen_minimum_nonnegative: CHECK ((minimum_quantity >= (0)::numeric))
+  ck_kitchen_shelf_life_positive: CHECK ((shelf_life_hours > 0))
+  '''
+}
+
+Ref daily_menu_items_daily_menu_id_fkey: daily_menu_items.daily_menu_id > daily_menus.id
+Ref daily_menu_items_menu_item_id_fkey: daily_menu_items.menu_item_id > menu_items.id
+Ref daily_menu_items_paused_by_id_fkey: daily_menu_items.paused_by_id > employees.id
+Ref daily_menu_items_recipe_id_fkey: daily_menu_items.recipe_id > recipes.id
+Ref fk_daily_menu_items_recipe_of_item: daily_menu_items.(recipe_id, menu_item_id) > recipes.(id, menu_item_id)
+Ref menu_items_menu_category_id_fkey: menu_items.menu_category_id > menu_categories.id
+Ref recipe_ingredients_kitchen_ingredient_type_id_fkey: recipe_ingredients.kitchen_ingredient_type_id > kitchen_ingredient_types.id
+Ref recipe_ingredients_recipe_id_fkey: recipe_ingredients.recipe_id > recipes.id
+Ref recipes_menu_item_id_fkey: recipes.menu_item_id > menu_items.id
+
+TableGroup "P2 · Thực đơn • món • công thức • thực đơn ngày" {
+  menu_categories
+  menu_items
+  recipes
+  recipe_ingredients
+  daily_menus
+  daily_menu_items
+}
+
+TableGroup "Liên kết ngoài" {
+  employees
+  kitchen_ingredient_types
+}
 ```
 <!-- /GEN:ERD-2 -->
 
@@ -309,145 +477,306 @@ erDiagram
 ## 5. Phân hệ 3 — Bàn • đơn hàng • hóa đơn • thanh toán (11 bảng)
 
 <!-- GEN:ERD-3 -->
-**ERD phân hệ 3 (schema v4.1)** — bản draw.io: [erd/erd-p3-ban-hang-thanh-toan.drawio](erd/erd-p3-ban-hang-thanh-toan.drawio) · ảnh xem nhanh: [erd/erd-p3-ban-hang-thanh-toan.png](erd/erd-p3-ban-hang-thanh-toan.png). Sơ đồ Mermaid dưới đây sinh từ cùng schema; cột người thao tác ghi chú `employees` thay vì vẽ cạnh, bảng phân hệ khác chỉ hiện `id`.
+**ERD phân hệ 3 (schema v4.1)** — mã DBML cho [dbdiagram.io](https://dbdiagram.io/d): mở trang, dán khối dưới đây (hoặc file [erd/rms-schema-p3.dbml](erd/rms-schema-p3.dbml)) vào ô code. Toàn bộ 48 bảng: [erd/rms-schema.dbml](erd/rms-schema.dbml). Sinh từ catalog schema thật bằng [erd/sinh-dbml.sh](erd/sinh-dbml.sh); bảng phân hệ khác mà phân hệ này trỏ tới nằm ở nhóm "Liên kết ngoài". Bản draw.io: [erd/erd-p3-ban-hang-thanh-toan.drawio](erd/erd-p3-ban-hang-thanh-toan.drawio) · ảnh: [erd/erd-p3-ban-hang-thanh-toan.png](erd/erd-p3-ban-hang-thanh-toan.png).
 
-```mermaid
-erDiagram
-    dining_tables {
-        bigint id PK
-        varchar code UK
-        int capacity
-        varchar status "AVAILABLE / OCCUPIED"
-        bool is_active
-    }
-    table_sessions {
-        bigint id PK
-        bigint dining_table_id FK
-        tstz opened_at
-        tstz closed_at "null"
-        varchar status "OPEN / CLOSED"
-        bigint opened_by_id FK "employees"
-        bigint closed_by_id FK "null; employees"
-    }
-    orders {
-        bigint id PK
-        bigint table_session_id FK, UK
-        varchar status "OPEN / CLOSED / CANCELLED"
-    }
-    order_batches {
-        bigint id PK
-        bigint order_id FK
-        bigint waiter_id FK "employees"
-        tstz submitted_at
-        varchar request_key UK
-    }
-    order_items {
-        bigint id PK
-        bigint order_batch_id FK
-        bigint daily_menu_item_id FK
-        int quantity
-        varchar item_name_snapshot
-        numeric unit_price
-        varchar status "7 giá trị"
-        bool has_stock_exception
-        varchar note "null"
-    }
-    order_item_events {
-        bigint id PK
-        bigint order_item_id FK
-        bigint actor_id FK "employees"
-        varchar from_status "null; 7 giá trị"
-        varchar to_status "7 giá trị"
-        varchar reason "null"
-        tstz created_at
-    }
-    invoices {
-        bigint id PK
-        bigint order_id FK, UK
-        numeric total
-        varchar status "DRAFT / PAYMENT_PENDING / PAID / UNCOLLECTED / WAIVED"
-        tstz created_at
-        bigint created_by_id FK "employees"
-        varchar uncollected_reason "null"
-        bigint uncollected_by_id FK "null; employees"
-        tstz uncollected_at "null"
-        varchar waived_reason "null"
-        bigint waived_by_id FK "null; employees"
-        tstz waived_at "null"
-    }
-    payment_requests {
-        bigint id PK
-        bigint invoice_id FK
-        bigint cashier_id FK "employees"
-        numeric amount_due
-        numeric cash_received "null"
-        numeric change_amount "generated"
-        varchar method "CASH / QR"
-        varchar status "REQUESTED / WAITING_TRANSFER / PAID / CANCELLED"
-        varchar payment_reference UK "null"
-        varchar cancel_reason "null"
-        tstz created_at
-        tstz cancelled_at "null"
-        bigint cancelled_by_id FK "null; employees"
-    }
-    payments {
-        bigint id PK
-        bigint invoice_id FK, UK
-        bigint payment_request_id FK, UK
-        bigint payment_webhook_event_id FK, UK "null"
-        numeric amount
-        varchar method "CASH / QR"
-        tstz paid_at
-        date business_date
-    }
-    payment_webhook_events {
-        bigint id PK
-        bigint payment_request_id FK "null"
-        varchar provider_transaction_code UK
-        varchar payment_reference
-        numeric amount
-        varchar processing_result "PROCESSED / MISMATCH / AFTER_CANCEL"
-        tstz received_at
-        text raw_payload
-        varchar resolution_status "null; OPEN / RESOLVED"
-        bigint resolved_by_id FK "null; employees"
-        tstz resolved_at "null"
-        varchar resolution_note "null"
-    }
-    invoice_items {
-        bigint id PK
-        bigint invoice_id FK
-        bigint order_item_id FK, UK
-        varchar item_name
-        int quantity
-        numeric unit_price
-        numeric line_total "generated"
-    }
-    daily_menu_items {
-        bigint id PK "phan he 2"
-    }
-    stock_movements {
-        bigint id PK "phan he 4"
-    }
-    stock_reservations {
-        bigint id PK "phan he 4"
-    }
-    invoices ||--o{ invoice_items : "invoice_id"
-    order_items ||--o| invoice_items : "order_item_id"
-    orders ||--o| invoices : "order_id"
-    orders ||--o{ order_batches : "order_id"
-    order_items ||--o{ order_item_events : "order_item_id"
-    daily_menu_items ||--o{ order_items : "daily_menu_item_id"
-    order_batches ||--o{ order_items : "order_batch_id"
-    table_sessions ||--o| orders : "table_session_id"
-    invoices ||--o{ payment_requests : "invoice_id"
-    payment_requests |o--o{ payment_webhook_events : "payment_request_id"
-    invoices ||--o| payments : "invoice_id"
-    payment_requests ||--o| payments : "payment_request_id"
-    payment_webhook_events |o--o| payments : "payment_webhook_event_id"
-    order_items |o--o{ stock_movements : "order_item_id"
-    order_items ||--o{ stock_reservations : "order_item_id"
-    dining_tables ||--o{ table_sessions : "dining_table_id"
+```dbml
+// Phân hệ 3: Bàn • đơn hàng • hóa đơn • thanh toán — 11 bảng, kèm 2 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table dining_tables {
+  id bigint [pk, increment]
+  code varchar(20) [not null, unique]
+  capacity int [not null]
+  status varchar(20) [not null, default: 'AVAILABLE', note: 'cache của "có phiên OPEN", chỉ đổi trong rc_* (DB-15); Giá trị: AVAILABLE | OCCUPIED']
+  is_active boolean [not null, default: true, note: 'DB-15']
+
+  Note: '''
+  ck_dining_tables_capacity_positive: CHECK ((capacity > 0))
+  '''
+}
+
+Table table_sessions {
+  id bigint [pk, increment]
+  dining_table_id bigint [not null]
+  opened_at timestamptz [not null, default: `now()`]
+  closed_at timestamptz
+  status varchar(20) [not null, default: 'OPEN', note: 'Giá trị: OPEN | CLOSED']
+  opened_by_id bigint [not null, note: 'DB-16']
+  closed_by_id bigint [note: 'DB-16']
+
+  indexes {
+    (dining_table_id) [unique, name: 'ux_table_sessions_open', note: 'WHERE ((status)::text = \'OPEN\'::text)']
+  }
+
+  Note: '''
+  ck_table_session_closed: CHECK (((((status)::text = 'OPEN'::text) = (closed_at IS NULL)) AND (((status)::text = 'OPEN'::text) = (closed_by_id IS NULL)) AND ((closed_at IS NULL) OR (closed_at >= opened_at))))
+  '''
+}
+
+Table orders {
+  id bigint [pk, increment]
+  table_session_id bigint [not null, unique]
+  status varchar(20) [not null, default: 'OPEN', note: 'Giá trị: OPEN | CLOSED | CANCELLED']
+}
+
+Table order_batches {
+  id bigint [pk, increment]
+  order_id bigint [not null]
+  waiter_id bigint [not null]
+  submitted_at timestamptz [not null, default: `now()`]
+  request_key varchar(64) [not null, unique]
+}
+
+Table order_items {
+  id bigint [pk, increment]
+  order_batch_id bigint [not null]
+  daily_menu_item_id bigint [not null]
+  quantity int [not null]
+  item_name_snapshot varchar(100) [not null]
+  unit_price numeric(12,2) [not null]
+  status varchar(20) [not null, default: 'PENDING', note: 'Giá trị: PENDING | ACCEPTED | COOKING | READY | SERVED | CANCELLED | REJECTED']
+  has_stock_exception boolean [not null, default: false]
+  note varchar(255)
+
+  Note: '''
+  ck_order_item_exception_accepted: CHECK (((NOT has_stock_exception) OR ((status)::text = 'ACCEPTED'::text)))
+  ck_order_items_quantity_positive: CHECK ((quantity > 0))
+  ck_order_items_unit_price_nonneg: CHECK ((unit_price >= (0)::numeric))
+  '''
+}
+
+Table order_item_events {
+  id bigint [pk, increment]
+  order_item_id bigint [not null]
+  actor_id bigint [not null]
+  from_status varchar(20) [note: 'Giá trị: PENDING | ACCEPTED | COOKING | READY | SERVED | CANCELLED | REJECTED']
+  to_status varchar(20) [not null, note: 'Giá trị: PENDING | ACCEPTED | COOKING | READY | SERVED | CANCELLED | REJECTED']
+  reason varchar(255)
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: '''
+  ck_order_item_event_first: CHECK (((from_status IS NOT NULL) OR ((to_status)::text = 'PENDING'::text)))
+  ck_order_item_event_reason: CHECK ((((to_status)::text <> ALL ((ARRAY['REJECTED'::character varying, 'CANCELLED'::character varying])::text[])) OR (btrim((COALESCE(reason, ''::character varying))::text) <> ''::text)))
+  '''
+}
+
+Table invoices {
+  id bigint [pk, increment]
+  order_id bigint [not null, unique]
+  total numeric(12,2) [not null, default: 0]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | PAYMENT_PENDING | PAID | UNCOLLECTED | WAIVED']
+  created_at timestamptz [not null, default: `now()`, note: 'DB-13']
+  created_by_id bigint [not null, note: 'DB-13']
+  uncollected_reason varchar(255)
+  uncollected_by_id bigint
+  uncollected_at timestamptz
+  waived_reason varchar(255)
+  waived_by_id bigint
+  waived_at timestamptz
+
+  Note: '''
+  ck_invoice_uncollected_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'UNCOLLECTED'::text) THEN ((num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 3) AND (btrim((uncollected_reason)::text) <> ''::text) AND (total > (0)::numeric))
+    ELSE (num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 0)
+END)
+  ck_invoice_waived_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'WAIVED'::text) THEN ((num_nonnulls(waived_reason, waived_by_id, waived_at) = 3) AND (btrim((waived_reason)::text) <> ''::text))
+    ELSE (num_nonnulls(waived_reason, waived_by_id, waived_at) = 0)
+END)
+  ck_invoices_total_nonneg: CHECK ((total >= (0)::numeric))
+  '''
+}
+
+Table payment_requests {
+  id bigint [pk, increment]
+  invoice_id bigint [not null]
+  cashier_id bigint [not null, note: 'DB-11']
+  amount_due numeric(12,2) [not null]
+  cash_received numeric(12,2)
+  change_amount numeric(12,2) [note: 'DB-10; Cột tính toán: GENERATED ALWAYS AS ((cash_received - amount_due)) STORED']
+  method varchar(20) [not null, note: 'Giá trị: CASH | QR']
+  status varchar(30) [not null, default: 'REQUESTED', note: 'Giá trị: REQUESTED | WAITING_TRANSFER | PAID | CANCELLED']
+  payment_reference varchar(64) [unique]
+  cancel_reason varchar(255)
+  created_at timestamptz [not null, default: `now()`, note: 'DB-11']
+  cancelled_at timestamptz [note: 'DB-11']
+  cancelled_by_id bigint [note: 'DB-11']
+
+  indexes {
+    (id, invoice_id, method) [unique, name: 'ux_payment_requests_id_invoice_method']
+    (invoice_id) [unique, name: 'ux_payment_request_active', note: 'WHERE ((status)::text = ANY ((ARRAY[\'REQUESTED\'::character varying, \'WAITING_TRANSFER\'::character varying])::text[]))']
+  }
+
+  Note: '''
+  ck_payment_method_fields: CHECK (((((method)::text = 'CASH'::text) AND (cash_received IS NOT NULL) AND (cash_received >= amount_due) AND (payment_reference IS NULL)) OR (((method)::text = 'QR'::text) AND (cash_received IS NULL) AND (payment_reference IS NOT NULL))))
+  ck_payment_request_cancel_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'CANCELLED'::text) THEN (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 3)
+    ELSE (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 0)
+END)
+  ck_payment_requests_amount_due_nonneg: CHECK ((amount_due >= (0)::numeric))
+  '''
+}
+
+Table payment_webhook_events {
+  id bigint [pk, increment]
+  payment_request_id bigint
+  provider_transaction_code varchar(64) [not null, unique]
+  payment_reference varchar(64) [not null]
+  amount numeric(12,2) [not null]
+  processing_result varchar(20) [not null, note: 'Giá trị: PROCESSED | MISMATCH | AFTER_CANCEL']
+  received_at timestamptz [not null, default: `now()`]
+  raw_payload text [not null]
+  resolution_status varchar(20) [note: 'DB-12; Giá trị: OPEN | RESOLVED']
+  resolved_by_id bigint [note: 'DB-12']
+  resolved_at timestamptz [note: 'DB-12']
+  resolution_note varchar(255) [note: 'DB-12']
+
+  indexes {
+    (id, payment_request_id) [unique, name: 'ux_webhook_id_request']
+  }
+
+  Note: '''
+  ck_webhook_resolution: CHECK (
+CASE
+    WHEN ((processing_result)::text = 'PROCESSED'::text) THEN (num_nonnulls(resolution_status, resolved_by_id, resolved_at, resolution_note) = 0)
+    WHEN ((resolution_status)::text = 'OPEN'::text) THEN (num_nonnulls(resolved_by_id, resolved_at, resolution_note) = 0)
+    WHEN ((resolution_status)::text = 'RESOLVED'::text) THEN (num_nonnulls(resolved_by_id, resolved_at, resolution_note) = 3)
+    ELSE false
+END)
+  '''
+}
+
+Table payments {
+  id bigint [pk, increment]
+  invoice_id bigint [not null, unique]
+  payment_request_id bigint [not null, unique]
+  payment_webhook_event_id bigint [unique]
+  amount numeric(12,2) [not null]
+  method varchar(20) [not null, note: 'Giá trị: CASH | QR']
+  paid_at timestamptz [not null, default: `now()`]
+  business_date date [not null]
+
+  Note: '''
+  ck_payments_amount_nonneg: CHECK ((amount >= (0)::numeric))
+  ck_payments_qr_webhook: CHECK ((((method)::text = 'QR'::text) = (payment_webhook_event_id IS NOT NULL)))
+  '''
+}
+
+Table invoice_items {
+  id bigint [pk, increment]
+  invoice_id bigint [not null]
+  order_item_id bigint [not null, unique]
+  item_name varchar(100) [not null]
+  quantity int [not null]
+  unit_price numeric(12,2) [not null]
+  line_total numeric(12,2) [note: 'Cột tính toán: GENERATED ALWAYS AS (((quantity)::numeric * unit_price)) STORED']
+
+  Note: '''
+  ck_invoice_items_quantity_positive: CHECK ((quantity > 0))
+  ck_invoice_items_unit_price_nonneg: CHECK ((unit_price >= (0)::numeric))
+  '''
+}
+
+Table daily_menu_items {
+  id bigint [pk, increment]
+  daily_menu_id bigint [not null]
+  menu_item_id bigint [not null]
+  recipe_id bigint [not null]
+  quota_total int
+  is_paused boolean [not null, default: false]
+  pause_reason varchar(255)
+  paused_by_id bigint [note: 'DB-07']
+  paused_at timestamptz [note: 'DB-07']
+
+  indexes {
+    (daily_menu_id, menu_item_id) [unique, name: 'ux_daily_menu_items_once']
+  }
+
+  Note: '''
+  ck_daily_menu_pause_fields: CHECK (
+CASE
+    WHEN is_paused THEN (num_nonnulls(pause_reason, paused_by_id, paused_at) = 3)
+    ELSE (num_nonnulls(pause_reason, paused_by_id, paused_at) = 0)
+END)
+  ck_daily_menu_quota_nonneg: CHECK ((quota_total >= 0))
+  '''
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Ref daily_menu_items_paused_by_id_fkey: daily_menu_items.paused_by_id > employees.id
+Ref invoice_items_invoice_id_fkey: invoice_items.invoice_id > invoices.id
+Ref invoice_items_order_item_id_fkey: invoice_items.order_item_id > order_items.id
+Ref invoices_created_by_id_fkey: invoices.created_by_id > employees.id
+Ref invoices_order_id_fkey: invoices.order_id > orders.id
+Ref invoices_uncollected_by_id_fkey: invoices.uncollected_by_id > employees.id
+Ref invoices_waived_by_id_fkey: invoices.waived_by_id > employees.id
+Ref order_batches_order_id_fkey: order_batches.order_id > orders.id
+Ref order_batches_waiter_id_fkey: order_batches.waiter_id > employees.id
+Ref order_item_events_actor_id_fkey: order_item_events.actor_id > employees.id
+Ref order_item_events_order_item_id_fkey: order_item_events.order_item_id > order_items.id
+Ref order_items_daily_menu_item_id_fkey: order_items.daily_menu_item_id > daily_menu_items.id
+Ref order_items_order_batch_id_fkey: order_items.order_batch_id > order_batches.id
+Ref orders_table_session_id_fkey: orders.table_session_id > table_sessions.id
+Ref payment_requests_cancelled_by_id_fkey: payment_requests.cancelled_by_id > employees.id
+Ref payment_requests_cashier_id_fkey: payment_requests.cashier_id > employees.id
+Ref payment_requests_invoice_id_fkey: payment_requests.invoice_id > invoices.id
+Ref payment_webhook_events_payment_request_id_fkey: payment_webhook_events.payment_request_id > payment_requests.id
+Ref payment_webhook_events_resolved_by_id_fkey: payment_webhook_events.resolved_by_id > employees.id
+Ref fk_payments_request_invoice_method: payments.(payment_request_id, invoice_id, method) > payment_requests.(id, invoice_id, method)
+Ref fk_payments_webhook_request: payments.(payment_webhook_event_id, payment_request_id) > payment_webhook_events.(id, payment_request_id)
+Ref payments_invoice_id_fkey: payments.invoice_id > invoices.id
+Ref payments_payment_request_id_fkey: payments.payment_request_id > payment_requests.id
+Ref payments_payment_webhook_event_id_fkey: payments.payment_webhook_event_id > payment_webhook_events.id
+Ref table_sessions_closed_by_id_fkey: table_sessions.closed_by_id > employees.id
+Ref table_sessions_dining_table_id_fkey: table_sessions.dining_table_id > dining_tables.id
+Ref table_sessions_opened_by_id_fkey: table_sessions.opened_by_id > employees.id
+
+TableGroup "P3 · Bàn • đơn hàng • hóa đơn • thanh toán" {
+  dining_tables
+  table_sessions
+  orders
+  order_batches
+  order_items
+  order_item_events
+  invoices
+  payment_requests
+  payment_webhook_events
+  payments
+  invoice_items
+}
+
+TableGroup "Liên kết ngoài" {
+  daily_menu_items
+  employees
+}
 ```
 <!-- /GEN:ERD-3 -->
 
@@ -487,245 +816,505 @@ erDiagram
 ## 6. Phân hệ 4 — Kho RAW • bếp • sơ chế • kiểm kê (18 bảng)
 
 <!-- GEN:ERD-4 -->
-**ERD phân hệ 4 (schema v4.1)** — bản draw.io: [erd/erd-p4-kho-bep.drawio](erd/erd-p4-kho-bep.drawio) · ảnh xem nhanh: [erd/erd-p4-kho-bep.png](erd/erd-p4-kho-bep.png). Sơ đồ Mermaid dưới đây sinh từ cùng schema; cột người thao tác ghi chú `employees` thay vì vẽ cạnh, bảng phân hệ khác chỉ hiện `id`.
+**ERD phân hệ 4 (schema v4.1)** — mã DBML cho [dbdiagram.io](https://dbdiagram.io/d): mở trang, dán khối dưới đây (hoặc file [erd/rms-schema-p4.dbml](erd/rms-schema-p4.dbml)) vào ô code. Toàn bộ 48 bảng: [erd/rms-schema.dbml](erd/rms-schema.dbml). Sinh từ catalog schema thật bằng [erd/sinh-dbml.sh](erd/sinh-dbml.sh); bảng phân hệ khác mà phân hệ này trỏ tới nằm ở nhóm "Liên kết ngoài". Bản draw.io: [erd/erd-p4-kho-bep.drawio](erd/erd-p4-kho-bep.drawio) · ảnh: [erd/erd-p4-kho-bep.png](erd/erd-p4-kho-bep.png).
 
-```mermaid
-erDiagram
-    ingredients {
-        bigint id PK
-        varchar name UK
-        varchar base_unit
-        numeric min_quantity
-        bool is_expiry_tracked
-        bool is_active
-    }
-    stock_receipts {
-        bigint id PK
-        varchar supplier_name "null"
-        varchar status "DRAFT / CONFIRMED / CANCELLED"
-        varchar note "null"
-        tstz created_at
-        bigint created_by_id FK "employees"
-        tstz received_at "null"
-        bigint confirmed_by_id FK "null; employees"
-        tstz confirmed_at "null"
-        varchar request_key UK
-        char request_hash
-    }
-    stock_receipt_items {
-        bigint id PK
-        bigint stock_receipt_id FK
-        bigint ingredient_id FK
-        numeric input_quantity
-        varchar input_unit
-        numeric conversion_factor
-        numeric unit_price_per_input_unit
-        varchar lot_code "null"
-        date expiry_date "null"
-    }
-    inventory_batches {
-        bigint id PK
-        bigint stock_receipt_item_id FK, UK
-        tstz received_at
-        numeric quantity_on_hand
-        bool is_usable
-        varchar unusable_reason "null"
-        bigint unusable_marked_by_id FK "null; employees"
-        tstz unusable_marked_at "null"
-    }
-    stock_movements {
-        bigint id PK
-        varchar movement_type "11 giá trị"
-        bigint raw_batch_id FK "null"
-        bigint wip_issue_item_id FK "null"
-        bigint kitchen_batch_id FK "null"
-        numeric quantity_delta
-        bigint ref_issue_item_id FK "null"
-        bigint preparation_id FK "null"
-        bigint order_item_id FK "null"
-        bigint stock_count_item_id FK "null"
-        bigint stock_return_item_id FK "null"
-        bigint stock_adjustment_item_id FK "null"
-        varchar reason "null"
-        varchar event_key UK
-        tstz created_at
-    }
-    stock_reservations {
-        bigint id PK
-        bigint order_item_id FK
-        bigint kitchen_batch_id FK
-        numeric quantity
-        varchar status "ACTIVE / CONSUMED / RELEASED"
-        varchar release_reason "null; ITEM_CANCELLED / BATCH_UNUSABLE"
-        tstz created_at
-        tstz closed_at "null"
-    }
-    stock_counts {
-        bigint id PK
-        varchar status "DRAFT / CONFIRMED / CANCELLED"
-        varchar note "null"
-        tstz created_at
-        bigint created_by_id FK "employees"
-        bigint confirmed_by_id FK "null; employees"
-        tstz confirmed_at "null"
-        varchar request_key UK
-        char request_hash
-    }
-    stock_count_items {
-        bigint id PK
-        bigint stock_count_id FK
-        bigint raw_batch_id FK "null"
-        bigint wip_issue_item_id FK "null"
-        bigint kitchen_batch_id FK "null"
-        numeric book_quantity
-        numeric actual_quantity
-        varchar reason "null"
-    }
-    kitchen_ingredient_types {
-        bigint id PK
-        bigint raw_ingredient_id FK
-        varchar name
-        varchar handling_type "DIRECT / PREPARED"
-        int shelf_life_hours "null"
-        numeric minimum_quantity
-        bool is_active
-    }
-    stock_issues {
-        bigint id PK
-        bigint issued_by_id FK "employees"
-        bigint received_by_id FK "null; employees"
-        varchar status "DRAFT / ISSUED / RECEIVED / CANCELLED"
-        tstz issued_at "null"
-        tstz received_at "null"
-        varchar note "null"
-        varchar cancel_reason "null"
-        tstz cancelled_at "null"
-        tstz created_at
-        bigint cancelled_by_id FK "null; employees"
-        varchar request_key UK
-        char request_hash
-    }
-    stock_issue_items {
-        bigint id PK
-        bigint stock_issue_id FK
-        bigint inventory_batch_id FK
-        numeric quantity
-        varchar fulfillment_mode "DIRECT / PREPARE"
-        numeric wip_remaining_quantity
-    }
-    kitchen_preparations {
-        bigint id PK
-        bigint stock_issue_item_id FK
-        numeric input_quantity
-        varchar status "DRAFT / CONFIRMED / CANCELLED"
-        varchar loss_reason "null"
-        bigint prepared_by_id FK "employees"
-        tstz prepared_at "null"
-        varchar request_key UK
-    }
-    kitchen_batches {
-        bigint id PK
-        bigint kitchen_ingredient_type_id FK
-        bigint preparation_output_id FK, UK "null"
-        bigint direct_issue_item_id FK, UK "null"
-        tstz usable_until "null"
-        numeric quantity_on_hand
-        numeric reserved_quantity
-        bool is_usable
-        varchar unusable_reason "null"
-        tstz created_at
-        bigint unusable_marked_by_id FK "null; employees"
-        tstz unusable_marked_at "null"
-    }
-    kitchen_preparation_outputs {
-        bigint id PK
-        bigint kitchen_preparation_id FK
-        bigint kitchen_ingredient_type_id FK
-        numeric output_quantity
-        tstz usable_until "null"
-    }
-    stock_returns {
-        bigint id PK
-        varchar status "DRAFT / CONFIRMED / CANCELLED"
-        bigint requested_by_id FK "employees"
-        bigint confirmed_by_id FK "null; employees"
-        varchar reason
-        tstz created_at
-        tstz confirmed_at "null"
-        varchar request_key UK
-    }
-    stock_return_items {
-        bigint id PK
-        bigint stock_return_id FK
-        bigint source_issue_item_id FK
-        bigint direct_kitchen_batch_id FK "null"
-        numeric quantity
-    }
-    stock_adjustments {
-        bigint id PK
-        varchar status "DRAFT / CONFIRMED / CANCELLED"
-        varchar adjustment_type "DAMAGE / EXPIRED / QUALITY / OTHER"
-        varchar reason
-        bigint created_by_id FK "employees"
-        bigint confirmed_by_id FK "null; employees"
-        tstz created_at
-        tstz confirmed_at "null"
-        varchar request_key UK
-    }
-    stock_adjustment_items {
-        bigint id PK
-        bigint stock_adjustment_id FK
-        bigint raw_batch_id FK "null"
-        bigint wip_issue_item_id FK "null"
-        bigint kitchen_batch_id FK "null"
-        numeric quantity_delta
-        varchar note "null"
-    }
-    operating_expenses {
-        bigint id PK "phan he 5"
-    }
-    recipe_ingredients {
-        bigint id PK "phan he 2"
-    }
-    order_items {
-        bigint id PK "phan he 3"
-    }
-    stock_receipt_items ||--o| inventory_batches : "stock_receipt_item_id"
-    stock_issue_items |o--o| kitchen_batches : "direct_issue_item_id"
-    kitchen_ingredient_types ||--o{ kitchen_batches : "kitchen_ingredient_type_id"
-    kitchen_preparation_outputs |o--o| kitchen_batches : "preparation_output_id"
-    ingredients ||--o{ kitchen_ingredient_types : "raw_ingredient_id"
-    kitchen_ingredient_types ||--o{ kitchen_preparation_outputs : "kitchen_ingredient_type_id"
-    kitchen_preparations ||--o{ kitchen_preparation_outputs : "kitchen_preparation_id"
-    stock_issue_items ||--o{ kitchen_preparations : "stock_issue_item_id"
-    stock_receipts |o--o{ operating_expenses : "stock_receipt_id"
-    kitchen_ingredient_types ||--o{ recipe_ingredients : "kitchen_ingredient_type_id"
-    kitchen_batches |o--o{ stock_adjustment_items : "kitchen_batch_id"
-    inventory_batches |o--o{ stock_adjustment_items : "raw_batch_id"
-    stock_adjustments ||--o{ stock_adjustment_items : "stock_adjustment_id"
-    stock_issue_items |o--o{ stock_adjustment_items : "wip_issue_item_id"
-    kitchen_batches |o--o{ stock_count_items : "kitchen_batch_id"
-    inventory_batches |o--o{ stock_count_items : "raw_batch_id"
-    stock_counts ||--o{ stock_count_items : "stock_count_id"
-    stock_issue_items |o--o{ stock_count_items : "wip_issue_item_id"
-    inventory_batches ||--o{ stock_issue_items : "inventory_batch_id"
-    stock_issues ||--o{ stock_issue_items : "stock_issue_id"
-    kitchen_batches |o--o{ stock_movements : "kitchen_batch_id"
-    order_items |o--o{ stock_movements : "order_item_id"
-    kitchen_preparations |o--o{ stock_movements : "preparation_id"
-    inventory_batches |o--o{ stock_movements : "raw_batch_id"
-    stock_issue_items |o--o{ stock_movements : "ref_issue_item_id"
-    stock_adjustment_items |o--o{ stock_movements : "stock_adjustment_item_id"
-    stock_count_items |o--o{ stock_movements : "stock_count_item_id"
-    stock_return_items |o--o{ stock_movements : "stock_return_item_id"
-    stock_issue_items |o--o{ stock_movements : "wip_issue_item_id"
-    ingredients ||--o{ stock_receipt_items : "ingredient_id"
-    stock_receipts ||--o{ stock_receipt_items : "stock_receipt_id"
-    kitchen_batches ||--o{ stock_reservations : "kitchen_batch_id"
-    order_items ||--o{ stock_reservations : "order_item_id"
-    kitchen_batches |o--o{ stock_return_items : "direct_kitchen_batch_id"
-    stock_issue_items ||--o{ stock_return_items : "source_issue_item_id"
-    stock_returns ||--o{ stock_return_items : "stock_return_id"
+```dbml
+// Phân hệ 4: Kho RAW • bếp • sơ chế • kiểm kê — 18 bảng, kèm 2 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table ingredients {
+  id bigint [pk, increment]
+  name varchar(100) [not null, unique]
+  base_unit varchar(20) [not null, note: 'DB-29: chọn đơn vị nhỏ (g, ml) cho gia vị định lượng < 1 g/suất']
+  min_quantity numeric(12,3) [not null, default: 0]
+  is_expiry_tracked boolean [not null, default: true]
+  is_active boolean [not null, default: true]
+
+  Note: '''
+  ck_inventory_minimum_nonnegative: CHECK ((min_quantity >= (0)::numeric))
+  '''
+}
+
+Table kitchen_ingredient_types {
+  id bigint [pk, increment]
+  raw_ingredient_id bigint [not null]
+  name varchar(100) [not null]
+  handling_type varchar(12) [not null, note: 'Giá trị: DIRECT | PREPARED']
+  shelf_life_hours int
+  minimum_quantity numeric(12,3) [not null, default: 0]
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (raw_ingredient_id) [unique, name: 'ux_kitchen_direct_one', note: 'WHERE ((handling_type)::text = \'DIRECT\'::text)']
+    (raw_ingredient_id, `lower((name)::text)`) [unique, name: 'ux_kitchen_types_name']
+  }
+
+  Note: '''
+  ck_kitchen_minimum_nonnegative: CHECK ((minimum_quantity >= (0)::numeric))
+  ck_kitchen_shelf_life_positive: CHECK ((shelf_life_hours > 0))
+  '''
+}
+
+Table stock_receipts {
+  id bigint [pk, increment]
+  supplier_name varchar(100)
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  note varchar(255)
+  created_at timestamptz [not null, default: `now()`]
+  created_by_id bigint [not null, note: 'DB-25']
+  received_at timestamptz
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique, note: 'QĐ-ID: một yêu cầu tạo phiếu = một chứng từ']
+  request_hash char(64) [not null, note: 'sha256 của payload tạo phiếu: cùng khóa khác payload → RC409']
+
+  Note: '''
+  ck_stock_receipt_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(received_at, confirmed_by_id, confirmed_at) = 3)))
+  '''
+}
+
+Table stock_receipt_items {
+  id bigint [pk, increment]
+  stock_receipt_id bigint [not null]
+  ingredient_id bigint [not null]
+  input_quantity numeric(12,3) [not null]
+  input_unit varchar(20) [not null]
+  conversion_factor numeric(12,3) [not null]
+  unit_price_per_input_unit numeric(12,2) [not null]
+  lot_code varchar(50)
+  expiry_date date
+
+  indexes {
+    (stock_receipt_id, ingredient_id, lot_code, expiry_date) [unique, name: 'ux_stock_receipt_items_lot']
+  }
+
+  Note: '''
+  ck_stock_receipt_items_conversion_factor_positive: CHECK ((conversion_factor > (0)::numeric))
+  ck_stock_receipt_items_input_quantity_positive: CHECK ((input_quantity > (0)::numeric))
+  ck_stock_receipt_price_nonnegative: CHECK ((unit_price_per_input_unit >= (0)::numeric))
+  '''
+}
+
+Table inventory_batches {
+  id bigint [pk, increment]
+  stock_receipt_item_id bigint [not null, unique]
+  received_at timestamptz [not null, default: `now()`, note: '= lúc xác nhận phiếu; tiêu chí phụ FEFO']
+  quantity_on_hand numeric(12,3) [not null]
+  is_usable boolean [not null, default: true]
+  unusable_reason varchar(255)
+  unusable_marked_by_id bigint
+  unusable_marked_at timestamptz
+
+  Note: '''
+  ck_inventory_batch_unusable_fields: CHECK (
+CASE
+    WHEN is_usable THEN (num_nonnulls(unusable_reason, unusable_marked_by_id, unusable_marked_at) = 0)
+    ELSE (num_nonnulls(unusable_reason, unusable_marked_by_id, unusable_marked_at) = 3)
+END)
+  ck_inventory_batches_quantity_on_hand_nonneg: CHECK ((quantity_on_hand >= (0)::numeric))
+  '''
+}
+
+Table stock_issues {
+  id bigint [pk, increment]
+  issued_by_id bigint [not null]
+  received_by_id bigint
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | ISSUED | RECEIVED | CANCELLED']
+  issued_at timestamptz
+  received_at timestamptz
+  note varchar(255)
+  cancel_reason varchar(255)
+  cancelled_at timestamptz
+  created_at timestamptz [not null, default: `now()`, note: 'DB-25']
+  cancelled_by_id bigint [note: 'DB-25']
+  request_key varchar(64) [not null, unique, note: 'QĐ-ID']
+  request_hash char(64) [not null, note: 'QĐ-ID']
+
+  Note: '''
+  ck_stock_issue_fields: CHECK (
+CASE status
+    WHEN 'DRAFT'::text THEN (num_nonnulls(issued_at, received_at, received_by_id, cancel_reason, cancelled_at, cancelled_by_id) = 0)
+    WHEN 'ISSUED'::text THEN ((issued_at IS NOT NULL) AND (num_nonnulls(received_at, received_by_id, cancel_reason, cancelled_at, cancelled_by_id) = 0))
+    WHEN 'RECEIVED'::text THEN ((num_nonnulls(issued_at, received_at, received_by_id) = 3) AND (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 0))
+    WHEN 'CANCELLED'::text THEN ((num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 3) AND (num_nonnulls(received_at, received_by_id) = 0))
+    ELSE NULL::boolean
+END)
+  '''
+}
+
+Table stock_issue_items {
+  id bigint [pk, increment]
+  stock_issue_id bigint [not null]
+  inventory_batch_id bigint [not null]
+  quantity numeric(12,3) [not null]
+  fulfillment_mode varchar(12) [not null, note: 'Giá trị: DIRECT | PREPARE']
+  wip_remaining_quantity numeric(12,3) [not null, default: 0]
+
+  indexes {
+    (stock_issue_id, inventory_batch_id, fulfillment_mode) [unique, name: 'ux_stock_issue_batch_mode']
+  }
+
+  Note: '''
+  ck_issue_item_wip_bounds: CHECK (((wip_remaining_quantity <= quantity) AND (((fulfillment_mode)::text = 'PREPARE'::text) OR (wip_remaining_quantity = (0)::numeric))))
+  ck_issue_wip_nonneg: CHECK ((wip_remaining_quantity >= (0)::numeric))
+  ck_stock_issue_items_quantity_positive: CHECK ((quantity > (0)::numeric))
+  '''
+}
+
+Table kitchen_preparations {
+  id bigint [pk, increment]
+  stock_issue_item_id bigint [not null]
+  input_quantity numeric(12,3) [not null]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  loss_reason varchar(255)
+  prepared_by_id bigint [not null]
+  prepared_at timestamptz
+  request_key varchar(64) [not null, unique]
+
+  Note: '''
+  ck_kitchen_preparation_confirmed: CHECK ((((status)::text = 'CONFIRMED'::text) = (prepared_at IS NOT NULL)))
+  ck_kitchen_preparations_input_quantity_positive: CHECK ((input_quantity > (0)::numeric))
+  '''
+}
+
+Table kitchen_preparation_outputs {
+  id bigint [pk, increment]
+  kitchen_preparation_id bigint [not null]
+  kitchen_ingredient_type_id bigint [not null]
+  output_quantity numeric(12,3) [not null]
+  usable_until timestamptz
+
+  indexes {
+    (kitchen_preparation_id, kitchen_ingredient_type_id) [unique, name: 'ux_kitchen_prep_output_type']
+    (id, kitchen_ingredient_type_id) [unique, name: 'ux_prep_output_id_type']
+  }
+
+  Note: '''
+  ck_kitchen_preparation_outputs_output_quantity_positive: CHECK ((output_quantity > (0)::numeric))
+  '''
+}
+
+Table kitchen_batches {
+  id bigint [pk, increment]
+  kitchen_ingredient_type_id bigint [not null]
+  preparation_output_id bigint [unique]
+  direct_issue_item_id bigint [unique]
+  usable_until timestamptz
+  quantity_on_hand numeric(12,3) [not null]
+  reserved_quantity numeric(12,3) [not null, default: 0]
+  is_usable boolean [not null, default: true]
+  unusable_reason varchar(255)
+  created_at timestamptz [not null, default: `now()`, note: 'DB-25']
+  unusable_marked_by_id bigint [note: 'DB-25']
+  unusable_marked_at timestamptz [note: 'DB-25']
+
+  indexes {
+    (id, direct_issue_item_id) [unique, name: 'ux_kitchen_batch_id_direct']
+  }
+
+  Note: '''
+  ck_kitchen_batch_one_source: CHECK ((num_nonnulls(preparation_output_id, direct_issue_item_id) = 1))
+  ck_kitchen_batch_unusable_fields: CHECK (
+CASE
+    WHEN is_usable THEN (num_nonnulls(unusable_reason, unusable_marked_by_id, unusable_marked_at) = 0)
+    ELSE (num_nonnulls(unusable_reason, unusable_marked_by_id, unusable_marked_at) = 3)
+END)
+  ck_kitchen_batches_quantity_on_hand_nonneg: CHECK ((quantity_on_hand >= (0)::numeric))
+  ck_kitchen_batches_reserved_quantity_nonneg: CHECK ((reserved_quantity >= (0)::numeric))
+  ck_kitchen_reserved_le_on_hand: CHECK ((reserved_quantity <= quantity_on_hand))
+  '''
+}
+
+Table stock_reservations {
+  id bigint [pk, increment]
+  order_item_id bigint [not null]
+  kitchen_batch_id bigint [not null]
+  quantity numeric(12,3) [not null]
+  status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | CONSUMED | RELEASED']
+  release_reason varchar(30) [note: 'DB-14; Giá trị: ITEM_CANCELLED | BATCH_UNUSABLE']
+  created_at timestamptz [not null, default: `now()`]
+  closed_at timestamptz
+
+  indexes {
+    (order_item_id, kitchen_batch_id) [unique, name: 'ux_stock_reservation_batch']
+  }
+
+  Note: '''
+  ck_reservation_close_fields: CHECK (
+CASE status
+    WHEN 'ACTIVE'::text THEN ((closed_at IS NULL) AND (release_reason IS NULL))
+    WHEN 'CONSUMED'::text THEN ((closed_at IS NOT NULL) AND (release_reason IS NULL))
+    WHEN 'RELEASED'::text THEN ((closed_at IS NOT NULL) AND (release_reason IS NOT NULL))
+    ELSE NULL::boolean
+END)
+  ck_stock_reservations_quantity_positive: CHECK ((quantity > (0)::numeric))
+  '''
+}
+
+Table stock_returns {
+  id bigint [pk, increment]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  requested_by_id bigint [not null]
+  confirmed_by_id bigint
+  reason varchar(255) [not null]
+  created_at timestamptz [not null, default: `now()`]
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique]
+
+  Note: '''
+  ck_stock_return_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(confirmed_by_id, confirmed_at) = 2)))
+  '''
+}
+
+Table stock_return_items {
+  id bigint [pk, increment]
+  stock_return_id bigint [not null]
+  source_issue_item_id bigint [not null]
+  direct_kitchen_batch_id bigint
+  quantity numeric(12,3) [not null]
+
+  indexes {
+    (stock_return_id, source_issue_item_id) [unique, name: 'ux_return_item_source']
+  }
+
+  Note: '''
+  ck_stock_return_items_quantity_positive: CHECK ((quantity > (0)::numeric))
+  '''
+}
+
+Table stock_adjustments {
+  id bigint [pk, increment]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  adjustment_type varchar(20) [not null, note: 'Giá trị: DAMAGE | EXPIRED | QUALITY | OTHER']
+  reason varchar(255) [not null]
+  created_by_id bigint [not null]
+  confirmed_by_id bigint
+  created_at timestamptz [not null, default: `now()`]
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique]
+
+  Note: '''
+  ck_stock_adjustment_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(confirmed_by_id, confirmed_at) = 2)))
+  '''
+}
+
+Table stock_adjustment_items {
+  id bigint [pk, increment]
+  stock_adjustment_id bigint [not null]
+  raw_batch_id bigint
+  wip_issue_item_id bigint
+  kitchen_batch_id bigint
+  quantity_delta numeric(12,3) [not null, note: 'DB-22']
+  note varchar(255)
+
+  indexes {
+    (stock_adjustment_id, kitchen_batch_id) [unique, name: 'ux_adjust_item_kitchen', note: 'WHERE (kitchen_batch_id IS NOT NULL)']
+    (stock_adjustment_id, raw_batch_id) [unique, name: 'ux_adjust_item_raw', note: 'WHERE (raw_batch_id IS NOT NULL)']
+    (stock_adjustment_id, wip_issue_item_id) [unique, name: 'ux_adjust_item_wip', note: 'WHERE (wip_issue_item_id IS NOT NULL)']
+  }
+
+  Note: '''
+  ck_adjust_delta_negative: CHECK ((quantity_delta < (0)::numeric))
+  ck_stock_adjust_one_source: CHECK ((num_nonnulls(raw_batch_id, wip_issue_item_id, kitchen_batch_id) = 1))
+  '''
+}
+
+Table stock_counts {
+  id bigint [pk, increment]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  note varchar(255)
+  created_at timestamptz [not null, default: `now()`]
+  created_by_id bigint [not null, note: 'DB-25']
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique, note: 'QĐ-ID']
+  request_hash char(64) [not null, note: 'QĐ-ID']
+
+  Note: '''
+  ck_stock_count_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(confirmed_by_id, confirmed_at) = 2)))
+  '''
+}
+
+Table stock_count_items {
+  id bigint [pk, increment]
+  stock_count_id bigint [not null]
+  raw_batch_id bigint
+  wip_issue_item_id bigint
+  kitchen_batch_id bigint
+  book_quantity numeric(12,3) [not null]
+  actual_quantity numeric(12,3) [not null]
+  reason varchar(255)
+
+  indexes {
+    (stock_count_id, kitchen_batch_id) [unique, name: 'ux_stock_count_kitchen', note: 'WHERE (kitchen_batch_id IS NOT NULL)']
+    (stock_count_id, raw_batch_id) [unique, name: 'ux_stock_count_raw', note: 'WHERE (raw_batch_id IS NOT NULL)']
+    (stock_count_id, wip_issue_item_id) [unique, name: 'ux_stock_count_wip', note: 'WHERE (wip_issue_item_id IS NOT NULL)']
+  }
+
+  Note: '''
+  ck_stock_count_items_actual_quantity_nonneg: CHECK ((actual_quantity >= (0)::numeric))
+  ck_stock_count_items_book_quantity_nonneg: CHECK ((book_quantity >= (0)::numeric))
+  ck_stock_count_one_source: CHECK ((num_nonnulls(raw_batch_id, wip_issue_item_id, kitchen_batch_id) = 1))
+  '''
+}
+
+Table stock_movements {
+  id bigint [pk, increment]
+  movement_type varchar(30) [not null, note: 'Giá trị: RECEIPT | ISSUE_OUT | ISSUE_REVERSAL | ISSUE_RECEIVED | DIRECT_IN | PREP_INPUT | PREP_OUTPUT | COOK | RETURN | WASTE | COUNT_ADJUST']
+  raw_batch_id bigint
+  wip_issue_item_id bigint
+  kitchen_batch_id bigint
+  quantity_delta numeric(12,3) [not null]
+  ref_issue_item_id bigint
+  preparation_id bigint
+  order_item_id bigint
+  stock_count_item_id bigint
+  stock_return_item_id bigint
+  stock_adjustment_item_id bigint
+  reason varchar(255)
+  event_key varchar(64) [not null, unique]
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: '''
+  ck_movement_one_source: CHECK ((num_nonnulls(raw_batch_id, wip_issue_item_id, kitchen_batch_id) = 1))
+  ck_movement_type_shape: CHECK (((quantity_delta <> (0)::numeric) AND
+CASE movement_type
+    WHEN 'RECEIPT'::text THEN ((raw_batch_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'ISSUE_OUT'::text THEN ((raw_batch_id IS NOT NULL) AND (ref_issue_item_id IS NOT NULL) AND (quantity_delta < (0)::numeric))
+    WHEN 'ISSUE_REVERSAL'::text THEN ((raw_batch_id IS NOT NULL) AND (ref_issue_item_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'ISSUE_RECEIVED'::text THEN ((wip_issue_item_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'DIRECT_IN'::text THEN ((kitchen_batch_id IS NOT NULL) AND (ref_issue_item_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'PREP_INPUT'::text THEN ((wip_issue_item_id IS NOT NULL) AND (preparation_id IS NOT NULL) AND (quantity_delta < (0)::numeric))
+    WHEN 'PREP_OUTPUT'::text THEN ((kitchen_batch_id IS NOT NULL) AND (preparation_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'COOK'::text THEN ((kitchen_batch_id IS NOT NULL) AND (order_item_id IS NOT NULL) AND (quantity_delta < (0)::numeric))
+    WHEN 'RETURN'::text THEN ((stock_return_item_id IS NOT NULL) AND (((raw_batch_id IS NOT NULL) AND (quantity_delta > (0)::numeric)) OR ((raw_batch_id IS NULL) AND (quantity_delta < (0)::numeric))))
+    WHEN 'WASTE'::text THEN ((stock_adjustment_item_id IS NOT NULL) AND (quantity_delta < (0)::numeric))
+    WHEN 'COUNT_ADJUST'::text THEN (stock_count_item_id IS NOT NULL)
+    ELSE false
+END))
+  '''
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Table order_items {
+  id bigint [pk, increment]
+  order_batch_id bigint [not null]
+  daily_menu_item_id bigint [not null]
+  quantity int [not null]
+  item_name_snapshot varchar(100) [not null]
+  unit_price numeric(12,2) [not null]
+  status varchar(20) [not null, default: 'PENDING', note: 'Giá trị: PENDING | ACCEPTED | COOKING | READY | SERVED | CANCELLED | REJECTED']
+  has_stock_exception boolean [not null, default: false]
+  note varchar(255)
+
+  Note: '''
+  ck_order_item_exception_accepted: CHECK (((NOT has_stock_exception) OR ((status)::text = 'ACCEPTED'::text)))
+  ck_order_items_quantity_positive: CHECK ((quantity > 0))
+  ck_order_items_unit_price_nonneg: CHECK ((unit_price >= (0)::numeric))
+  '''
+}
+
+Ref inventory_batches_stock_receipt_item_id_fkey: inventory_batches.stock_receipt_item_id > stock_receipt_items.id
+Ref inventory_batches_unusable_marked_by_id_fkey: inventory_batches.unusable_marked_by_id > employees.id
+Ref fk_kitchen_batch_output_type: kitchen_batches.(preparation_output_id, kitchen_ingredient_type_id) > kitchen_preparation_outputs.(id, kitchen_ingredient_type_id)
+Ref kitchen_batches_direct_issue_item_id_fkey: kitchen_batches.direct_issue_item_id > stock_issue_items.id
+Ref kitchen_batches_kitchen_ingredient_type_id_fkey: kitchen_batches.kitchen_ingredient_type_id > kitchen_ingredient_types.id
+Ref kitchen_batches_preparation_output_id_fkey: kitchen_batches.preparation_output_id > kitchen_preparation_outputs.id
+Ref kitchen_batches_unusable_marked_by_id_fkey: kitchen_batches.unusable_marked_by_id > employees.id
+Ref kitchen_ingredient_types_raw_ingredient_id_fkey: kitchen_ingredient_types.raw_ingredient_id > ingredients.id
+Ref kitchen_preparation_outputs_kitchen_ingredient_type_id_fkey: kitchen_preparation_outputs.kitchen_ingredient_type_id > kitchen_ingredient_types.id
+Ref kitchen_preparation_outputs_kitchen_preparation_id_fkey: kitchen_preparation_outputs.kitchen_preparation_id > kitchen_preparations.id
+Ref kitchen_preparations_prepared_by_id_fkey: kitchen_preparations.prepared_by_id > employees.id
+Ref kitchen_preparations_stock_issue_item_id_fkey: kitchen_preparations.stock_issue_item_id > stock_issue_items.id
+Ref stock_adjustment_items_kitchen_batch_id_fkey: stock_adjustment_items.kitchen_batch_id > kitchen_batches.id
+Ref stock_adjustment_items_raw_batch_id_fkey: stock_adjustment_items.raw_batch_id > inventory_batches.id
+Ref stock_adjustment_items_stock_adjustment_id_fkey: stock_adjustment_items.stock_adjustment_id > stock_adjustments.id
+Ref stock_adjustment_items_wip_issue_item_id_fkey: stock_adjustment_items.wip_issue_item_id > stock_issue_items.id
+Ref stock_adjustments_confirmed_by_id_fkey: stock_adjustments.confirmed_by_id > employees.id
+Ref stock_adjustments_created_by_id_fkey: stock_adjustments.created_by_id > employees.id
+Ref stock_count_items_kitchen_batch_id_fkey: stock_count_items.kitchen_batch_id > kitchen_batches.id
+Ref stock_count_items_raw_batch_id_fkey: stock_count_items.raw_batch_id > inventory_batches.id
+Ref stock_count_items_stock_count_id_fkey: stock_count_items.stock_count_id > stock_counts.id
+Ref stock_count_items_wip_issue_item_id_fkey: stock_count_items.wip_issue_item_id > stock_issue_items.id
+Ref stock_counts_confirmed_by_id_fkey: stock_counts.confirmed_by_id > employees.id
+Ref stock_counts_created_by_id_fkey: stock_counts.created_by_id > employees.id
+Ref stock_issue_items_inventory_batch_id_fkey: stock_issue_items.inventory_batch_id > inventory_batches.id
+Ref stock_issue_items_stock_issue_id_fkey: stock_issue_items.stock_issue_id > stock_issues.id
+Ref stock_issues_cancelled_by_id_fkey: stock_issues.cancelled_by_id > employees.id
+Ref stock_issues_issued_by_id_fkey: stock_issues.issued_by_id > employees.id
+Ref stock_issues_received_by_id_fkey: stock_issues.received_by_id > employees.id
+Ref stock_movements_kitchen_batch_id_fkey: stock_movements.kitchen_batch_id > kitchen_batches.id
+Ref stock_movements_order_item_id_fkey: stock_movements.order_item_id > order_items.id
+Ref stock_movements_preparation_id_fkey: stock_movements.preparation_id > kitchen_preparations.id
+Ref stock_movements_raw_batch_id_fkey: stock_movements.raw_batch_id > inventory_batches.id
+Ref stock_movements_ref_issue_item_id_fkey: stock_movements.ref_issue_item_id > stock_issue_items.id
+Ref stock_movements_stock_adjustment_item_id_fkey: stock_movements.stock_adjustment_item_id > stock_adjustment_items.id
+Ref stock_movements_stock_count_item_id_fkey: stock_movements.stock_count_item_id > stock_count_items.id
+Ref stock_movements_stock_return_item_id_fkey: stock_movements.stock_return_item_id > stock_return_items.id
+Ref stock_movements_wip_issue_item_id_fkey: stock_movements.wip_issue_item_id > stock_issue_items.id
+Ref stock_receipt_items_ingredient_id_fkey: stock_receipt_items.ingredient_id > ingredients.id
+Ref stock_receipt_items_stock_receipt_id_fkey: stock_receipt_items.stock_receipt_id > stock_receipts.id
+Ref stock_receipts_confirmed_by_id_fkey: stock_receipts.confirmed_by_id > employees.id
+Ref stock_receipts_created_by_id_fkey: stock_receipts.created_by_id > employees.id
+Ref stock_reservations_kitchen_batch_id_fkey: stock_reservations.kitchen_batch_id > kitchen_batches.id
+Ref stock_reservations_order_item_id_fkey: stock_reservations.order_item_id > order_items.id
+Ref fk_return_direct_batch_of_issue_item: stock_return_items.(direct_kitchen_batch_id, source_issue_item_id) > kitchen_batches.(id, direct_issue_item_id)
+Ref stock_return_items_direct_kitchen_batch_id_fkey: stock_return_items.direct_kitchen_batch_id > kitchen_batches.id
+Ref stock_return_items_source_issue_item_id_fkey: stock_return_items.source_issue_item_id > stock_issue_items.id
+Ref stock_return_items_stock_return_id_fkey: stock_return_items.stock_return_id > stock_returns.id
+Ref stock_returns_confirmed_by_id_fkey: stock_returns.confirmed_by_id > employees.id
+Ref stock_returns_requested_by_id_fkey: stock_returns.requested_by_id > employees.id
+
+TableGroup "P4 · Kho RAW • bếp • sơ chế • kiểm kê" {
+  ingredients
+  kitchen_ingredient_types
+  stock_receipts
+  stock_receipt_items
+  inventory_batches
+  stock_issues
+  stock_issue_items
+  kitchen_preparations
+  kitchen_preparation_outputs
+  kitchen_batches
+  stock_reservations
+  stock_returns
+  stock_return_items
+  stock_adjustments
+  stock_adjustment_items
+  stock_counts
+  stock_count_items
+  stock_movements
+}
+
+TableGroup "Liên kết ngoài" {
+  employees
+  order_items
+}
 ```
 <!-- /GEN:ERD-4 -->
 
@@ -772,48 +1361,133 @@ erDiagram
 ## 7. Phân hệ 5 — Chi phí • báo cáo • đối soát (2 bảng)
 
 <!-- GEN:ERD-5 -->
-**ERD phân hệ 5 (schema v4.1)** — bản draw.io: [erd/erd-p5-tai-chinh.drawio](erd/erd-p5-tai-chinh.drawio) · ảnh xem nhanh: [erd/erd-p5-tai-chinh.png](erd/erd-p5-tai-chinh.png). Sơ đồ Mermaid dưới đây sinh từ cùng schema; cột người thao tác ghi chú `employees` thay vì vẽ cạnh, bảng phân hệ khác chỉ hiện `id`.
+**ERD phân hệ 5 (schema v4.1)** — mã DBML cho [dbdiagram.io](https://dbdiagram.io/d): mở trang, dán khối dưới đây (hoặc file [erd/rms-schema-p5.dbml](erd/rms-schema-p5.dbml)) vào ô code. Toàn bộ 48 bảng: [erd/rms-schema.dbml](erd/rms-schema.dbml). Sinh từ catalog schema thật bằng [erd/sinh-dbml.sh](erd/sinh-dbml.sh); bảng phân hệ khác mà phân hệ này trỏ tới nằm ở nhóm "Liên kết ngoài". Bản draw.io: [erd/erd-p5-tai-chinh.drawio](erd/erd-p5-tai-chinh.drawio) · ảnh: [erd/erd-p5-tai-chinh.png](erd/erd-p5-tai-chinh.png).
 
-```mermaid
-erDiagram
-    operating_expenses {
-        bigint id PK
-        date business_date
-        varchar category "INGREDIENT / SUPPLIES / UTILITY / RENT / MAINTENANCE / OTHER"
-        varchar description
-        numeric amount
-        varchar payment_method "CASH / BANK_TRANSFER"
-        varchar fund_source "CASH_DRAWER / OWNER / BANK"
-        bigint stock_receipt_id FK "null"
-        bigint recorded_by_id FK "employees"
-        tstz paid_at
-        tstz created_at
-        varchar request_key UK
-        varchar status "PAID / VOIDED"
-        varchar void_reason "null"
-        bigint voided_by_id FK "null; employees"
-        tstz voided_at "null"
-    }
-    daily_cash_reconciliations {
-        bigint id PK
-        date business_date
-        int version
-        varchar status "CURRENT / SUPERSEDED"
-        numeric opening_cash
-        numeric cash_sales
-        numeric cash_expenses
-        numeric expected_cash "generated"
-        numeric actual_cash
-        numeric difference "generated"
-        varchar reason "null"
-        varchar revision_reason "null"
-        bigint reconciled_by_id FK "employees"
-        tstz reconciled_at
-    }
-    stock_receipts {
-        bigint id PK "phan he 4"
-    }
-    stock_receipts |o--o{ operating_expenses : "stock_receipt_id"
+```dbml
+// Phân hệ 5: Chi phí • báo cáo • đối soát — 2 bảng, kèm 2 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table operating_expenses {
+  id bigint [pk, increment]
+  business_date date [not null]
+  category varchar(30) [not null, note: 'DB-30; Giá trị: INGREDIENT | SUPPLIES | UTILITY | RENT | MAINTENANCE | OTHER']
+  description varchar(255) [not null]
+  amount numeric(12,2) [not null, note: 'DB-30']
+  payment_method varchar(20) [not null, note: 'Giá trị: CASH | BANK_TRANSFER']
+  fund_source varchar(20) [not null, note: 'Giá trị: CASH_DRAWER | OWNER | BANK']
+  stock_receipt_id bigint
+  recorded_by_id bigint [not null]
+  paid_at timestamptz [not null]
+  created_at timestamptz [not null, default: `now()`]
+  request_key varchar(64) [not null, unique]
+  status varchar(20) [not null, default: 'PAID', note: 'Giá trị: PAID | VOIDED']
+  void_reason varchar(255)
+  voided_by_id bigint
+  voided_at timestamptz
+
+  indexes {
+    (stock_receipt_id) [unique, name: 'ux_expense_receipt_live', note: 'WHERE ((stock_receipt_id IS NOT NULL) AND ((status)::text <> \'VOIDED\'::text))']
+  }
+
+  Note: '''
+  ck_expense_amount_positive: CHECK ((amount > (0)::numeric))
+  ck_expense_cash_drawer_is_cash: CHECK ((((fund_source)::text <> 'CASH_DRAWER'::text) OR ((payment_method)::text = 'CASH'::text)))
+  ck_expense_void_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'VOIDED'::text) THEN (num_nonnulls(void_reason, voided_by_id, voided_at) = 3)
+    ELSE (num_nonnulls(void_reason, voided_by_id, voided_at) = 0)
+END)
+  '''
+}
+
+Table daily_cash_reconciliations {
+  id bigint [pk, increment]
+  business_date date [not null]
+  version int [not null]
+  status varchar(20) [not null, default: 'CURRENT', note: 'Giá trị: CURRENT | SUPERSEDED']
+  opening_cash numeric(12,2) [not null, note: 'DB-32: quỹ đầu ngày do Manager xác nhận']
+  cash_sales numeric(12,2) [not null]
+  cash_expenses numeric(12,2) [not null]
+  expected_cash numeric(12,2) [note: 'DB-31; Cột tính toán: GENERATED ALWAYS AS (((opening_cash + cash_sales) - cash_expenses)) STORED']
+  actual_cash numeric(12,2) [not null]
+  difference numeric(12,2) [note: 'DB-31; Cột tính toán: GENERATED ALWAYS AS ((actual_cash - ((opening_cash + cash_sales) - cash_expenses))) STORED']
+  reason varchar(255)
+  revision_reason varchar(255)
+  reconciled_by_id bigint [not null]
+  reconciled_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (business_date, version) [unique, name: 'ux_cash_recon_date_version']
+    (business_date) [unique, name: 'ux_cash_recon_current', note: 'WHERE ((status)::text = \'CURRENT\'::text)']
+  }
+
+  Note: '''
+  ck_cash_recon_version_positive: CHECK ((version > 0))
+  ck_recon_reason_when_diff: CHECK (((actual_cash = ((opening_cash + cash_sales) - cash_expenses)) OR (reason IS NOT NULL)))
+  ck_recon_revision_reason: CHECK (((version = 1) OR (revision_reason IS NOT NULL)))
+  '''
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Table stock_receipts {
+  id bigint [pk, increment]
+  supplier_name varchar(100)
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  note varchar(255)
+  created_at timestamptz [not null, default: `now()`]
+  created_by_id bigint [not null, note: 'DB-25']
+  received_at timestamptz
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique, note: 'QĐ-ID: một yêu cầu tạo phiếu = một chứng từ']
+  request_hash char(64) [not null, note: 'sha256 của payload tạo phiếu: cùng khóa khác payload → RC409']
+
+  Note: '''
+  ck_stock_receipt_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(received_at, confirmed_by_id, confirmed_at) = 3)))
+  '''
+}
+
+Ref daily_cash_reconciliations_reconciled_by_id_fkey: daily_cash_reconciliations.reconciled_by_id > employees.id
+Ref operating_expenses_recorded_by_id_fkey: operating_expenses.recorded_by_id > employees.id
+Ref operating_expenses_stock_receipt_id_fkey: operating_expenses.stock_receipt_id > stock_receipts.id
+Ref operating_expenses_voided_by_id_fkey: operating_expenses.voided_by_id > employees.id
+Ref stock_receipts_confirmed_by_id_fkey: stock_receipts.confirmed_by_id > employees.id
+Ref stock_receipts_created_by_id_fkey: stock_receipts.created_by_id > employees.id
+
+TableGroup "P5 · Chi phí • báo cáo • đối soát" {
+  operating_expenses
+  daily_cash_reconciliations
+}
+
+TableGroup "Liên kết ngoài" {
+  employees
+  stock_receipts
+}
 ```
 <!-- /GEN:ERD-5 -->
 

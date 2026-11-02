@@ -16,7 +16,7 @@ Bộ tài liệu dựng theo **Restaurant Core Master Specification v4** (48 b�
 | [10-bao-cao-v4.1.sql](10-bao-cao-v4.1.sql) | 10 hàm báo cáo `rpt_*`: doanh thu theo ngày/món, bỏ về/miễn thu, tồn RAW, đang bàn giao/WIP, tồn bếp khả dụng, lô hỏng/hết hạn, lịch sử kho, hao hụt sơ chế, đối soát tiền mặt | Màn hình báo cáo |
 | [11-test-bao-cao-v4.1.sql](11-test-bao-cao-v4.1.sql) | Bộ dữ liệu có kết quả tính trước cho 10 báo cáo, 43 phép so sánh | Sau 10, database riêng |
 | [12-mutation-v4.1.py](12-mutation-v4.1.py) | Kiểm thử đột biến: 27 lỗi cài cố ý vào 04/09/10 phải bị 05/06/11 phát hiện | Chứng minh bộ test đủ nhạy |
-| [erd/](erd/) | 5 ERD theo 5 phân hệ: `.drawio` (XML gốc) + `.png`; [kiem-erd-schema.py](erd/kiem-erd-schema.py) đối chiếu ERD với catalog | Báo cáo, chỉnh sửa trực quan |
+| [erd/](erd/) | Sơ đồ DBML cho dbdiagram.io: [rms-schema.dbml](erd/rms-schema.dbml) (48 bảng) và `rms-schema-p1..p5.dbml` theo phân hệ, sinh lại bằng `bash docs/erd/sinh-dbml.sh`. 5 ERD theo 5 phân hệ: `.drawio` (XML gốc) + `.png`; [kiem-erd-schema.py](erd/kiem-erd-schema.py) đối chiếu ERD với catalog | Báo cáo, chỉnh sửa trực quan |
 
 ## Quyết định nghiệp vụ (đã chốt toàn bộ — vòng đóng băng 26/10/2026)
 
