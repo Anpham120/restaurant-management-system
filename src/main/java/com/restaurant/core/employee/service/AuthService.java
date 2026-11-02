@@ -14,6 +14,7 @@ import com.restaurant.core.employee.dto.MeResponse;
 import com.restaurant.core.employee.repository.AccountRepository;
 import com.restaurant.core.employee.repository.AccountRepository.AccountCredentials;
 import com.restaurant.core.security.JwtTokenService;
+import com.restaurant.core.security.LoginThrottle;
 
 @Service
 public class AuthService {
@@ -24,29 +25,43 @@ public class AuthService {
     private final AccountRepository accounts;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService tokens;
+    private final LoginThrottle throttle;
     /** Hash giả để thời gian kiểm tra không lộ việc username có tồn tại hay không. */
     private final String dummyHash;
 
-    public AuthService(AccountRepository accounts, PasswordEncoder passwordEncoder, JwtTokenService tokens) {
+    public AuthService(AccountRepository accounts, PasswordEncoder passwordEncoder, JwtTokenService tokens, LoginThrottle throttle) {
         this.accounts = accounts;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
+        this.throttle = throttle;
         this.dummyHash = passwordEncoder.encode("dummy-password-for-timing");
     }
 
+    /** Sai quá {@link LoginThrottle} cho phép thì từ chối (429) trước cả khi kiểm mật khẩu, kể cả mật khẩu đúng. */
     public LoginResponse login(LoginRequest request) {
+        long wait = throttle.lockedSeconds(request.username());
+        if (wait > 0) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_ATTEMPTS",
+                    "Đăng nhập sai quá nhiều lần. Thử lại sau " + Math.max(1, (wait + 59) / 60) + " phút");
+        }
         AccountCredentials acc = accounts.findByUsername(request.username()).orElse(null);
         boolean passwordOk = passwordEncoder.matches(request.password(), acc == null ? dummyHash : acc.passwordHash());
         if (acc == null || !passwordOk || !"ACTIVE".equals(acc.accountStatus()) || !"ACTIVE".equals(acc.workStatus())) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", INVALID);
+            throw invalid(request.username());
         }
         List<String> roles = accounts.findRoleCodes(acc.employeeId());
         if (roles.isEmpty()) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", INVALID);
+            throw invalid(request.username());
         }
+        throttle.recordSuccess(request.username());
         JwtTokenService.IssuedToken token = tokens.issue(acc.employeeId(), acc.username(), roles);
         return new LoginResponse(token.value(), "Bearer", token.expiresAt(), acc.employeeId(), acc.username(), roles,
                 acc.mustChangePassword());
+    }
+
+    private ApiException invalid(String username) {
+        throttle.recordFailure(username);
+        return new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", INVALID);
     }
 
     /** Kiểm mật khẩu cũ, lưu hash mới, tắt cờ bắt buộc đổi. Token đang dùng vẫn hợp lệ tới khi hết hạn. */

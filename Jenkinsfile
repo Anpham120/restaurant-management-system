@@ -75,12 +75,13 @@ pipeline {
             when { branch 'develop' }
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
-                    // Dựng bản develop ở môi trường tách biệt, thử các chức năng chính rồi hủy. Lỗi thì không promote.
+                    // Dựng bản develop ở môi trường tách biệt trên bản sao lưu production mới nhất (chỉ đọc), thử các
+                    // chức năng chính và quét đọc mọi module rồi hủy. Lỗi thì không promote.
                     sh '''
                         docker run --rm --network host \
                           -v /var/run/docker.sock:/var/run/docker.sock \
-                          -v "$STAGING_DIR:$STAGING_DIR" -w "$STAGING_DIR" \
-                          -e GH_TOKEN \
+                          -v "$STAGING_DIR:$STAGING_DIR" -w "$STAGING_DIR" -v "$BACKUP_DIR:$BACKUP_DIR:ro" \
+                          -e GH_TOKEN -e BACKUP_DIR \
                           docker:27-cli \
                           sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && ([ -d .git ] || git init -q) && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" develop && git reset -q --hard FETCH_HEAD && scripts/staging-test.sh; rc=\\$?; chown -R 1000:1000 .; exit \\$rc"
                     '''
