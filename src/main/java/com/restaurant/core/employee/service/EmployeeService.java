@@ -16,6 +16,7 @@ import com.restaurant.core.employee.dto.EmployeeDtos.EmployeeResponse;
 import com.restaurant.core.employee.dto.EmployeeDtos.RoleResponse;
 import com.restaurant.core.employee.dto.EmployeeDtos.UpdateEmployeeRequest;
 import com.restaurant.core.employee.repository.EmployeeRepository;
+import com.restaurant.core.employee.repository.ShiftRepository;
 
 /**
  * Hồ sơ nhân viên, tài khoản, vai trò. Bảng ghi trực tiếp → @PreAuthorize ở controller là lớp kiểm quyền; ở đây chặn
@@ -25,10 +26,12 @@ import com.restaurant.core.employee.repository.EmployeeRepository;
 public class EmployeeService {
 
     private final EmployeeRepository repo;
+    private final ShiftRepository shifts;
     private final PasswordEncoder passwordEncoder;
 
-    public EmployeeService(EmployeeRepository repo, PasswordEncoder passwordEncoder) {
+    public EmployeeService(EmployeeRepository repo, ShiftRepository shifts, PasswordEncoder passwordEncoder) {
         this.repo = repo;
+        this.shifts = shifts;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -83,7 +86,11 @@ public class EmployeeService {
         return employee(id);
     }
 
-    /** Sau khi nghỉ: đăng nhập bị từ chối, token cũ gọi rc_* nhận RC403 (rc_authorize kiểm work_status). */
+    /**
+     * Sau khi nghỉ: đăng nhập bị từ chối, token cũ gọi rc_* nhận RC403 (rc_authorize kiểm work_status). Các ca đã xếp
+     * sau ngày nghỉ mà chưa chấm công bị hủy kèm lý do, để lịch không còn tính người đã nghỉ.
+     */
+    @Transactional
     public EmployeeResponse leave(long id, long actorId, java.time.LocalDate endDate) {
         if (id == actorId) {
             throw selfLockout();
@@ -92,6 +99,7 @@ public class EmployeeService {
             employee(id);
             throw new ApiException(HttpStatus.CONFLICT, "EMPLOYEE_LEFT", "Nhân viên " + id + " đã nghỉ việc");
         }
+        shifts.cancelScheduledAfter(id, endDate, actorId, "Nhân viên nghỉ việc từ sau ngày " + endDate);
         return employee(id);
     }
 

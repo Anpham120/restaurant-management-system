@@ -112,6 +112,14 @@ class MenuIT extends OrderApiTestBase {
         postEmpty(manager, "/api/daily-menus/{id}/publish", menu).andExpect(status().isConflict());
         postJson(manager, "/api/daily-menus/{id}/items", "{\"menuItemId\":" + noRecipe + "}", menu)
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("MENU_CLOSED"));
+        long closedItem = dailyMenuItemOf(menu, ready);                 // đã đóng: không đổi hạn mức, bỏ món, tạm dừng
+        putJson(manager, "/api/daily-menu-items/{id}", "{\"quotaTotal\":5}", closedItem)
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("MENU_CLOSED"));
+        mvc.perform(delete("/api/daily-menu-items/{id}", closedItem).header("Authorization", manager))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("MENU_CLOSED"));
+        postJson(manager, "/api/daily-menu-items/{id}/pause", reason("Hết"), closedItem)
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("MENU_CLOSED"));
+        getAs(manager, "/api/daily-menus/{id}", menu).andExpect(jsonPath("$.data.items[0].quotaTotal").value(30));
         postJson(waiter, "/api/daily-menus", "{\"businessDate\":\"" + date.plusDays(1) + "\"}").andExpect(status().isForbidden());
     }
 

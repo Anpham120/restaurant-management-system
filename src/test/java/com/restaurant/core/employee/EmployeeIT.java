@@ -130,6 +130,27 @@ class EmployeeIT extends OrderApiTestBase {
         postEmpty(bossToken, "/api/accounts/{id}/lock", 999_999_999L).andExpect(status().isNotFound());
     }
 
+    /** Nghỉ việc: ca đã xếp sau ngày nghỉ bị hủy kèm lý do; ca đúng ngày nghỉ (ngày làm cuối) giữ nguyên. */
+    @Test
+    void leavingCancelsShiftsScheduledAfterEndDate() throws Exception {
+        TestData.Staff leaver = data.staff("WAITER");
+        long shift = readLong(postJson(manager, "/api/shifts", "{\"name\":\"" + uniq("Ca nghỉ ") + "\",\"startTime\":\"08:00\",\"endTime\":\"12:00\"}")
+                .andExpect(status().isCreated()), "$.data.id");
+        LocalDate end = LocalDate.of(2027, 6, 1).plusDays(seq++ % 300);
+        long kept = readLong(postJson(manager, "/api/shift-assignments", "{\"employeeId\":" + leaver.employeeId() + ",\"shiftId\":" + shift
+                + ",\"workDate\":\"" + end + "\"}").andExpect(status().isCreated()), "$.data.id");
+        long dropped = readLong(postJson(manager, "/api/shift-assignments", "{\"employeeId\":" + leaver.employeeId() + ",\"shiftId\":" + shift
+                + ",\"workDate\":\"" + end.plusDays(1) + "\"}").andExpect(status().isCreated()), "$.data.id");
+
+        postJson(manager, "/api/employees/{id}/leave", "{\"endDate\":\"" + end + "\"}", leaver.employeeId())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.workStatus").value("LEFT"));
+        String list = "/api/shift-assignments?from=" + end + "&to=" + end.plusDays(1) + "&employeeId=" + leaver.employeeId();
+        getAs(manager, list)
+                .andExpect(jsonPath("$.data[?(@.id == " + kept + ")].status", contains("SCHEDULED")))
+                .andExpect(jsonPath("$.data[?(@.id == " + dropped + ")].status", contains("CANCELLED")))
+                .andExpect(jsonPath("$.data[?(@.id == " + dropped + ")].cancelReason", contains("Nhân viên nghỉ việc từ sau ngày " + end)));
+    }
+
     @Test
     void shiftsAssignmentsAndAttendance() throws Exception {
         long morning = readLong(postJson(manager, "/api/shifts", "{\"name\":\"" + uniq("Sáng ") + "\",\"startTime\":\"08:00\",\"endTime\":\"12:00\",\"breakMinutes\":30}")
