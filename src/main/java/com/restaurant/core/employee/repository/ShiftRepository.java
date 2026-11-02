@@ -123,6 +123,15 @@ public class ShiftRepository {
                 .param("id", id).param("a", actorId).param("r", reason).update();
     }
 
+    /** Hủy mọi ca SCHEDULED, chưa chấm công, có ngày làm sau afterDate của một nhân viên (dùng khi nhân viên nghỉ việc). */
+    public int cancelScheduledAfter(long employeeId, LocalDate afterDate, long actorId, String reason) {
+        return jdbc.sql("""
+                        UPDATE shift_assignments a SET status = 'CANCELLED', cancel_reason = :r, cancelled_by_id = :ac, cancelled_at = now()
+                         WHERE a.employee_id = :e AND a.status = 'SCHEDULED' AND a.work_date > :d
+                           AND NOT EXISTS (SELECT 1 FROM attendances WHERE shift_assignment_id = a.id)""")
+                .param("e", employeeId).param("d", afterDate).param("ac", actorId).param("r", reason).update();
+    }
+
     public void completeAssignment(long id) {
         jdbc.sql("UPDATE shift_assignments SET status = 'COMPLETED' WHERE id = :id AND status = 'SCHEDULED'").param("id", id).update();
     }

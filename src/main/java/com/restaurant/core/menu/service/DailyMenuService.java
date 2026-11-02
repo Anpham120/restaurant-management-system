@@ -80,9 +80,7 @@ public class DailyMenuService {
     /** Đổi hạn mức nhiều món: một dòng lỗi (không thuộc thực đơn, thấp hơn số đã bán) thì không đổi dòng nào. */
     @Transactional
     public DailyMenuResponse updateQuotas(long dailyMenuId, List<QuotasRequest.Line> lines) {
-        if ("CLOSED".equals(header(dailyMenuId).status())) {
-            throw conflict("MENU_CLOSED", "Thực đơn ngày đã đóng");
-        }
+        requireNotClosed(dailyMenuId);
         for (QuotasRequest.Line l : lines) {
             if (repo.updateQuotaInMenu(dailyMenuId, l.dailyMenuItemId(), l.quotaTotal()) == 0) {
                 throw MenuCatalogService.notFound("Món " + l.dailyMenuItemId() + " không thuộc thực đơn ngày " + dailyMenuId);
@@ -97,15 +95,14 @@ public class DailyMenuService {
     }
 
     public DailyMenuResponse addItem(long dailyMenuId, DailyMenuItemRequest r) {
-        if ("CLOSED".equals(header(dailyMenuId).status())) {
-            throw conflict("MENU_CLOSED", "Thực đơn ngày đã đóng");
-        }
+        requireNotClosed(dailyMenuId);
         repo.insertItem(dailyMenuId, r.menuItemId(), r.quotaTotal())
                 .orElseThrow(() -> conflict("MENU_ITEM_NOT_READY", "Món " + r.menuItemId() + " không tồn tại, đã ngừng kinh doanh hoặc chưa có công thức"));
         return get(dailyMenuId);
     }
 
     public DailyMenuItemResponse updateQuota(long dailyMenuItemId, Integer quotaTotal) {
+        requireNotClosed(item(dailyMenuItemId).dailyMenuId());
         if (repo.updateQuota(dailyMenuItemId, quotaTotal) == 0) {
             throw MenuCatalogService.notFound("Không tìm thấy món trong thực đơn ngày " + dailyMenuItemId);
         }
@@ -114,6 +111,7 @@ public class DailyMenuService {
 
     /** Chỉ xóa được khi chưa có món gọi (trigger DB → RC409). */
     public void removeItem(long dailyMenuItemId) {
+        requireNotClosed(item(dailyMenuItemId).dailyMenuId());
         if (repo.deleteItem(dailyMenuItemId) == 0) {
             throw MenuCatalogService.notFound("Không tìm thấy món trong thực đơn ngày " + dailyMenuItemId);
         }
@@ -135,6 +133,7 @@ public class DailyMenuService {
 
     public DailyMenuItemResponse pause(long dailyMenuItemId, long actorId, String reason) {
         DailyMenuItemResponse current = item(dailyMenuItemId);
+        requireNotClosed(current.dailyMenuId());
         if (repo.pause(dailyMenuItemId, actorId, reason) == 0) {
             throw conflict("ALREADY_PAUSED", "Món " + current.name() + " đang tạm dừng");
         }
@@ -143,10 +142,18 @@ public class DailyMenuService {
 
     public DailyMenuItemResponse resume(long dailyMenuItemId) {
         DailyMenuItemResponse current = item(dailyMenuItemId);
+        requireNotClosed(current.dailyMenuId());
         if (repo.resume(dailyMenuItemId) == 0) {
             throw conflict("NOT_PAUSED", "Món " + current.name() + " không tạm dừng");
         }
         return item(dailyMenuItemId);
+    }
+
+    /** Thực đơn đã đóng là số liệu đã chốt của ngày (tóm tắt cuối ngày dựa vào nó): không sửa món, hạn mức, tạm dừng nữa. */
+    private void requireNotClosed(long dailyMenuId) {
+        if ("CLOSED".equals(header(dailyMenuId).status())) {
+            throw conflict("MENU_CLOSED", "Thực đơn ngày đã đóng");
+        }
     }
 
     private DailyMenuItemResponse item(long id) {
