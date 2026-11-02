@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Staging tạm thời: dựng bản develop với database trống và secret ngẫu nhiên, chạy smoke test rồi hủy.
+# Staging tạm thời: dựng bản develop với secret ngẫu nhiên, chạy smoke test rồi hủy.
+# Dữ liệu: bản sao lưu production mới nhất (BACKUP_DIR) nếu có, để migration Flyway và các API chạy thử trên dữ liệu
+# thật trước khi lên production; không có thì dùng database trống. Database staging chỉ mở ở 127.0.0.1 và bị xóa
+# (down -v) khi chạy xong. Cách nạp giống hệt scripts/restore-db.sh, nên mỗi lần chạy cũng là một lần thử khôi phục.
 # Chạy trong thư mục staging (mã develop đã được Jenkinsfile đồng bộ). Không dùng secret thật của production.
 # Cổng riêng (app 8091, web 8093, db 5439) và compose project riêng nên không đụng production.
 set -euo pipefail
@@ -43,6 +46,16 @@ cleanup() {
 trap cleanup EXIT
 
 echo "[staging] dựng bản $(git rev-parse --short HEAD)"
+BACKUP_DIR=${BACKUP_DIR:-/home/coder/rms-backups}
+LATEST=$(ls -1t "$BACKUP_DIR"/*.dump 2>/dev/null | head -1 || true)
+docker compose up -d --wait db
+if [ -n "$LATEST" ]; then
+  echo "[staging] nạp dữ liệu từ $(basename "$LATEST")"
+  { echo 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'; docker compose exec -T db pg_restore -f - < "$LATEST"; } \
+    | docker compose exec -T db sh -c 'psql -q -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 --single-transaction' >/dev/null
+else
+  echo "[staging] không có bản sao lưu, chạy trên database trống"
+fi
 docker compose up -d --build --wait
 
 # Tài khoản MANAGER đầu tiên để thử đăng nhập
@@ -56,9 +69,34 @@ check() {
 }
 
 unauthorized() { [ "$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL/api/tables")" = 401 ]; }
-login() {
-  curl -fsS -H 'Content-Type: application/json' \
-    -d "{\"username\":\"smoke\",\"password\":\"$SMOKE_PASSWORD\"}" "$APP_URL/api/auth/login" | grep -q accessToken
+TOKEN=$(curl -fsS -H 'Content-Type: application/json' -d "{\"username\":\"smoke\",\"password\":\"$SMOKE_PASSWORD\"}" \
+  "$APP_URL/api/auth/login" | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p' || true)
+login() { [ -n "$TOKEN" ]; }
+# Tài khoản mới tạo bị buộc đổi mật khẩu (server trả 403 PASSWORD_CHANGE_REQUIRED); đổi xong thì token đang có dùng được
+if [ -n "$TOKEN" ]; then
+  curl -fsS -o /dev/null -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+    -d "{\"currentPassword\":\"$SMOKE_PASSWORD\",\"newPassword\":\"$(rand 20)\"}" "$APP_URL/api/auth/change-password" || true
+fi
+
+# Quét đọc mọi module bằng quyền quản lý: bắt lỗi SQL lệch schema hoặc dữ liệu thật mà test tích hợp không có
+TO=$(date -u +%F)
+FROM=$(date -u -d "@$(( $(date +%s) - 30 * 86400 ))" +%F)       # 30 ngày gần nhất; dạng @giây chạy được cả busybox
+R="from=$FROM&to=$TO"
+READ_APIS="/api/auth/me /api/departments /api/roles /api/employees /api/shifts /api/shift-assignments?$R /api/attendances?$R
+  /api/tables /api/kitchen/queue /api/menu-categories /api/menu-items /api/ingredients /api/kitchen-ingredient-types
+  /api/inventory/raw-stock /api/inventory/handover /api/inventory/kitchen-stock /api/inventory/unusable-lots
+  /api/inventory/history?from=${FROM}T00:00:00Z&to=${TO}T23:59:59Z /api/inventory/preparation-yield?$R
+  /api/inventory/raw-lots /api/inventory/kitchen-lots
+  /api/stock-receipts /api/stock-issues /api/stock-counts /api/kitchen-preparations /api/stock-returns /api/stock-adjustments
+  /api/reports/revenue-by-day?$R /api/reports/revenue-by-item?$R /api/reports/unpaid-closures?$R
+  /api/reports/expenses-by-category?$R /api/expenses?$R"
+read_sweep() {
+  local bad=0 p code
+  for p in $READ_APIS; do
+    code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$APP_URL$p")
+    [ "$code" = 200 ] || { echo "[staging]      $p → $code" >&2; bad=1; }
+  done
+  return $bad
 }
 
 check "health UP"                      sh -c "curl -fsS $APP_URL/actuator/health | grep -q '\"UP\"'"
@@ -66,6 +104,7 @@ check "trang web phục vụ được"         sh -c "curl -fsS $WEB_URL/ | grep
 check "API không token trả 401"        unauthorized
 check "đăng nhập cấp được token"       login
 check "endpoint metrics có số liệu"    sh -c "curl -fsS $APP_URL/actuator/prometheus | grep -q jvm_memory_used_bytes"
+if read_sweep; then echo "[staging] OK   đọc dữ liệu mọi module ($(echo $READ_APIS | wc -w) API)"; else echo "[staging] FAIL đọc dữ liệu mọi module"; fail=1; fi
 
 if [ "$fail" -ne 0 ]; then
   echo "[staging] smoke test THẤT BẠI, không promote lên main"

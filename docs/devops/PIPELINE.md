@@ -128,15 +128,32 @@ Thử bắn một cảnh báo giả: `curl -XPOST 127.0.0.1:9093/api/v2/alerts -
   (crontab -l 2>/dev/null; echo '30 19 * * * cd /home/coder/rms-deploy && scripts/backup-db.sh daily >> /home/coder/rms-backups/backup.log 2>&1') | crontab -
   ```
 
-Khôi phục (xóa dữ liệu hiện tại của DB, chỉ làm khi thật sự cần):
+Khôi phục (xóa toàn bộ dữ liệu hiện tại, chỉ làm khi thật sự cần, ví dụ quay lại trước một migration hỏng):
 ```bash
-docker stop restaurant-management-system-app-1
-docker exec -i restaurant-management-system-db-1 sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < /home/coder/rms-backups/<file>.dump
-docker start restaurant-management-system-app-1
+cd /home/coder/rms-deploy && scripts/restore-db.sh /home/coder/rms-backups/pre-deploy-<thời điểm>.dump
 ```
-Thử khôi phục an toàn vào một PostgreSQL tạm (không đụng production) để kiểm tra bản sao lưu còn dùng được: tạo container `postgres:17` không mở cổng, `createdb` rồi `pg_restore --no-owner --no-privileges`.
+Script hỏi xác nhận (gõ `KHOI PHUC`), tự sao lưu dữ liệu hiện tại thành `pre-restore-*`, dừng app, xóa schema `public` rồi nạp
+bản sao lưu trong **một transaction** (lỗi thì giữ nguyên dữ liệu cũ), sau đó chạy lại app. Sau khi khôi phục về trước một
+migration, deploy lại bản code cũ tương ứng.
+
+Bản sao lưu luôn được thử khôi phục: mỗi lần build `develop`, staging nạp bản sao lưu mới nhất theo đúng cách trên, chạy
+migration Flyway của bản mới trên dữ liệu thật và quét đọc mọi module (`scripts/staging-test.sh`). Dữ liệu này chỉ nằm trong
+database staging ở `127.0.0.1` và bị xóa khi staging chạy xong.
 
 Giới hạn: bản sao lưu nằm cùng máy chủ. Hỏng ổ đĩa thì mất cả hai. Nên định kỳ chép thư mục này ra máy khác.
+
+### 3.7 Chống dò mật khẩu
+Hai lớp, không đổi schema database:
+- App (`LoginThrottle`): một tên đăng nhập sai 5 lần trong 15 phút thì bị khóa tạm 15 phút (trả `429 TOO_MANY_ATTEMPTS`, kể cả
+  khi lần sau nhập đúng). Áp dụng cả cho tên không tồn tại nên không lộ tài khoản nào có thật. Khởi động lại app thì xóa bộ đếm.
+- Nginx: mỗi IP tối đa 5 lần gọi `/api/auth/login` mỗi phút (dồn thêm 5). Cài một lần bằng quyền root:
+  ```bash
+  cd /home/coder/projects/RSM/restaurant-management-system
+  sudo cp docs/devops/nginx/rms-login-ratelimit.conf /etc/nginx/conf.d/
+  sudo patch /etc/nginx/sites-available/rms.atlasplatform12.tech.conf < docs/devops/nginx/rms-login-ratelimit.patch
+  sudo nginx -t && sudo systemctl reload nginx
+  ```
+  `nginx -t` lỗi thì không reload, gỡ bằng `sudo patch -R …` với cùng file patch và xóa file trong `conf.d`.
 
 ## 4. Quay lui và giới hạn
 

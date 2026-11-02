@@ -14,11 +14,12 @@ cp .env.example .env                 # điền DB_ADMIN_PASSWORD, DB_APP_PASSWOR
 docker compose up -d --build         # PostgreSQL 17 (localhost:5433) + app (localhost:8081)
 curl http://localhost:8081/actuator/health
 
-# tài khoản Manager đầu tiên (database mới)
+# tài khoản Manager đầu tiên (database mới). Tự đặt mật khẩu mạnh; read -s để không lưu vào lịch sử lệnh.
+read -s -p "Mật khẩu manager: " PW; echo
 docker compose exec -T db psql -U postgres -d restaurant_core -v ON_ERROR_STOP=1 \
-    -v username=manager -v full_name='Quản lý' -v password='mat-khau-tam' < docker/bootstrap-manager.sql
-curl -s -X POST localhost:8081/api/auth/login -H 'Content-Type: application/json' \
-     -d '{"username":"manager","password":"mat-khau-tam"}'
+    -v username=manager -v full_name='Quản lý' -v password="$PW" < docker/bootstrap-manager.sql
+unset PW
+# Đăng nhập lần đầu bị buộc đổi mật khẩu. Sai 5 lần liên tiếp thì tên đăng nhập bị khóa tạm 15 phút.
 ```
 
 Chạy app ngoài Docker, test, Flyway và cách thêm API: [DEVELOPMENT_GUIDE](docs/backend/DEVELOPMENT_GUIDE.md).

@@ -53,6 +53,21 @@ class AuthIT extends IntegrationTestBase {
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
     }
 
+    /** Sai 5 lần thì khóa tạm tên đăng nhập đó (429), kể cả khi lần sau nhập đúng; tài khoản khác không bị ảnh hưởng. */
+    @Test
+    void repeatedWrongPasswordsTemporarilyBlockThatUsername() throws Exception {
+        TestData.Staff target = data.staff("WAITER");
+        TestData.Staff other = data.staff("WAITER");
+        for (int i = 0; i < 5; i++) {
+            login("{\"username\":\"" + target.username() + "\",\"password\":\"sai-" + i + "\"}")
+                    .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
+        }
+        login("{\"username\":\"" + target.username() + "\",\"password\":\"" + TestData.PASSWORD + "\"}")
+                .andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.error.code").value("TOO_MANY_ATTEMPTS"));
+        login("{\"username\":\"" + other.username() + "\",\"password\":\"" + TestData.PASSWORD + "\"}")
+                .andExpect(status().isOk());
+    }
+
     @Test
     void invalidBodyIs400WithFieldDetails() throws Exception {
         login("{\"username\":\"\",\"password\":\"x\"}")
