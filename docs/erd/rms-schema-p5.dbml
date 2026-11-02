@@ -1,0 +1,124 @@
+// Phân hệ 5: Chi phí • báo cáo • đối soát — 2 bảng, kèm 2 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table operating_expenses {
+  id bigint [pk, increment]
+  business_date date [not null]
+  category varchar(30) [not null, note: 'DB-30; Giá trị: INGREDIENT | SUPPLIES | UTILITY | RENT | MAINTENANCE | OTHER']
+  description varchar(255) [not null]
+  amount numeric(12,2) [not null, note: 'DB-30']
+  payment_method varchar(20) [not null, note: 'Giá trị: CASH | BANK_TRANSFER']
+  fund_source varchar(20) [not null, note: 'Giá trị: CASH_DRAWER | OWNER | BANK']
+  stock_receipt_id bigint
+  recorded_by_id bigint [not null]
+  paid_at timestamptz [not null]
+  created_at timestamptz [not null, default: `now()`]
+  request_key varchar(64) [not null, unique]
+  status varchar(20) [not null, default: 'PAID', note: 'Giá trị: PAID | VOIDED']
+  void_reason varchar(255)
+  voided_by_id bigint
+  voided_at timestamptz
+
+  indexes {
+    (stock_receipt_id) [unique, name: 'ux_expense_receipt_live', note: 'WHERE ((stock_receipt_id IS NOT NULL) AND ((status)::text <> \'VOIDED\'::text))']
+  }
+
+  Note: '''
+  ck_expense_amount_positive: CHECK ((amount > (0)::numeric))
+  ck_expense_cash_drawer_is_cash: CHECK ((((fund_source)::text <> 'CASH_DRAWER'::text) OR ((payment_method)::text = 'CASH'::text)))
+  ck_expense_void_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'VOIDED'::text) THEN (num_nonnulls(void_reason, voided_by_id, voided_at) = 3)
+    ELSE (num_nonnulls(void_reason, voided_by_id, voided_at) = 0)
+END)
+  '''
+}
+
+Table daily_cash_reconciliations {
+  id bigint [pk, increment]
+  business_date date [not null]
+  version int [not null]
+  status varchar(20) [not null, default: 'CURRENT', note: 'Giá trị: CURRENT | SUPERSEDED']
+  opening_cash numeric(12,2) [not null, note: 'DB-32: quỹ đầu ngày do Manager xác nhận']
+  cash_sales numeric(12,2) [not null]
+  cash_expenses numeric(12,2) [not null]
+  expected_cash numeric(12,2) [note: 'DB-31; Cột tính toán: GENERATED ALWAYS AS (((opening_cash + cash_sales) - cash_expenses)) STORED']
+  actual_cash numeric(12,2) [not null]
+  difference numeric(12,2) [note: 'DB-31; Cột tính toán: GENERATED ALWAYS AS ((actual_cash - ((opening_cash + cash_sales) - cash_expenses))) STORED']
+  reason varchar(255)
+  revision_reason varchar(255)
+  reconciled_by_id bigint [not null]
+  reconciled_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (business_date, version) [unique, name: 'ux_cash_recon_date_version']
+    (business_date) [unique, name: 'ux_cash_recon_current', note: 'WHERE ((status)::text = \'CURRENT\'::text)']
+  }
+
+  Note: '''
+  ck_cash_recon_version_positive: CHECK ((version > 0))
+  ck_recon_reason_when_diff: CHECK (((actual_cash = ((opening_cash + cash_sales) - cash_expenses)) OR (reason IS NOT NULL)))
+  ck_recon_revision_reason: CHECK (((version = 1) OR (revision_reason IS NOT NULL)))
+  '''
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Table stock_receipts {
+  id bigint [pk, increment]
+  supplier_name varchar(100)
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  note varchar(255)
+  created_at timestamptz [not null, default: `now()`]
+  created_by_id bigint [not null, note: 'DB-25']
+  received_at timestamptz
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique, note: 'QĐ-ID: một yêu cầu tạo phiếu = một chứng từ']
+  request_hash char(64) [not null, note: 'sha256 của payload tạo phiếu: cùng khóa khác payload → RC409']
+
+  Note: '''
+  ck_stock_receipt_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(received_at, confirmed_by_id, confirmed_at) = 3)))
+  '''
+}
+
+Ref daily_cash_reconciliations_reconciled_by_id_fkey: daily_cash_reconciliations.reconciled_by_id > employees.id
+Ref operating_expenses_recorded_by_id_fkey: operating_expenses.recorded_by_id > employees.id
+Ref operating_expenses_stock_receipt_id_fkey: operating_expenses.stock_receipt_id > stock_receipts.id
+Ref operating_expenses_voided_by_id_fkey: operating_expenses.voided_by_id > employees.id
+Ref stock_receipts_confirmed_by_id_fkey: stock_receipts.confirmed_by_id > employees.id
+Ref stock_receipts_created_by_id_fkey: stock_receipts.created_by_id > employees.id
+
+TableGroup "P5 · Chi phí • báo cáo • đối soát" {
+  operating_expenses
+  daily_cash_reconciliations
+}
+
+TableGroup "Liên kết ngoài" {
+  employees
+  stock_receipts
+}

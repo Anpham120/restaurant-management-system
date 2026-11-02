@@ -1,0 +1,496 @@
+// Phân hệ 4: Kho RAW • bếp • sơ chế • kiểm kê — 18 bảng, kèm 2 bảng liên kết ngoài.
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+
+Project restaurant_core {
+  database_type: 'PostgreSQL'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table ingredients {
+  id bigint [pk, increment]
+  name varchar(100) [not null, unique]
+  base_unit varchar(20) [not null, note: 'DB-29: chọn đơn vị nhỏ (g, ml) cho gia vị định lượng < 1 g/suất']
+  min_quantity numeric(12,3) [not null, default: 0]
+  is_expiry_tracked boolean [not null, default: true]
+  is_active boolean [not null, default: true]
+
+  Note: '''
+  ck_inventory_minimum_nonnegative: CHECK ((min_quantity >= (0)::numeric))
+  '''
+}
+
+Table kitchen_ingredient_types {
+  id bigint [pk, increment]
+  raw_ingredient_id bigint [not null]
+  name varchar(100) [not null]
+  handling_type varchar(12) [not null, note: 'Giá trị: DIRECT | PREPARED']
+  shelf_life_hours int
+  minimum_quantity numeric(12,3) [not null, default: 0]
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (raw_ingredient_id) [unique, name: 'ux_kitchen_direct_one', note: 'WHERE ((handling_type)::text = \'DIRECT\'::text)']
+    (raw_ingredient_id, `lower((name)::text)`) [unique, name: 'ux_kitchen_types_name']
+  }
+
+  Note: '''
+  ck_kitchen_minimum_nonnegative: CHECK ((minimum_quantity >= (0)::numeric))
+  ck_kitchen_shelf_life_positive: CHECK ((shelf_life_hours > 0))
+  '''
+}
+
+Table stock_receipts {
+  id bigint [pk, increment]
+  supplier_name varchar(100)
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  note varchar(255)
+  created_at timestamptz [not null, default: `now()`]
+  created_by_id bigint [not null, note: 'DB-25']
+  received_at timestamptz
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique, note: 'QĐ-ID: một yêu cầu tạo phiếu = một chứng từ']
+  request_hash char(64) [not null, note: 'sha256 của payload tạo phiếu: cùng khóa khác payload → RC409']
+
+  Note: '''
+  ck_stock_receipt_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(received_at, confirmed_by_id, confirmed_at) = 3)))
+  '''
+}
+
+Table stock_receipt_items {
+  id bigint [pk, increment]
+  stock_receipt_id bigint [not null]
+  ingredient_id bigint [not null]
+  input_quantity numeric(12,3) [not null]
+  input_unit varchar(20) [not null]
+  conversion_factor numeric(12,3) [not null]
+  unit_price_per_input_unit numeric(12,2) [not null]
+  lot_code varchar(50)
+  expiry_date date
+
+  indexes {
+    (stock_receipt_id, ingredient_id, lot_code, expiry_date) [unique, name: 'ux_stock_receipt_items_lot']
+  }
+
+  Note: '''
+  ck_stock_receipt_items_conversion_factor_positive: CHECK ((conversion_factor > (0)::numeric))
+  ck_stock_receipt_items_input_quantity_positive: CHECK ((input_quantity > (0)::numeric))
+  ck_stock_receipt_price_nonnegative: CHECK ((unit_price_per_input_unit >= (0)::numeric))
+  '''
+}
+
+Table inventory_batches {
+  id bigint [pk, increment]
+  stock_receipt_item_id bigint [not null, unique]
+  received_at timestamptz [not null, default: `now()`, note: '= lúc xác nhận phiếu; tiêu chí phụ FEFO']
+  quantity_on_hand numeric(12,3) [not null]
+  is_usable boolean [not null, default: true]
+  unusable_reason varchar(255)
+  unusable_marked_by_id bigint
+  unusable_marked_at timestamptz
+
+  Note: '''
+  ck_inventory_batch_unusable_fields: CHECK (
+CASE
+    WHEN is_usable THEN (num_nonnulls(unusable_reason, unusable_marked_by_id, unusable_marked_at) = 0)
+    ELSE (num_nonnulls(unusable_reason, unusable_marked_by_id, unusable_marked_at) = 3)
+END)
+  ck_inventory_batches_quantity_on_hand_nonneg: CHECK ((quantity_on_hand >= (0)::numeric))
+  '''
+}
+
+Table stock_issues {
+  id bigint [pk, increment]
+  issued_by_id bigint [not null]
+  received_by_id bigint
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | ISSUED | RECEIVED | CANCELLED']
+  issued_at timestamptz
+  received_at timestamptz
+  note varchar(255)
+  cancel_reason varchar(255)
+  cancelled_at timestamptz
+  created_at timestamptz [not null, default: `now()`, note: 'DB-25']
+  cancelled_by_id bigint [note: 'DB-25']
+  request_key varchar(64) [not null, unique, note: 'QĐ-ID']
+  request_hash char(64) [not null, note: 'QĐ-ID']
+
+  Note: '''
+  ck_stock_issue_fields: CHECK (
+CASE status
+    WHEN 'DRAFT'::text THEN (num_nonnulls(issued_at, received_at, received_by_id, cancel_reason, cancelled_at, cancelled_by_id) = 0)
+    WHEN 'ISSUED'::text THEN ((issued_at IS NOT NULL) AND (num_nonnulls(received_at, received_by_id, cancel_reason, cancelled_at, cancelled_by_id) = 0))
+    WHEN 'RECEIVED'::text THEN ((num_nonnulls(issued_at, received_at, received_by_id) = 3) AND (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 0))
+    WHEN 'CANCELLED'::text THEN ((num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 3) AND (num_nonnulls(received_at, received_by_id) = 0))
+    ELSE NULL::boolean
+END)
+  '''
+}
+
+Table stock_issue_items {
+  id bigint [pk, increment]
+  stock_issue_id bigint [not null]
+  inventory_batch_id bigint [not null]
+  quantity numeric(12,3) [not null]
+  fulfillment_mode varchar(12) [not null, note: 'Giá trị: DIRECT | PREPARE']
+  wip_remaining_quantity numeric(12,3) [not null, default: 0]
+
+  indexes {
+    (stock_issue_id, inventory_batch_id, fulfillment_mode) [unique, name: 'ux_stock_issue_batch_mode']
+  }
+
+  Note: '''
+  ck_issue_item_wip_bounds: CHECK (((wip_remaining_quantity <= quantity) AND (((fulfillment_mode)::text = 'PREPARE'::text) OR (wip_remaining_quantity = (0)::numeric))))
+  ck_issue_wip_nonneg: CHECK ((wip_remaining_quantity >= (0)::numeric))
+  ck_stock_issue_items_quantity_positive: CHECK ((quantity > (0)::numeric))
+  '''
+}
+
+Table kitchen_preparations {
+  id bigint [pk, increment]
+  stock_issue_item_id bigint [not null]
+  input_quantity numeric(12,3) [not null]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  loss_reason varchar(255)
+  prepared_by_id bigint [not null]
+  prepared_at timestamptz
+  request_key varchar(64) [not null, unique]
+
+  Note: '''
+  ck_kitchen_preparation_confirmed: CHECK ((((status)::text = 'CONFIRMED'::text) = (prepared_at IS NOT NULL)))
+  ck_kitchen_preparations_input_quantity_positive: CHECK ((input_quantity > (0)::numeric))
+  '''
+}
+
+Table kitchen_preparation_outputs {
+  id bigint [pk, increment]
+  kitchen_preparation_id bigint [not null]
+  kitchen_ingredient_type_id bigint [not null]
+  output_quantity numeric(12,3) [not null]
+  usable_until timestamptz
+
+  indexes {
+    (kitchen_preparation_id, kitchen_ingredient_type_id) [unique, name: 'ux_kitchen_prep_output_type']
+    (id, kitchen_ingredient_type_id) [unique, name: 'ux_prep_output_id_type']
+  }
+
+  Note: '''
+  ck_kitchen_preparation_outputs_output_quantity_positive: CHECK ((output_quantity > (0)::numeric))
+  '''
+}
+
+Table kitchen_batches {
+  id bigint [pk, increment]
+  kitchen_ingredient_type_id bigint [not null]
+  preparation_output_id bigint [unique]
+  direct_issue_item_id bigint [unique]
+  usable_until timestamptz
+  quantity_on_hand numeric(12,3) [not null]
+  reserved_quantity numeric(12,3) [not null, default: 0]
+  is_usable boolean [not null, default: true]
+  unusable_reason varchar(255)
+  created_at timestamptz [not null, default: `now()`, note: 'DB-25']
+  unusable_marked_by_id bigint [note: 'DB-25']
+  unusable_marked_at timestamptz [note: 'DB-25']
+
+  indexes {
+    (id, direct_issue_item_id) [unique, name: 'ux_kitchen_batch_id_direct']
+  }
+
+  Note: '''
+  ck_kitchen_batch_one_source: CHECK ((num_nonnulls(preparation_output_id, direct_issue_item_id) = 1))
+  ck_kitchen_batch_unusable_fields: CHECK (
+CASE
+    WHEN is_usable THEN (num_nonnulls(unusable_reason, unusable_marked_by_id, unusable_marked_at) = 0)
+    ELSE (num_nonnulls(unusable_reason, unusable_marked_by_id, unusable_marked_at) = 3)
+END)
+  ck_kitchen_batches_quantity_on_hand_nonneg: CHECK ((quantity_on_hand >= (0)::numeric))
+  ck_kitchen_batches_reserved_quantity_nonneg: CHECK ((reserved_quantity >= (0)::numeric))
+  ck_kitchen_reserved_le_on_hand: CHECK ((reserved_quantity <= quantity_on_hand))
+  '''
+}
+
+Table stock_reservations {
+  id bigint [pk, increment]
+  order_item_id bigint [not null]
+  kitchen_batch_id bigint [not null]
+  quantity numeric(12,3) [not null]
+  status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | CONSUMED | RELEASED']
+  release_reason varchar(30) [note: 'DB-14; Giá trị: ITEM_CANCELLED | BATCH_UNUSABLE']
+  created_at timestamptz [not null, default: `now()`]
+  closed_at timestamptz
+
+  indexes {
+    (order_item_id, kitchen_batch_id) [unique, name: 'ux_stock_reservation_batch']
+  }
+
+  Note: '''
+  ck_reservation_close_fields: CHECK (
+CASE status
+    WHEN 'ACTIVE'::text THEN ((closed_at IS NULL) AND (release_reason IS NULL))
+    WHEN 'CONSUMED'::text THEN ((closed_at IS NOT NULL) AND (release_reason IS NULL))
+    WHEN 'RELEASED'::text THEN ((closed_at IS NOT NULL) AND (release_reason IS NOT NULL))
+    ELSE NULL::boolean
+END)
+  ck_stock_reservations_quantity_positive: CHECK ((quantity > (0)::numeric))
+  '''
+}
+
+Table stock_returns {
+  id bigint [pk, increment]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  requested_by_id bigint [not null]
+  confirmed_by_id bigint
+  reason varchar(255) [not null]
+  created_at timestamptz [not null, default: `now()`]
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique]
+
+  Note: '''
+  ck_stock_return_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(confirmed_by_id, confirmed_at) = 2)))
+  '''
+}
+
+Table stock_return_items {
+  id bigint [pk, increment]
+  stock_return_id bigint [not null]
+  source_issue_item_id bigint [not null]
+  direct_kitchen_batch_id bigint
+  quantity numeric(12,3) [not null]
+
+  indexes {
+    (stock_return_id, source_issue_item_id) [unique, name: 'ux_return_item_source']
+  }
+
+  Note: '''
+  ck_stock_return_items_quantity_positive: CHECK ((quantity > (0)::numeric))
+  '''
+}
+
+Table stock_adjustments {
+  id bigint [pk, increment]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  adjustment_type varchar(20) [not null, note: 'Giá trị: DAMAGE | EXPIRED | QUALITY | OTHER']
+  reason varchar(255) [not null]
+  created_by_id bigint [not null]
+  confirmed_by_id bigint
+  created_at timestamptz [not null, default: `now()`]
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique]
+
+  Note: '''
+  ck_stock_adjustment_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(confirmed_by_id, confirmed_at) = 2)))
+  '''
+}
+
+Table stock_adjustment_items {
+  id bigint [pk, increment]
+  stock_adjustment_id bigint [not null]
+  raw_batch_id bigint
+  wip_issue_item_id bigint
+  kitchen_batch_id bigint
+  quantity_delta numeric(12,3) [not null, note: 'DB-22']
+  note varchar(255)
+
+  indexes {
+    (stock_adjustment_id, kitchen_batch_id) [unique, name: 'ux_adjust_item_kitchen', note: 'WHERE (kitchen_batch_id IS NOT NULL)']
+    (stock_adjustment_id, raw_batch_id) [unique, name: 'ux_adjust_item_raw', note: 'WHERE (raw_batch_id IS NOT NULL)']
+    (stock_adjustment_id, wip_issue_item_id) [unique, name: 'ux_adjust_item_wip', note: 'WHERE (wip_issue_item_id IS NOT NULL)']
+  }
+
+  Note: '''
+  ck_adjust_delta_negative: CHECK ((quantity_delta < (0)::numeric))
+  ck_stock_adjust_one_source: CHECK ((num_nonnulls(raw_batch_id, wip_issue_item_id, kitchen_batch_id) = 1))
+  '''
+}
+
+Table stock_counts {
+  id bigint [pk, increment]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | CONFIRMED | CANCELLED']
+  note varchar(255)
+  created_at timestamptz [not null, default: `now()`]
+  created_by_id bigint [not null, note: 'DB-25']
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+  request_key varchar(64) [not null, unique, note: 'QĐ-ID']
+  request_hash char(64) [not null, note: 'QĐ-ID']
+
+  Note: '''
+  ck_stock_count_confirm_fields: CHECK ((((status)::text = 'CONFIRMED'::text) = (num_nonnulls(confirmed_by_id, confirmed_at) = 2)))
+  '''
+}
+
+Table stock_count_items {
+  id bigint [pk, increment]
+  stock_count_id bigint [not null]
+  raw_batch_id bigint
+  wip_issue_item_id bigint
+  kitchen_batch_id bigint
+  book_quantity numeric(12,3) [not null]
+  actual_quantity numeric(12,3) [not null]
+  reason varchar(255)
+
+  indexes {
+    (stock_count_id, kitchen_batch_id) [unique, name: 'ux_stock_count_kitchen', note: 'WHERE (kitchen_batch_id IS NOT NULL)']
+    (stock_count_id, raw_batch_id) [unique, name: 'ux_stock_count_raw', note: 'WHERE (raw_batch_id IS NOT NULL)']
+    (stock_count_id, wip_issue_item_id) [unique, name: 'ux_stock_count_wip', note: 'WHERE (wip_issue_item_id IS NOT NULL)']
+  }
+
+  Note: '''
+  ck_stock_count_items_actual_quantity_nonneg: CHECK ((actual_quantity >= (0)::numeric))
+  ck_stock_count_items_book_quantity_nonneg: CHECK ((book_quantity >= (0)::numeric))
+  ck_stock_count_one_source: CHECK ((num_nonnulls(raw_batch_id, wip_issue_item_id, kitchen_batch_id) = 1))
+  '''
+}
+
+Table stock_movements {
+  id bigint [pk, increment]
+  movement_type varchar(30) [not null, note: 'Giá trị: RECEIPT | ISSUE_OUT | ISSUE_REVERSAL | ISSUE_RECEIVED | DIRECT_IN | PREP_INPUT | PREP_OUTPUT | COOK | RETURN | WASTE | COUNT_ADJUST']
+  raw_batch_id bigint
+  wip_issue_item_id bigint
+  kitchen_batch_id bigint
+  quantity_delta numeric(12,3) [not null]
+  ref_issue_item_id bigint
+  preparation_id bigint
+  order_item_id bigint
+  stock_count_item_id bigint
+  stock_return_item_id bigint
+  stock_adjustment_item_id bigint
+  reason varchar(255)
+  event_key varchar(64) [not null, unique]
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: '''
+  ck_movement_one_source: CHECK ((num_nonnulls(raw_batch_id, wip_issue_item_id, kitchen_batch_id) = 1))
+  ck_movement_type_shape: CHECK (((quantity_delta <> (0)::numeric) AND
+CASE movement_type
+    WHEN 'RECEIPT'::text THEN ((raw_batch_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'ISSUE_OUT'::text THEN ((raw_batch_id IS NOT NULL) AND (ref_issue_item_id IS NOT NULL) AND (quantity_delta < (0)::numeric))
+    WHEN 'ISSUE_REVERSAL'::text THEN ((raw_batch_id IS NOT NULL) AND (ref_issue_item_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'ISSUE_RECEIVED'::text THEN ((wip_issue_item_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'DIRECT_IN'::text THEN ((kitchen_batch_id IS NOT NULL) AND (ref_issue_item_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'PREP_INPUT'::text THEN ((wip_issue_item_id IS NOT NULL) AND (preparation_id IS NOT NULL) AND (quantity_delta < (0)::numeric))
+    WHEN 'PREP_OUTPUT'::text THEN ((kitchen_batch_id IS NOT NULL) AND (preparation_id IS NOT NULL) AND (quantity_delta > (0)::numeric))
+    WHEN 'COOK'::text THEN ((kitchen_batch_id IS NOT NULL) AND (order_item_id IS NOT NULL) AND (quantity_delta < (0)::numeric))
+    WHEN 'RETURN'::text THEN ((stock_return_item_id IS NOT NULL) AND (((raw_batch_id IS NOT NULL) AND (quantity_delta > (0)::numeric)) OR ((raw_batch_id IS NULL) AND (quantity_delta < (0)::numeric))))
+    WHEN 'WASTE'::text THEN ((stock_adjustment_item_id IS NOT NULL) AND (quantity_delta < (0)::numeric))
+    WHEN 'COUNT_ADJUST'::text THEN (stock_count_item_id IS NOT NULL)
+    ELSE false
+END))
+  '''
+}
+
+Table employees {
+  id bigint [pk, increment]
+  employee_code varchar(20) [not null, unique]
+  full_name varchar(100) [not null]
+  gender varchar(10)
+  date_of_birth date
+  phone varchar(15)
+  email varchar(100)
+  address varchar(255)
+  hire_date date
+  end_date date
+  work_status varchar(20) [not null, default: 'ACTIVE', note: 'Giá trị: ACTIVE | INACTIVE | LEFT']
+  department_id bigint [not null]
+
+  Note: '''
+  ck_employee_dates: CHECK (((end_date IS NULL) OR (hire_date IS NULL) OR (end_date >= hire_date)))
+  ck_employee_left_end_date: CHECK ((((work_status)::text <> 'LEFT'::text) OR (end_date IS NOT NULL)))
+  '''
+}
+
+Table order_items {
+  id bigint [pk, increment]
+  order_batch_id bigint [not null]
+  daily_menu_item_id bigint [not null]
+  quantity int [not null]
+  item_name_snapshot varchar(100) [not null]
+  unit_price numeric(12,2) [not null]
+  status varchar(20) [not null, default: 'PENDING', note: 'Giá trị: PENDING | ACCEPTED | COOKING | READY | SERVED | CANCELLED | REJECTED']
+  has_stock_exception boolean [not null, default: false]
+  note varchar(255)
+
+  Note: '''
+  ck_order_item_exception_accepted: CHECK (((NOT has_stock_exception) OR ((status)::text = 'ACCEPTED'::text)))
+  ck_order_items_quantity_positive: CHECK ((quantity > 0))
+  ck_order_items_unit_price_nonneg: CHECK ((unit_price >= (0)::numeric))
+  '''
+}
+
+Ref inventory_batches_stock_receipt_item_id_fkey: inventory_batches.stock_receipt_item_id > stock_receipt_items.id
+Ref inventory_batches_unusable_marked_by_id_fkey: inventory_batches.unusable_marked_by_id > employees.id
+Ref fk_kitchen_batch_output_type: kitchen_batches.(preparation_output_id, kitchen_ingredient_type_id) > kitchen_preparation_outputs.(id, kitchen_ingredient_type_id)
+Ref kitchen_batches_direct_issue_item_id_fkey: kitchen_batches.direct_issue_item_id > stock_issue_items.id
+Ref kitchen_batches_kitchen_ingredient_type_id_fkey: kitchen_batches.kitchen_ingredient_type_id > kitchen_ingredient_types.id
+Ref kitchen_batches_preparation_output_id_fkey: kitchen_batches.preparation_output_id > kitchen_preparation_outputs.id
+Ref kitchen_batches_unusable_marked_by_id_fkey: kitchen_batches.unusable_marked_by_id > employees.id
+Ref kitchen_ingredient_types_raw_ingredient_id_fkey: kitchen_ingredient_types.raw_ingredient_id > ingredients.id
+Ref kitchen_preparation_outputs_kitchen_ingredient_type_id_fkey: kitchen_preparation_outputs.kitchen_ingredient_type_id > kitchen_ingredient_types.id
+Ref kitchen_preparation_outputs_kitchen_preparation_id_fkey: kitchen_preparation_outputs.kitchen_preparation_id > kitchen_preparations.id
+Ref kitchen_preparations_prepared_by_id_fkey: kitchen_preparations.prepared_by_id > employees.id
+Ref kitchen_preparations_stock_issue_item_id_fkey: kitchen_preparations.stock_issue_item_id > stock_issue_items.id
+Ref stock_adjustment_items_kitchen_batch_id_fkey: stock_adjustment_items.kitchen_batch_id > kitchen_batches.id
+Ref stock_adjustment_items_raw_batch_id_fkey: stock_adjustment_items.raw_batch_id > inventory_batches.id
+Ref stock_adjustment_items_stock_adjustment_id_fkey: stock_adjustment_items.stock_adjustment_id > stock_adjustments.id
+Ref stock_adjustment_items_wip_issue_item_id_fkey: stock_adjustment_items.wip_issue_item_id > stock_issue_items.id
+Ref stock_adjustments_confirmed_by_id_fkey: stock_adjustments.confirmed_by_id > employees.id
+Ref stock_adjustments_created_by_id_fkey: stock_adjustments.created_by_id > employees.id
+Ref stock_count_items_kitchen_batch_id_fkey: stock_count_items.kitchen_batch_id > kitchen_batches.id
+Ref stock_count_items_raw_batch_id_fkey: stock_count_items.raw_batch_id > inventory_batches.id
+Ref stock_count_items_stock_count_id_fkey: stock_count_items.stock_count_id > stock_counts.id
+Ref stock_count_items_wip_issue_item_id_fkey: stock_count_items.wip_issue_item_id > stock_issue_items.id
+Ref stock_counts_confirmed_by_id_fkey: stock_counts.confirmed_by_id > employees.id
+Ref stock_counts_created_by_id_fkey: stock_counts.created_by_id > employees.id
+Ref stock_issue_items_inventory_batch_id_fkey: stock_issue_items.inventory_batch_id > inventory_batches.id
+Ref stock_issue_items_stock_issue_id_fkey: stock_issue_items.stock_issue_id > stock_issues.id
+Ref stock_issues_cancelled_by_id_fkey: stock_issues.cancelled_by_id > employees.id
+Ref stock_issues_issued_by_id_fkey: stock_issues.issued_by_id > employees.id
+Ref stock_issues_received_by_id_fkey: stock_issues.received_by_id > employees.id
+Ref stock_movements_kitchen_batch_id_fkey: stock_movements.kitchen_batch_id > kitchen_batches.id
+Ref stock_movements_order_item_id_fkey: stock_movements.order_item_id > order_items.id
+Ref stock_movements_preparation_id_fkey: stock_movements.preparation_id > kitchen_preparations.id
+Ref stock_movements_raw_batch_id_fkey: stock_movements.raw_batch_id > inventory_batches.id
+Ref stock_movements_ref_issue_item_id_fkey: stock_movements.ref_issue_item_id > stock_issue_items.id
+Ref stock_movements_stock_adjustment_item_id_fkey: stock_movements.stock_adjustment_item_id > stock_adjustment_items.id
+Ref stock_movements_stock_count_item_id_fkey: stock_movements.stock_count_item_id > stock_count_items.id
+Ref stock_movements_stock_return_item_id_fkey: stock_movements.stock_return_item_id > stock_return_items.id
+Ref stock_movements_wip_issue_item_id_fkey: stock_movements.wip_issue_item_id > stock_issue_items.id
+Ref stock_receipt_items_ingredient_id_fkey: stock_receipt_items.ingredient_id > ingredients.id
+Ref stock_receipt_items_stock_receipt_id_fkey: stock_receipt_items.stock_receipt_id > stock_receipts.id
+Ref stock_receipts_confirmed_by_id_fkey: stock_receipts.confirmed_by_id > employees.id
+Ref stock_receipts_created_by_id_fkey: stock_receipts.created_by_id > employees.id
+Ref stock_reservations_kitchen_batch_id_fkey: stock_reservations.kitchen_batch_id > kitchen_batches.id
+Ref stock_reservations_order_item_id_fkey: stock_reservations.order_item_id > order_items.id
+Ref fk_return_direct_batch_of_issue_item: stock_return_items.(direct_kitchen_batch_id, source_issue_item_id) > kitchen_batches.(id, direct_issue_item_id)
+Ref stock_return_items_direct_kitchen_batch_id_fkey: stock_return_items.direct_kitchen_batch_id > kitchen_batches.id
+Ref stock_return_items_source_issue_item_id_fkey: stock_return_items.source_issue_item_id > stock_issue_items.id
+Ref stock_return_items_stock_return_id_fkey: stock_return_items.stock_return_id > stock_returns.id
+Ref stock_returns_confirmed_by_id_fkey: stock_returns.confirmed_by_id > employees.id
+Ref stock_returns_requested_by_id_fkey: stock_returns.requested_by_id > employees.id
+
+TableGroup "P4 · Kho RAW • bếp • sơ chế • kiểm kê" {
+  ingredients
+  kitchen_ingredient_types
+  stock_receipts
+  stock_receipt_items
+  inventory_batches
+  stock_issues
+  stock_issue_items
+  kitchen_preparations
+  kitchen_preparation_outputs
+  kitchen_batches
+  stock_reservations
+  stock_returns
+  stock_return_items
+  stock_adjustments
+  stock_adjustment_items
+  stock_counts
+  stock_count_items
+  stock_movements
+}
+
+TableGroup "Liên kết ngoài" {
+  employees
+  order_items
+}
