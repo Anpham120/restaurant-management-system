@@ -140,7 +140,16 @@ Bản sao lưu luôn được thử khôi phục: mỗi lần build `develop`, s
 migration Flyway của bản mới trên dữ liệu thật và quét đọc mọi module (`scripts/staging-test.sh`). Dữ liệu này chỉ nằm trong
 database staging ở `127.0.0.1` và bị xóa khi staging chạy xong.
 
-Giới hạn: bản sao lưu nằm cùng máy chủ. Hỏng ổ đĩa thì mất cả hai. Nên định kỳ chép thư mục này ra máy khác.
+Bản sao ngoài máy chủ (`scripts/offsite-backup.sh`): mỗi ngày mã hóa AES-256 bản `daily-*` mới nhất rồi gửi qua bot
+Telegram đang dùng cho cảnh báo. Telegram chỉ giữ file đã mã hóa. Cài một lần:
+```bash
+( umask 077; openssl rand -base64 48 > /home/coder/rms-backups/.offsite.key )
+# Lưu nội dung khóa vào trình quản lý mật khẩu ngay: máy chủ mất thì chỉ còn bản này để giải mã
+(crontab -l; echo '35 19 * * * /home/coder/rms-deploy/scripts/offsite-backup.sh >> /home/coder/rms-backups/backup.log 2>&1') | crontab -
+```
+Chạy 5 phút sau bản `daily`. Giải mã một file tải từ Telegram:
+`openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass file:<khóa> -in <file>.dump.enc -out <file>.dump`,
+rồi khôi phục bằng `scripts/restore-db.sh`.
 
 ### 3.7 Chống dò mật khẩu
 Hai lớp, không đổi schema database:
