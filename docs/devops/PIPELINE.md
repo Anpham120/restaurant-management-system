@@ -48,6 +48,7 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 Build một lần, deploy đúng image đã kiểm:
 - Image `app`, `web` chỉ build một lần ở staging của `develop`. Qua smoke test và Trivy image thì được gắn tag `rms-release-app:<commit>`, `rms-release-web:<commit>`.
 - `scripts/tag-release.sh` giữ tag của 5 commit `develop` gần nhất và của commit mới hơn (đang chờ `main` deploy). Tag của commit cũ hơn bị bỏ.
+- Chạy lại build `develop` trên commit đã có tag thì tag giữ nguyên image cũ. Build Docker không tái lập (mã image khác dù cùng mã nguồn), gắn lại tag sẽ làm production và GHCR giữ hai image khác nhau cho cùng một commit.
 - Staging và deploy đều checkout đúng `GIT_COMMIT` của build, không lấy đầu nhánh mới nhất, để image và mã nguồn luôn cùng một commit.
 
 E2E ghi dữ liệu (`scripts/e2e-flow.sh`), chạy trên bản sao dữ liệu thật ở staging:
