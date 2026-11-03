@@ -1,8 +1,8 @@
 // CI/CD tự động, không có bước duyệt tay.
 //   feature/*  : kiểm migration → test → quét bảo mật → tự merge vào develop
 //   develop    : kiểm migration → test → quét bảo mật → staging tạm thời (smoke test đọc + E2E ghi) → quét image
-//                → gắn tag phát hành → tự promote lên main (fast-forward)
-//   main       : deploy production đúng image develop đã kiểm, kiểm qua domain thật (tự quay lui nếu lỗi)
+//                → gắn tag phát hành → đẩy GHCR (nếu có token) → tự promote lên main (fast-forward)
+//   main       : deploy production đúng image develop đã kiểm (blue-green khi nginx có 2 slot), kiểm qua domain thật
 // main không test lại: --ff-only nên commit trên main trùng SHA với commit develop vừa qua đủ test, staging và Trivy.
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
 // Kích hoạt: webhook GitHub. Dự phòng là quét multibranch mỗi phút (cấu hình job). Không dùng pollSCM:
@@ -47,7 +47,9 @@ pipeline {
                 sh '''
                     # Volume cache Maven mới tạo thuộc root, đổi quyền để user Jenkins ghi được
                     docker run --rm -v rms-m2-cache:/m2 alpine:3.20 chown "$(id -u):$(id -g)" /m2
-                    docker run --rm --network host \
+                    # Giới hạn tài nguyên: CI chạy chung máy với production (4 CPU, 7 GB). Tối đa 2 CPU, 3 GB;
+                    # cpu-shares 512 (production mặc định 1024): khi tranh CPU, production được ưu tiên gấp đôi.
+                    docker run --rm --network host --cpus=2 --cpu-shares=512 --memory=3g \
                       --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE" \
                       --user "$(id -u):$(id -g)" --group-add "$(stat -c %g /var/run/docker.sock)" \
                       -e HOME=/tmp -v rms-m2-cache:/tmp/.m2 \
@@ -75,7 +77,7 @@ pipeline {
             when { not { branch 'main' } }
             steps {
                 sh '''
-                    docker run --rm --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE/frontend" \
+                    docker run --rm --cpus=2 --cpu-shares=512 --memory=2g --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE/frontend" \
                       --user "$(id -u):$(id -g)" -e HOME=/tmp \
                       node:22-alpine \
                       sh -c "npm ci --no-audit --no-fund && npm run typecheck && npm run build"
@@ -127,6 +129,23 @@ pipeline {
             }
         }
 
+        stage('Đẩy image lên GHCR') {
+            when { branch 'develop' }
+            steps {
+                // Bản lưu image ngoài máy chủ. Không chặn pipeline: thiếu credential ghcr-token hoặc registry lỗi thì chỉ ghi log,
+                // deploy vẫn dùng image phát hành trên máy.
+                script {
+                    try {
+                        withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
+                            sh 'scripts/push-release.sh "$GIT_COMMIT"'
+                        }
+                    } catch (err) {
+                        echo "Bỏ qua đẩy GHCR: ${err.message}"
+                    }
+                }
+            }
+        }
+
         stage('Promote develop lên main') {
             when { branch 'develop' }
             steps {
@@ -149,7 +168,7 @@ pipeline {
                     sh '''
                         docker run --rm --network host \
                           -v /var/run/docker.sock:/var/run/docker.sock \
-                          -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$DEPLOY_DIR" -v "$BACKUP_DIR:$BACKUP_DIR" \
+                          -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$DEPLOY_DIR" -v "$BACKUP_DIR:$BACKUP_DIR" -v /etc/nginx:/etc/nginx:ro \
                           -e GH_TOKEN -e ENV_B64 -e BACKUP_DIR -e GIT_COMMIT -e PUBLIC_URL \
                           docker:27-cli \
                           sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" main && git reset -q --hard \\$GIT_COMMIT && (umask 077; printf '%s' \\"\\$ENV_B64\\" | base64 -d > .env) && scripts/deploy.sh; rc=\\$?; rm -f .env; chown -R 1000:1000 . \\$BACKUP_DIR; exit \\$rc"

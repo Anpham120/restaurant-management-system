@@ -39,6 +39,7 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 | Merge feature vào develop | `feature/*` | `scripts/auto-merge.sh develop` |
 | Staging smoke test | `develop` | `scripts/staging-test.sh`: dựng bản tạm trên bản sao lưu production mới nhất, quét đọc 32 API, chạy E2E ghi (`scripts/e2e-flow.sh`) rồi hủy |
 | Quét bảo mật image | `develop` | `scripts/security-scan.sh image`: Trivy quét image `app` và `web` vừa build ở staging. Qua thì `scripts/tag-release.sh` gắn tag `rms-release-{app,web}:<commit>` |
+| Đẩy image lên GHCR | `develop` | `scripts/push-release.sh`: bản lưu image ngoài máy chủ. Thiếu credential `ghcr-token` thì bỏ qua |
 | Promote develop lên main | `develop` | `scripts/auto-merge.sh main` |
 | Deploy production | `main` | `scripts/deploy.sh` trong thư mục `/home/coder/rms-deploy` |
 
@@ -58,8 +59,15 @@ E2E ghi dữ liệu (`scripts/e2e-flow.sh`), chạy trên bản sao dữ liệu 
 Deploy (`scripts/deploy.sh`):
 - Kiểm tra có image `rms-release-*:<commit>`. Không có (commit thẳng lên `main`, hoặc image đã bị dọn) thì dừng, chưa đụng gì. Cách xử lý: chạy lại build `develop` của commit đó rồi chạy lại build `main`.
 - Sao lưu database (`scripts/backup-db.sh pre-deploy`). Sao lưu lỗi thì dừng, chưa đụng gì.
-- Gắn tag image phát hành thành `restaurant-management-system-{app,web}:latest`, chạy `docker compose up --no-deps --no-build --wait`. Không build lại.
-- Kiểm tra `/actuator/health` và trang web trong máy, rồi kiểm qua domain thật (`PUBLIC_URL`, qua nginx + HTTPS): trang web, health UP, `/api/tables` trả 401. Lỗi ở bất kỳ bước nào thì tự tag lại image cũ và chạy lại.
+- Không build lại: gắn tag image phát hành cho slot cần dựng rồi `docker compose up --no-deps --no-build --wait`.
+- Kiểm `/actuator/health` và trang web trong máy, rồi kiểm qua domain thật (`PUBLIC_URL`, qua nginx + HTTPS): trang web, health UP, `/api/tables` trả 401.
+- **Blue-green** (khi nginx máy chủ đã cân bằng 2 slot, mục 3.7; `deploy.sh` nhận ra bằng cách tìm `127.0.0.1:8086` trong file site nginx, Jenkinsfile mount `/etc/nginx` chỉ đọc):
+  - Slot A = `app`/`web` (cổng 8081/8083), slot B = `app-b`/`web-b` (8086/8087, profile `slot-b` trong `compose.yaml`). Bình thường chỉ một slot chạy.
+  - Dựng slot đang dừng bằng image mới → healthy → dừng slot cũ (Spring tắt êm) → kiểm qua domain. nginx tự chuyển request sang slot còn sống, không gián đoạn.
+  - Slot mới không healthy: dừng slot mới, slot cũ vẫn phục vụ. Kiểm qua domain lỗi: bật lại slot cũ, dừng slot mới.
+  - Đã thử trên bản sao (project riêng, nginx riêng): 2 lần chuyển A→B→A dưới tải 10 request/giây, 903 request, 0 lỗi; slot mới hỏng thì slot cũ phục vụ tiếp, 0 lỗi.
+  - Quay về bản trước bằng tay: container slot cũ được giữ (đã dừng). `docker compose start <slot cũ>`, chờ healthy, rồi `docker compose stop <slot mới>` (trong `/home/coder/rms-deploy`, `COMPOSE_PROJECT_NAME=restaurant-management-system COMPOSE_PROFILES=slot-b`).
+- **Tại chỗ** (nginx chưa cấu hình 2 slot): thay container slot A, gián đoạn ~15–25 giây; lỗi thì tự tag lại image `:previous` và chạy lại.
 - Không đụng container `db` và volume `restaurant-management-system_pgdata`.
 - Profile Spring luôn là `prod`: `deploy.sh` export `SPRING_PROFILES_ACTIVE=prod`, ghi đè giá trị trong `.env`. Profile `prod` cấm Flyway tự baseline; database production đã có lịch sử Flyway nên không ảnh hưởng.
 - Staging cũng chạy `prod` để kiểm tra đúng cấu hình production. Riêng staging ghép thêm `compose.staging.yaml` để cho phép baseline trên database mới tạo. Production không dùng file này.
@@ -91,9 +99,11 @@ Quét bảo mật (Trivy):
 | `github-branch-source` | Username with password | Username GitHub + cùng token | Multibranch quét repo và checkout |
 | `rms-prod-env` | Secret text | File `.env` production mã hóa base64 trên MỘT dòng: `base64 -w0 .env` | Deploy production |
 | `telegram-bot-token` | Secret text | Bot token Telegram (cùng bot với mục 3.5) | Báo kết quả pipeline. Thiếu thì pipeline vẫn chạy, chỉ không có tin nhắn |
+| `ghcr-token` | Secret text | Token GitHub classic, scope `write:packages` | Đẩy image phát hành lên `ghcr.io/anpham120/rms-{app,web}:<commit>` (`scripts/push-release.sh`). Thiếu thì bỏ qua, không chặn pipeline |
 
 Quản lý secret:
 - Máy dev dùng `.env` riêng (mẫu `.env.example`, giá trị thử), không bao giờ chứa secret production.
+- `.env` dev đặt `COMPOSE_PROJECT_NAME=rms-dev`. Nếu thiếu, compose lấy tên thư mục `restaurant-management-system`, trùng project production: lệnh `docker compose` trong thư mục dev sẽ tác động vào container và volume production. Trên máy chủ, dev dùng cổng riêng (db 5435, app 8071, web 8073).
 - Secret production chỉ nằm trong credential `rms-prod-env`. Khi deploy, pipeline ghi ra `.env` trong thư mục triển khai (quyền 600), chạy compose rồi xóa ngay.
 - Đổi secret: sửa credential `rms-prod-env` trên giao diện Jenkins, sau đó chạy lại build `main`. Không cần SSH vào máy chủ.
 - Lý do dùng base64: ô Secret của Jenkins là một dòng, dán nhiều dòng sẽ mất xuống dòng và `.env` hỏng.
@@ -174,21 +184,30 @@ Chạy 5 phút sau bản `daily`. Giải mã một file tải từ Telegram:
 `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass file:<khóa> -in <file>.dump.enc -out <file>.dump`,
 rồi khôi phục bằng `scripts/restore-db.sh`.
 
-### 3.7 Chống dò mật khẩu
+### 3.7 nginx máy chủ: blue-green và chống dò mật khẩu
+File mẫu: `docs/devops/nginx/rms.atlasplatform12.tech.conf` (site) và `docs/devops/nginx/rms-login-ratelimit.conf` (zone, khối http).
+- Upstream `rms_app` (8081, 8086) và `rms_web` (8083, 8087); `proxy_next_upstream error` chuyển request sang slot còn sống.
+- `proxy_set_header Host $host` đặt ở mức `server`: thiếu thì Host gửi đi là `rms_app` (có dấu `_`) và Tomcat trả 400.
+- Cài một lần bằng quyền root (sao lưu file cũ, `nginx -t`, reload, kiểm qua domain, lỗi thì tự khôi phục):
+  ```bash
+  cd /home/coder/projects/RSM/restaurant-management-system
+  sudo cp -a /etc/nginx/sites-available/rms.atlasplatform12.tech.conf /etc/nginx/sites-available/rms.atlasplatform12.tech.conf.bak
+  sudo install -m 644 docs/devops/nginx/rms-login-ratelimit.conf /etc/nginx/conf.d/
+  sudo install -m 644 docs/devops/nginx/rms.atlasplatform12.tech.conf /etc/nginx/sites-available/
+  sudo nginx -t && sudo systemctl reload nginx
+  ```
+  `nginx -t` lỗi thì chép lại file `.bak` và xóa file trong `conf.d`.
+
+Chống dò mật khẩu
 Hai lớp, không đổi schema database:
 - App (`LoginThrottle`): một tên đăng nhập sai 5 lần trong 15 phút thì bị khóa tạm 15 phút (trả `429 TOO_MANY_ATTEMPTS`, kể cả
   khi lần sau nhập đúng). Áp dụng cả cho tên không tồn tại nên không lộ tài khoản nào có thật. Khởi động lại app thì xóa bộ đếm.
-- Nginx: mỗi IP tối đa 5 lần gọi `/api/auth/login` mỗi phút (dồn thêm 5). Cài một lần bằng quyền root:
-  ```bash
-  cd /home/coder/projects/RSM/restaurant-management-system
-  sudo cp docs/devops/nginx/rms-login-ratelimit.conf /etc/nginx/conf.d/
-  sudo patch /etc/nginx/sites-available/rms.atlasplatform12.tech.conf < docs/devops/nginx/rms-login-ratelimit.patch
-  sudo nginx -t && sudo systemctl reload nginx
-  ```
-  `nginx -t` lỗi thì không reload, gỡ bằng `sudo patch -R …` với cùng file patch và xóa file trong `conf.d`.
+- Nginx: mỗi IP tối đa 5 lần gọi `/api/auth/login` mỗi phút (dồn thêm 5), vượt thì 429. Nằm trong file site ở trên.
 
 ## 4. Quay lui và giới hạn
 
+- Tài nguyên: CI chạy chung máy với production (4 CPU, 7 GB). Container Maven tối đa 2 CPU / 3 GB, Node 2 CPU / 2 GB, staging app 1,5 CPU / 1,5 GB, staging db 1 CPU / 1 GB; tất cả `cpu-shares 512` (production 1024) nên khi tranh CPU production được ưu tiên. Bước build image trong staging (Docker build) chưa giới hạn được.
+- Máy chủ duy nhất: Jenkins, staging và production chung một máy, Jenkins giữ `docker.sock` (tương đương root). Hạn chế đã biết của đồ án; thực tế nên tách máy CI.
 - Quay lui tự động chỉ áp dụng cho image `app` và `web`. Flyway là migration tiến một chiều: nếu bản mới đã migrate schema thì quay lui image không hoàn tác được DB. Vì vậy thay đổi schema phải tương thích ngược. Nếu cần quay DB về trước khi deploy, khôi phục bản `pre-deploy-*.dump` mới nhất (mục 3.6).
 - Không có cổng duyệt tay nghĩa là lỗi logic không bị test bắt được sẽ lên production sau khi pass CI. Đây là đánh đổi của yêu cầu tự động hóa hoàn toàn.
 - `/actuator/prometheus` được permitAll để Prometheus scrape. Nginx máy chủ chỉ proxy `/api/` và `/actuator/health`, nên đường dẫn này không lộ ra internet. App chỉ lắng nghe `127.0.0.1:8081`.
@@ -197,7 +216,9 @@ Hai lớp, không đổi schema database:
 
 ```bash
 # Cú pháp script
-bash -n scripts/auto-merge.sh && bash -n scripts/deploy.sh && bash -n scripts/tag-release.sh && bash -n scripts/e2e-flow.sh
+bash -n scripts/auto-merge.sh && bash -n scripts/deploy.sh && bash -n scripts/tag-release.sh && bash -n scripts/e2e-flow.sh && bash -n scripts/push-release.sh
+# Slot đang chạy (blue-green)
+docker ps --filter name=restaurant-management-system-app --format '{{.Names}} {{.Status}}'
 scripts/check-migrations.sh
 # Image phát hành đang có
 docker images 'rms-release-*'

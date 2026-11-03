@@ -5,3 +5,11 @@ services:
   app:
     environment:
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+    # Staging chạy chung máy với production: giới hạn để smoke test/E2E không làm chậm production
+    cpus: "1.5"
+    cpu_shares: 512
+    mem_limit: 1536m
+  db:
+    cpus: "1"
+    cpu_shares: 512
+    mem_limit: 1g
