@@ -162,6 +162,27 @@
                     </includes>
                 </configuration>
             </plugin>
+            <!-- Độ phủ test (JaCoCo): báo cáo HTML ở target/site/jacoco sau `mvn verify`, Jenkins lưu làm artifact.
+                 Chỉ đo, không chặn build theo ngưỡng. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.15</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
