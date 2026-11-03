@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # CD: triển khai nhánh main lên máy chủ. Chạy trong thư mục triển khai (có .env thật).
-# Build image mới rồi chờ healthy. Lỗi ở bước nào thì quay về image đang chạy trước đó.
+# Không build lại: chạy đúng image rms-release-*:<commit> mà build develop đã dựng, smoke test và quét Trivy
+# (scripts/tag-release.sh). Chờ healthy. Lỗi ở bước nào thì quay về image đang chạy trước đó.
 # --no-deps: không đụng container db và volume dữ liệu.
 set -euo pipefail
 
@@ -12,8 +13,18 @@ APP=restaurant-management-system-app
 WEB=restaurant-management-system-web
 
 # Mã nguồn main đã được Jenkinsfile đồng bộ vào thư mục này trước khi gọi script
-SHA=$(git rev-parse --short HEAD)
-echo "[deploy] commit $SHA"
+SHA=$(git rev-parse HEAD)
+echo "[deploy] commit ${SHA:0:7}"
+
+# main chỉ nhận fast-forward từ develop, nên commit này phải có image phát hành từ build develop.
+# Thiếu thì dừng trước khi đụng vào gì: không build tạm một image chưa được kiểm.
+for svc in app web; do
+  if ! docker image inspect "rms-release-$svc:$SHA" >/dev/null 2>&1; then
+    echo "[deploy] DỪNG: không có image rms-release-$svc:${SHA:0:7}. Commit chưa qua build develop (commit thẳng lên main?)"
+    echo "[deploy] hoặc image đã bị dọn. Chạy lại build develop của commit này rồi chạy lại build main."
+    exit 1
+  fi
+done
 
 # Sao lưu DB trước: bản mới có thể chạy migration Flyway mà quay lui image không hoàn tác được.
 # Không sao lưu được thì dừng, chưa đụng vào gì.
@@ -50,11 +61,14 @@ rollback() {
   fi
 }
 
-if docker compose up -d --no-deps --build --wait app web && check; then
+docker tag "rms-release-app:$SHA" "$APP:latest"
+docker tag "rms-release-web:$SHA" "$WEB:latest"
+
+if docker compose up -d --no-deps --no-build --wait app web && check; then
   # Thành công: bỏ tag quay lui để image cũ được dọn, không chiếm ổ đĩa
   docker rmi "$APP:previous" "$WEB:previous" >/dev/null 2>&1 || true
   docker image prune -f >/dev/null
-  echo "[deploy] xong: $SHA"
+  echo "[deploy] xong: ${SHA:0:7}"
 else
   rollback
   exit 1

@@ -10,9 +10,9 @@ feature/xxx ──(CI pass, tự merge --no-ff)──► develop ──(CI pass,
 
 | Nhánh | Tạo từ | Pipeline chạy | Kết quả khi CI pass |
 |---|---|---|---|
-| `feature/*` | `develop` | Test backend + frontend | Tự merge vào `develop` |
-| `develop` | — | Test backend + frontend | Tự promote lên `main` (fast-forward) |
-| `main` | — | Test backend + frontend, deploy | Deploy production, tự quay lui nếu lỗi |
+| `feature/*` | `develop` | Test backend + frontend, Trivy mã nguồn | Tự merge vào `develop` |
+| `develop` | — | Test, Trivy, staging + smoke test, Trivy image, gắn tag phát hành | Tự promote lên `main` (fast-forward) |
+| `main` | — | Chỉ deploy (không test lại, không build lại) | Deploy production, tự quay lui nếu lỗi |
 
 Quy tắc phát triển:
 1. `git switch develop && git switch -c feature/ten-tinh-nang`
@@ -29,18 +29,26 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 
 | Stage | Chạy ở | Làm gì |
 |---|---|---|
-| Test backend | mọi nhánh | `mvn verify` (unit + `*IT` dùng Testcontainers) trong container `maven:3.9-eclipse-temurin-21` |
-| Test frontend | mọi nhánh | `npm ci`, `typecheck`, `build` trong container `node:22-alpine` |
-| Quét bảo mật mã nguồn | mọi nhánh | `scripts/security-scan.sh fs`: Trivy quét thư viện Maven, npm và secret lộ trong mã |
+| Test backend | `feature/*`, `develop` | `mvn verify` (unit + `*IT` dùng Testcontainers + `ModularityTest`) trong container `maven:3.9-eclipse-temurin-25` |
+| Test frontend | `feature/*`, `develop` | `npm ci`, `typecheck`, `build` trong container `node:22-alpine` |
+| Quét bảo mật mã nguồn | `feature/*`, `develop` | `scripts/security-scan.sh fs`: Trivy quét thư viện Maven, npm và secret lộ trong mã |
 | Merge feature vào develop | `feature/*` | `scripts/auto-merge.sh develop` |
 | Staging smoke test | `develop` | `scripts/staging-test.sh`: dựng bản tạm, thử các chức năng chính rồi hủy |
-| Quét bảo mật image | `develop` | `scripts/security-scan.sh image`: Trivy quét image `app` và `web` vừa build ở staging |
+| Quét bảo mật image | `develop` | `scripts/security-scan.sh image`: Trivy quét image `app` và `web` vừa build ở staging. Qua thì `scripts/tag-release.sh` gắn tag `rms-release-{app,web}:<commit>` |
 | Promote develop lên main | `develop` | `scripts/auto-merge.sh main` |
 | Deploy production | `main` | `scripts/deploy.sh` trong thư mục `/home/coder/rms-deploy` |
 
+`main` không chạy lại test và quét mã nguồn: promote dùng `--ff-only`, nên commit trên `main` trùng SHA với commit `develop` vừa qua đủ test, staging và Trivy. Chạy lại chỉ cho cùng kết quả.
+
+Build một lần, deploy đúng image đã kiểm:
+- Image `app`, `web` chỉ build một lần ở staging của `develop`. Qua smoke test và Trivy image thì được gắn tag `rms-release-app:<commit>`, `rms-release-web:<commit>`.
+- `scripts/tag-release.sh` giữ tag của 5 commit `develop` gần nhất và của commit mới hơn (đang chờ `main` deploy). Tag của commit cũ hơn bị bỏ.
+- Staging và deploy đều checkout đúng `GIT_COMMIT` của build, không lấy đầu nhánh mới nhất, để image và mã nguồn luôn cùng một commit.
+
 Deploy (`scripts/deploy.sh`):
-- Lấy mã `main` mới nhất, build image `app` và `web`, chạy `docker compose up --no-deps --wait`.
-- Trước khi build: sao lưu database (`scripts/backup-db.sh pre-deploy`). Sao lưu lỗi thì dừng, chưa đụng gì.
+- Kiểm tra có image `rms-release-*:<commit>`. Không có (commit thẳng lên `main`, hoặc image đã bị dọn) thì dừng, chưa đụng gì. Cách xử lý: chạy lại build `develop` của commit đó rồi chạy lại build `main`.
+- Sao lưu database (`scripts/backup-db.sh pre-deploy`). Sao lưu lỗi thì dừng, chưa đụng gì.
+- Gắn tag image phát hành thành `restaurant-management-system-{app,web}:latest`, chạy `docker compose up --no-deps --no-build --wait`. Không build lại.
 - Kiểm tra `/actuator/health` và trang web. Lỗi thì tự tag lại image cũ và chạy lại.
 - Không đụng container `db` và volume `restaurant-management-system_pgdata`.
 - Profile Spring luôn là `prod`: `deploy.sh` export `SPRING_PROFILES_ACTIVE=prod`, ghi đè giá trị trong `.env`. Profile `prod` cấm Flyway tự baseline; database production đã có lịch sử Flyway nên không ảnh hưởng.
@@ -51,7 +59,7 @@ Deploy (`scripts/deploy.sh`):
 
 Quét bảo mật (Trivy):
 - Pipeline dừng khi có lỗ hổng mức HIGH hoặc CRITICAL **đã có bản vá**, hoặc khi phát hiện secret trong mã. Lỗ hổng chưa có bản vá chỉ được bỏ qua vì chưa có cách sửa.
-- Quét image ở `develop` là đủ cho production: `main` được fast-forward từ `develop` nên build từ đúng commit đó.
+- Quét image ở `develop` là đủ cho production: production chạy đúng image đã quét (tag `rms-release-*`), không build lại.
 - Trivy được ghim theo digest của bản 0.69.3. Các bản 0.69.4 đến 0.69.6 từng bị cài mã độc (CVE-2026-33634), nên không đổi sang tag khác mà không kiểm tra digest.
 - CSDL lỗ hổng nằm trong volume `rms-trivy-cache` và tự cập nhật. Vì vậy một commit không đổi gì vẫn có thể bị chặn khi có CVE mới công bố.
 - Khi image bị chặn: nâng image nền trong `Dockerfile` hoặc `frontend/Dockerfile`. Nếu bản vá đã có trong kho Alpine nhưng cache build Docker còn giữ lớp `apk upgrade` cũ, chạy `docker builder prune` trên máy chủ rồi chạy lại.
@@ -122,7 +130,7 @@ Thử bắn một cảnh báo giả: `curl -XPOST 127.0.0.1:9093/api/v2/alerts -
 
 ### 3.6 Sao lưu database
 `scripts/backup-db.sh` chạy `pg_dump` (định dạng custom, đã nén) vào `/home/coder/rms-backups`, quyền 600. Có hai loại, mỗi loại giữ 7 bản mới nhất:
-- `pre-deploy-*.dump`: deploy tự tạo trước mỗi lần build.
+- `pre-deploy-*.dump`: deploy tự tạo trước mỗi lần deploy.
 - `daily-*.dump`: cron của user `coder`, 02:30 giờ Việt Nam (19:30 UTC). Cài một lần:
   ```bash
   (crontab -l 2>/dev/null; echo '30 19 * * * cd /home/coder/rms-deploy && scripts/backup-db.sh daily >> /home/coder/rms-backups/backup.log 2>&1') | crontab -
@@ -174,7 +182,9 @@ Hai lớp, không đổi schema database:
 
 ```bash
 # Cú pháp script
-bash -n scripts/auto-merge.sh && bash -n scripts/deploy.sh
+bash -n scripts/auto-merge.sh && bash -n scripts/deploy.sh && bash -n scripts/tag-release.sh
+# Image phát hành đang có
+docker images 'rms-release-*'
 # Cấu hình monitoring
 cd monitoring && GRAFANA_ADMIN_PASSWORD=x docker compose config >/dev/null && echo OK
 # Trạng thái deploy

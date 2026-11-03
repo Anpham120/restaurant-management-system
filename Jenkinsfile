@@ -1,7 +1,8 @@
 // CI/CD tự động, không có bước duyệt tay.
 //   feature/*  : test → quét bảo mật → tự merge vào develop
-//   develop    : test → quét bảo mật → staging tạm thời + smoke test → quét image → tự promote lên main (fast-forward)
-//   main       : test → quét bảo mật → deploy production (tự quay lui nếu lỗi)
+//   develop    : test → quét bảo mật → staging tạm thời + smoke test → quét image → gắn tag phát hành → tự promote lên main (fast-forward)
+//   main       : deploy production đúng image develop đã kiểm (tự quay lui nếu lỗi)
+// main không test lại: --ff-only nên commit trên main trùng SHA với commit develop vừa qua đủ test, staging và Trivy.
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
 // Kích hoạt: webhook GitHub. Dự phòng là quét multibranch mỗi phút (cấu hình job). Không dùng pollSCM:
 // poll trùng lúc với webhook sẽ xếp thêm một build thứ hai cho cùng commit.
@@ -30,6 +31,7 @@ pipeline {
 
     stages {
         stage('Test backend') {
+            when { not { branch 'main' } }
             steps {
                 sh '''
                     # Volume cache Maven mới tạo thuộc root, đổi quyền để user Jenkins ghi được
@@ -45,6 +47,7 @@ pipeline {
         }
 
         stage('Test frontend') {
+            when { not { branch 'main' } }
             steps {
                 sh '''
                     docker run --rm --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE/frontend" \
@@ -56,6 +59,7 @@ pipeline {
         }
 
         stage('Quét bảo mật mã nguồn') {
+            when { not { branch 'main' } }
             steps {
                 // Trivy: thư viện Maven/npm có lỗ hổng HIGH/CRITICAL đã có bản vá, hoặc secret lộ trong mã
                 sh 'scripts/security-scan.sh fs'
@@ -81,9 +85,9 @@ pipeline {
                         docker run --rm --network host \
                           -v /var/run/docker.sock:/var/run/docker.sock \
                           -v "$STAGING_DIR:$STAGING_DIR" -w "$STAGING_DIR" -v "$BACKUP_DIR:$BACKUP_DIR:ro" \
-                          -e GH_TOKEN -e BACKUP_DIR \
+                          -e GH_TOKEN -e BACKUP_DIR -e GIT_COMMIT \
                           docker:27-cli \
-                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && ([ -d .git ] || git init -q) && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" develop && git reset -q --hard FETCH_HEAD && scripts/staging-test.sh; rc=\\$?; chown -R 1000:1000 .; exit \\$rc"
+                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && ([ -d .git ] || git init -q) && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" develop && git reset -q --hard \\$GIT_COMMIT && scripts/staging-test.sh; rc=\\$?; chown -R 1000:1000 .; exit \\$rc"
                     '''
                 }
             }
@@ -92,8 +96,9 @@ pipeline {
         stage('Quét bảo mật image') {
             when { branch 'develop' }
             steps {
-                // Image vừa build ở staging. main fast-forward từ develop nên production build từ cùng commit này.
+                // Image vừa build ở staging. Qua quét thì gắn tag phát hành theo commit: production chạy đúng image này.
                 sh 'scripts/security-scan.sh image rms-staging-app rms-staging-web'
+                sh 'scripts/tag-release.sh "$GIT_COMMIT"'
             }
         }
 
@@ -120,9 +125,9 @@ pipeline {
                         docker run --rm --network host \
                           -v /var/run/docker.sock:/var/run/docker.sock \
                           -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$DEPLOY_DIR" -v "$BACKUP_DIR:$BACKUP_DIR" \
-                          -e GH_TOKEN -e ENV_B64 -e BACKUP_DIR \
+                          -e GH_TOKEN -e ENV_B64 -e BACKUP_DIR -e GIT_COMMIT \
                           docker:27-cli \
-                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" main && git reset -q --hard FETCH_HEAD && (umask 077; printf '%s' \\"\\$ENV_B64\\" | base64 -d > .env) && scripts/deploy.sh; rc=\\$?; rm -f .env; chown -R 1000:1000 . \\$BACKUP_DIR; exit \\$rc"
+                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" main && git reset -q --hard \\$GIT_COMMIT && (umask 077; printf '%s' \\"\\$ENV_B64\\" | base64 -d > .env) && scripts/deploy.sh; rc=\\$?; rm -f .env; chown -R 1000:1000 . \\$BACKUP_DIR; exit \\$rc"
                     '''
                 }
             }
