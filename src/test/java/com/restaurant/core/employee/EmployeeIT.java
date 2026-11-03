@@ -111,7 +111,7 @@ class EmployeeIT extends OrderApiTestBase {
         postJson(manager, "/api/employees/{id}/leave", "{\"endDate\":\"" + LocalDate.now() + "\"}", emp)
                 .andExpect(jsonPath("$.data.workStatus").value("LEFT"));
         loginAs(user, "Reset-12345").andExpect(status().isUnauthorized());
-        // token còn hạn nhưng nhân viên đã nghỉ → 401 ở mọi endpoint (không chỉ hàm rc_*)
+        // token còn hạn nhưng nhân viên đã nghỉ → 401 ở mọi endpoint
         getAs(token, "/api/kitchen/queue").andExpect(status().isUnauthorized());
         putJson(manager, "/api/employees/{id}", "{\"fullName\":\"x\",\"departmentId\":" + dept + ",\"workStatus\":\"ACTIVE\"}", emp)
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("EMPLOYEE_LEFT"));

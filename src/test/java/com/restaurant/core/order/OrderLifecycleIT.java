@@ -61,14 +61,14 @@ class OrderLifecycleIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.lines", hasSize(2)));
         long invoiceId = readLong(inv, "$.data.invoiceId");
         postEmpty(cashier, "/api/orders/{id}/invoice", orderId).andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("RC409"));
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
 
         postJson(cashier, "/api/invoices/{id}/payments", "{\"method\":\"CASH\",\"cashReceived\":200000}", invoiceId)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("PAID"))
                 .andExpect(jsonPath("$.data.amountDue").value(115000.0));
         postJson(cashier, "/api/invoices/{id}/payments", "{\"method\":\"CASH\",\"cashReceived\":200000}", invoiceId)
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("RC409"));
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
 
         getAs(cashier, "/api/invoices/{id}", invoiceId)
                 .andExpect(jsonPath("$.data.status").value("PAID"))
@@ -91,7 +91,7 @@ class OrderLifecycleIT extends OrderApiTestBase {
     void callMoreIsBlockedWhilePaymentPendingUntilReopened() throws Exception {
         long[] s = servedAndCheckedOut(30000);
         long dmi = data.dish(20000, null, null).dailyMenuItemId();
-        submit(s[1], "more-1", dmi, 1).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("RC409"));
+        submit(s[1], "more-1", dmi, 1).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
         postJson(cashier, "/api/invoices/{id}/reopen", reason("Khách gọi thêm"), s[2])
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("DRAFT"));
         submit(s[1], "more-2", dmi, 1).andExpect(status().isCreated());
@@ -135,7 +135,7 @@ class OrderLifecycleIT extends OrderApiTestBase {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
         postJson(waiter, "/api/orders/{id}/batches", "{\"requestKey\":\"v1\",\"items\":[{\"dailyMenuItemId\":1,\"quantity\":0}]}", t[2])
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.details[0].field").value("items[0].quantity"));
-        submit(t[2], "v2", 999999999L, 1).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("RC409"));
+        submit(t[2], "v2", 999999999L, 1).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
         getAs(waiter, "/api/orders/{id}", 999999999L).andExpect(status().isNotFound());
         getAs(waiter, "/api/sessions/{id}", 999999999L).andExpect(status().isNotFound());
         getAs(kitchen, "/api/kitchen/queue?status=SERVED").andExpect(status().isBadRequest());

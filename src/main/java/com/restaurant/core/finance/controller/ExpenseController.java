@@ -41,22 +41,22 @@ public class ExpenseController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<ExpenseResponse> create(@Valid @RequestBody ExpenseRequest request) {
-        return ApiResponse.ok(service.create(currentUser.employeeId(), request));
+    public ApiResponse<ExpenseResponse> recordExpense(@Valid @RequestBody ExpenseRequest request) {
+        return ApiResponse.ok(service.recordExpense(currentUser.employeeId(), request));
     }
 
     @GetMapping
-    public ApiResponse<List<ExpenseResponse>> list(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ApiResponse<List<ExpenseResponse>> getExpenses(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                                    @RequestParam(required = false)
                                                    @Pattern(regexp = "INGREDIENT|SUPPLIES|UTILITY|RENT|MAINTENANCE|OTHER") String category,
                                                    @RequestParam(required = false) @Pattern(regexp = "PAID|VOIDED") String status) {
-        return ApiResponse.ok(service.expenses(from, to, category, status));
+        return ApiResponse.ok(service.getExpenses(from, to, category, status));
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<ExpenseResponse> get(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.expense(id));
+    public ApiResponse<ExpenseResponse> getExpenseById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getExpenseById(id));
     }
 
     /** Không sửa khoản chi: ghi sai thì hủy (VOIDED) và ghi khoản mới. */

@@ -2,57 +2,29 @@ package com.restaurant.core.order.service;
 
 import java.util.List;
 
-import org.springframework.stereotype.Service;
-
 import com.restaurant.core.order.dto.AcceptItemResponse;
 import com.restaurant.core.order.dto.OrderItemResponse;
-import com.restaurant.core.order.repository.OrderRepository;
 
-/**
- * Luồng bếp. Quota, đặt giữ và tiêu hao nguyên liệu (FEFO) nằm trong rc_accept_item / rc_start_cooking — Java chỉ gọi hàm
- * và đọc lại trạng thái.
- */
-@Service
-public class KitchenService {
+/** Luồng bếp: nhận món (kiểm hạn mức + giữ nguyên liệu), nấu (trừ kho), xong món. Owner: Phạm Duy An. */
+public interface KitchenService {
 
-    public static final List<String> DEFAULT_QUEUE = List.of("PENDING", "ACCEPTED", "COOKING", "READY");
+    List<String> DEFAULT_QUEUE = List.of("PENDING", "ACCEPTED", "COOKING", "READY");
 
-    private final OrderRepository orders;
-    private final OrderService orderService;
+    List<OrderItemResponse> getKitchenQueue(List<String> statuses);
 
-    public KitchenService(OrderRepository orders, OrderService orderService) {
-        this.orders = orders;
-        this.orderService = orderService;
-    }
+    /**
+     * Nhận món: kiểm thực đơn còn bán, món không tạm dừng, còn suất, rồi giữ đủ nguyên liệu (FEFO).
+     * Không đạt điều kiện nào thì món tự chuyển REJECTED kèm lý do (không ném lỗi).
+     */
+    AcceptItemResponse acceptOrderItem(long itemId, long actorId);
 
-    public List<OrderItemResponse> queue(List<String> statuses) {
-        return orders.findKitchenQueue(statuses == null || statuses.isEmpty() ? DEFAULT_QUEUE : statuses);
-    }
+    OrderItemResponse rejectOrderItem(long itemId, long actorId, String reason);
 
-    public AcceptItemResponse accept(long itemId, long actorId) {
-        String result = orders.acceptItem(itemId, actorId);
-        String reason = "REJECTED".equals(result) ? orders.findRejectReason(itemId).orElse(null) : null;
-        return new AcceptItemResponse(result, reason, orderService.item(itemId));
-    }
+    /** Bắt đầu nấu: trừ kho đúng phần nguyên liệu đã giữ. */
+    OrderItemResponse startCookingItem(long itemId, long actorId);
 
-    public OrderItemResponse reject(long itemId, long actorId, String reason) {
-        orders.rejectItem(itemId, actorId, reason);
-        return orderService.item(itemId);
-    }
+    OrderItemResponse finishCookingItem(long itemId, long actorId);
 
-    public OrderItemResponse startCooking(long itemId, long actorId) {
-        orders.startCooking(itemId, actorId);
-        return orderService.item(itemId);
-    }
-
-    public OrderItemResponse finish(long itemId, long actorId) {
-        orders.finishDish(itemId, actorId);
-        return orderService.item(itemId);
-    }
-
-    /** Cấp lại nguyên liệu khi lô đang giữ bị đánh dấu hỏng/hết hạn (has_stock_exception). */
-    public OrderItemResponse reallocate(long itemId, long actorId) {
-        orders.reallocateItem(itemId, actorId);
-        return orderService.item(itemId);
-    }
+    /** Lô nguyên liệu đang giữ bị hỏng/hết hạn: giữ lại từ lô khác. */
+    OrderItemResponse reallocateItemIngredients(long itemId, long actorId);
 }

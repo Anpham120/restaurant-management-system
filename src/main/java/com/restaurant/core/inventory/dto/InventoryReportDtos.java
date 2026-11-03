@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/** Dòng kết quả của các hàm rpt_* (docs/10-bao-cao-v4.1.sql) và danh sách lô để chọn khi lập chứng từ. */
+/** Dòng kết quả báo cáo kho và danh sách lô để chọn khi lập chứng từ. */
 public final class InventoryReportDtos {
 
     private InventoryReportDtos() {

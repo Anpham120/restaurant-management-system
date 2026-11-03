@@ -98,7 +98,7 @@ class MenuIT extends OrderApiTestBase {
         long menu = readLong(postJson(manager, "/api/daily-menus", "{\"businessDate\":\"" + date + "\"}")
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.data.status").value("DRAFT")), "$.data.id");
         postJson(manager, "/api/daily-menus", "{\"businessDate\":\"" + date + "\"}").andExpect(status().isConflict());
-        postEmpty(manager, "/api/daily-menus/{id}/publish", menu).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("RC409"));
+        postEmpty(manager, "/api/daily-menus/{id}/publish", menu).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
         postJson(manager, "/api/daily-menus/{id}/items", "{\"menuItemId\":" + noRecipe + "}", menu)
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("MENU_ITEM_NOT_READY"));
         postJson(manager, "/api/daily-menus/{id}/items", "{\"menuItemId\":" + ready + ",\"quotaTotal\":30}", menu)
@@ -269,11 +269,11 @@ class MenuIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.items[?(@.dailyMenuItemId == " + dmi + ")].remaining").value(org.hamcrest.Matchers.hasItem(1)));
 
         putJson(manager, "/api/daily-menu-items/{id}", "{\"quotaTotal\":0}", dmi)
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("RC409"));
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
         putJson(manager, "/api/daily-menu-items/{id}", "{\"quotaTotal\":null}", dmi)
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.remaining").doesNotExist());
         mvc.perform(delete("/api/daily-menu-items/{id}", dmi).header("Authorization", manager))
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("RC409"));
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
 
         postJson(waiter, "/api/daily-menu-items/{id}/pause", reason("Hết gạo"), dmi).andExpect(status().isForbidden());
         postJson(kitchen, "/api/daily-menu-items/{id}/pause", reason("Hết gạo"), dmi).andExpect(status().isOk())

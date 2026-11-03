@@ -30,26 +30,26 @@ public class FinanceReportController {
     }
 
     @GetMapping("/revenue-by-day")
-    public ApiResponse<List<RevenueByDay>> revenueByDay(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ApiResponse<List<RevenueByDay>> getRevenueByDay(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ApiResponse.ok(service.revenueByDay(from, to));
+        return ApiResponse.ok(service.getRevenueByDay(from, to));
     }
 
     @GetMapping("/revenue-by-item")
-    public ApiResponse<List<RevenueByItem>> revenueByItem(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ApiResponse<List<RevenueByItem>> getRevenueByItem(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                           @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ApiResponse.ok(service.revenueByItem(from, to));
+        return ApiResponse.ok(service.getRevenueByItem(from, to));
     }
 
     @GetMapping("/unpaid-closures")
-    public ApiResponse<List<UnpaidClosure>> unpaidClosures(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ApiResponse<List<UnpaidClosure>> getUnpaidClosures(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ApiResponse.ok(service.unpaidClosures(from, to));
+        return ApiResponse.ok(service.getUnpaidClosures(from, to));
     }
 
     @GetMapping("/expenses-by-category")
-    public ApiResponse<List<ExpenseByCategory>> expensesByCategory(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ApiResponse<List<ExpenseByCategory>> getExpensesByCategory(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ApiResponse.ok(service.expensesByCategory(from, to));
+        return ApiResponse.ok(service.getExpensesByCategory(from, to));
     }
 }

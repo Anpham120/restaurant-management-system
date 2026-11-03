@@ -48,35 +48,35 @@ public class StockDocumentController {
     @PostMapping("/stock-receipts")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<ReceiptResponse> createReceipt(@Valid @RequestBody ReceiptRequest request) {
-        return ApiResponse.ok(service.createReceipt(currentUser.employeeId(), request));
+    public ApiResponse<ReceiptResponse> createStockReceipt(@Valid @RequestBody ReceiptRequest request) {
+        return ApiResponse.ok(service.createStockReceipt(currentUser.employeeId(), request));
     }
 
     @GetMapping("/stock-receipts")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<ReceiptResponse.Header>> receipts(
+    public ApiResponse<List<ReceiptResponse.Header>> getReceipts(
             @RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(service.receipts(status, page, size));
+        return ApiResponse.ok(service.getReceipts(status, page, size));
     }
 
     @GetMapping("/stock-receipts/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<ReceiptResponse> receipt(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.receipt(id));
+    public ApiResponse<ReceiptResponse> getReceiptById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getReceiptById(id));
     }
 
     /** Tạo lô RAW cho từng dòng và ghi sổ RECEIPT. receivedAt bỏ trống = bây giờ. */
     @PostMapping("/stock-receipts/{id}/confirm")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<ReceiptResponse> confirmReceipt(@PathVariable @Positive long id,
+    public ApiResponse<ReceiptResponse> confirmStockReceipt(@PathVariable @Positive long id,
                                                        @RequestBody(required = false) ConfirmReceiptRequest request) {
-        return ApiResponse.ok(service.confirmReceipt(id, currentUser.employeeId(), request == null ? null : request.receivedAt()));
+        return ApiResponse.ok(service.confirmStockReceipt(id, currentUser.employeeId(), request == null ? null : request.receivedAt()));
     }
 
     @DeleteMapping("/stock-receipts/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<Void> deleteReceipt(@PathVariable @Positive long id) {
+    public ApiResponse<Void> deleteDraftReceipt(@PathVariable @Positive long id) {
         service.deleteDraftReceipt(id);
         return ApiResponse.ok(null);
     }
@@ -85,69 +85,69 @@ public class StockDocumentController {
     @PostMapping("/stock-issues")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<IssueResponse> createIssue(@Valid @RequestBody IssueRequest request) {
-        return ApiResponse.ok(service.createIssue(currentUser.employeeId(), request));
+    public ApiResponse<IssueResponse> createStockIssue(@Valid @RequestBody IssueRequest request) {
+        return ApiResponse.ok(service.createStockIssue(currentUser.employeeId(), request));
     }
 
     @GetMapping("/stock-issues")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<IssueResponse.Header>> issues(
+    public ApiResponse<List<IssueResponse.Header>> getIssues(
             @RequestParam(required = false) @Pattern(regexp = "DRAFT|ISSUED|RECEIVED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(service.issues(status, page, size));
+        return ApiResponse.ok(service.getIssues(status, page, size));
     }
 
     @GetMapping("/stock-issues/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<IssueResponse> issue(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.issue(id));
+    public ApiResponse<IssueResponse> getIssueById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getIssueById(id));
     }
 
     /** Kho xuất: trừ lô RAW (FEFO), hàng chuyển sang trạng thái chờ bếp nhận. */
     @PostMapping("/stock-issues/{id}/issue")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<IssueResponse> issueStock(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.issueStock(id, currentUser.employeeId()));
+    public ApiResponse<IssueResponse> issueStockToKitchen(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.issueStockToKitchen(id, currentUser.employeeId()));
     }
 
     /** Bếp xác nhận nhận hàng: dòng DIRECT → lô bếp, dòng PREPARE → WIP chờ sơ chế. */
     @PostMapping("/stock-issues/{id}/receive")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<IssueResponse> receiveIssue(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.receiveIssue(id, currentUser.employeeId()));
+    public ApiResponse<IssueResponse> receiveIssuedStock(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.receiveIssuedStock(id, currentUser.employeeId()));
     }
 
     @PostMapping("/stock-issues/{id}/cancel")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<IssueResponse> cancelIssue(@PathVariable @Positive long id, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(service.cancelIssue(id, currentUser.employeeId(), request.reason()));
+    public ApiResponse<IssueResponse> cancelStockIssue(@PathVariable @Positive long id, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(service.cancelStockIssue(id, currentUser.employeeId(), request.reason()));
     }
 
     // ---------- kiểm kê
     @PostMapping("/stock-counts")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<CountResponse> createCount(@Valid @RequestBody CountRequest request) {
-        return ApiResponse.ok(service.createCount(currentUser.employeeId(), request));
+    public ApiResponse<CountResponse> createStockCount(@Valid @RequestBody CountRequest request) {
+        return ApiResponse.ok(service.createStockCount(currentUser.employeeId(), request));
     }
 
     @GetMapping("/stock-counts")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<CountResponse.Header>> counts(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+    public ApiResponse<List<CountResponse.Header>> getCounts(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(service.counts(status, page, size));
+        return ApiResponse.ok(service.getCounts(status, page, size));
     }
 
     @GetMapping("/stock-counts/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<CountResponse> count(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.count(id));
+    public ApiResponse<CountResponse> getCountById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getCountById(id));
     }
 
     /** Ghi chênh lệch COUNT_ADJUST; RC409 nếu số sổ đã đổi kể từ lúc lập phiếu. */
     @PostMapping("/stock-counts/{id}/confirm")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<CountResponse> confirmCount(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.confirmCount(id, currentUser.employeeId()));
+    public ApiResponse<CountResponse> confirmStockCount(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.confirmStockCount(id, currentUser.employeeId()));
     }
 }

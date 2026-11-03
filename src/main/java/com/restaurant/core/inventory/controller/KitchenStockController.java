@@ -52,15 +52,15 @@ public class KitchenStockController {
 
     @GetMapping("/kitchen-preparations")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<PreparationResponse.Header>> preparations(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+    public ApiResponse<List<PreparationResponse.Header>> getPreparations(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(service.preparations(status, page, size));
+        return ApiResponse.ok(service.getPreparations(status, page, size));
     }
 
     @GetMapping("/kitchen-preparations/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<PreparationResponse> preparation(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.preparation(id));
+    public ApiResponse<PreparationResponse> getPreparationById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getPreparationById(id));
     }
 
     /** Trừ WIP, tạo lô bếp PREPARED cho từng đầu ra, ghi hao hụt. */
@@ -73,60 +73,60 @@ public class KitchenStockController {
     @PostMapping("/stock-returns")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<ReturnResponse> createReturn(@Valid @RequestBody ReturnRequest request) {
-        return ApiResponse.ok(service.createReturn(currentUser.employeeId(), request));
+    public ApiResponse<ReturnResponse> createStockReturn(@Valid @RequestBody ReturnRequest request) {
+        return ApiResponse.ok(service.createStockReturn(currentUser.employeeId(), request));
     }
 
     @GetMapping("/stock-returns")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<ReturnResponse.Header>> returns(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+    public ApiResponse<List<ReturnResponse.Header>> getStockReturns(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(service.returns(status, page, size));
+        return ApiResponse.ok(service.getStockReturns(status, page, size));
     }
 
     @GetMapping("/stock-returns/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<ReturnResponse> stockReturn(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.stockReturn(id));
+    public ApiResponse<ReturnResponse> getStockReturnById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getStockReturnById(id));
     }
 
     @PostMapping("/stock-returns/{id}/confirm")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<ReturnResponse> confirmReturn(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.confirmReturn(id, currentUser.employeeId()));
+    public ApiResponse<ReturnResponse> confirmStockReturn(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.confirmStockReturn(id, currentUser.employeeId()));
     }
 
     @PostMapping("/stock-adjustments")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<AdjustmentResponse> createAdjustment(@Valid @RequestBody AdjustmentRequest request) {
-        return ApiResponse.ok(service.createAdjustment(currentUser.employeeId(), request));
+    public ApiResponse<AdjustmentResponse> createStockAdjustment(@Valid @RequestBody AdjustmentRequest request) {
+        return ApiResponse.ok(service.createStockAdjustment(currentUser.employeeId(), request));
     }
 
     @GetMapping("/stock-adjustments")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<AdjustmentResponse.Header>> adjustments(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+    public ApiResponse<List<AdjustmentResponse.Header>> getStockAdjustments(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(service.adjustments(status, page, size));
+        return ApiResponse.ok(service.getStockAdjustments(status, page, size));
     }
 
     @GetMapping("/stock-adjustments/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<AdjustmentResponse> adjustment(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.adjustment(id));
+    public ApiResponse<AdjustmentResponse> getStockAdjustmentById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getStockAdjustmentById(id));
     }
 
     @PostMapping("/stock-adjustments/{id}/confirm")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<AdjustmentResponse> confirmAdjustment(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.confirmAdjustment(id, currentUser.employeeId()));
+    public ApiResponse<AdjustmentResponse> confirmStockAdjustment(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.confirmStockAdjustment(id, currentUser.employeeId()));
     }
 
     /** kind = RAW (lô kho) | KITCHEN (lô bếp). Trả số món đang giữ lô bị gắn cờ cần xử lý. */
     @PostMapping("/stock-batches/{kind}/{batchId}/mark-unusable")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<MarkUnusableResponse> markUnusable(@PathVariable @Pattern(regexp = "RAW|KITCHEN") String kind,
+    public ApiResponse<MarkUnusableResponse> markBatchUnusable(@PathVariable @Pattern(regexp = "RAW|KITCHEN") String kind,
                                                           @PathVariable @Positive long batchId, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(service.markUnusable(kind, batchId, currentUser.employeeId(), request.reason()));
+        return ApiResponse.ok(service.markBatchUnusable(kind, batchId, currentUser.employeeId(), request.reason()));
     }
 }

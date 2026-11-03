@@ -83,7 +83,7 @@ class KitchenAndCancelIT extends OrderApiTestBase {
         postEmpty(kitchen, "/api/order-items/{id}/accept", item);
         postEmpty(kitchen, "/api/order-items/{id}/start-cooking", item);
         postJson(waiter, "/api/order-items/{id}/cancel", reason("Khách đổi ý"), item).andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.message").value(containsString("Manager")));
+                .andExpect(jsonPath("$.error.message").value(containsString("Quản lý")));
         postJson(manager, "/api/order-items/{id}/cancel-exception", reason("Món bị cháy"), item).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"));
         assertThat(data.kitchenOnHand(dish.kitchenTypeId())).isEqualByComparingTo("4");

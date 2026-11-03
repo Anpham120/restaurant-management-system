@@ -22,9 +22,18 @@ spring:
     baseline-version: 1
     baseline-description: "v4.1 baseline (docs/04 + 09 + 10)"
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+  jpa:
+    # Schema do docs/04 + Flyway quản lý: Hibernate chỉ kiểm entity khớp bảng, không bao giờ tự sửa bảng.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
   mvc:
     problemdetails:
       enabled: false
+  threads:
+    # Mỗi request chạy trên virtual thread (Java 21+). Số kết nối DB vẫn giới hạn bởi hikari.maximum-pool-size.
+    virtual:
+      enabled: true
 
 server:
   port: ${SERVER_PORT:8081}
@@ -58,11 +67,6 @@ app:
     # Tài khoản nhận tiền để dựng ảnh QR (qr.sepay.vn). Trống → API chỉ trả mã tham chiếu + số tiền.
     bank-account: ${SEPAY_BANK_ACCOUNT:}
     bank-name: ${SEPAY_BANK_NAME:}
-    # Login thuộc role rc_webhook (rc_app không có quyền rc_process_verified_qr).
-    webhook-db:
-      url: ${DB_URL:jdbc:postgresql://localhost:5433/restaurant_core}
-      username: ${DB_WEBHOOK_USER:}
-      password: ${DB_WEBHOOK_PASSWORD:}
 
 logging:
   level:

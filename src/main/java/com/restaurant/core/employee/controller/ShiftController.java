@@ -46,8 +46,8 @@ public class ShiftController {
 
     @GetMapping("/shifts")
     @PreAuthorize("isAuthenticated()")
-    public ApiResponse<List<ShiftResponse>> shifts(@RequestParam(defaultValue = "true") boolean activeOnly) {
-        return ApiResponse.ok(service.shifts(activeOnly));
+    public ApiResponse<List<ShiftResponse>> getAllShifts(@RequestParam(defaultValue = "true") boolean activeOnly) {
+        return ApiResponse.ok(service.getAllShifts(activeOnly));
     }
 
     @PostMapping("/shifts")
@@ -66,50 +66,50 @@ public class ShiftController {
     @PostMapping("/shift-assignments")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<ShiftAssignmentResponse> assign(@Valid @RequestBody AssignShiftRequest request) {
-        return ApiResponse.ok(service.assign(request));
+    public ApiResponse<ShiftAssignmentResponse> assignShift(@Valid @RequestBody AssignShiftRequest request) {
+        return ApiResponse.ok(service.assignShift(request));
     }
 
     /** Manager xem mọi người (lọc employeeId tùy chọn); vai trò khác luôn chỉ thấy ca của mình. */
     @GetMapping("/shift-assignments")
     @PreAuthorize("isAuthenticated()")
-    public ApiResponse<List<ShiftAssignmentResponse>> assignments(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ApiResponse<List<ShiftAssignmentResponse>> getAssignments(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                                                   @RequestParam(required = false) @Positive Long employeeId) {
-        return ApiResponse.ok(service.assignments(from, to, scope(employeeId)));
+        return ApiResponse.ok(service.getAssignments(from, to, scope(employeeId)));
     }
 
     @PostMapping("/shift-assignments/{id}/cancel")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<ShiftAssignmentResponse> cancel(@PathVariable @Positive long id, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(service.cancel(id, currentUser.employeeId(), request.reason()));
+    public ApiResponse<ShiftAssignmentResponse> cancelAssignment(@PathVariable @Positive long id, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(service.cancelAssignment(id, currentUser.employeeId(), request.reason()));
     }
 
     @PostMapping("/attendances")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<AttendanceResponse> record(@Valid @RequestBody AttendanceRequest request) {
-        return ApiResponse.ok(service.record(currentUser.employeeId(), request));
+    public ApiResponse<AttendanceResponse> recordAttendance(@Valid @RequestBody AttendanceRequest request) {
+        return ApiResponse.ok(service.recordAttendance(currentUser.employeeId(), request));
     }
 
     @GetMapping("/attendances")
     @PreAuthorize("isAuthenticated()")
-    public ApiResponse<List<AttendanceResponse>> attendances(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ApiResponse<List<AttendanceResponse>> getAttendances(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                              @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                                              @RequestParam(required = false) @Positive Long employeeId) {
-        return ApiResponse.ok(service.attendances(from, to, scope(employeeId)));
+        return ApiResponse.ok(service.getAttendances(from, to, scope(employeeId)));
     }
 
     @PostMapping("/attendances/{id}/adjustments")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<AttendanceResponse> adjust(@PathVariable @Positive long id, @Valid @RequestBody AdjustAttendanceRequest request) {
-        return ApiResponse.ok(service.adjust(id, currentUser.employeeId(), request));
+    public ApiResponse<AttendanceResponse> adjustAttendance(@PathVariable @Positive long id, @Valid @RequestBody AdjustAttendanceRequest request) {
+        return ApiResponse.ok(service.adjustAttendance(id, currentUser.employeeId(), request));
     }
 
     @GetMapping("/attendances/{id}/adjustments")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<AttendanceAdjustmentView>> adjustments(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.adjustments(id));
+    public ApiResponse<List<AttendanceAdjustmentView>> getAttendanceAdjustments(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getAttendanceAdjustments(id));
     }
 
     private Long scope(Long requested) {

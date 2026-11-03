@@ -3,7 +3,7 @@ package com.restaurant.core.finance.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Dòng kết quả rpt_revenue_by_day / rpt_revenue_by_item / rpt_unpaid_closures (docs/10). */
+/** Dòng kết quả báo cáo tài chính: doanh thu theo ngày, theo món, hóa đơn kết thúc không thu tiền. */
 public final class FinanceReportRows {
 
     private FinanceReportRows() {

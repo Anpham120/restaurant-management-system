@@ -36,12 +36,12 @@ public class CashReconciliationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<CashReconciliationResponse> reconcile(@Valid @RequestBody ReconcileRequest request) {
-        return ApiResponse.ok(service.reconcile(currentUser.employeeId(), request));
+    public ApiResponse<CashReconciliationResponse> reconcileCashForDay(@Valid @RequestBody ReconcileRequest request) {
+        return ApiResponse.ok(service.reconcileCashForDay(currentUser.employeeId(), request));
     }
 
     @GetMapping("/{businessDate}")
-    public ApiResponse<CashReconciliationResponse> get(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
-        return ApiResponse.ok(service.get(businessDate));
+    public ApiResponse<CashReconciliationResponse> getCashReconciliation(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
+        return ApiResponse.ok(service.getCashReconciliation(businessDate));
     }
 }

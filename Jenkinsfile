@@ -38,7 +38,7 @@ pipeline {
                       --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE" \
                       --user "$(id -u):$(id -g)" --group-add "$(stat -c %g /var/run/docker.sock)" \
                       -e HOME=/tmp -v rms-m2-cache:/tmp/.m2 \
-                      maven:3.9-eclipse-temurin-21 \
+                      maven:3.9-eclipse-temurin-25 \
                       mvn -B -Dmaven.repo.local=/tmp/.m2/repository verify
                 '''
             }

@@ -27,9 +27,9 @@ public class KitchenController {
     /** ?status=PENDING&status=ACCEPTED… (mặc định PENDING, ACCEPTED, COOKING, READY). */
     @GetMapping("/queue")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<List<OrderItemResponse>> queue(
+    public ApiResponse<List<OrderItemResponse>> getKitchenQueue(
             @RequestParam(name = "status", required = false)
             List<@Pattern(regexp = "PENDING|ACCEPTED|COOKING|READY") String> statuses) {
-        return ApiResponse.ok(kitchenService.queue(statuses));
+        return ApiResponse.ok(kitchenService.getKitchenQueue(statuses));
     }
 }

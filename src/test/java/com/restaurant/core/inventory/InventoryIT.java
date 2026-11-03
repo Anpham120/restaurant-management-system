@@ -94,7 +94,7 @@ class InventoryIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.lines[0].baseQuantity").value(10000.0)), "$.data.id");
         assertThat(readLong(postJson(manager, "/api/stock-receipts", receiptBody(k, rice, 10)), "$.data.id")).isEqualTo(id);
         postJson(manager, "/api/stock-receipts", receiptBody(k, rice, 11))
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("RC409"));
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
         postJson(kitchen, "/api/stock-receipts", receiptBody(key(), rice, 1)).andExpect(status().isForbidden());
 
         postJson(manager, "/api/stock-receipts/{id}/confirm", "{}", id).andExpect(status().isOk())

@@ -1,9 +1,24 @@
 package com.restaurant.core;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import com.restaurant.core.common.time.BusinessDateProvider;
+import com.restaurant.core.finance.service.InvoiceService;
+import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueLine;
+import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueRequest;
+import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptLine;
+import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptRequest;
+import com.restaurant.core.inventory.service.StockDocumentService;
+import com.restaurant.core.order.dto.SubmitBatchRequest;
+import com.restaurant.core.order.service.KitchenService;
+import com.restaurant.core.order.service.OrderService;
+import com.restaurant.core.order.service.TableService;
 
 /** Dựng dữ liệu test bằng tài khoản quản trị. Mỗi lần gọi dùng mã/tên mới nên các test không giẫm lên nhau. */
 public class TestData {
@@ -16,9 +31,15 @@ public class TestData {
 
     private final JdbcClient admin;
     private final String passwordHash = new BCryptPasswordEncoder().encode(PASSWORD);
+    private ApplicationContext services;
 
     public TestData(JdbcClient admin) {
         this.admin = admin;
+    }
+
+    /** Gắn Spring context của test đang chạy: dữ liệu kho / đơn / hóa đơn được dựng qua các Service thật. */
+    public void useServicesFrom(ApplicationContext context) {
+        this.services = context;
     }
 
     public Staff staff(String role) {
@@ -60,8 +81,8 @@ public class TestData {
     /**
      * Một món trong thực đơn PUBLISHED của ngày kinh doanh hiện tại.
      * quota NULL = không giới hạn suất. stock NULL = công thức không nguyên liệu; có giá trị = 1 đơn vị nguyên liệu/suất,
-     * tồn bếp thật đúng bằng stock (dựng qua rc_create_stock_receipt → rc_confirm_receipt → rc_create_stock_issue →
-     * rc_issue_stock → rc_receive_issue, như nghiệp vụ kho thật).
+     * tồn bếp thật đúng bằng stock (dựng qua StockDocumentService: tạo phiếu nhập → xác nhận → tạo phiếu xuất →
+     * xuất kho → bếp nhận, như nghiệp vụ kho thật).
      */
     public Dish dish(long price, Integer quota, Integer stock) {
         int n = SEQ.incrementAndGet();
@@ -77,9 +98,9 @@ public class TestData {
                     .param("r", recipe).param("t", type).update();
         }
         long menu = admin.sql("""
-                INSERT INTO daily_menus (business_date, status) VALUES (rc_business_date(now()), 'DRAFT')
+                INSERT INTO daily_menus (business_date, status) VALUES (:today, 'DRAFT')
                 ON CONFLICT (business_date) DO UPDATE SET business_date = EXCLUDED.business_date RETURNING id""")
-                .query(Long.class).single();
+                .param("today", BusinessDateProvider.businessDateOf(java.time.Instant.now())).query(Long.class).single();
         long dmi = admin.sql("INSERT INTO daily_menu_items (daily_menu_id, menu_item_id, recipe_id, quota_total) VALUES (:m, :i, :r, :q) RETURNING id")
                 .param("m", menu).param("i", item).param("r", recipe).param("q", quota).query(Long.class).single();
         admin.sql("UPDATE daily_menus SET status = 'PUBLISHED', published_at = now() WHERE id = :m AND status = 'DRAFT'")
@@ -96,19 +117,14 @@ public class TestData {
                 .param("n", name).query(Long.class).single();
         long type = admin.sql("INSERT INTO kitchen_ingredient_types (raw_ingredient_id, name, handling_type) VALUES (:i, :n, 'DIRECT') RETURNING id")
                 .param("i", ing).param("n", name).query(Long.class).single();
-        long receipt = admin.sql("SELECT rc_create_stock_receipt(:a, :k, CAST(:p AS jsonb))").param("a", m.employeeId())
-                .param("k", "td-r-" + ing).param("p", "{\"items\":[{\"ingredient_id\":" + ing + ",\"input_quantity\":" + quantity
-                        + ",\"input_unit\":\"phần\",\"conversion_factor\":1,\"unit_price_per_input_unit\":1000}]}")
-                .query(Long.class).single();
-        admin.sql("SELECT rc_confirm_receipt(:r, :a, now())").param("r", receipt).param("a", m.employeeId()).query().singleRow();
-        long lot = admin.sql("SELECT b.id FROM inventory_batches b JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id WHERE s.stock_receipt_id = :r")
-                .param("r", receipt).query(Long.class).single();
-        long issue = admin.sql("SELECT rc_create_stock_issue(:a, :k, CAST(:p AS jsonb))").param("a", m.employeeId())
-                .param("k", "td-i-" + ing).param("p", "{\"items\":[{\"inventory_batch_id\":" + lot + ",\"quantity\":" + quantity
-                        + ",\"fulfillment_mode\":\"DIRECT\"}]}")
-                .query(Long.class).single();
-        admin.sql("SELECT rc_issue_stock(:i, :a)").param("i", issue).param("a", m.employeeId()).query().singleRow();
-        admin.sql("SELECT rc_receive_issue(:i, :a)").param("i", issue).param("a", setupKitchen.employeeId()).query().singleRow();
+        StockDocumentService stock = services.getBean(StockDocumentService.class);
+        long receipt = stock.createStockReceipt(m.employeeId(), new ReceiptRequest("td-r-" + ing, null, null, List.of(new ReceiptLine(ing,
+                BigDecimal.valueOf(quantity), "phần", BigDecimal.ONE, BigDecimal.valueOf(1000), null, null)))).id();
+        long lot = stock.confirmStockReceipt(receipt, m.employeeId(), null).lines().getFirst().inventoryBatchId();
+        long issue = stock.createStockIssue(m.employeeId(), new IssueRequest("td-i-" + ing, null,
+                List.of(new IssueLine(lot, BigDecimal.valueOf(quantity), "DIRECT")))).id();
+        stock.issueStockToKitchen(issue, m.employeeId());
+        stock.receiveIssuedStock(issue, setupKitchen.employeeId());
         return type;
     }
 
@@ -139,22 +155,19 @@ public class TestData {
         return spec.query(String.class).optional().orElse(null);
     }
 
-    /** Đi hết luồng thật bằng các hàm rc_*: mở bàn → gửi 1 món → nhận → nấu → xong → phục vụ → chốt hóa đơn (50 000). */
+    /** Đi hết luồng thật qua các Service: mở bàn → gửi 1 món → nhận → nấu → xong → phục vụ → chốt hóa đơn (50 000). */
     public long pendingInvoice(Staff waiter, Staff kitchen, Staff cashier) {
-        long session = admin.sql("SELECT rc_open_session(:t, :w)").param("t", table()).param("w", waiter.employeeId())
-                .query(Long.class).single();
-        long order = admin.sql("SELECT id FROM orders WHERE table_session_id = :s").param("s", session).query(Long.class).single();
-        long batch = admin.sql("""
-                SELECT (rc_submit_batch(:o, :w, :k, jsonb_build_array(jsonb_build_object('daily_menu_item_id', :d, 'quantity', 1))) ->> 'batch_id')::bigint""")
-                .param("o", order).param("w", waiter.employeeId()).param("k", "test-" + SEQ.incrementAndGet())
-                .param("d", dish(50000, null, null).dailyMenuItemId()).query(Long.class).single();
-        long item = admin.sql("SELECT id FROM order_items WHERE order_batch_id = :b").param("b", batch).query(Long.class).single();
-        admin.sql("SELECT rc_accept_item(:i, :k)").param("i", item).param("k", kitchen.employeeId()).query(String.class).single();
-        admin.sql("SELECT rc_start_cooking(:i, :k)").param("i", item).param("k", kitchen.employeeId()).query().singleRow();
-        admin.sql("SELECT rc_finish_dish(:i, :k)").param("i", item).param("k", kitchen.employeeId()).query().singleRow();
-        admin.sql("SELECT rc_serve_item(:i, :w)").param("i", item).param("w", waiter.employeeId()).query().singleRow();
-        return admin.sql("SELECT rc_checkout_invoice(:o, :c)").param("o", order).param("c", cashier.employeeId())
-                .query(Long.class).single();
+        long order = services.getBean(TableService.class).openTableSession(table(), waiter.employeeId()).orderId();
+        long dishId = dish(50000, null, null).dailyMenuItemId();
+        OrderService orders = services.getBean(OrderService.class);
+        long item = orders.submitOrderBatch(order, waiter.employeeId(), new SubmitBatchRequest("test-" + SEQ.incrementAndGet(),
+                List.of(new SubmitBatchRequest.Item(dishId, 1, null)))).items().getFirst().id();
+        KitchenService kitchenService = services.getBean(KitchenService.class);
+        kitchenService.acceptOrderItem(item, kitchen.employeeId());
+        kitchenService.startCookingItem(item, kitchen.employeeId());
+        kitchenService.finishCookingItem(item, kitchen.employeeId());
+        orders.markItemServed(item, waiter.employeeId());
+        return services.getBean(InvoiceService.class).checkoutOrder(order, cashier.employeeId()).invoiceId();
     }
 
     public String invoiceStatus(long invoiceId) {

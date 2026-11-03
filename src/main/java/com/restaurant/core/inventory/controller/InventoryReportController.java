@@ -23,7 +23,7 @@ import com.restaurant.core.inventory.dto.InventoryReportDtos.StockHistoryRow;
 import com.restaurant.core.inventory.dto.InventoryReportDtos.UnusableLotRow;
 import com.restaurant.core.inventory.service.InventoryReportService;
 
-/** Báo cáo kho (rpt_*) và danh sách lô để chọn khi lập chứng từ. Owner: Đỗ Tuấn Anh. */
+/** Báo cáo kho và danh sách lô để chọn khi lập chứng từ. Owner: Đỗ Tuấn Anh. */
 @RestController
 @RequestMapping("/api/inventory")
 public class InventoryReportController {
@@ -36,52 +36,52 @@ public class InventoryReportController {
 
     @GetMapping("/raw-stock")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<RawStockRow>> rawStock() {
-        return ApiResponse.ok(service.rawStock());
+    public ApiResponse<List<RawStockRow>> getRawStock() {
+        return ApiResponse.ok(service.getRawStock());
     }
 
     @GetMapping("/handover")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<HandoverRow>> handover() {
-        return ApiResponse.ok(service.handoverAndWip());
+    public ApiResponse<List<HandoverRow>> getHandoverAndWip() {
+        return ApiResponse.ok(service.getHandoverAndWip());
     }
 
     @GetMapping("/kitchen-stock")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<KitchenStockRow>> kitchenStock() {
-        return ApiResponse.ok(service.kitchenStock());
+    public ApiResponse<List<KitchenStockRow>> getKitchenStock() {
+        return ApiResponse.ok(service.getKitchenStock());
     }
 
     @GetMapping("/unusable-lots")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<UnusableLotRow>> unusableLots() {
-        return ApiResponse.ok(service.unusableLots());
+    public ApiResponse<List<UnusableLotRow>> getUnusableLots() {
+        return ApiResponse.ok(service.getUnusableLots());
     }
 
     @GetMapping("/history")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<StockHistoryRow>> history(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+    public ApiResponse<List<StockHistoryRow>> getStockHistory(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
                                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
                                                       @RequestParam(required = false) @Positive Long ingredientId) {
-        return ApiResponse.ok(service.stockHistory(from, to, ingredientId));
+        return ApiResponse.ok(service.getStockHistory(from, to, ingredientId));
     }
 
     @GetMapping("/preparation-yield")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<PreparationYieldRow>> preparationYield(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ApiResponse<List<PreparationYieldRow>> getPreparationYield(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ApiResponse.ok(service.preparationYield(from, to));
+        return ApiResponse.ok(service.getPreparationYield(from, to));
     }
 
     @GetMapping("/raw-lots")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<RawLotRow>> rawLots(@RequestParam(required = false) @Positive Long ingredientId) {
-        return ApiResponse.ok(service.rawLots(ingredientId));
+    public ApiResponse<List<RawLotRow>> getRawLots(@RequestParam(required = false) @Positive Long ingredientId) {
+        return ApiResponse.ok(service.getRawLots(ingredientId));
     }
 
     @GetMapping("/kitchen-lots")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<KitchenLotRow>> kitchenLots(@RequestParam(required = false) @Positive Long typeId) {
-        return ApiResponse.ok(service.kitchenLots(typeId));
+    public ApiResponse<List<KitchenLotRow>> getKitchenLots(@RequestParam(required = false) @Positive Long typeId) {
+        return ApiResponse.ok(service.getKitchenLots(typeId));
     }
 }

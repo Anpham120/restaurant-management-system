@@ -65,7 +65,7 @@ class SessionEndIT extends OrderApiTestBase {
         long[] t = openTable();
         serveThrough(submitOne(t[2], data.dish(0, null, null).dailyMenuItemId(), 1));
         postEmpty(cashier, "/api/orders/{id}/invoice", t[2]).andExpect(status().isUnprocessableContent())
-                .andExpect(jsonPath("$.error.code").value("RC422"));
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         postJson(manager, "/api/orders/{id}/waive", reason("Món tặng"), t[2]).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("WAIVED"))
                 .andExpect(jsonPath("$.data.total").value(0.0));
