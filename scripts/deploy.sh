@@ -50,6 +50,19 @@ check() {
   return 1
 }
 
+# Kiểm như người dùng thật: qua nginx + HTTPS của domain (PUBLIC_URL do Jenkinsfile truyền; không có thì bỏ qua).
+# Bắt lỗi mà kiểm trong máy không thấy: nginx trỏ sai cổng, chứng chỉ hết hạn, web trả trang lỗi.
+public_ok() {
+  [ -z "${PUBLIC_URL:-}" ] && return 0
+  local ok=0
+  curl -fsS --max-time 10 "$PUBLIC_URL/" | grep -q 'Atlas Restaurant' || { echo "[deploy] $PUBLIC_URL/ không trả trang web"; ok=1; }
+  curl -fsS --max-time 10 "$PUBLIC_URL/actuator/health" | grep -q '"UP"' || { echo "[deploy] $PUBLIC_URL/actuator/health không UP"; ok=1; }
+  [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$PUBLIC_URL/api/tables")" = 401 ] \
+    || { echo "[deploy] $PUBLIC_URL/api/tables không trả 401"; ok=1; }
+  [ "$ok" = 0 ] && echo "[deploy] kiểm qua domain: web, health, API 401 đều đúng"
+  return "$ok"
+}
+
 rollback() {
   echo "[deploy] LỖI, quay lui về image trước"
   if [ "$HAVE_PREV" = 1 ]; then
@@ -64,7 +77,7 @@ rollback() {
 docker tag "rms-release-app:$SHA" "$APP:latest"
 docker tag "rms-release-web:$SHA" "$WEB:latest"
 
-if docker compose up -d --no-deps --no-build --wait app web && check; then
+if docker compose up -d --no-deps --no-build --wait app web && check && public_ok; then
   # Thành công: bỏ tag quay lui để image cũ được dọn, không chiếm ổ đĩa
   docker rmi "$APP:previous" "$WEB:previous" >/dev/null 2>&1 || true
   docker image prune -f >/dev/null

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Staging tạm thời: dựng bản develop với secret ngẫu nhiên, chạy smoke test rồi hủy.
+# Staging tạm thời: dựng bản develop với secret ngẫu nhiên, chạy smoke test (đọc) và E2E (ghi) rồi hủy.
 # Dữ liệu: bản sao lưu production mới nhất (BACKUP_DIR) nếu có, để migration Flyway và các API chạy thử trên dữ liệu
 # thật trước khi lên production; không có thì dùng database trống. Database staging chỉ mở ở 127.0.0.1 và bị xóa
 # (down -v) khi chạy xong. Cách nạp giống hệt scripts/restore-db.sh, nên mỗi lần chạy cũng là một lần thử khôi phục.
@@ -105,6 +105,13 @@ check "API không token trả 401"        unauthorized
 check "đăng nhập cấp được token"       login
 check "endpoint metrics có số liệu"    sh -c "curl -fsS $APP_URL/actuator/prometheus | grep -q jvm_memory_used_bytes"
 if read_sweep; then echo "[staging] OK   đọc dữ liệu mọi module ($(echo $READ_APIS | wc -w) API)"; else echo "[staging] FAIL đọc dữ liệu mọi module"; fail=1; fi
+
+# Ghi dữ liệu: một vòng gọi món → bếp → thanh toán kèm các ca lỗi, trên bản sao dữ liệu thật (scripts/e2e-flow.sh)
+if [ -n "$TOKEN" ] && APP_URL=$APP_URL TOKEN=$TOKEN scripts/e2e-flow.sh; then
+  echo "[staging] OK   kịch bản E2E ghi dữ liệu"
+else
+  echo "[staging] FAIL kịch bản E2E ghi dữ liệu"; fail=1
+fi
 
 if [ "$fail" -ne 0 ]; then
   echo "[staging] smoke test THẤT BẠI, không promote lên main"

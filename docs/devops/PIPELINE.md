@@ -10,9 +10,12 @@ feature/xxx ──(CI pass, tự merge --no-ff)──► develop ──(CI pass,
 
 | Nhánh | Tạo từ | Pipeline chạy | Kết quả khi CI pass |
 |---|---|---|---|
-| `feature/*` | `develop` | Test backend + frontend, Trivy mã nguồn | Tự merge vào `develop` |
-| `develop` | — | Test, Trivy, staging + smoke test, Trivy image, gắn tag phát hành | Tự promote lên `main` (fast-forward) |
-| `main` | — | Chỉ deploy (không test lại, không build lại) | Deploy production, tự quay lui nếu lỗi |
+| `feature/*` | `develop` | Kiểm migration, test backend + frontend, Trivy mã nguồn | Tự merge vào `develop` |
+| `develop` | — | Như trên + staging (smoke test đọc + E2E ghi), Trivy image, gắn tag phát hành | Tự promote lên `main` (fast-forward) |
+| `main` | — | Chỉ deploy (không test lại, không build lại), kiểm qua domain thật | Deploy production, tự quay lui nếu lỗi |
+
+Không bắt buộc Pull Request hay người duyệt: dự án nhỏ (bài tập lớn), nhóm chọn tự merge khi CI xanh. Khi dự án lớn hơn,
+bật bảo vệ nhánh `develop` (bắt buộc PR + 1 người duyệt + check Jenkins xanh); Jenkins đã bật phát hiện PR sẵn.
 
 Quy tắc phát triển:
 1. `git switch develop && git switch -c feature/ten-tinh-nang`
@@ -29,11 +32,12 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 
 | Stage | Chạy ở | Làm gì |
 |---|---|---|
-| Test backend | `feature/*`, `develop` | `mvn verify` (unit + `*IT` dùng Testcontainers + `ModularityTest`) trong container `maven:3.9-eclipse-temurin-25` |
+| Kiểm migration | `feature/*`, `develop` | `scripts/check-migrations.sh`: chặn migration không tương thích ngược (xem dưới) |
+| Test backend | `feature/*`, `develop` | `mvn verify` (unit + `*IT` dùng Testcontainers + `ModularityTest`) trong container `maven:3.9-eclipse-temurin-25`. Jenkins hiện kết quả test (JUnit) và lưu báo cáo độ phủ JaCoCo (`target/site/jacoco/index.html`, mục Artifacts của build); log in dòng "Độ phủ dòng code" |
 | Test frontend | `feature/*`, `develop` | `npm ci`, `typecheck`, `build` trong container `node:22-alpine` |
 | Quét bảo mật mã nguồn | `feature/*`, `develop` | `scripts/security-scan.sh fs`: Trivy quét thư viện Maven, npm và secret lộ trong mã |
 | Merge feature vào develop | `feature/*` | `scripts/auto-merge.sh develop` |
-| Staging smoke test | `develop` | `scripts/staging-test.sh`: dựng bản tạm, thử các chức năng chính rồi hủy |
+| Staging smoke test | `develop` | `scripts/staging-test.sh`: dựng bản tạm trên bản sao lưu production mới nhất, quét đọc 32 API, chạy E2E ghi (`scripts/e2e-flow.sh`) rồi hủy |
 | Quét bảo mật image | `develop` | `scripts/security-scan.sh image`: Trivy quét image `app` và `web` vừa build ở staging. Qua thì `scripts/tag-release.sh` gắn tag `rms-release-{app,web}:<commit>` |
 | Promote develop lên main | `develop` | `scripts/auto-merge.sh main` |
 | Deploy production | `main` | `scripts/deploy.sh` trong thư mục `/home/coder/rms-deploy` |
@@ -45,17 +49,28 @@ Build một lần, deploy đúng image đã kiểm:
 - `scripts/tag-release.sh` giữ tag của 5 commit `develop` gần nhất và của commit mới hơn (đang chờ `main` deploy). Tag của commit cũ hơn bị bỏ.
 - Staging và deploy đều checkout đúng `GIT_COMMIT` của build, không lấy đầu nhánh mới nhất, để image và mã nguồn luôn cùng một commit.
 
+E2E ghi dữ liệu (`scripts/e2e-flow.sh`), chạy trên bản sao dữ liệu thật ở staging:
+- Kho: tạo nguyên liệu → nhập 10 phần → xuất → bếp nhận. Thực đơn: món + công thức (1 phần/suất) → thêm vào thực đơn hôm nay, hạn mức 3.
+- Phục vụ: mở bàn → gọi 2 suất → bếp nhận (giữ 2 phần) → nấu → xong → bưng (tồn bếp còn 8) → chốt hóa đơn 100 000 → thu tiền mặt → hóa đơn PAID, bàn trống.
+- Ca lỗi: số lượng âm/0 (400), gửi trùng `requestKey` không tạo món trùng, vượt hạn mức bị từ chối, thu tiền thiếu (422), bấm thu tiền 2 lần cùng lúc chỉ 1 lần thành công và chỉ 1 khoản thu.
+- Thực đơn hôm nay trong dữ liệu production đã đóng (sau giờ đóng, trước 04:00) thì phần E2E in `BỎ QUA` và không chặn pipeline.
+
 Deploy (`scripts/deploy.sh`):
 - Kiểm tra có image `rms-release-*:<commit>`. Không có (commit thẳng lên `main`, hoặc image đã bị dọn) thì dừng, chưa đụng gì. Cách xử lý: chạy lại build `develop` của commit đó rồi chạy lại build `main`.
 - Sao lưu database (`scripts/backup-db.sh pre-deploy`). Sao lưu lỗi thì dừng, chưa đụng gì.
 - Gắn tag image phát hành thành `restaurant-management-system-{app,web}:latest`, chạy `docker compose up --no-deps --no-build --wait`. Không build lại.
-- Kiểm tra `/actuator/health` và trang web. Lỗi thì tự tag lại image cũ và chạy lại.
+- Kiểm tra `/actuator/health` và trang web trong máy, rồi kiểm qua domain thật (`PUBLIC_URL`, qua nginx + HTTPS): trang web, health UP, `/api/tables` trả 401. Lỗi ở bất kỳ bước nào thì tự tag lại image cũ và chạy lại.
 - Không đụng container `db` và volume `restaurant-management-system_pgdata`.
 - Profile Spring luôn là `prod`: `deploy.sh` export `SPRING_PROFILES_ACTIVE=prod`, ghi đè giá trị trong `.env`. Profile `prod` cấm Flyway tự baseline; database production đã có lịch sử Flyway nên không ảnh hưởng.
 - Staging cũng chạy `prod` để kiểm tra đúng cấu hình production. Riêng staging ghép thêm `compose.staging.yaml` để cho phép baseline trên database mới tạo. Production không dùng file này.
 - `staging-test.sh` ghi đè rồi xóa `.env` ở thư mục đang chạy. Script tự dừng nếu thấy `.env` không phải do nó tạo, nên đừng chạy nó trong thư mục dự án hay thư mục deploy.
 - `app`, `web`, `db` đặt `restart: unless-stopped`: tự chạy lại khi container lỗi hoặc máy chủ khởi động lại.
 - Telegram: build lỗi ở bất kỳ nhánh nào và mỗi lần `main` deploy xong đều có tin nhắn kèm commit và link log.
+
+Migration tương thích ngược (`scripts/check-migrations.sh`):
+- Deploy lỗi chỉ quay lui image, không quay lui database. Vì vậy bản app đang chạy phải còn chạy được trên schema sau migration.
+- Script chặn `DROP TABLE`, `DROP COLUMN`, `RENAME`, `ALTER COLUMN … TYPE`, `SET NOT NULL`, `ADD COLUMN … NOT NULL` không có `DEFAULT`.
+- Cách làm đúng là tách 2 lần phát hành: **expand** (thêm cột/bảng mới, cho phép NULL hoặc có DEFAULT) rồi **contract** (lần phát hành sau, khi không còn code dùng phần cũ, mới xóa/đổi). File contract ghi dòng `-- contract: <lý do>` để script cho qua.
 
 Quét bảo mật (Trivy):
 - Pipeline dừng khi có lỗ hổng mức HIGH hoặc CRITICAL **đã có bản vá**, hoặc khi phát hiện secret trong mã. Lỗ hổng chưa có bản vá chỉ được bỏ qua vì chưa có cách sửa.
@@ -182,7 +197,8 @@ Hai lớp, không đổi schema database:
 
 ```bash
 # Cú pháp script
-bash -n scripts/auto-merge.sh && bash -n scripts/deploy.sh && bash -n scripts/tag-release.sh
+bash -n scripts/auto-merge.sh && bash -n scripts/deploy.sh && bash -n scripts/tag-release.sh && bash -n scripts/e2e-flow.sh
+scripts/check-migrations.sh
 # Image phát hành đang có
 docker images 'rms-release-*'
 # Cấu hình monitoring

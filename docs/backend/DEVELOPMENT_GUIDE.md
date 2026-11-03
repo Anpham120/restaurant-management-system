@@ -147,6 +147,11 @@ Không đặt tên chung chung (`process`, `handle`, `doAction`, `data`). Method
 | Thay đổi schema mới | File `src/main/resources/db/migration/V2__mo_ta.sql`, được nhóm duyệt; không sửa file đã chạy. Đối tượng mới phải `ALTER … OWNER TO rc_owner` và cấp quyền theo `docs/09-acl-v4.1.sql` (có thể chạy lại 09 — script idempotent) |
 | Đổi ACL / role | Sửa `docs/09-acl-v4.1.sql` (cần quyền quản trị cụm), không đặt trong Flyway |
 
+**Tương thích ngược (expand/contract).** Deploy lỗi chỉ quay lui image, không quay lui database, nên bản app đang chạy phải chạy được trên schema mới.
+Không xóa/đổi tên/đổi kiểu cột trong cùng lần phát hành với code mới. Làm 2 bước: (1) expand — thêm cột mới cho phép NULL hoặc có DEFAULT, code
+mới dùng cột mới; (2) contract — ở lần phát hành sau mới xóa cột cũ, file ghi `-- contract: <lý do>`. Pipeline chạy `scripts/check-migrations.sh`
+và chặn nếu vi phạm.
+
 Flyway luôn chạy bằng `FLYWAY_USER` (quản trị), app chạy bằng `DB_APP_USER` (`rc_app`). Không bao giờ chạy lại docs/04 trên database có dữ liệu.
 
 ## 7. Không tự ý sửa (hỏi Leader)
