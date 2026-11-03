@@ -1,15 +1,17 @@
 # Kiến trúc backend — Restaurant Core
 
-**Modular Monolith nhẹ + Layered (Controller → Service → Repository) + Spring AOP (1 aspect) + Strategy (thanh toán).**
-Một ứng dụng Spring Boot, một database PostgreSQL v4.1. Không microservice, không message broker, không cache, không JPA.
+**Modular Monolith theo Spring Modulith + Layered trong từng module (Controller → Service → Repository) + Spring AOP (1 aspect) + Strategy (thanh toán).**
+Một ứng dụng Spring Boot, một database PostgreSQL v4.1. Không microservice, không message broker, không cache.
 
 | Thành phần | Lựa chọn | Phiên bản (pom.xml) |
 | --- | --- | --- |
-| Ngôn ngữ / build | Java 21, Maven (wrapper `./mvnw`) | Java 21, Maven 3.10 |
+| Ngôn ngữ / build | Java 25 (LTS), Maven (wrapper `./mvnw`) | Java 25, Maven 3.10 |
 | Framework | Spring Boot (`spring-boot-starter-parent`) | 4.1.2 (Spring Framework 7, Security 7.1, Jackson 3) |
-| Truy cập DB | `JdbcClient` (spring-boot-starter-jdbc) + driver PostgreSQL | 42.7 |
+| Truy cập DB | Spring Data JPA (Entity + `JpaRepository`) cho mọi thao tác ghi; `JdbcClient` chỉ cho truy vấn CHỈ ĐỌC ghép nhiều bảng (`…QueryRepository`) và báo cáo | Hibernate 7, driver 42.7 |
+| Lombok | `@Getter/@Setter` cho Entity, `@RequiredArgsConstructor` cho Service | |
 | Migration | Flyway (`spring-boot-starter-flyway`, `flyway-database-postgresql`) | 12.4 |
 | Bảo mật | Spring Security, JWT HS256 qua `spring-boot-starter-oauth2-resource-server` (Nimbus), BCrypt | 7.1 |
+| Module | Spring Modulith (`spring-modulith-api`, test: `spring-modulith-starter-test`) | 2.1.2 |
 | AOP | `spring-boot-starter-aspectj` — chỉ `PerformanceLoggingAspect` | |
 | Health | Actuator, chỉ mở `/actuator/health` | |
 | Test | JUnit 5, Spring Boot Test, MockMvc, Testcontainers (PostgreSQL 17) | Testcontainers 2.0 |
@@ -22,31 +24,46 @@ flowchart LR
     FE["Frontend<br/>(JWT trong header)"] -->|REST/JSON| SEC["security<br/>JWT filter · 401/403"]
     SEC --> C["controller<br/>@PreAuthorize · @Valid"]
     C --> S["service<br/>(đo thời gian bởi PerformanceLoggingAspect)"]
-    S --> R["repository<br/>JdbcClient"]
-    R -->|"SELECT … / SELECT rc_*(…)"| DB[("PostgreSQL v4.1<br/>48 bảng · 32 hàm rc_* · 47 trigger")]
-    C -. exception .-> GEH["GlobalExceptionHandler<br/>SQLSTATE RC* → HTTP"]
-    SEPAY["SePay webhook<br/>(Authorization: Apikey)"] --> WH["finance/sepay<br/>pool riêng, login rc_webhook"]
-    WH -->|"SELECT rc_process_verified_qr(…)"| DB
+    S --> R["repository<br/>JpaRepository · QueryRepository"]
+    R -->|"JPA (ghi) · JdbcClient (đọc)"| DB[("PostgreSQL v4.1<br/>48 bảng · trigger bảo vệ dữ liệu")]
+    C -. exception .-> GEH["GlobalExceptionHandler<br/>ApiException · lỗi ràng buộc DB → HTTP"]
+    SEPAY["SePay webhook<br/>(Authorization: Apikey)"] --> WH["finance/sepay → QrTransferProcessor"]
+    WH --> S
 ```
 
 ```mermaid
 flowchart TB
     subgraph app["com.restaurant.core"]
         common["common<br/>config · aspect · exception · response"]
-        security["security<br/>JWT · CurrentUser · SecurityConfig"]
+        security["security<br/>JWT · CurrentUser · đăng nhập · đổi mật khẩu"]
         employee["employee<br/>Nguyễn Quang Hiếu"] --- menu["menu<br/>Lê Anh"] --- order["order<br/>Phạm Duy An"] --- inventory["inventory<br/>Đỗ Tuấn Anh"] --- finance["finance<br/>hóa đơn + thanh toán: Phạm Duy An<br/>chi phí, đối soát, báo cáo: Bùi Đào Đức Anh"]
     end
     employee & menu & order & inventory & finance --> common
     employee & menu & order & inventory & finance --> security
+    security --> common
 ```
+
+## Module (Spring Modulith)
+
+Mỗi package con trực tiếp của `com.restaurant.core` là một **module**, khai báo trong `package-info.java` bằng `@ApplicationModule`.
+
+- **API của module** = các lớp ở package gốc của module (ví dụ `security.CurrentUser`). Package con `controller`, `service`, `repository`, `dto` là **nội bộ**: module khác không được import.
+- **Phụ thuộc được phép** ghi trong `allowedDependencies`: module nghiệp vụ → `common`, `security`; `security` → `common`; `common` → không gì. `common` là module mở (`Type.OPEN`).
+- **Không phụ thuộc vòng.** Đăng nhập, đổi mật khẩu và `CredentialQueryRepository`, `UserCredentialRepository` nằm trong `security` (không ở `employee`) để tránh vòng `employee` ↔ `security`.
+- Phụ thuộc giữa các module nghiệp vụ (không vòng): `order` → `menu`, `inventory`; `inventory` → `menu`; `finance` → `order`.
+  Mỗi module chỉ gọi API ở package gốc của module kia (`DailyMenuLookup`, `KitchenStockAllocator`, `OrderBillingApi`).
+- Khi module A cần dữ liệu của module B nhưng B đã phụ thuộc A, A khai báo **interface** và B cài đặt (đảo phụ thuộc):
+  `menu.QuotaUsageCounter` (order cài), `inventory.OrderItemStockFlags` (order cài), `order.OrderInvoiceAccess` (finance cài).
+- `ModularityTest` kiểm tra các luật trên mỗi lần `mvn verify` (không cần database), và sinh sơ đồ PlantUML vào `target/spring-modulith-docs`. Vi phạm → build đỏ, pipeline dừng.
 
 ## Nguyên tắc cốt lõi
 
-1. **Database là nơi giữ nghiệp vụ tiền/tồn/trạng thái.** Mọi thao tác chạm số dư, tiền, trạng thái món/hóa đơn/chứng từ đi qua **một lời gọi hàm `rc_*`** — hàm tự khóa theo thứ tự chung và chạy nguyên tử. Java không tái hiện logic đó, không chia một hàm `rc_*` thành nhiều bước Java, không bọc thêm `@Transactional` cho một lời gọi đơn.
-2. **Ranh giới tin cậy.** Spring Security xác thực JWT; `p_actor` của mọi hàm `rc_*` = `CurrentUser.employeeId()` (claim `sub`). Mỗi request đọc lại trạng thái tài khoản, nhân viên và vai trò trong DB (`AccountStateJwtConverter`); vai trò trong token chỉ để frontend hiển thị. Không nhận `actorId`/`employeeId` từ body hay query. `@PreAuthorize` lọc vai trò ở API; DB kiểm lại vai trò trong mỗi hàm (`rc_authorize`) — ma trận ở [docs/07 §10](../07-kiem-toan-ham-rc.md).
-3. **Ứng dụng chạy bằng tài khoản thuộc role `rc_app`** ([docs/09-acl-v4.1.sql](../09-acl-v4.1.sql)): đọc mọi bảng; ghi trực tiếp chỉ danh mục, nhân sự, thực đơn, nháp chứng từ (theo cột); bảng nhạy cảm chỉ ghi được qua hàm. **Webhook SePay** dùng một pool kết nối nhỏ riêng bằng login thuộc `rc_webhook` (chỉ được `EXECUTE rc_process_verified_qr`) — không mở thêm quyền cho `rc_app`.
+1. **Nghiệp vụ nằm ở tầng Service (Java).** Kiểm tồn kho, giữ/trừ nguyên liệu theo FEFO, hạn mức suất, tính tổng hóa đơn, thanh toán, chuyển trạng thái món/chứng từ đều viết trong `…ServiceImpl` với `@Transactional`. Database chỉ giữ ràng buộc dữ liệu (CHECK, FK, UNIQUE) và trigger bảo vệ (máy trạng thái, bảng chỉ-thêm, số dư khớp sổ kho) làm **lưới an toàn cuối**; Service phải tự kiểm trước để trả lỗi rõ ràng. Các hàm nghiệp vụ `rc_*` và hàm báo cáo `rpt_*` cũ đã bị xóa khỏi DB (migration `V3`); chỉ còn các hàm phục vụ trigger. Báo cáo: truy vấn đọc trong `…ReportRepository`, quy tắc (ngày kinh doanh, phân loại, tỷ lệ) trong Service.
+2. **Đồng thời và thứ tự khóa.** Ghi đồng thời dùng khóa dòng (`…ForUpdate` = `@Lock(PESSIMISTIC_WRITE)`), luôn theo một thứ tự chung để không deadlock: **đơn → hóa đơn → yêu cầu thanh toán → phiên → bàn → món → lô bếp (theo loại, id)**; với kho: **lô kho chính → dòng xuất (WIP) → lô bếp**. Khóa trước, nạp entity sau (Hibernate không làm mới entity đã nạp). Thao tác gửi lặp được chống trùng bằng `requestKey` (khóa `pg_advisory_xact_lock` theo khóa yêu cầu).
+3. **Ranh giới tin cậy.** Spring Security xác thực JWT; người thao tác (`actorId`) luôn là `CurrentUser.employeeId()` (claim `sub`). Mỗi request đọc lại trạng thái tài khoản, nhân viên và vai trò trong DB (`AccountStateJwtConverter`); vai trò trong token chỉ để frontend hiển thị. Không nhận `actorId`/`employeeId` từ body hay query. `@PreAuthorize` là lớp kiểm vai trò (ma trận ở [docs/07 §10](../07-kiem-toan-ham-rc.md)).
+   Ứng dụng chạy bằng tài khoản thuộc role `rc_app` (không phải superuser): đọc/ghi bảng nghiệp vụ (migration `V2`), không có quyền DDL, không ghi được bảng `roles`.
 4. **Một định dạng phản hồi** `ApiResponse` và **một chỗ xử lý lỗi** `GlobalExceptionHandler` (+ `RestSecurityErrorHandler` cho 401/403 ở tầng filter).
-5. **Đơn giản trước**: không interface cho service nếu chỉ có một cài đặt; không repository/service chung chung; DTO là `record` riêng của từng module.
+5. **Cấu trúc chuẩn trong module** (mẫu: `employee`): `controller` → `service` (interface) → `service/impl` (`…ServiceImpl`) → `repository` (interface `JpaRepository`) → `entity`; `dto/request`, `dto/response` là `record`; `mapper` chuyển Entity → DTO. Entity không bao giờ trả thẳng ra API. Hibernate chỉ `ddl-auto: validate`, không tự sửa bảng.
 
 ## Thành phần đã có
 
@@ -55,7 +72,7 @@ flowchart TB
 | Phản hồi + lỗi thống nhất, SQLSTATE → HTTP | `common/response`, `common/exception` ([API_CONVENTIONS](API_CONVENTIONS.md#mã-lỗi)) | Phạm Duy An (duyệt) |
 | AOP | `common/aspect/PerformanceLoggingAspect` — mọi method public trong `..service..` | Phạm Duy An (duyệt) |
 | CORS | `common/config/CorsConfig` (`CORS_ALLOWED_ORIGINS`) | Phạm Duy An (duyệt) |
-| Bảo mật, đăng nhập | `security/*`; `employee`: `POST /api/auth/login`, `GET /api/auth/me` | Nguyễn Quang Hiếu |
+| Bảo mật, đăng nhập | `security/*` (gồm `controller/AuthController`: `POST /api/auth/login`, `GET /api/auth/me`, đổi mật khẩu) | Nguyễn Quang Hiếu |
 | Vòng đời đơn hàng | `order/*`: bàn, phiên, đơn, gọi món, bếp, phục vụ, hủy, bỏ về | Phạm Duy An |
 | Hóa đơn, thanh toán | `finance`: `Invoice*`, `Payment*`, `strategy/` (Strategy CASH/QR), `sepay/` (webhook) | Phạm Duy An |
 

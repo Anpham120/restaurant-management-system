@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** QR/SePay: tạo QR không làm PAID; webhook xác thực API key, chống trùng, lệch tiền, đến muộn. Chạy bằng login rc_webhook. */
+/** QR/SePay: tạo QR không làm PAID; webhook xác thực API key, chống trùng, lệch tiền, đến muộn. */
 class SepayWebhookIT extends OrderApiTestBase {
 
     private static long txSeq = System.currentTimeMillis();
@@ -123,12 +123,4 @@ class SepayWebhookIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.result").value("MISMATCH"));
     }
 
-    @Test
-    void cashierCannotUseRcWebhookFunctionDirectly() throws Exception {
-        long[] s = servedAndCheckedOut(10000);
-        startQr(s[2]);
-        // rc_app (ứng dụng) không có quyền gọi rc_process_verified_qr — chỉ login rc_webhook của SepayWebhookRepository
-        assertThat(data.count("SELECT count(*) FROM pg_roles WHERE rolname = ? AND pg_has_role(rolname, 'rc_webhook', 'MEMBER') AND NOT pg_has_role(rolname, 'rc_app', 'MEMBER')",
-                WEBHOOK_USER)).isEqualTo(1);
-    }
 }

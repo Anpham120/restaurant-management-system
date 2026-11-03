@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Endpoint mẫu: đọc dữ liệu thật, gọi rc_open_session, ánh xạ RC409/RC422/RC403 và @PreAuthorize. */
+/** Bàn và phiên: đọc dữ liệu thật, mở phiên, lỗi nghiệp vụ (409/422) và @PreAuthorize. */
 class TableIT extends IntegrationTestBase {
 
     @Test
@@ -35,7 +35,7 @@ class TableIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.sessionId").isNumber());
         mvc.perform(post("/api/tables/{id}/sessions", table).header("Authorization", waiter))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("RC409"))
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"))
                 .andExpect(jsonPath("$.error.message").value(containsString("đang có khách")));
     }
 
@@ -43,7 +43,7 @@ class TableIT extends IntegrationTestBase {
     void unknownTableIs422FromDatabase() throws Exception {
         mvc.perform(post("/api/tables/{id}/sessions", 999999999L).header("Authorization", bearer(data.staff("MANAGER"))))
                 .andExpect(status().isUnprocessableContent())
-                .andExpect(jsonPath("$.error.code").value("RC422"));
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
     }
 
     @Test
@@ -55,7 +55,7 @@ class TableIT extends IntegrationTestBase {
 
     /**
      * Token còn hạn nhưng tài khoản vừa bị khóa: tầng security đọc lại trạng thái trong DB → 401 trước khi tới controller.
-     * rc_authorize (RC403) vẫn là lớp thứ hai nếu tài khoản bị khóa đúng lúc request đang chạy.
+     * Trạng thái tài khoản được đọc lại ở mỗi request (AccountStateJwtConverter).
      */
     @Test
     void lockedAccountTokenIsRejected() throws Exception {
@@ -110,7 +110,7 @@ class TableIT extends IntegrationTestBase {
         mvc.perform(post("/api/tables/{id}/deactivate", free).header("Authorization", manager))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.active").value(false));
         mvc.perform(post("/api/tables/{id}/sessions", free).header("Authorization", waiter))
-                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("RC422"));
+                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         mvc.perform(get("/api/tables").header("Authorization", waiter))
                 .andExpect(jsonPath("$.data[?(@.id == " + free + ")]").doesNotExist());
         mvc.perform(get("/api/tables?includeInactive=true").header("Authorization", waiter))

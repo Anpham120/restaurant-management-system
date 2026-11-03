@@ -1,6 +1,5 @@
 package com.restaurant.core.inventory.repository;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,9 +14,8 @@ import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptLineView;
 import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptResponse;
 
 /**
- * Phiếu nhập / xuất / kiểm kê. Tạo bằng rc_create_* (header + dòng nguyên tử, idempotent theo request_key), xác nhận bằng
- * rc_confirm_receipt, rc_issue_stock, rc_receive_issue, rc_cancel_issue, rc_confirm_count — số dư và sổ kho chỉ đổi trong
- * các hàm này. Owner: Đỗ Tuấn Anh.
+ * Truy vấn CHỈ ĐỌC phiếu nhập / xuất / kiểm kê (trả thẳng DTO) Ghi sổ kho nằm ở
+ * StockDocumentServiceImpl. Owner: Đỗ Tuấn Anh.
  */
 @Repository
 public class StockDocumentRepository {
@@ -29,15 +27,6 @@ public class StockDocumentRepository {
     }
 
     // ---------- nhập
-    public long createReceipt(long actorId, String requestKey, String payloadJson) {
-        return jdbc.sql("SELECT rc_create_stock_receipt(:a, :k, CAST(:p AS jsonb))").param("a", actorId).param("k", requestKey)
-                .param("p", payloadJson).query(Long.class).single();
-    }
-
-    public void confirmReceipt(long receiptId, long actorId, Instant receivedAt) {
-        jdbc.sql("SELECT rc_confirm_receipt(:r, :a, COALESCE(CAST(:at AS timestamptz), now()))").param("r", receiptId)
-                .param("a", actorId).param("at", receivedAt == null ? null : java.sql.Timestamp.from(receivedAt)).query().singleRow();
-    }
 
     public Optional<ReceiptResponse.Header> findReceipt(long id) {
         return jdbc.sql("""
@@ -67,30 +56,8 @@ public class StockDocumentRepository {
                 .param("r", receiptId).query(ReceiptLineView.class).list();
     }
 
-    /** Bỏ phiếu nháp (guard DB chỉ cho xóa khi DRAFT). Trả số phiếu bị xóa. */
-    public int deleteDraftReceipt(long id) {
-        jdbc.sql("DELETE FROM stock_receipt_items WHERE stock_receipt_id = :id AND EXISTS (SELECT 1 FROM stock_receipts WHERE id = :id AND status = 'DRAFT')")
-                .param("id", id).update();
-        return jdbc.sql("DELETE FROM stock_receipts WHERE id = :id AND status = 'DRAFT'").param("id", id).update();
-    }
 
     // ---------- xuất
-    public long createIssue(long actorId, String requestKey, String payloadJson) {
-        return jdbc.sql("SELECT rc_create_stock_issue(:a, :k, CAST(:p AS jsonb))").param("a", actorId).param("k", requestKey)
-                .param("p", payloadJson).query(Long.class).single();
-    }
-
-    public void issue(long issueId, long actorId) {
-        jdbc.sql("SELECT rc_issue_stock(:i, :a)").param("i", issueId).param("a", actorId).query().singleRow();
-    }
-
-    public void receive(long issueId, long actorId) {
-        jdbc.sql("SELECT rc_receive_issue(:i, :a)").param("i", issueId).param("a", actorId).query().singleRow();
-    }
-
-    public void cancelIssue(long issueId, long actorId, String reason) {
-        jdbc.sql("SELECT rc_cancel_issue(:i, :a, :r)").param("i", issueId).param("a", actorId).param("r", reason).query().singleRow();
-    }
 
     private static final String ISSUE_HEADER = """
             SELECT id, status, note, request_key, created_at, issued_by_id, issued_at, received_by_id, received_at,
@@ -119,14 +86,6 @@ public class StockDocumentRepository {
     }
 
     // ---------- kiểm kê
-    public long createCount(long actorId, String requestKey, String payloadJson) {
-        return jdbc.sql("SELECT rc_create_stock_count(:a, :k, CAST(:p AS jsonb))").param("a", actorId).param("k", requestKey)
-                .param("p", payloadJson).query(Long.class).single();
-    }
-
-    public void confirmCount(long countId, long actorId) {
-        jdbc.sql("SELECT rc_confirm_count(:c, :a)").param("c", countId).param("a", actorId).query().singleRow();
-    }
 
     public Optional<CountResponse.Header> findCount(long id) {
         return jdbc.sql("SELECT id, status, note, request_key, created_at, created_by_id, confirmed_by_id, confirmed_at FROM stock_counts WHERE id = :id")

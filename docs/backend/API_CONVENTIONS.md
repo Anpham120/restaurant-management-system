@@ -4,14 +4,14 @@
 
 - Tiền tố `/api`, danh từ số nhiều, kebab-case: `/api/tables`, `/api/daily-menus`, `/api/stock-receipts`.
 - Tài nguyên con: `/api/tables/{tableId}/sessions`, `/api/invoices/{invoiceId}/payments`.
-- Hành động không phải CRUD (chuyển trạng thái do hàm `rc_*` làm) dùng `POST` + động từ: `/api/order-items/{id}/accept`, `/api/stock-issues/{id}/issue`, `/api/invoices/{id}/waive`.
+- Hành động không phải CRUD (chuyển trạng thái) dùng `POST` + động từ: `/api/order-items/{id}/accept`, `/api/stock-issues/{id}/issue`, `/api/invoices/{id}/waive`.
 - Id là số (`BIGINT`) trong path, kiểm `@Positive`.
 
 | Method | Dùng khi | Mã thành công |
 | --- | --- | --- |
 | `GET` | đọc | 200 |
 | `POST` | tạo mới / hành động | 201 khi tạo bản ghi, 200 khi chỉ là hành động |
-| `PUT` / `PATCH` | sửa danh mục (bảng `rc_app` được ghi trực tiếp) | 200 |
+| `PUT` / `PATCH` | sửa danh mục | 200 |
 | `DELETE` | xóa nháp / danh mục chưa dùng | 200 |
 
 ## Phản hồi
@@ -21,7 +21,7 @@ Mọi phản hồi (kể cả lỗi 401/403/404) có cùng dạng:
 ```json
 { "success": true,  "data": { "sessionId": 12, "tableId": 3 }, "error": null }
 { "success": false, "data": null,
-  "error": { "code": "RC409", "message": "bàn B01 đang có khách", "details": [], "path": "/api/tables/3/sessions", "timestamp": "2026-10-26T09:00:00Z" } }
+  "error": { "code": "INVALID_STATE", "message": "Bàn B01 đang có khách", "details": [], "path": "/api/tables/3/sessions", "timestamp": "2026-10-26T09:00:00Z" } }
 ```
 
 - JSON field **camelCase**; thời điểm ISO-8601 UTC (`Instant`); ngày kinh doanh `yyyy-MM-dd`; tiền là số thập phân (`BigDecimal`), không `double`.
@@ -46,7 +46,7 @@ Danh sách nhỏ cố định (bàn, vai trò, danh mục) trả mảng trực t
 
 ## Idempotency
 
-Thao tác client có thể gửi lặp và DB hỗ trợ khóa yêu cầu (`rc_submit_batch`, `rc_create_stock_*`, sơ chế, hoàn trả, hủy hàng, khoản chi): client sinh `requestKey` (UUID) **một lần cho mỗi lần bấm** và gửi lại đúng khóa đó khi retry, trong body (`requestKey`). Backend truyền nguyên khóa xuống DB. Hành vi khi gửi lặp khác nhau theo bảng ([07](../07-kiem-toan-ham-rc.md)): `rc_create_stock_*` trả phiếu cũ (khác nội dung → RC409); `rc_submit_batch` trả đợt cũ với `replayed = true`; sơ chế, hoàn trả, hủy hàng, khoản chi (ghi trực tiếp, `request_key` UNIQUE) nhận `DUPLICATE` — backend nên đọc lại bản ghi theo khóa và trả về như thành công.
+Thao tác client có thể gửi lặp (gửi món, tạo phiếu kho, sơ chế, hoàn trả, hủy hàng, khoản chi): client sinh `requestKey` (UUID) **một lần cho mỗi lần bấm** và gửi lại đúng khóa đó khi retry, trong body (`requestKey`). Hành vi khi gửi lặp: tạo phiếu nhập/xuất/kiểm kê trả phiếu cũ (khác nội dung → `INVALID_STATE`); gửi món trả đợt cũ với `replayed = true`; sơ chế, hoàn trả, hủy hàng, khoản chi (ghi trực tiếp, `request_key` UNIQUE) nhận `DUPLICATE` — backend nên đọc lại bản ghi theo khóa và trả về như thành công.
 
 ## Mã lỗi
 
@@ -58,15 +58,14 @@ Thao tác client có thể gửi lặp và DB hỗ trợ khóa yêu cầu (`rc_s
 | 401 | `INVALID_CREDENTIALS` | AuthService | Sai đăng nhập, tài khoản khóa hoặc nhân viên nghỉ |
 | 403 | `FORBIDDEN` | `@PreAuthorize` (kiểm ở tầng filter trước khi đọc body) | Vai trò không được gọi endpoint (vai trò lấy từ DB, đổi vai trò có hiệu lực ngay); người không có quyền không bao giờ nhận 400 |
 | 403 | `PASSWORD_CHANGE_REQUIRED` | Security | Tài khoản `must_change_password`: chỉ được gọi `POST /api/auth/change-password` và `GET /api/auth/me` |
-| 403 | `RC403` | DB `rc_authorize` | `p_actor` không còn vai trò/tài khoản hoạt động (lớp thứ hai, khi tài khoản đổi trạng thái giữa request) |
 | 404 | `NOT_FOUND` | Spring / `ApiException` | Không có đường dẫn / bản ghi |
-| 409 | `RC409` | DB | Xung đột trạng thái: gọi lặp, sai bước, đối tượng đã đổi |
-| 409 | `RC001` | DB | Thiếu nguyên liệu |
+| 409 | `INVALID_STATE` | `ApiException.invalidState` (Service) | Sai trạng thái: gọi lặp, sai bước, đối tượng đã đổi |
+| 409 | `INSUFFICIENT_STOCK` | `ApiException.insufficientStock` (Service) | Thiếu nguyên liệu |
 | 409 | `DUPLICATE` | DB 23505 | Trùng khóa duy nhất |
 | 409 | `OVERLAP` | DB 23P01 | Trùng khoảng thời gian (EXCLUDE — ví dụ chồng ca) |
-| 422 | `RC422` | DB | Dữ liệu không hợp lệ (thiếu lý do, phiếu rỗng, không tồn tại…) |
+| 422 | `INVALID_REQUEST` | `ApiException.invalidRequest` (Service) | Sai nghiệp vụ (thiếu lý do, phiếu rỗng, tiền khách đưa thiếu…) |
 | 422 | `INVALID_DATA`, `REFERENCE_NOT_FOUND` | DB 23514/23502/23503 | Vi phạm CHECK/NOT NULL/FK |
 | 503 | `RETRY` | DB 40001/40P01 | Đụng độ đồng thời — client thử lại |
 | 500 | `RC500`, `DB_PERMISSION`, `INTERNAL_ERROR` | DB / hệ thống | Lỗi hệ thống, không hiển thị chi tiết; xem log |
 
-Thông điệp của RC001/RC403/RC409/RC422 lấy nguyên văn từ hàm `rc_*` (tiếng Việt, hiển thị được cho người dùng).
+Thông điệp của `INVALID_STATE`/`INVALID_REQUEST`/`INSUFFICIENT_STOCK` do Service viết (tiếng Việt, hiển thị được cho người dùng). Trigger bảo vệ của DB (lưới an toàn) cũng trả các mã này nếu Service bỏ sót một kiểm tra.

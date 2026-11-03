@@ -4,8 +4,8 @@ Hợp đồng chốt cho 5 phân hệ. Quy ước chung (định dạng `ApiResp
 
 - **✅** đã cài và có integration test chạy trên PostgreSQL thật.
 - Actor: **M** MANAGER · **W** WAITER · **K** KITCHEN · **C** CASHIER. Mọi endpoint trừ `login` và webhook cần JWT (401 nếu thiếu, 403 nếu sai vai trò).
-- Lỗi chung không nhắc lại: 400 `VALIDATION_ERROR`, 401, 403 `FORBIDDEN`/`RC403`, 404 `NOT_FOUND`.
-- Mọi thao tác ghi có hàm `rc_*` là **một lời gọi** — không `@Transactional`, không ghi bổ sung bằng Java.
+- Lỗi chung không nhắc lại: 400 `VALIDATION_ERROR`, 401, 403 `FORBIDDEN`, 404 `NOT_FOUND`. Lỗi nghiệp vụ: 409 `INVALID_STATE`, 409 `INSUFFICIENT_STOCK`, 422 `INVALID_REQUEST` (bảng dưới còn ghi tên cũ `RC409`/`RC001`/`RC422`, nghĩa tương ứng).
+- **Từ 2026-11-03 nghiệp vụ nằm ở tầng Service Java** (`…ServiceImpl`, `@Transactional`, Spring Data JPA). Cột "Bảng · hàm" còn ghi tên hàm `rc_*`/`rpt_*` cũ để đối chiếu đặc tả: logic tương ứng nay ở Service cùng tên chức năng; các hàm này đã bị xóa khỏi DB (migration `V3`). Repository đọc màn hình: `…QueryRepository`.
 
 ## 1. Quản lý đơn hàng — Phạm Duy An
 
@@ -69,7 +69,7 @@ Chỉ dùng cách xác thực **API Key** mà SePay mô tả cho webhook ([docs.
 
 ## 2. Quản lý nhân viên — Nguyễn Quang Hiếu
 
-Package `employee` (`EmployeeController/Service/Repository`, `ShiftController/Service/Repository`, `AuthController/Service`, `AccountRepository`), `security`. Bảng ghi trực tiếp (`rc_app` được cấp) → **@PreAuthorize là lớp kiểm quyền**; nhiều bảng một thao tác → `@Transactional` ở Service. Test: `EmployeeIT`, `AuthIT`.
+Package `employee` (`EmployeeController/Service/Repository`, `ShiftController/Service/Repository`), `security` (`AuthController/Service`, `CredentialQueryRepository`, `UserCredentialRepository`). Bảng ghi trực tiếp (`rc_app` được cấp) → **@PreAuthorize là lớp kiểm quyền**; nhiều bảng một thao tác → `@Transactional` ở Service. Test: `EmployeeIT`, `AuthIT`.
 
 | # | Endpoint | Actor | Request → Response | Bảng | Trước → Sau | Lỗi |
 | --- | --- | --- | --- | --- | --- | --- |

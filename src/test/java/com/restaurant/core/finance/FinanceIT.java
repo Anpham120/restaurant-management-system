@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class FinanceIT extends OrderApiTestBase {
 
     private LocalDate businessDate() {
-        return LocalDate.parse(data.value("SELECT rc_business_date(now())::text"));
+        return com.restaurant.core.common.time.BusinessDateProvider.businessDateOf(java.time.Instant.now());
     }
 
     private String expenseBody(String key, String fund, String method, int amount) {
@@ -42,7 +42,7 @@ class FinanceIT extends OrderApiTestBase {
         long id = readLong(created, "$.data.id");
         assertThat(readLong(postJson(manager, "/api/expenses", expenseBody(key, "OWNER", "BANK_TRANSFER", 120000)), "$.data.id")).isEqualTo(id);
         postJson(manager, "/api/expenses", expenseBody(UUID.randomUUID().toString(), "CASH_DRAWER", "BANK_TRANSFER", 1000))
-                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_DATA"));
+                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         postJson(manager, "/api/expenses", expenseBody(UUID.randomUUID().toString(), "OWNER", "CASH", 0)).andExpect(status().isBadRequest());
         postJson(cashier, "/api/expenses", expenseBody(UUID.randomUUID().toString(), "OWNER", "CASH", 1000)).andExpect(status().isForbidden());
 
@@ -86,7 +86,7 @@ class FinanceIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.reconVersion").value(1)).andExpect(jsonPath("$.data.difference").value(0.0))
                 .andExpect(jsonPath("$.data.stale").value(false));
         postJson(manager, "/api/cash-reconciliations", ok + "}")
-                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_DATA"));
+                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         String short10k = "{\"businessDate\":\"" + bd + "\",\"openingCash\":500000,\"actualCash\":" + expected.subtract(new BigDecimal("10000")).toPlainString()
                 + ",\"revisionReason\":\"đếm lại\"";
         postJson(manager, "/api/cash-reconciliations", short10k + "}").andExpect(status().isUnprocessableContent());
@@ -101,7 +101,7 @@ class FinanceIT extends OrderApiTestBase {
         getAs(manager, "/api/cash-reconciliations/{d}", bd).andExpect(jsonPath("$.data.stale").value(true));
 
         postJson(manager, "/api/cash-reconciliations", "{\"businessDate\":\"" + bd.plusDays(3) + "\",\"openingCash\":0,\"actualCash\":0}")
-                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("RC422"));
+                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         postJson(cashier, "/api/cash-reconciliations", ok + "}").andExpect(status().isForbidden());
         getAs(waiter, "/api/reports/revenue-by-day?from=" + bd + "&to=" + bd).andExpect(status().isForbidden());
     }

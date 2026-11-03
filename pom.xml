@@ -17,11 +17,29 @@
     <description>Restaurant Core backend — Spring Boot trên PostgreSQL v4.1 (docs/)</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
+        <spring-modulith.version>2.1.2</spring-modulith.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.modulith</groupId>
+                <artifactId>spring-modulith-bom</artifactId>
+                <version>${spring-modulith.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
+        <!-- Spring Modulith: khai báo module (package-info.java). Ranh giới module được kiểm ở ModularityTest -->
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-api</artifactId>
+        </dependency>
         <!-- REST + JSON -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -31,10 +49,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        <!-- PostgreSQL qua JdbcClient (không dùng JPA/Hibernate) -->
+        <!-- Spring Data JPA: Entity + Repository interface cho bảng ghi trực tiếp (danh mục, nhân sự).
+             Thao tác tiền/tồn/trạng thái vẫn gọi hàm rc_* qua JdbcClient (starter-jdbc đi kèm data-jpa). -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -76,6 +100,11 @@
 
         <!-- Test -->
         <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
@@ -104,6 +133,20 @@
 
     <build>
         <plugins>
+            <!-- JDK 23+ không tự chạy annotation processor: khai báo Lombok tường minh -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

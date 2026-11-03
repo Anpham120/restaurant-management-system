@@ -2,9 +2,11 @@ package com.restaurant.core;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -27,16 +29,12 @@ public abstract class IntegrationTestBase {
 
     protected static final String APP_USER = "rms_api_test";
     private static final String APP_PASSWORD = "app-test-password";
-    protected static final String WEBHOOK_USER = "rms_sepay_test";
-    private static final String WEBHOOK_PASSWORD = "webhook-test-password";
     protected static final String SEPAY_API_KEY = "test-sepay-api-key";
 
     protected static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17")
             .withDatabaseName("restaurant_core")
             .withEnv("DB_APP_USER", APP_USER)
             .withEnv("DB_APP_PASSWORD", APP_PASSWORD)
-            .withEnv("DB_WEBHOOK_USER", WEBHOOK_USER)
-            .withEnv("DB_WEBHOOK_PASSWORD", WEBHOOK_PASSWORD)
             .withCopyFileToContainer(MountableFile.forHostPath("docs/04-schema-v4.1.sql"), "/docker-entrypoint-initdb.d/10-schema-v4.1.sql")
             .withCopyFileToContainer(MountableFile.forHostPath("docs/09-acl-v4.1.sql"), "/docker-entrypoint-initdb.d/20-acl-v4.1.sql")
             .withCopyFileToContainer(MountableFile.forHostPath("docs/10-bao-cao-v4.1.sql"), "/docker-entrypoint-initdb.d/30-bao-cao-v4.1.sql")
@@ -59,15 +57,21 @@ public abstract class IntegrationTestBase {
         registry.add("app.sepay.api-key", () -> SEPAY_API_KEY);
         registry.add("app.sepay.bank-account", () -> "0010000000355");
         registry.add("app.sepay.bank-name", () -> "Vietcombank");
-        registry.add("app.sepay.webhook-db.url", POSTGRES::getJdbcUrl);
-        registry.add("app.sepay.webhook-db.username", () -> WEBHOOK_USER);
-        registry.add("app.sepay.webhook-db.password", () -> WEBHOOK_PASSWORD);
     }
 
     @Autowired
     protected MockMvc mvc;
 
+    @Autowired
+    private ApplicationContext applicationContext;
+
     protected static TestData data;
+
+    /** Dữ liệu mẫu đi qua đúng các Service nghiệp vụ (kho, gọi món, hóa đơn) như khi chạy thật. */
+    @BeforeEach
+    void bindTestDataToServices() {
+        data.useServicesFrom(applicationContext);
+    }
 
     @BeforeAll
     static void initTestData() {

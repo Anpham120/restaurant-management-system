@@ -8,7 +8,8 @@ import org.springframework.stereotype.Component;
 /**
  * Chuyển lỗi PostgreSQL (SQLSTATE) thành lỗi API. Mã RC* do hàm rc_raise trong docs/04-schema-v4.1.sql phát ra:
  * RC001 thiếu nguyên liệu · RC403 không đủ vai trò · RC409 xung đột trạng thái · RC422 dữ liệu không hợp lệ ·
- * RC500 bất biến bị phá (kiểm lúc COMMIT). Thông điệp RC4xx/RC001 của DB viết cho người dùng nên được trả nguyên văn;
+ * RC500 bất biến bị phá (kiểm lúc COMMIT).
+ * Từ khi nghiệp vụ chuyển lên Service, các mã RC* chỉ còn do trigger bảo vệ dữ liệu ném ra (lưới an toàn). Thông điệp RC4xx/RC001 của DB viết cho người dùng nên được trả nguyên văn;
  * các lỗi còn lại chỉ trả thông điệp chung (chi tiết nằm trong log).
  */
 @Component
@@ -26,10 +27,10 @@ public class PostgresErrorTranslator {
         String state = sql.getSQLState();
         String dbMessage = cleanMessage(sql.getMessage());
         return switch (state) {
-            case "RC001" -> new Translated(HttpStatus.CONFLICT, "RC001", dbMessage, true);
-            case "RC403" -> new Translated(HttpStatus.FORBIDDEN, "RC403", dbMessage, true);
-            case "RC409" -> new Translated(HttpStatus.CONFLICT, "RC409", dbMessage, true);
-            case "RC422" -> new Translated(HttpStatus.UNPROCESSABLE_CONTENT, "RC422", dbMessage, true);
+            case "RC001" -> new Translated(HttpStatus.CONFLICT, "INSUFFICIENT_STOCK", dbMessage, true);
+            case "RC403" -> new Translated(HttpStatus.FORBIDDEN, "FORBIDDEN", dbMessage, true);
+            case "RC409" -> new Translated(HttpStatus.CONFLICT, "INVALID_STATE", dbMessage, true);
+            case "RC422" -> new Translated(HttpStatus.UNPROCESSABLE_CONTENT, "INVALID_REQUEST", dbMessage, true);
             case "RC500" -> new Translated(HttpStatus.INTERNAL_SERVER_ERROR, "RC500", "Dữ liệu vi phạm bất biến hệ thống", false);
             case "23505" -> new Translated(HttpStatus.CONFLICT, "DUPLICATE", "Dữ liệu đã tồn tại", false);
             case "23P01" -> new Translated(HttpStatus.CONFLICT, "OVERLAP", "Trùng khoảng thời gian với bản ghi khác", false);

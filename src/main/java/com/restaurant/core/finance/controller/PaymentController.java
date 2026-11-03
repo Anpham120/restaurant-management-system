@@ -13,9 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
 import com.restaurant.core.finance.dto.InvoiceResponse;
-import com.restaurant.core.finance.dto.PaymentRequest;
-import com.restaurant.core.finance.dto.ReasonRequest;
 import com.restaurant.core.finance.dto.PaymentResponse;
+import com.restaurant.core.finance.dto.ReasonRequest;
+import com.restaurant.core.finance.dto.StartPaymentRequest;
 import com.restaurant.core.finance.service.PaymentService;
 import com.restaurant.core.security.CurrentUser;
 
@@ -36,14 +36,14 @@ public class PaymentController {
     @PostMapping("/invoices/{invoiceId}/payments")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('CASHIER', 'MANAGER')")
-    public ApiResponse<PaymentResponse> pay(@PathVariable @Positive long invoiceId, @Valid @RequestBody PaymentRequest request) {
-        return ApiResponse.ok(paymentService.start(invoiceId, currentUser.employeeId(), request));
+    public ApiResponse<PaymentResponse> startPayment(@PathVariable @Positive long invoiceId, @Valid @RequestBody StartPaymentRequest request) {
+        return ApiResponse.ok(paymentService.startPayment(invoiceId, currentUser.employeeId(), request));
     }
 
     /** Hủy yêu cầu thanh toán QR đang chờ (khách đổi sang tiền mặt…). Webhook đến sau sẽ được lưu AFTER_CANCEL. */
     @PostMapping("/payment-requests/{requestId}/cancel")
     @PreAuthorize("hasAnyRole('CASHIER', 'MANAGER')")
-    public ApiResponse<InvoiceResponse> cancelRequest(@PathVariable @Positive long requestId, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(paymentService.cancelRequest(requestId, currentUser.employeeId(), request.reason()));
+    public ApiResponse<InvoiceResponse> cancelPaymentRequest(@PathVariable @Positive long requestId, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(paymentService.cancelPaymentRequest(requestId, currentUser.employeeId(), request.reason()));
     }
 }

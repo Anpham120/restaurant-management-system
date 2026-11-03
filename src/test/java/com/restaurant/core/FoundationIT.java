@@ -8,6 +8,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.order.service.TableService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,14 +40,14 @@ class FoundationIT extends IntegrationTestBase {
         assertThat(appJdbc.sql("SELECT pg_has_role(current_user, 'rc_owner', 'MEMBER')").query(Boolean.class).single()).isFalse();
     }
 
+    /** Nghiệp vụ nằm ở Service nên ứng dụng ghi trực tiếp bảng nghiệp vụ, nhưng vẫn không được sửa cấu trúc DB hay danh mục vai trò. */
     @Test
-    void appCannotBypassBusinessFunctions() {
+    void appCannotChangeSchemaOrRoles() {
         for (String sql : new String[] {
-                "UPDATE invoices SET status = 'PAID' WHERE false",
-                "INSERT INTO payments (invoice_id, payment_request_id, amount, method, business_date) SELECT 1, 1, 1, 'CASH', CURRENT_DATE WHERE false",
-                "UPDATE kitchen_batches SET quantity_on_hand = 0 WHERE false",
-                "SELECT rc_item_transition(1, ARRAY['PENDING'], 'ACCEPTED', 1)",
-                "SELECT rc_process_verified_qr('x', 'y', 1, '{}')"}) {
+                "UPDATE roles SET role_name = 'x' WHERE false",
+                "CREATE TABLE hack (id int)",
+                "ALTER TABLE invoices ADD COLUMN hack int",
+                "DROP TRIGGER trg_invoice_guard ON invoices"}) {
             assertThatThrownBy(() -> appJdbc.sql(sql).update())
                     .as(sql)
                     .isInstanceOf(DataAccessException.class)
@@ -93,9 +94,9 @@ class FoundationIT extends IntegrationTestBase {
 
     @Test
     void performanceAspectLogsServiceCallsWithoutArguments(CapturedOutput output) {
-        tableService.listTables(false);
-        assertThat(output).contains("TableService.listTables");
-        assertThatThrownBy(() -> tableService.openSession(987654321L, 987654321L)).isInstanceOf(DataAccessException.class);
-        assertThat(output).contains("TableService.openSession lỗi sau").doesNotContain("987654321");
+        tableService.getAllTables(false);
+        assertThat(output).contains("TableServiceImpl.getAllTables");
+        assertThatThrownBy(() -> tableService.openTableSession(987654321L, 987654321L)).isInstanceOf(ApiException.class);
+        assertThat(output).contains("TableServiceImpl.openTableSession lỗi sau").doesNotContain("987654321");
     }
 }

@@ -32,19 +32,19 @@ public class SessionController {
 
     @GetMapping("/{sessionId}")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'CASHIER')")
-    public ApiResponse<SessionResponse> get(@PathVariable @Positive long sessionId) {
-        return ApiResponse.ok(tableService.getSession(sessionId));
+    public ApiResponse<SessionResponse> getSessionById(@PathVariable @Positive long sessionId) {
+        return ApiResponse.ok(tableService.getSessionById(sessionId));
     }
 
     @PostMapping("/{sessionId}/close-empty")
     @PreAuthorize("hasAnyRole('WAITER', 'MANAGER')")
-    public ApiResponse<SessionResponse> closeEmpty(@PathVariable @Positive long sessionId) {
+    public ApiResponse<SessionResponse> closeEmptySession(@PathVariable @Positive long sessionId) {
         return ApiResponse.ok(tableService.closeEmptySession(sessionId, currentUser.employeeId()));
     }
 
     @PostMapping("/{sessionId}/abandon")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<AbandonResponse> abandon(@PathVariable @Positive long sessionId, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(tableService.abandonSession(sessionId, currentUser.employeeId(), request.reason()));
+    public ApiResponse<AbandonResponse> handleCustomerLeftWithoutPaying(@PathVariable @Positive long sessionId, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(tableService.handleCustomerLeftWithoutPaying(sessionId, currentUser.employeeId(), request.reason()));
     }
 }

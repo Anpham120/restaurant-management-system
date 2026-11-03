@@ -2,7 +2,7 @@
 
 ## 1. Chạy dự án
 
-Cần: JDK 21, Docker (Compose v2). Maven không cần cài — dùng `./mvnw`.
+Cần: JDK 25, Docker (Compose v2). Maven không cần cài — dùng `./mvnw`.
 
 ```bash
 cp .env.example .env                   # điền DB_ADMIN_PASSWORD, DB_APP_PASSWORD, JWT_SECRET (openssl rand -base64 48)
@@ -36,24 +36,28 @@ Ví dụ thật đã có: "gửi lượt gọi món" `POST /api/orders/{orderId}
 ```java
 // order/dto/SubmitBatchRequest.java — record, Bean Validation, KHÔNG có actorId
 public record SubmitBatchRequest(@NotBlank @Size(max = 64) String requestKey,
-                                 @NotEmpty @Size(max = 50) List<@Valid @NotNull Item> items) {
-    public record Item(@NotNull @Positive Long dailyMenuItemId, @NotNull @Positive Integer quantity, @Size(max = 255) String note) {}
-}
+                                 @NotEmpty @Size(max = 50) List<@Valid @NotNull Item> items) { … }
 
-// order/repository/OrderRepository.java — SQL ở đây, JdbcClient, tham số đặt tên
-public String submitBatch(long orderId, long actorId, String requestKey, String itemsJson) {
-    return jdbc.sql("SELECT rc_submit_batch(:o, :a, :k, CAST(:items AS jsonb))::text")   // hàm trả JSONB
-            .param("o", orderId).param("a", actorId).param("k", requestKey).param("items", itemsJson)
-            .query(String.class).single();
-}
+// order/entity/OrderItem.java — @Entity ánh xạ bảng order_items (Lombok @Getter)
+// order/repository/OrderItemRepository.java — interface extends JpaRepository<OrderItem, Long>
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT i FROM OrderItem i JOIN FETCH i.batch WHERE i.id = :id")
+Optional<OrderItem> findByIdForUpdate(@Param("id") Long id);
 
-// order/service/OrderService.java — dựng JSON đầu vào, đọc JSON kết quả (giữ nguyên warnings), không try/catch lỗi DB
+// order/service/OrderService.java — interface: danh sách nghiệp vụ
+SubmitBatchResponse submitOrderBatch(long orderId, long actorId, SubmitBatchRequest request);
+
+// order/service/impl/OrderServiceImpl.java — nghiệp vụ: khóa đơn, kiểm món đang bán, ghi món + nhật ký, cảnh báo hạn mức
+@Override
+@Transactional
+public SubmitBatchResponse submitOrderBatch(long orderId, long actorId, SubmitBatchRequest request) { … }
+
 // order/controller/OrderController.java
 @PostMapping("/{orderId}/batches")
 @ResponseStatus(HttpStatus.CREATED)
 @PreAuthorize("hasAnyRole('WAITER', 'MANAGER')")          // khớp ma trận docs/07 §10
-public ApiResponse<SubmitBatchResponse> submitBatch(@PathVariable @Positive long orderId, @Valid @RequestBody SubmitBatchRequest request) {
-    return ApiResponse.ok(orderService.submitBatch(orderId, currentUser.employeeId(), request));
+public ApiResponse<SubmitBatchResponse> submitOrderBatch(@PathVariable @Positive long orderId, @Valid @RequestBody SubmitBatchRequest request) {
+    return ApiResponse.ok(orderService.submitOrderBatch(orderId, currentUser.employeeId(), request));
 }
 ```
 
@@ -61,26 +65,63 @@ Quy tắc:
 
 - **Controller**: URL, `@PreAuthorize`, `@Valid`, lấy `currentUser.employeeId()`, bọc `ApiResponse.ok(...)`. Không SQL.
 - **Service**: nghiệp vụ phía Java (ghép dữ liệu, chọn strategy, gọi nhiều repository khi cần). Đặt trong package `..service..` để `PerformanceLoggingAspect` đo thời gian. Không cần interface.
-- **Repository**: SQL bằng `JdbcClient`, tham số đặt tên (`:name`) — không nối chuỗi SQL. Map kết quả vào `record` (tên cột snake_case tự khớp field camelCase).
+- **Repository**: ghi bằng interface `JpaRepository`; truy vấn chỉ đọc ghép nhiều bảng bằng `JdbcClient` trong `…QueryRepository`, tham số đặt tên (`:name`) — không nối chuỗi SQL. Map kết quả vào `record` (tên cột snake_case tự khớp field camelCase).
+- **Ranh giới module** (Spring Modulith): chỉ import từ `common` và lớp ở package gốc của `security` (như `CurrentUser`). Không import `controller/service/repository/dto` của module khác. `ModularityTest` sẽ báo lỗi nếu vi phạm. Module mới cần `package-info.java` với `@ApplicationModule` ([ARCHITECTURE](ARCHITECTURE.md#module-spring-modulith)).
 - **DTO**: `record` trong `<module>/dto`. Request không bao giờ chứa `actorId`, `employeeId` của người thao tác, tổng tiền phải thu hay trạng thái muốn đặt.
 
-## 3. Gọi hàm `rc_*`
+### Cấu trúc chuẩn của một module (mẫu: `employee`)
 
-- Một hàm = một câu `SELECT rc_xxx(:a, :b)` = một transaction nguyên tử. **Không** thêm `@Transactional`, **không** gọi hàm rồi tự `UPDATE` bổ sung.
-- Kiểu trả về theo chữ ký thật (kiểm bằng `\df rc_*` trong psql): `bigint` → `Long`, `text` → `String`, `jsonb` → ép `::text` rồi parse, `void` → `jdbc.sql(...).query().singleRow()` hoặc `.update()`.
-- `p_actor` luôn là `currentUser.employeeId()`.
-- Lỗi nghiệp vụ do DB ném (RC403/RC409/RC422/RC001) **để nguyên cho bay lên** — `GlobalExceptionHandler` đổi thành HTTP với thông điệp của DB.
-- Khi thật sự cần nhiều câu lệnh trong một transaction Java (hiếm — ví dụ ghi danh mục nhiều bảng), dùng `@Transactional` ở Service và hỏi Leader trước.
+```text
+employee/
+├── controller/        EmployeeController            URL, @PreAuthorize, @Valid, gọi Service
+├── dto/request/       CreateEmployeeRequest …       record + Bean Validation
+├── dto/response/      EmployeeResponse …            record trả ra API
+├── entity/            Employee, Account, Role …     @Entity ánh xạ bảng (Lombok @Getter/@Setter)
+├── mapper/            EmployeeMapper                Entity → Response
+├── repository/        EmployeeRepository …          interface extends JpaRepository
+└── service/
+    ├── EmployeeService                              interface: danh sách nghiệp vụ
+    └── impl/EmployeeServiceImpl                     logic + @Transactional
+```
+
+- Mọi thao tác ghi: Entity + `JpaRepository`, nghiệp vụ trong `…ServiceImpl`. Truy vấn chỉ đọc ghép nhiều bảng cho màn hình: `…QueryRepository` (JdbcClient, trả thẳng DTO).
+- Ghi xong thì `flush()` trong Service, để lỗi ràng buộc DB thành lỗi API ngay trong method.
+- Sửa cùng một bản ghi đồng thời: đọc bằng method `…ForUpdate` (`@Lock(PESSIMISTIC_WRITE)`).
+
+### Đặt tên hàm
+
+Tên hàm nói rõ **làm gì với cái gì**: động từ + đối tượng, tiếng Anh, camelCase. Tìm theo chức năng là ra.
+
+| Loại | Mẫu | Ví dụ |
+| --- | --- | --- |
+| Lấy danh sách | `getAll…`, `get…s` | `getAllDepartments()`, `getEmployees(status, page, size)` |
+| Lấy một | `get…ById` | `getEmployeeById(id)` |
+| Tạo / sửa / xóa | `create…`, `update…`, `delete…` | `createEmployee(request)`, `updateAccountRoles(...)` |
+| Đổi trạng thái | động từ nghiệp vụ + đối tượng | `lockAccount`, `unlockAccount`, `markEmployeeAsLeft`, `resetAccountPassword` |
+| Kiểm tra | `is…`, `has…`, `can…` | `hasLeft()` |
+| Truy vấn khóa dòng | `find…ForUpdate` | `findAccountForUpdate(id)` |
+| Tạo lỗi | `…Error` | `notFoundError(...)`, `selfLockoutError()` |
+
+Không đặt tên chung chung (`process`, `handle`, `doAction`, `data`). Method controller trùng tên method service nó gọi.
+
+## 3. Viết nghiệp vụ trong Service
+
+- Method ghi: `@Transactional` ở `…ServiceImpl` (class để `@Transactional(readOnly = true)` cho method đọc).
+- Đổi trạng thái qua method có tên nghiệp vụ trên entity (`invoice.lockForPayment(total)`, `batch.reserve(qty)`), không set trạng thái lung tung trong Service. Trạng thái món chỉ đổi qua `OrderItemStatusChanger` (kiểm bước chuyển + ghi nhật ký).
+- Khóa dòng bằng `…ForUpdate` đúng thứ tự khóa chung ([ARCHITECTURE](ARCHITECTURE.md#nguyên-tắc-cốt-lõi)). Khóa trước rồi mới nạp entity.
+- Mọi thay đổi tồn kho đi kèm một dòng `StockMovement` (sổ kho chỉ-thêm) — DB kiểm số dư khớp sổ lúc COMMIT.
+- Ghi xong thì `flush()` trước khi ghi bản ghi phụ thuộc (ví dụ đổi trạng thái món rồi mới ghi nhật ký), để trigger bảo vệ của DB thấy đúng thứ tự.
+- Lỗi nghiệp vụ: `throw ApiException.invalidState(...)` (409), `ApiException.invalidRequest(...)` (422), `ApiException.notFound(...)` (404), `ApiException.insufficientStock(...)` (409). Thông điệp tiếng Việt, hiển thị được cho người dùng.
 
 ## 4. Kiểm tra quyền
 
 - `@PreAuthorize("hasAnyRole('…')")` trên **mọi** endpoint ngoài `/api/auth/login` và `/actuator/health`; vai trò lấy theo ma trận [07 §10](../07-kiem-toan-ham-rc.md). Không có annotation = mọi người đã đăng nhập đều gọi được.
-- DB kiểm lại vai trò trong hàm `rc_*` (RC403). Bảng ghi trực tiếp (danh mục, nhân sự) không có lớp kiểm thứ hai — `@PreAuthorize` ở đó là bắt buộc.
+- `@PreAuthorize` là lớp kiểm vai trò duy nhất ở API — bắt buộc trên mọi endpoint ghi.
 - Không tự giải mã JWT; dùng `CurrentUser`.
 
 ## 5. Xử lý lỗi
 
-- Lỗi do backend phát hiện: `throw new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Không tìm thấy món")`.
+- Lỗi do backend phát hiện: `throw ApiException.notFound("Không tìm thấy món " + id)` (xem mục 3).
 - Lỗi validate: dùng annotation (`@NotBlank`, `@Positive`…) — tự thành 400 `VALIDATION_ERROR`.
 - Không `catch (Exception)` trong Controller/Service để trả JSON. Mã lỗi đầy đủ: [API_CONVENTIONS](API_CONVENTIONS.md#mã-lỗi).
 
@@ -88,19 +129,14 @@ Quy tắc:
 
 - **Unit test** (`*Test.java`): logic Java thuần, không Spring, không DB (ví dụ `PostgresErrorTranslatorTest`).
 - **Integration test** (`*IT.java`): kế thừa `IntegrationTestBase` — một PostgreSQL 17 Testcontainers dựng y như compose; app kết nối bằng tài khoản `rc_app`. Dựng dữ liệu bằng `TestData` (tài khoản quản trị), gọi API bằng `mvc` + `bearer(data.staff("WAITER"))`. Mỗi test tự tạo bàn/nhân viên mới, không phụ thuộc thứ tự.
-- Mỗi endpoint mới cần ít nhất: 1 ca thành công, 1 ca sai vai trò (403), 1 ca lỗi nghiệp vụ từ DB (409/422).
+- Mỗi endpoint mới cần ít nhất: 1 ca thành công, 1 ca sai vai trò (403), 1 ca lỗi nghiệp vụ (409/422).
 - Chạy: `./mvnw test` (cần Docker đang chạy). Chỉ chạy một lớp: `./mvnw test -Dtest=TableIT`.
 
 ## SePay (webhook QR) — Phạm Duy An
 
-1. `.env`: `SEPAY_API_KEY` (khóa đặt ở cấu hình webhook SePay, kiểu xác thực **API Key**), `SEPAY_BANK_ACCOUNT`, `SEPAY_BANK_NAME` (để dựng ảnh QR), `DB_WEBHOOK_USER`, `DB_WEBHOOK_PASSWORD`.
-2. Login `rc_webhook` được `docker/db-init/40-app-logins.sh` tạo **khi khởi tạo volume** nếu có hai biến DB_WEBHOOK_*. Database đã khởi tạo trước đó → tạo tay bằng tài khoản quản trị (không cấp thêm quyền nào khác):
-   ```bash
-   docker compose exec -T db psql -U postgres -d restaurant_core -v ON_ERROR_STOP=1 \
-       -v u="$DB_WEBHOOK_USER" -v p="$DB_WEBHOOK_PASSWORD" <<< 'CREATE ROLE :"u" LOGIN PASSWORD :'"'"'p'"'"' IN ROLE rc_webhook;'
-   ```
-3. Trong SePay: URL webhook `https://<miền>/api/webhooks/sepay`, cấu hình nhận diện mã thanh toán theo tiền tố `RC` (mã dạng `RC<số hóa đơn>Q<số>`). Endpoint trả `{"success": true}` HTTP 200 cho mọi kết quả nghiệp vụ (kể cả lệch tiền) để SePay không gửi lại; chỉ lỗi xác thực/payload/hệ thống mới trả mã lỗi.
-4. Thử local không cần SePay: `curl -X POST localhost:8081/api/webhooks/sepay -H "Authorization: Apikey $SEPAY_API_KEY" -H 'Content-Type: application/json' -d '{"id":1,"code":"RC1Q1","content":"RC1Q1","transferType":"in","transferAmount":50000}'`.
+1. `.env`: `SEPAY_API_KEY` (khóa đặt ở cấu hình webhook SePay, kiểu xác thực **API Key**), `SEPAY_BANK_ACCOUNT`, `SEPAY_BANK_NAME` (để dựng ảnh QR). Webhook dùng kết nối DB chính của ứng dụng (không còn login `rc_webhook` riêng).
+2. Trong SePay: URL webhook `https://<miền>/api/webhooks/sepay`, cấu hình nhận diện mã thanh toán theo tiền tố `RC` (mã dạng `RC<số hóa đơn>Q<số>`). Endpoint trả `{"success": true}` HTTP 200 cho mọi kết quả nghiệp vụ (kể cả lệch tiền) để SePay không gửi lại; chỉ lỗi xác thực/payload/hệ thống mới trả mã lỗi.
+3. Thử local không cần SePay: `curl -X POST localhost:8081/api/webhooks/sepay -H "Authorization: Apikey $SEPAY_API_KEY" -H 'Content-Type: application/json' -d '{"id":1,"code":"RC1Q1","content":"RC1Q1","transferType":"in","transferAmount":50000}'`.
 
 ## Migration (Flyway)
 
@@ -121,4 +157,4 @@ Flyway luôn chạy bằng `FLYWAY_USER` (quản trị), app chạy bằng `DB_A
 
 - Cần đọc/ghi bảng của module khác → hỏi chủ module (bảng [MODULE_BOUNDARIES](MODULE_BOUNDARIES.md)) để dùng Service của họ.
 - API của mình là đầu vào của module khác (ví dụ order → finance chốt hóa đơn; inventory → order cấp nguyên liệu).
-- Phát hiện hàm `rc_*` hoạt động khác tài liệu, hoặc cần đổi schema → báo cả nhóm, không tự sửa DB.
+- Cần đổi schema hoặc trigger → viết migration Flyway mới, báo cả nhóm duyệt; không sửa tay DB.

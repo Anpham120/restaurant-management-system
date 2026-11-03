@@ -41,56 +41,56 @@ public class OrderItemController {
 
     @GetMapping("/{itemId}/events")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'CASHIER', 'KITCHEN')")
-    public ApiResponse<List<ItemEventResponse>> events(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(orderService.itemEvents(itemId));
+    public ApiResponse<List<ItemEventResponse>> getOrderItemHistory(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(orderService.getOrderItemHistory(itemId));
     }
 
     @PostMapping("/{itemId}/accept")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<AcceptItemResponse> accept(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(kitchenService.accept(itemId, currentUser.employeeId()));
+    public ApiResponse<AcceptItemResponse> acceptOrderItem(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(kitchenService.acceptOrderItem(itemId, currentUser.employeeId()));
     }
 
     @PostMapping("/{itemId}/reject")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> reject(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(kitchenService.reject(itemId, currentUser.employeeId(), request.reason()));
+    public ApiResponse<OrderItemResponse> rejectOrderItem(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(kitchenService.rejectOrderItem(itemId, currentUser.employeeId(), request.reason()));
     }
 
     @PostMapping("/{itemId}/start-cooking")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> startCooking(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(kitchenService.startCooking(itemId, currentUser.employeeId()));
+    public ApiResponse<OrderItemResponse> startCookingItem(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(kitchenService.startCookingItem(itemId, currentUser.employeeId()));
     }
 
     @PostMapping("/{itemId}/finish")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> finish(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(kitchenService.finish(itemId, currentUser.employeeId()));
+    public ApiResponse<OrderItemResponse> finishCookingItem(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(kitchenService.finishCookingItem(itemId, currentUser.employeeId()));
     }
 
     @PostMapping("/{itemId}/reallocate")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> reallocate(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(kitchenService.reallocate(itemId, currentUser.employeeId()));
+    public ApiResponse<OrderItemResponse> reallocateItemIngredients(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(kitchenService.reallocateItemIngredients(itemId, currentUser.employeeId()));
     }
 
     @PostMapping("/{itemId}/serve")
     @PreAuthorize("hasAnyRole('WAITER', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> serve(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(orderService.serve(itemId, currentUser.employeeId()));
+    public ApiResponse<OrderItemResponse> markItemServed(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(orderService.markItemServed(itemId, currentUser.employeeId()));
     }
 
     /** Hủy trước khi nấu (PENDING/ACCEPTED). Từ COOKING phải dùng cancel-exception. */
     @PostMapping("/{itemId}/cancel")
     @PreAuthorize("hasAnyRole('WAITER', 'KITCHEN', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> cancel(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(orderService.cancel(itemId, currentUser.employeeId(), request.reason()));
+    public ApiResponse<OrderItemResponse> cancelItemBeforeCooking(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(orderService.cancelItemBeforeCooking(itemId, currentUser.employeeId(), request.reason()));
     }
 
     @PostMapping("/{itemId}/cancel-exception")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<OrderItemResponse> cancelException(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(orderService.cancelException(itemId, currentUser.employeeId(), request.reason()));
+    public ApiResponse<OrderItemResponse> cancelItemAfterCooking(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(orderService.cancelItemAfterCooking(itemId, currentUser.employeeId(), request.reason()));
     }
 }

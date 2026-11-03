@@ -34,16 +34,16 @@ public class OrderController {
 
     @GetMapping("/{orderId}")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'CASHIER', 'KITCHEN')")
-    public ApiResponse<OrderResponse> get(@PathVariable @Positive long orderId) {
-        return ApiResponse.ok(orderService.getOrder(orderId));
+    public ApiResponse<OrderResponse> getOrderById(@PathVariable @Positive long orderId) {
+        return ApiResponse.ok(orderService.getOrderById(orderId));
     }
 
     /** Gửi lượt gọi món (lần đầu và gọi thêm). Idempotent theo requestKey. */
     @PostMapping("/{orderId}/batches")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('WAITER', 'MANAGER')")
-    public ApiResponse<SubmitBatchResponse> submitBatch(@PathVariable @Positive long orderId,
+    public ApiResponse<SubmitBatchResponse> submitOrderBatch(@PathVariable @Positive long orderId,
                                                         @Valid @RequestBody SubmitBatchRequest request) {
-        return ApiResponse.ok(orderService.submitBatch(orderId, currentUser.employeeId(), request));
+        return ApiResponse.ok(orderService.submitOrderBatch(orderId, currentUser.employeeId(), request));
     }
 }

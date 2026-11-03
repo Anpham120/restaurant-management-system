@@ -38,8 +38,8 @@ public class MenuCatalogController {
 
     @GetMapping("/menu-categories")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'KITCHEN', 'CASHIER')")
-    public ApiResponse<List<CategoryResponse>> categories(@RequestParam(defaultValue = "true") boolean activeOnly) {
-        return ApiResponse.ok(service.categories(activeOnly));
+    public ApiResponse<List<CategoryResponse>> getAllCategories(@RequestParam(defaultValue = "true") boolean activeOnly) {
+        return ApiResponse.ok(service.getAllCategories(activeOnly));
     }
 
     @PostMapping("/menu-categories")
@@ -57,34 +57,34 @@ public class MenuCatalogController {
 
     @GetMapping("/menu-items")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'KITCHEN', 'CASHIER')")
-    public ApiResponse<List<MenuItemResponse>> items(@RequestParam(required = false) @Positive Long categoryId,
+    public ApiResponse<List<MenuItemResponse>> getMenuItems(@RequestParam(required = false) @Positive Long categoryId,
                                                      @RequestParam(defaultValue = "true") boolean activeOnly) {
-        return ApiResponse.ok(service.items(categoryId, activeOnly));
+        return ApiResponse.ok(service.getMenuItems(categoryId, activeOnly));
     }
 
     @GetMapping("/menu-items/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'KITCHEN', 'CASHIER')")
-    public ApiResponse<MenuItemResponse> item(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.item(id));
+    public ApiResponse<MenuItemResponse> getMenuItemById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getMenuItemById(id));
     }
 
     @PostMapping("/menu-items")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<MenuItemResponse> createItem(@Valid @RequestBody MenuItemRequest request) {
-        return ApiResponse.ok(service.createItem(request));
+    public ApiResponse<MenuItemResponse> createMenuItem(@Valid @RequestBody MenuItemRequest request) {
+        return ApiResponse.ok(service.createMenuItem(request));
     }
 
     @PutMapping("/menu-items/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<MenuItemResponse> updateItem(@PathVariable @Positive long id, @Valid @RequestBody MenuItemRequest request) {
-        return ApiResponse.ok(service.updateItem(id, request));
+    public ApiResponse<MenuItemResponse> updateMenuItem(@PathVariable @Positive long id, @Valid @RequestBody MenuItemRequest request) {
+        return ApiResponse.ok(service.updateMenuItem(id, request));
     }
 
     @GetMapping("/menu-items/{id}/recipes")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<RecipeResponse>> recipes(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.recipes(id));
+    public ApiResponse<List<RecipeResponse>> getRecipesOfMenuItem(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getRecipesOfMenuItem(id));
     }
 
     /** Tạo version công thức mới (hiện hành). Không sửa công thức cũ. */

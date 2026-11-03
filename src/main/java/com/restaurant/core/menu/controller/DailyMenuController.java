@@ -49,92 +49,92 @@ public class DailyMenuController {
     /** Hợp đồng với Order: thực đơn ngày kinh doanh hiện tại, kèm suất còn lại. */
     @GetMapping("/daily-menus/today")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'KITCHEN', 'CASHIER')")
-    public ApiResponse<DailyMenuResponse> today() {
-        return ApiResponse.ok(service.today());
+    public ApiResponse<DailyMenuResponse> getTodayMenu() {
+        return ApiResponse.ok(service.getTodayMenu());
     }
 
     @GetMapping("/daily-menus")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'KITCHEN', 'CASHIER')")
-    public ApiResponse<DailyMenuResponse> byDate(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ApiResponse.ok(service.byDate(date));
+    public ApiResponse<DailyMenuResponse> getMenuByDate(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ApiResponse.ok(service.getMenuByDate(date));
     }
 
     @GetMapping("/daily-menus/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'KITCHEN', 'CASHIER')")
-    public ApiResponse<DailyMenuResponse> get(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.get(id));
+    public ApiResponse<DailyMenuResponse> getDailyMenuById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getDailyMenuById(id));
     }
 
     @PostMapping("/daily-menus")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<DailyMenuResponse> create(@Valid @RequestBody DailyMenuRequest request) {
-        return ApiResponse.ok(service.create(request.businessDate(), Boolean.TRUE.equals(request.fromCatalog())));
+    public ApiResponse<DailyMenuResponse> createDailyMenu(@Valid @RequestBody DailyMenuRequest request) {
+        return ApiResponse.ok(service.createDailyMenu(request.businessDate(), Boolean.TRUE.equals(request.fromCatalog())));
     }
 
     /** Nhập số suất cho nhiều món một lần (màn thực đơn ngày sửa trực tiếp trên bảng). */
     @PutMapping("/daily-menus/{id}/quotas")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<DailyMenuResponse> updateQuotas(@PathVariable @Positive long id, @Valid @RequestBody QuotasRequest request) {
-        return ApiResponse.ok(service.updateQuotas(id, request.items()));
+    public ApiResponse<DailyMenuResponse> updateMenuQuotas(@PathVariable @Positive long id, @Valid @RequestBody QuotasRequest request) {
+        return ApiResponse.ok(service.updateMenuQuotas(id, request.items()));
     }
 
     /** Điền hạn mức theo số suất đã bán của thực đơn trước (hoặc của ngày fromDate). */
     @PostMapping("/daily-menus/{id}/fill-quotas")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<FillQuotasResponse> fillQuotas(@PathVariable @Positive long id, @RequestBody(required = false) FillQuotasRequest request) {
-        return ApiResponse.ok(service.fillQuotas(id, request == null ? null : request.fromDate()));
+    public ApiResponse<FillQuotasResponse> fillQuotasFromSales(@PathVariable @Positive long id, @RequestBody(required = false) FillQuotasRequest request) {
+        return ApiResponse.ok(service.fillQuotasFromSales(id, request == null ? null : request.fromDate()));
     }
 
     /** Tóm tắt cuối ngày phần nguyên liệu: dự kiến theo hạn mức, đã dùng khi nấu, tồn bếp cuối ngày. */
     @GetMapping("/daily-menus/{id}/ingredient-usage")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<IngredientUsageRow>> ingredientUsage(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.ingredientUsage(id));
+    public ApiResponse<List<IngredientUsageRow>> getIngredientUsage(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getIngredientUsage(id));
     }
 
     @PostMapping("/daily-menus/{id}/items")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<DailyMenuResponse> addItem(@PathVariable @Positive long id, @Valid @RequestBody DailyMenuItemRequest request) {
-        return ApiResponse.ok(service.addItem(id, request));
+    public ApiResponse<DailyMenuResponse> addDishToMenu(@PathVariable @Positive long id, @Valid @RequestBody DailyMenuItemRequest request) {
+        return ApiResponse.ok(service.addDishToMenu(id, request));
     }
 
     @PostMapping("/daily-menus/{id}/publish")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<DailyMenuResponse> publish(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.publish(id));
+    public ApiResponse<DailyMenuResponse> publishDailyMenu(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.publishDailyMenu(id));
     }
 
     @PostMapping("/daily-menus/{id}/close")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<DailyMenuResponse> close(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.close(id));
+    public ApiResponse<DailyMenuResponse> closeDailyMenu(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.closeDailyMenu(id));
     }
 
     @PutMapping("/daily-menu-items/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<DailyMenuItemResponse> updateQuota(@PathVariable @Positive long id, @Valid @RequestBody QuotaRequest request) {
-        return ApiResponse.ok(service.updateQuota(id, request.quotaTotal()));
+    public ApiResponse<DailyMenuItemResponse> updateDishQuota(@PathVariable @Positive long id, @Valid @RequestBody QuotaRequest request) {
+        return ApiResponse.ok(service.updateDishQuota(id, request.quotaTotal()));
     }
 
     @DeleteMapping("/daily-menu-items/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<Void> remove(@PathVariable @Positive long id) {
-        service.removeItem(id);
+    public ApiResponse<Void> removeDishFromMenu(@PathVariable @Positive long id) {
+        service.removeDishFromMenu(id);
         return ApiResponse.ok(null);
     }
 
     /** Tạm dừng bán (hết nguyên liệu, bếp quá tải…): Waiter không gửi được, món PENDING bị từ chối khi bếp nhận. */
     @PostMapping("/daily-menu-items/{id}/pause")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<DailyMenuItemResponse> pause(@PathVariable @Positive long id, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(service.pause(id, currentUser.employeeId(), request.reason()));
+    public ApiResponse<DailyMenuItemResponse> pauseDish(@PathVariable @Positive long id, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(service.pauseDish(id, currentUser.employeeId(), request.reason()));
     }
 
     @PostMapping("/daily-menu-items/{id}/resume")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<DailyMenuItemResponse> resume(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.resume(id));
+    public ApiResponse<DailyMenuItemResponse> resumeDish(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.resumeDish(id));
     }
 }

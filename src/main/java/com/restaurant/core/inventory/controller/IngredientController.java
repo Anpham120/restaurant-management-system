@@ -36,14 +36,14 @@ public class IngredientController {
 
     @GetMapping("/ingredients")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<IngredientResponse>> ingredients(@RequestParam(defaultValue = "true") boolean activeOnly) {
-        return ApiResponse.ok(service.ingredients(activeOnly));
+    public ApiResponse<List<IngredientResponse>> getAllIngredients(@RequestParam(defaultValue = "true") boolean activeOnly) {
+        return ApiResponse.ok(service.getAllIngredients(activeOnly));
     }
 
     @GetMapping("/ingredients/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<IngredientResponse> ingredient(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.ingredient(id));
+    public ApiResponse<IngredientResponse> getIngredientById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getIngredientById(id));
     }
 
     @PostMapping("/ingredients")
@@ -61,27 +61,27 @@ public class IngredientController {
 
     @GetMapping("/kitchen-ingredient-types")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<KitchenTypeResponse>> types(@RequestParam(required = false) @Positive Long ingredientId,
+    public ApiResponse<List<KitchenTypeResponse>> getAllKitchenTypes(@RequestParam(required = false) @Positive Long ingredientId,
                                                         @RequestParam(defaultValue = "true") boolean activeOnly) {
-        return ApiResponse.ok(service.types(ingredientId, activeOnly));
+        return ApiResponse.ok(service.getAllKitchenTypes(ingredientId, activeOnly));
     }
 
     @GetMapping("/kitchen-ingredient-types/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<KitchenTypeResponse> type(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.type(id));
+    public ApiResponse<KitchenTypeResponse> getKitchenTypeById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getKitchenTypeById(id));
     }
 
     @PostMapping("/kitchen-ingredient-types")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<KitchenTypeResponse> createType(@Valid @RequestBody KitchenTypeRequest request) {
-        return ApiResponse.ok(service.createType(request));
+    public ApiResponse<KitchenTypeResponse> createKitchenType(@Valid @RequestBody KitchenTypeRequest request) {
+        return ApiResponse.ok(service.createKitchenType(request));
     }
 
     @PutMapping("/kitchen-ingredient-types/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<KitchenTypeResponse> updateType(@PathVariable @Positive long id, @Valid @RequestBody KitchenTypeRequest request) {
-        return ApiResponse.ok(service.updateType(id, request));
+    public ApiResponse<KitchenTypeResponse> updateKitchenType(@PathVariable @Positive long id, @Valid @RequestBody KitchenTypeRequest request) {
+        return ApiResponse.ok(service.updateKitchenType(id, request));
     }
 }

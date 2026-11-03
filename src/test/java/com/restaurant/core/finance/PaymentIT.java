@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
 import com.restaurant.core.IntegrationTestBase;
-import com.restaurant.core.TestData;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
@@ -12,7 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Strategy thanh toán trên hóa đơn thật (dựng bằng chuỗi hàm rc_*). */
+/** Strategy thanh toán trên hóa đơn thật (dựng qua các Service gọi món, bếp, hóa đơn). */
 class PaymentIT extends IntegrationTestBase {
 
     private long newInvoice() {
@@ -50,7 +49,7 @@ class PaymentIT extends IntegrationTestBase {
         long invoice = newInvoice();
         String cashier = bearer(data.staff("CASHIER"));
         pay(invoice, cashier, "{\"method\":\"CASH\",\"cashReceived\":1000}")
-                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("RC422"));
+                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         pay(invoice, cashier, "{\"method\":\"CASH\"}")
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
         pay(invoice, cashier, "{}")

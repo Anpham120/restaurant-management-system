@@ -1,13 +1,13 @@
 # Restaurant Core
 
-Backend Spring Boot (Java 21) cho hệ thống quản lý nhà hàng, chạy trên database PostgreSQL v4.1 đã đóng băng trong [`docs/`](docs/README.md).
+Backend Spring Boot (Java 25) cho hệ thống quản lý nhà hàng, chạy trên database PostgreSQL v4.1 đã đóng băng trong [`docs/`](docs/README.md).
 
 - Kiến trúc và quy ước: [`docs/backend/`](docs/backend/ARCHITECTURE.md) — [ARCHITECTURE](docs/backend/ARCHITECTURE.md) · [MODULE_BOUNDARIES](docs/backend/MODULE_BOUNDARIES.md) · [DEVELOPMENT_GUIDE](docs/backend/DEVELOPMENT_GUIDE.md) · [TEAM_ASSIGNMENT](docs/backend/TEAM_ASSIGNMENT.md) · [API_CONVENTIONS](docs/backend/API_CONVENTIONS.md)
-- Database (schema, hàm `rc_*`, phân quyền, báo cáo, kiểm thử): [`docs/README.md`](docs/README.md)
+- Database (schema, trigger bảo vệ dữ liệu, phân quyền; đặc tả nghiệp vụ gốc): [`docs/README.md`](docs/README.md). Nghiệp vụ chạy ở tầng Service Java; thay đổi DB sau baseline nằm ở `src/main/resources/db/migration`.
 
 ## Chạy nhanh
 
-Cần JDK 21 và Docker. Maven đi kèm (`./mvnw`).
+Cần JDK 25 và Docker. Maven đi kèm (`./mvnw`).
 
 ```bash
 cp .env.example .env                 # điền DB_ADMIN_PASSWORD, DB_APP_PASSWORD, JWT_SECRET
@@ -45,8 +45,8 @@ Chi tiết: [TEAM_ASSIGNMENT](docs/backend/TEAM_ASSIGNMENT.md) · hợp đồng 
 ```text
 src/main/java/com/restaurant/core/
 ├── common/      config (CORS) · aspect (PerformanceLoggingAspect) · exception · response
-├── security/    JWT, SecurityConfig, CurrentUser                         (Nguyễn Quang Hiếu)
-├── employee/    đăng nhập, đổi mật khẩu, nhân viên/tài khoản, ca, chấm công (Nguyễn Quang Hiếu)
+├── security/    JWT, SecurityConfig, CurrentUser, đăng nhập, đổi mật khẩu  (Nguyễn Quang Hiếu)
+├── employee/    nhân viên/tài khoản, ca, chấm công                         (Nguyễn Quang Hiếu)
 ├── menu/        danh mục, món, công thức, thực đơn ngày, hạn mức            (Lê Anh)
 ├── order/       bàn, phiên, đơn, gọi món, bếp, phục vụ, hủy, bỏ về         (Phạm Duy An)
 ├── inventory/   nguyên liệu, nhập/xuất/kiểm kê, sơ chế, hoàn trả, báo cáo  (Đỗ Tuấn Anh)

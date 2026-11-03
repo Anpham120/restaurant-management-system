@@ -15,13 +15,14 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import com.restaurant.core.common.exception.ApiException;
+import com.restaurant.core.finance.service.impl.QrTransferProcessor;
 
 /**
  * Xử lý webhook SePay (https://docs.sepay.vn/tich-hop-webhooks.html):
  * 1. Xác thực "Authorization: Apikey &lt;key&gt;" (cách xác thực SePay mô tả cho webhook; so sánh thời gian hằng).
  * 2. Chỉ xử lý giao dịch tiền vào (transferType = "in").
  * 3. Mã tham chiếu lấy từ "code" (SePay nhận diện theo cấu hình mã thanh toán) hoặc tìm mẫu RC&lt;hóa đơn&gt;Q&lt;n&gt; trong "content".
- * 4. Gọi rc_process_verified_qr với id giao dịch SePay làm khóa chống trùng; DB đối chiếu số tiền, tham chiếu, trạng thái.
+ * 4. QrTransferProcessor ghi nhận với id giao dịch SePay làm khóa chống trùng; đối chiếu số tiền, tham chiếu, trạng thái.
  * Mọi kết quả nghiệp vụ (kể cả MISMATCH, AFTER_CANCEL, gửi lặp) đều trả success để SePay không gửi lại; chỉ lỗi xác thực,
  * payload hỏng hoặc lỗi hệ thống mới trả mã lỗi (SePay sẽ retry).
  */
@@ -35,12 +36,12 @@ public class SepayWebhookService {
     }
 
     private final SepayProperties props;
-    private final SepayWebhookRepository repository;
+    private final QrTransferProcessor qrTransferProcessor;
     private final JsonMapper json;
 
-    public SepayWebhookService(SepayProperties props, SepayWebhookRepository repository, JsonMapper json) {
+    public SepayWebhookService(SepayProperties props, QrTransferProcessor qrTransferProcessor, JsonMapper json) {
         this.props = props;
-        this.repository = repository;
+        this.qrTransferProcessor = qrTransferProcessor;
         this.json = json;
     }
 
@@ -64,7 +65,7 @@ public class SepayWebhookService {
         }
         String reference = extractReference(text(body, "code"), text(body, "content"));
         BigDecimal transferAmount = amount.decimalValue();
-        String result = repository.processVerifiedQr(transactionCode, reference, transferAmount, rawBody);
+        String result = qrTransferProcessor.recordVerifiedTransfer(transactionCode, reference, transferAmount, rawBody).name();
         log.info("SePay giao dịch {} tham chiếu {} → {}", transactionCode, reference, result);
         return new WebhookResult(transactionCode, result, reference);
     }

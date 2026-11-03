@@ -12,8 +12,8 @@ import org.springframework.security.oauth2.server.resource.InvalidBearerTokenExc
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
-import com.restaurant.core.employee.repository.AccountRepository;
-import com.restaurant.core.employee.repository.AccountRepository.AccountState;
+import com.restaurant.core.security.repository.CredentialQueryRepository.AccountState;
+import com.restaurant.core.security.repository.CredentialQueryRepository;
 
 /**
  * Chữ ký JWT hợp lệ chưa đủ: mỗi request đọc lại trạng thái tài khoản trong DB (một câu SELECT).
@@ -29,9 +29,9 @@ public class AccountStateJwtConverter implements Converter<Jwt, AbstractAuthenti
 
     public static final String PASSWORD_CHANGE_REQUIRED = "PASSWORD_CHANGE_REQUIRED";
 
-    private final AccountRepository accounts;
+    private final CredentialQueryRepository accounts;
 
-    public AccountStateJwtConverter(AccountRepository accounts) {
+    public AccountStateJwtConverter(CredentialQueryRepository accounts) {
         this.accounts = accounts;
     }
 

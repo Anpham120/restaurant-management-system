@@ -22,7 +22,7 @@ class PostgresErrorTranslatorTest {
     void businessCodesKeepDatabaseMessage() {
         PostgresErrorTranslator.Translated t = of("RC403", "ERROR: nhân viên 5 không có vai trò MANAGER đang hoạt động\n  Where: PL/pgSQL function");
         assertThat(t.status()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(t.code()).isEqualTo("RC403");
+        assertThat(t.code()).isEqualTo("FORBIDDEN");
         assertThat(t.message()).isEqualTo("nhân viên 5 không có vai trò MANAGER đang hoạt động");
         assertThat(of("RC001", "ERROR: Thiếu nguyên liệu").status()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(of("RC409", "ERROR: x").status()).isEqualTo(HttpStatus.CONFLICT);
