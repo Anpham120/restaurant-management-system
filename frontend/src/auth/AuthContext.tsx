@@ -79,7 +79,8 @@ export function useAuth(): AuthState {
 
 /** Trang đầu tiên theo vai trò. */
 export function homeFor(roles: Role[]): string {
-  if (roles.includes('MANAGER') || roles.includes('WAITER') || roles.includes('CASHIER')) return '/tables';
+  if (roles.includes('MANAGER')) return '/dashboard';
+  if (roles.includes('WAITER') || roles.includes('CASHIER')) return '/tables';
   if (roles.includes('KITCHEN')) return '/kitchen';
   return '/login';
 }

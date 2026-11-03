@@ -6,9 +6,11 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { ApiError } from './api/client';
 import type { Role } from './api/types';
 import { AuthProvider, homeFor, useAuth } from './auth/AuthContext';
+import { SectionLayout } from './components/Section';
 import { Shell } from './components/Shell';
 import { ToastProvider } from './components/Toast';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { InvoicePage } from './pages/InvoicePage';
 import { KitchenPage } from './pages/KitchenPage';
 import { LoginPage } from './pages/LoginPage';
@@ -87,23 +89,34 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/orders/:orderId" element={<RequireAuth roles={['WAITER', 'CASHIER', 'MANAGER']}><OrderPage /></RequireAuth>} />
                 <Route path="/orders/:orderId/invoice" element={<RequireAuth roles={['CASHIER', 'MANAGER']}><InvoicePage /></RequireAuth>} />
                 <Route path="/kitchen" element={<RequireAuth roles={['KITCHEN', 'MANAGER']}><KitchenPage /></RequireAuth>} />
-                {guarded('/menu/daily', MK, <DailyMenuPage />)}
-                {guarded('/menu/items', M, <MenuItemsPage />)}
-                {guarded('/inventory/stock', MK, <StockPage />)}
-                {guarded('/inventory/receipts', M, <ReceiptsPage />)}
-                {guarded('/inventory/issues', MK, <IssuesPage />)}
-                {guarded('/inventory/preparations', MK, <PreparationsPage />)}
-                {guarded('/inventory/returns', MK, <ReturnsPage />)}
-                {guarded('/inventory/counts', M, <CountsPage />)}
-                {guarded('/inventory/ingredients', MK, <IngredientsPage />)}
-                {guarded('/inventory/history', M, <HistoryPage />)}
-                {guarded('/staff', M, <EmployeesPage />)}
-                {guarded('/shifts', M, <ShiftsPage />)}
-                {guarded('/attendance', M, <AttendancePage />)}
-                {guarded('/finance/expenses', M, <ExpensesPage />)}
-                {guarded('/finance/cash', M, <CashPage />)}
-                {guarded('/finance/reports', M, <ReportsPage />)}
-                {guarded('/settings/tables', M, <TablesAdminPage />)}
+                {guarded('/dashboard', M, <DashboardPage />)}
+                <Route element={<SectionLayout section="menu" />}>
+                  {guarded('/menu/daily', MK, <DailyMenuPage />)}
+                  {guarded('/menu/items', M, <MenuItemsPage />)}
+                </Route>
+                <Route element={<SectionLayout section="inventory" />}>
+                  {guarded('/inventory/stock', MK, <StockPage />)}
+                  {guarded('/inventory/receipts', M, <ReceiptsPage />)}
+                  {guarded('/inventory/issues', MK, <IssuesPage />)}
+                  {guarded('/inventory/preparations', MK, <PreparationsPage />)}
+                  {guarded('/inventory/returns', MK, <ReturnsPage />)}
+                  {guarded('/inventory/counts', M, <CountsPage />)}
+                  {guarded('/inventory/ingredients', MK, <IngredientsPage />)}
+                  {guarded('/inventory/history', M, <HistoryPage />)}
+                </Route>
+                <Route element={<SectionLayout section="staff" />}>
+                  {guarded('/staff', M, <EmployeesPage />)}
+                  {guarded('/shifts', M, <ShiftsPage />)}
+                  {guarded('/attendance', M, <AttendancePage />)}
+                </Route>
+                <Route element={<SectionLayout section="finance" />}>
+                  {guarded('/finance/reports', M, <ReportsPage />)}
+                  {guarded('/finance/expenses', M, <ExpensesPage />)}
+                  {guarded('/finance/cash', M, <CashPage />)}
+                </Route>
+                <Route element={<SectionLayout section="settings" />}>
+                  {guarded('/settings/tables', M, <TablesAdminPage />)}
+                </Route>
                 <Route path="/me/schedule" element={<SchedulePage />} />
               </Route>
               <Route path="*" element={<Home />} />
