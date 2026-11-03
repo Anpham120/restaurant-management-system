@@ -61,7 +61,11 @@ pipeline {
                     junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
                     archiveArtifacts artifacts: 'target/site/jacoco/**', allowEmptyArchive: true
                     sh '''
-                        [ -f target/site/jacoco/jacoco.csv ] && awk -F, 'NR > 1 { m += $8; c += $9 } END { if (m + c) printf "Độ phủ dòng code: %.1f%% (%d/%d dòng)\n", 100 * c / (m + c), c, m + c }' target/site/jacoco/jacoco.csv || true
+                        # awk chỉ in số (mawk không xử lý tốt chuỗi UTF-8); chữ tiếng Việt in bằng echo
+                        if [ -f target/site/jacoco/jacoco.csv ]; then
+                          COV=$(awk -F, 'NR > 1 { m += $8; c += $9 } END { if (m + c) printf "%.1f%% (%d/%d", 100 * c / (m + c), c, m + c }' target/site/jacoco/jacoco.csv)
+                          echo "Độ phủ dòng code: $COV dòng)"
+                        fi
                     '''
                 }
             }
