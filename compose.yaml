@@ -55,7 +55,8 @@ services:
     ports:
       - "127.0.0.1:${APP_PORT:-8081}:8081"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep -q UP"]
+      # Không phụ thuộc wget/curl (image eclipse-temurin:25-jre không có): gọi HTTP bằng /dev/tcp của bash
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081 && printf 'GET /actuator/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q '\"UP\"'"]
       interval: 10s
       timeout: 3s
       retries: 12
