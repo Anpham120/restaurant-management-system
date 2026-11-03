@@ -190,9 +190,10 @@ pipeline {
                 }
             }
         }
-        // Dọn sau mỗi lần chạy: image mồ côi và cache build quá 48 giờ. Không đụng container, volume, image đang dùng.
+        // Dọn sau mỗi lần chạy: image mồ côi, cache build quá 48 giờ, và cắt cache build còn lại xuống tối đa 6 GB
+        // (push dày thì cache dưới 48 giờ vẫn đầy ổ). Không đụng container, volume (cache Maven, Trivy), image đang dùng.
         always {
-            sh 'docker image prune -f || true; docker builder prune -f --filter until=48h || true'
+            sh 'docker image prune -f || true; docker builder prune -f --filter until=48h || true; docker builder prune -f --max-used-space 6gb || true'
         }
     }
 }

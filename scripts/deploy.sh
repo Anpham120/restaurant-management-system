@@ -138,4 +138,12 @@ else
   deploy_in_place || exit 1
 fi
 docker image prune -f >/dev/null
+
+# Giám sát chạy từ thư mục này (monitoring/compose.yaml): nạp lại cấu hình vừa cập nhật (luật cảnh báo, target).
+# Chạy từ nơi khác (thư mục dev) thì không đụng, tránh nạp cấu hình của một nhánh đang sửa dở.
+for c in monitoring-prometheus-1 monitoring-alertmanager-1; do
+  if [ "$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "$c" 2>/dev/null)" = "$PWD/monitoring" ]; then
+    docker kill -s HUP "$c" >/dev/null && echo "[deploy] nạp lại cấu hình $c"
+  fi
+done
 echo "[deploy] xong: ${SHA:0:7}"
