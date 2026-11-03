@@ -4,7 +4,8 @@ groups:
   - name: rms
     rules:
       - alert: AppDown
-        expr: up{job="rms-app"} == 0
+        # Hai slot blue-green: chỉ báo khi KHÔNG slot nào phản hồi (slot đang dừng luôn up = 0)
+        expr: max(up{job="rms-app"}) == 0
         for: 1m
         labels: {severity: critical}
         annotations:

@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 # CD: triển khai nhánh main lên máy chủ. Chạy trong thư mục triển khai (có .env thật).
 # Không build lại: chạy đúng image rms-release-*:<commit> mà build develop đã dựng, smoke test và quét Trivy
-# (scripts/tag-release.sh). Chờ healthy. Lỗi ở bước nào thì quay về image đang chạy trước đó.
-# --no-deps: không đụng container db và volume dữ liệu.
+# (scripts/tag-release.sh). --no-deps: không đụng container db và volume dữ liệu.
+# Hai chế độ:
+#   blue-green (khi nginx máy chủ đã cân bằng giữa 2 slot, docs/devops/nginx/): dựng slot rảnh, healthy thì dừng slot cũ.
+#              Không gián đoạn; lỗi thì slot cũ vẫn phục vụ.
+#   tại chỗ   (nginx chưa cấu hình 2 slot): thay container slot A, lỗi thì quay về image ":previous". Gián đoạn ~15–25 giây.
 set -euo pipefail
 
 # Cố định tên project để dùng đúng volume pgdata đang có (mặc định compose lấy theo tên thư mục)
 export COMPOSE_PROJECT_NAME=restaurant-management-system
 # Production luôn chạy profile prod. Biến shell được compose ưu tiên hơn .env, nên giá trị trong credential không ghi đè được.
 export SPRING_PROFILES_ACTIVE=prod
+# Cho phép compose thấy app-b/web-b (slot B); các lệnh dưới luôn gọi đích danh service nên không dựng thừa gì
+export COMPOSE_PROFILES=slot-b
 APP=restaurant-management-system-app
 WEB=restaurant-management-system-web
 
@@ -30,21 +35,23 @@ done
 # Không sao lưu được thì dừng, chưa đụng vào gì.
 scripts/backup-db.sh pre-deploy
 
-# Giữ bản đang chạy bằng tag riêng ":previous" để quay lui. Không dùng ID image: sau khi build lại, image cũ
-# mất tag và có thể bị Docker dọn, lúc đó quay lui báo "No such image".
-tag_previous() {
-  docker image inspect "$1:latest" >/dev/null 2>&1 && docker tag "$1:latest" "$1:previous"
-}
-HAVE_PREV=0
-if tag_previous "$APP" && tag_previous "$WEB"; then HAVE_PREV=1; fi
+# Slot A = app/web (cổng 8081/8083), slot B = app-b/web-b (8086/8087). Image theo tên mặc định của compose.
+svc_app()  { [ "$1" = A ] && echo app  || echo app-b; }
+svc_web()  { [ "$1" = A ] && echo web  || echo web-b; }
+port_app() { [ "$1" = A ] && echo 8081 || echo 8086; }
+port_web() { [ "$1" = A ] && echo 8083 || echo 8087; }
+img_app()  { [ "$1" = A ] && echo "$APP:latest" || echo "$APP-b:latest"; }
+img_web()  { [ "$1" = A ] && echo "$WEB:latest" || echo "$WEB-b:latest"; }
+running()  { [ -n "$(docker compose ps -q --status running "$(svc_app "$1")" 2>/dev/null)" ]; }
 
 healthy() {
-  curl -fsS http://127.0.0.1:8081/actuator/health | grep -q '"UP"' && curl -fsS -o /dev/null http://127.0.0.1:8083/
+  curl -fsS "http://127.0.0.1:$(port_app "$1")/actuator/health" | grep -q '"UP"' \
+    && curl -fsS -o /dev/null "http://127.0.0.1:$(port_web "$1")/"
 }
 
 check() {
   for _ in $(seq 1 24); do
-    healthy && return 0
+    healthy "$1" && return 0
     sleep 5
   done
   return 1
@@ -63,26 +70,72 @@ public_ok() {
   return "$ok"
 }
 
-rollback() {
+# nginx máy chủ đã có upstream 2 slot? Jenkinsfile mount /etc/nginx chỉ đọc vào container deploy.
+NGINX_SITE=${NGINX_SITE:-/etc/nginx/sites-enabled/rms.atlasplatform12.tech.conf}
+blue_green_ready() { grep -qs "127.0.0.1:$(port_app B)" "$NGINX_SITE"; }
+
+deploy_blue_green() {
+  local old=A new=B
+  if running B; then old=B; new=A; fi
+  echo "[deploy] blue-green: slot $old đang phục vụ, dựng slot $new"
+  docker tag "rms-release-app:$SHA" "$(img_app "$new")"
+  docker tag "rms-release-web:$SHA" "$(img_web "$new")"
+
+  if ! docker compose up -d --no-deps --no-build --force-recreate --wait "$(svc_app "$new")" "$(svc_web "$new")" \
+      || ! check "$new"; then
+    echo "[deploy] slot $new không healthy: dừng slot mới, slot $old vẫn phục vụ"
+    docker compose stop "$(svc_app "$new")" "$(svc_web "$new")" || true
+    return 1
+  fi
+
+  # Vài giây cả hai slot cùng phục vụ: migration expand/contract (scripts/check-migrations.sh) bảo đảm bản cũ chạy được
+  # trên schema mới. Dừng slot cũ: Spring tắt êm (xử lý nốt request đang chạy); nginx chuyển request sang slot mới.
+  docker compose stop "$(svc_app "$old")" "$(svc_web "$old")"
+  if ! public_ok; then
+    echo "[deploy] kiểm qua domain lỗi: bật lại slot $old, dừng slot $new"
+    { docker compose start "$(svc_app "$old")" "$(svc_web "$old")" && check "$old"; } \
+      || echo "[deploy] bật lại slot $old cũng lỗi, cần kiểm tra tay"
+    docker compose stop "$(svc_app "$new")" "$(svc_web "$new")" || true
+    return 1
+  fi
+  # Giữ container slot cũ (đã dừng): quay về bản trước bằng tay chỉ cần start slot cũ rồi stop slot mới.
+  echo "[deploy] slot $new đang phục vụ, slot $old đã dừng"
+}
+
+# ---------- tại chỗ (chưa có nginx 2 slot)
+deploy_in_place() {
+  # Giữ bản đang chạy bằng tag riêng ":previous" để quay lui. Không dùng ID image: sau khi build lại, image cũ
+  # mất tag và có thể bị Docker dọn, lúc đó quay lui báo "No such image".
+  local have_prev=0
+  if docker image inspect "$APP:latest" >/dev/null 2>&1 && docker image inspect "$WEB:latest" >/dev/null 2>&1; then
+    docker tag "$APP:latest" "$APP:previous"
+    docker tag "$WEB:latest" "$WEB:previous"
+    have_prev=1
+  fi
+  docker tag "rms-release-app:$SHA" "$APP:latest"
+  docker tag "rms-release-web:$SHA" "$WEB:latest"
+
+  if docker compose up -d --no-deps --no-build --wait app web && check A && public_ok; then
+    # Thành công: bỏ tag quay lui để image cũ được dọn, không chiếm ổ đĩa
+    docker rmi "$APP:previous" "$WEB:previous" >/dev/null 2>&1 || true
+    return 0
+  fi
   echo "[deploy] LỖI, quay lui về image trước"
-  if [ "$HAVE_PREV" = 1 ]; then
+  if [ "$have_prev" = 1 ]; then
     docker tag "$APP:previous" "$APP:latest"
     docker tag "$WEB:previous" "$WEB:latest"
     docker compose up -d --no-deps --no-build --wait app web || echo "[deploy] quay lui cũng lỗi, cần kiểm tra tay"
   else
     echo "[deploy] chưa có image trước để quay lui (lần triển khai đầu)"
   fi
+  return 1
 }
 
-docker tag "rms-release-app:$SHA" "$APP:latest"
-docker tag "rms-release-web:$SHA" "$WEB:latest"
-
-if docker compose up -d --no-deps --no-build --wait app web && check && public_ok; then
-  # Thành công: bỏ tag quay lui để image cũ được dọn, không chiếm ổ đĩa
-  docker rmi "$APP:previous" "$WEB:previous" >/dev/null 2>&1 || true
-  docker image prune -f >/dev/null
-  echo "[deploy] xong: ${SHA:0:7}"
+if blue_green_ready; then
+  deploy_blue_green || exit 1
 else
-  rollback
-  exit 1
+  echo "[deploy] nginx chưa cân bằng 2 slot ($NGINX_SITE): deploy tại chỗ"
+  deploy_in_place || exit 1
 fi
+docker image prune -f >/dev/null
+echo "[deploy] xong: ${SHA:0:7}"
