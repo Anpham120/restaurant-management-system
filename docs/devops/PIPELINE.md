@@ -161,6 +161,12 @@ Prometheus đánh giá các luật trong `monitoring/prometheus/alerts.yml`. Khi
 
 `AppDown` đang bật thì `SiteDown` bị chặn (inhibit) để không nhận hai tin cùng một sự cố.
 
+**Nhịp tim (dead man's switch).** Luật `Watchdog` luôn bật; Alertmanager gửi nó tới healthchecks.io mỗi phút thay vì Telegram. Prometheus, Alertmanager, mạng hoặc cả máy chủ chết thì nhịp tim dừng và healthchecks.io (ngoài máy chủ) báo qua Telegram hoặc email. Cài một lần:
+1. Đăng ký https://healthchecks.io (gói miễn phí), **Add Check**: Period 5 phút, Grace 5 phút. Chép **Ping URL** (`https://hc-ping.com/<uuid>`); URL này là bí mật (ai có đều ping được).
+2. **Integrations**: thêm Telegram (bot của healthchecks.io) hoặc email.
+3. Ghi URL vào file không commit: `/home/coder/rms-deploy/monitoring/secrets/healthchecks_url` (quyền 600, user `coder`). Alertmanager đọc file lúc gửi, không cần khởi động lại.
+4. Sau 1–2 phút, check trên healthchecks.io chuyển sang **Up**.
+
 Thiết lập bot một lần:
 1. Trong Telegram, chat với `@BotFather`, gửi `/newbot`, đặt tên. Nhận **bot token**.
 2. Mở chat với bot vừa tạo và gửi một tin bất kỳ.
@@ -228,7 +234,6 @@ Hai lớp, không đổi schema database:
 - Quay về bản cũ hơn bản trước: chạy lại build `main` của commit đó trong Jenkins nếu image `rms-release-*:<commit>` còn (5 commit `develop` gần nhất), hoặc kéo từ GHCR.
 - Ổ đĩa: sau mỗi build, Jenkins dọn image mồ côi, cache build quá 48 giờ và cắt tổng cache build xuống 6 GB. Không dọn volume: `rms-m2-cache`, `rms-trivy-cache` là cache của CI, trông "không dùng" khi không có build đang chạy.
 - Tài nguyên: CI chạy chung máy với production (4 CPU, 7 GB). Container Maven tối đa 2 CPU / 3 GB, Node 2 CPU / 2 GB, staging app 1,5 CPU / 1,5 GB, staging db 1 CPU / 1 GB; tất cả `cpu-shares 512` (production 1024) nên khi tranh CPU production được ưu tiên. Bước build image trong staging (Docker build) chưa giới hạn được.
-- Không có ai canh hệ thống giám sát: Prometheus hoặc Alertmanager chết thì không có cảnh báo nào. Cách chuẩn là "dead man's switch" ngoài máy chủ (vd. healthchecks.io nhận tín hiệu định kỳ); đồ án chưa dùng.
 - Máy chủ duy nhất: Jenkins, staging và production chung một máy, Jenkins giữ `docker.sock` (tương đương root). Hạn chế đã biết của đồ án; thực tế nên tách máy CI.
 - Quay lui tự động chỉ áp dụng cho image `app` và `web`. Flyway là migration tiến một chiều: nếu bản mới đã migrate schema thì quay lui image không hoàn tác được DB. Vì vậy thay đổi schema phải tương thích ngược. Nếu cần quay DB về trước khi deploy, khôi phục bản `pre-deploy-*.dump` mới nhất (mục 3.6).
 - Không có cổng duyệt tay nghĩa là lỗi logic không bị test bắt được sẽ lên production sau khi pass CI. Đây là đánh đổi của yêu cầu tự động hóa hoàn toàn.

@@ -7,6 +7,14 @@ route:
   group_wait: 10s
   group_interval: 5m
   repeat_interval: 4h
+  routes:
+    # Nhịp tim: không gửi Telegram, gửi healthchecks.io mỗi phút. URL ping trong secrets/healthchecks_url (không commit,
+    # đọc lúc gửi nên tạo file không cần nạp lại). Chưa có file thì chỉ ghi lỗi gửi vào log, các cảnh báo khác không ảnh hưởng.
+    - matchers: [alertname="Watchdog"]
+      receiver: heartbeat
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
 
 # App chết thì người dùng tất nhiên không vào được: chỉ gửi AppDown, không gửi thêm SiteDown trùng nội dung
 inhibit_rules:
@@ -14,6 +22,12 @@ inhibit_rules:
     target_matchers: [alertname="SiteDown"]
 
 receivers:
+  - name: heartbeat
+    webhook_configs:
+      - url_file: /run/alertmanager-secrets/healthchecks_url
+        send_resolved: false
+        timeout: 10s
+
   - name: telegram
     telegram_configs:
       - bot_token_file: /run/alertmanager-secrets/telegram_bot_token
