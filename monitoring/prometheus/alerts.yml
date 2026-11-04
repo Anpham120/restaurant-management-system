@@ -23,12 +23,65 @@ groups:
           description: "Hơn 5% request trả lỗi máy chủ trong 5 phút gần nhất."
 
       - alert: JvmHeapHigh
-        expr: sum(jvm_memory_used_bytes{area="heap"}) / sum(jvm_memory_max_bytes{area="heap"}) > 0.9
+        # Tính riêng từng slot. Mẫu số chỉ lấy vùng có giới hạn (G1 Eden/Survivor báo max = -1; Old Gen max = -Xmx)
+        expr: |
+          sum by (instance) (jvm_memory_used_bytes{area="heap"})
+            / sum by (instance) (jvm_memory_max_bytes{area="heap"} > 0) > 0.9
         for: 10m
         labels: {severity: warning}
         annotations:
           summary: "Bộ nhớ heap JVM trên 90%"
           description: "App có thể sắp hết bộ nhớ (rò rỉ hoặc tải cao)."
+
+  # Kiểm từ phía người dùng (blackbox-exporter gọi domain thật mỗi 30 giây)
+  - name: site
+    rules:
+      - alert: SiteDown
+        expr: probe_success{job="site"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Người dùng không vào được {{ $labels.instance }}"
+          description: "Gọi qua domain thật (nginx + HTTPS) thất bại hơn 2 phút: database chết (health DOWN), nginx, DNS hoặc chứng chỉ lỗi."
+
+      - alert: CertExpiringSoon
+        expr: (min by (instance) (probe_ssl_earliest_cert_expiry{job="site"}) - time()) / 86400 < 14
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "Chứng chỉ HTTPS còn dưới 14 ngày"
+          description: "certbot chưa gia hạn được. Kiểm: sudo certbot renew --dry-run; systemctl status certbot.timer"
+
+      - alert: ProbeExporterDown
+        expr: up{job="site"} == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "blackbox-exporter không phản hồi"
+          description: "Không kiểm được domain từ phía người dùng (SiteDown sẽ không báo được)."
+
+  # Sao lưu: backup-db.sh và offsite-backup.sh ghi thời điểm thành công vào textfile collector của node-exporter
+  - name: backup
+    rules:
+      - alert: BackupStale
+        expr: |
+          (time() - rms_backup_last_success_timestamp_seconds{kind="daily"}) > 26 * 3600
+            or absent(rms_backup_last_success_timestamp_seconds{kind="daily"})
+        for: 30m
+        labels: {severity: critical}
+        annotations:
+          summary: "Quá 26 giờ không có bản sao lưu database mới"
+          description: "Cron backup-db.sh daily (02:30 giờ VN) không chạy hoặc lỗi. Xem /home/coder/rms-backups/backup.log"
+
+      - alert: OffsiteBackupStale
+        expr: |
+          (time() - rms_backup_last_success_timestamp_seconds{kind="offsite"}) > 26 * 3600
+            or absent(rms_backup_last_success_timestamp_seconds{kind="offsite"})
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: "Quá 26 giờ chưa gửi bản sao lưu ra ngoài máy chủ"
+          description: "Cron offsite-backup.sh (02:35 giờ VN) lỗi: thiếu khóa, token Telegram hoặc mạng. Xem /home/coder/rms-backups/backup.log"
 
   - name: host
     rules:

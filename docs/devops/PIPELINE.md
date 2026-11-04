@@ -135,17 +135,31 @@ Chạy từ thư mục triển khai (bản clone `main`), không chạy từ th�
 ```bash
 cd /home/coder/rms-deploy/monitoring
 echo "GRAFANA_ADMIN_PASSWORD=<mật khẩu mạnh>" > .env   # chmod 600; .env và secrets/ bị git bỏ qua, deploy không xóa
+mkdir -p /home/coder/rms-backups/metrics            # trước lần up đầu, để Docker không tạo thư mục thuộc root
 docker compose up -d
 ```
-`monitoring/compose.yaml` mount cả thư mục `prometheus/`, `alertmanager/` (không mount từng file): deploy cập nhật mã bằng `git reset --hard`, file mới có inode mới nên bind mount một file sẽ vẫn đọc bản cũ. Sau mỗi lần deploy, `scripts/deploy.sh` gửi `SIGHUP` để Prometheus và Alertmanager nạp lại cấu hình, chỉ khi chúng đang chạy từ chính thư mục triển khai.
+Thành phần: Prometheus (số liệu, luật cảnh báo), Alertmanager (Telegram), Grafana, node-exporter (CPU/RAM/đĩa, thời điểm sao lưu qua textfile collector), blackbox-exporter (gọi domain thật như người dùng).
+
+Thêm service mới vào `compose.yaml` thì chạy lại `docker compose up -d` ở thư mục trên một lần; deploy chỉ nạp lại cấu hình, không tạo container mới.
+
+`monitoring/compose.yaml` mount cả thư mục `prometheus/`, `alertmanager/`, `blackbox/` (không mount từng file): deploy cập nhật mã bằng `git reset --hard`, file mới có inode mới nên bind mount một file sẽ vẫn đọc bản cũ. Sau mỗi lần deploy, `scripts/deploy.sh` gửi `SIGHUP` để Prometheus và Alertmanager nạp lại cấu hình, chỉ khi chúng đang chạy từ chính thư mục triển khai.
 
 Truy cập Grafana bằng SSH tunnel: `ssh -L 3000:127.0.0.1:3000 <user>@<ip>`, rồi mở `http://127.0.0.1:3000`.
-Import dashboard có sẵn từ grafana.com: **4701** (JVM Micrometer) và **1860** (Node Exporter Full). Datasource Prometheus đã được cấu hình sẵn.
+Dashboard lưu trong repo (`monitoring/grafana/provisioning/dashboards/json/`), Grafana tự nạp vào thư mục **RMS**: **JVM (Micrometer)** (grafana.com 4701) và **Node Exporter Full** (1860). Cài lại máy không mất. Sửa trên giao diện không lưu được: sửa file JSON rồi deploy. Datasource Prometheus có uid cố định `prometheus`.
 
 Prometheus chỉ thấy app sau khi bản có `micrometer-registry-prometheus` được deploy. Trước đó target `rms-app` sẽ báo DOWN.
 
 ### 3.5 Cảnh báo (Alertmanager + Telegram)
-Prometheus đánh giá các luật trong `monitoring/prometheus/alerts.yml` (app chết, lỗi 5xx cao, heap JVM, ổ đĩa dưới 15%, RAM và CPU trên 90%). Khi vi phạm, Alertmanager gửi tin nhắn Telegram và gửi thêm tin "đã khôi phục" khi hết lỗi.
+Prometheus đánh giá các luật trong `monitoring/prometheus/alerts.yml`. Khi vi phạm, Alertmanager gửi tin nhắn Telegram và gửi thêm tin "đã khôi phục" khi hết lỗi.
+
+| Nhóm | Luật | Bắt được |
+|---|---|---|
+| App | `AppDown`, `HighErrorRate`, `JvmHeapHigh` | cả 2 slot không trả số liệu; 5xx trên 5%; heap trên 90% (từng slot) |
+| Người dùng | `SiteDown`, `CertExpiringSoon`, `ProbeExporterDown` | blackbox gọi `https://rms.atlasplatform12.tech/actuator/health` và `/` mỗi 30 giây: database chết (health DOWN dù app vẫn chạy), nginx/DNS lỗi; chứng chỉ còn dưới 14 ngày |
+| Sao lưu | `BackupStale`, `OffsiteBackupStale` | quá 26 giờ không có bản `daily` / chưa gửi bản offsite (`scripts/backup-metric.sh` ghi thời điểm thành công) |
+| Máy chủ | `NodeExporterDown`, `DiskAlmostFull`, `HighMemory`, `HighCpu` | ổ đĩa dưới 15%; RAM, CPU trên 90% |
+
+`AppDown` đang bật thì `SiteDown` bị chặn (inhibit) để không nhận hai tin cùng một sự cố.
 
 Thiết lập bot một lần:
 1. Trong Telegram, chat với `@BotFather`, gửi `/newbot`, đặt tên. Nhận **bot token**.
@@ -214,6 +228,7 @@ Hai lớp, không đổi schema database:
 - Quay về bản cũ hơn bản trước: chạy lại build `main` của commit đó trong Jenkins nếu image `rms-release-*:<commit>` còn (5 commit `develop` gần nhất), hoặc kéo từ GHCR.
 - Ổ đĩa: sau mỗi build, Jenkins dọn image mồ côi, cache build quá 48 giờ và cắt tổng cache build xuống 6 GB. Không dọn volume: `rms-m2-cache`, `rms-trivy-cache` là cache của CI, trông "không dùng" khi không có build đang chạy.
 - Tài nguyên: CI chạy chung máy với production (4 CPU, 7 GB). Container Maven tối đa 2 CPU / 3 GB, Node 2 CPU / 2 GB, staging app 1,5 CPU / 1,5 GB, staging db 1 CPU / 1 GB; tất cả `cpu-shares 512` (production 1024) nên khi tranh CPU production được ưu tiên. Bước build image trong staging (Docker build) chưa giới hạn được.
+- Không có ai canh hệ thống giám sát: Prometheus hoặc Alertmanager chết thì không có cảnh báo nào. Cách chuẩn là "dead man's switch" ngoài máy chủ (vd. healthchecks.io nhận tín hiệu định kỳ); đồ án chưa dùng.
 - Máy chủ duy nhất: Jenkins, staging và production chung một máy, Jenkins giữ `docker.sock` (tương đương root). Hạn chế đã biết của đồ án; thực tế nên tách máy CI.
 - Quay lui tự động chỉ áp dụng cho image `app` và `web`. Flyway là migration tiến một chiều: nếu bản mới đã migrate schema thì quay lui image không hoàn tác được DB. Vì vậy thay đổi schema phải tương thích ngược. Nếu cần quay DB về trước khi deploy, khôi phục bản `pre-deploy-*.dump` mới nhất (mục 3.6).
 - Không có cổng duyệt tay nghĩa là lỗi logic không bị test bắt được sẽ lên production sau khi pass CI. Đây là đánh đổi của yêu cầu tự động hóa hoàn toàn.

@@ -1,4 +1,5 @@
-# Gửi cảnh báo qua Telegram. Token bot nằm trong monitoring/secrets/telegram_bot_token (không commit).
+# Gửi cảnh báo qua Telegram. Token bot nằm trong monitoring/secrets/telegram_bot_token (không commit),
+# mount vào /run/alertmanager-secrets.
 # chat_id không phải bí mật. Đổi số 0 thành chat id của bạn (xem docs/devops/PIPELINE.md).
 route:
   receiver: telegram
@@ -6,6 +7,11 @@ route:
   group_wait: 10s
   group_interval: 5m
   repeat_interval: 4h
+
+# App chết thì người dùng tất nhiên không vào được: chỉ gửi AppDown, không gửi thêm SiteDown trùng nội dung
+inhibit_rules:
+  - source_matchers: [alertname="AppDown"]
+    target_matchers: [alertname="SiteDown"]
 
 receivers:
   - name: telegram

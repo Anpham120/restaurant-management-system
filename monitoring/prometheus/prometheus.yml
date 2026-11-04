@@ -13,9 +13,30 @@ scrape_configs:
   - job_name: rms-app
     metrics_path: /actuator/prometheus
     static_configs:
-      # Slot A và slot B (blue-green, scripts/deploy.sh): bình thường chỉ một slot chạy, slot kia up = 0
+      # Slot A và slot B (blue-green, scripts/deploy.sh): bình thường chỉ một slot chạy, slot kia up = 0.
+      # Nhãn application: dashboard JVM (Micrometer) lọc theo nhãn này.
       - targets: ['127.0.0.1:8081', '127.0.0.1:8086']
+        labels: {application: restaurant-core}
 
   - job_name: node
     static_configs:
       - targets: ['127.0.0.1:9100']
+
+  # Kiểm từ phía người dùng qua blackbox-exporter (monitoring/blackbox/blackbox.yml): domain thật, nginx, HTTPS
+  - job_name: site
+    metrics_path: /probe
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['https://rms.atlasplatform12.tech/actuator/health']
+        labels: {module: health}
+      - targets: ['https://rms.atlasplatform12.tech/']
+        labels: {module: web}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [module]
+        target_label: __param_module
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115

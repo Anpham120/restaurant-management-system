@@ -1,7 +1,15 @@
 apiVersion: 1
 
+# Xóa rồi tạo lại datasource theo tên: Grafana không cho đổi uid của datasource đã có (bản cũ được tạo không có uid,
+# Grafana tự sinh). Không mất gì: datasource chỉ đến từ file này; dashboard lưu trong provisioning/dashboards.
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
 datasources:
   - name: Prometheus
+    # uid cố định: dashboard trong provisioning/dashboards/json tham chiếu datasource theo uid này
+    uid: prometheus
     type: prometheus
     access: proxy
     url: http://127.0.0.1:9090

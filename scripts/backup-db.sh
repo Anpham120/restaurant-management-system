@@ -25,3 +25,6 @@ echo "[backup] $(basename "$FILE") $(du -h "$FILE" | cut -f1)"
 
 # Xóa bản cũ, chỉ giữ KEEP bản mới nhất của loại này
 ls -1t "$BACKUP_DIR/$KIND-"*.dump | tail -n +$((KEEP + 1)) | xargs -r rm -f
+
+# Báo Prometheus (luật BackupStale). Lỗi ghi số liệu không làm hỏng bản sao lưu vừa tạo.
+BACKUP_DIR="$BACKUP_DIR" "$(dirname "$0")/backup-metric.sh" "$KIND" || echo "[backup] không ghi được số liệu cho Prometheus"
