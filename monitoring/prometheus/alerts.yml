@@ -1,6 +1,16 @@
 # Luật cảnh báo. Prometheus đánh giá mỗi 15 giây; "for" là thời gian phải vi phạm liên tục mới bắn,
 # để tránh báo nhầm khi app khởi động lại (deploy) vài chục giây.
 groups:
+  # Nhịp tim (dead man's switch): luôn bật. Alertmanager gửi nó ra healthchecks.io mỗi phút (receiver heartbeat).
+  # Prometheus, Alertmanager, mạng hoặc cả máy chủ chết thì nhịp tim dừng, healthchecks.io báo qua Telegram/email.
+  - name: meta
+    rules:
+      - alert: Watchdog
+        expr: vector(1)
+        labels: {severity: none}
+        annotations:
+          summary: "Nhịp tim giám sát (luôn bật, không phải sự cố)"
+
   - name: rms
     rules:
       - alert: AppDown
