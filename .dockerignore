@@ -1,0 +1,7 @@
+# Ngữ cảnh build image backend (Dockerfile ở gốc repo) chỉ cần 4 mục dưới đây. Liệt kê theo kiểu "cho phép":
+# mọi thứ khác (target/, .git/, frontend/, docs/, .env…) không được gửi cho Docker, build nhanh hơn và không lộ secret.
+*
+!.mvn/
+!mvnw
+!pom.xml
+!src/main/

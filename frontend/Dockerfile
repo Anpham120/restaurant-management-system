@@ -1,15 +1,18 @@
-# Build: Node + Vite ra file tĩnh; chạy: nginx nhỏ phục vụ dist/ (SPA). /api do nginx máy chủ chuyển thẳng vào backend.
+# Frontend: Node + Vite build ra file tĩnh; chạy bằng nginx không cần root (cổng 8080, user nginx uid 101).
+# /api do nginx máy chủ chuyển thẳng vào backend, container này chỉ phục vụ SPA.
 FROM node:22-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# Cache tải gói npm giữa các lần build (BuildKit cache mount); npm ci vẫn cài đúng theo package-lock.json
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
-# Nhánh stable của nginx; apk upgrade lấy bản vá Alpine mới hơn image gốc (Trivy kiểm tra ở pipeline).
-# Ghi rõ phiên bản tối thiểu của gói vừa có CVE: đổi dòng lệnh để Docker không dùng lại lớp cache cũ chưa vá.
-FROM nginx:1.30-alpine
-RUN apk upgrade --no-cache && apk add --no-cache "libexpat>=2.10.0"
+FROM nginxinc/nginx-unprivileged:1.30-alpine
+# Lấy bản vá Alpine mới hơn image gốc (Trivy kiểm ở pipeline). Cache build giữ lớp cũ thì: docker builder prune.
+USER root
+RUN apk upgrade --no-cache
+USER 101
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/dist /usr/share/nginx/html
-EXPOSE 80
+EXPOSE 8080
