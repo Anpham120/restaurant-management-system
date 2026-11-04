@@ -13,16 +13,24 @@ SOURCE_NAME=${BRANCH_NAME:-$SOURCE_SHA}
 export GIT_AUTHOR_NAME=rms-ci GIT_AUTHOR_EMAIL=rms-ci@localhost
 export GIT_COMMITTER_NAME=rms-ci GIT_COMMITTER_EMAIL=rms-ci@localhost
 
-git fetch --quiet "$REMOTE" "$TARGET"
-git checkout --quiet -B "$TARGET" FETCH_HEAD
-
-if [ "$TARGET" = develop ]; then
-  git merge --no-ff --quiet -m "Merge $SOURCE_NAME vào develop [auto-merge]" "$SOURCE_SHA"
-else
-  git merge --ff-only --quiet "$SOURCE_SHA"
-fi
-
-git push --quiet "$REMOTE" "$TARGET"
+# Thử tối đa 3 lần: GitHub thỉnh thoảng trả lỗi tạm thời (develop #40: "remote rejected (Internal Server Error)").
+# Mỗi lần lấy lại nhánh đích mới nhất rồi merge lại, nên lặp lại an toàn: nếu lần trước thực ra đã lên GitHub thì
+# merge báo "Already up to date" và push không đổi gì. Merge lỗi (xung đột, không fast-forward được) vẫn dừng ngay
+# (set -e): đó là lỗi thật, thử lại không có ích.
+ok=0
+for attempt in 1 2 3; do
+  if git fetch --quiet "$REMOTE" "$TARGET"; then
+    git checkout --quiet -B "$TARGET" FETCH_HEAD
+    if [ "$TARGET" = develop ]; then
+      git merge --no-ff --quiet -m "Merge $SOURCE_NAME vào develop [auto-merge]" "$SOURCE_SHA"
+    else
+      git merge --ff-only --quiet "$SOURCE_SHA"
+    fi
+    if git push --quiet "$REMOTE" "$TARGET"; then ok=1; break; fi
+  fi
+  [ "$attempt" -lt 3 ] && { echo "[auto-merge] GitHub lỗi (lần $attempt/3), thử lại sau $((attempt * 10)) giây"; sleep $((attempt * 10)); }
+done
+[ "$ok" = 1 ] || { echo "[auto-merge] LỖI: không push được $TARGET sau 3 lần"; exit 1; }
 echo "[auto-merge] $SOURCE_NAME → $TARGET xong"
 
 # Nhánh feature đã vào develop thì xóa trên GitHub. --force-with-lease: chỉ xóa nếu nhánh vẫn đúng commit vừa merge,
