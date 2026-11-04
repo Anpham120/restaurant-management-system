@@ -189,8 +189,8 @@ Khôi phục (xóa toàn bộ dữ liệu hiện tại, chỉ làm khi thật s�
 ```bash
 cd /home/coder/rms-deploy && scripts/restore-db.sh /home/coder/rms-backups/pre-deploy-<thời điểm>.dump
 ```
-Script hỏi xác nhận (gõ `KHOI PHUC`), tự sao lưu dữ liệu hiện tại thành `pre-restore-*`, dừng app, xóa schema `public` rồi nạp
-bản sao lưu trong **một transaction** (lỗi thì giữ nguyên dữ liệu cũ), sau đó chạy lại app. Sau khi khôi phục về trước một
+Script hỏi xác nhận (gõ `KHOI PHUC`), tự sao lưu dữ liệu hiện tại thành `pre-restore-*`, dừng slot app đang chạy (A và/hoặc B), xóa schema `public` rồi nạp
+bản sao lưu trong **một transaction** (lỗi thì giữ nguyên dữ liệu cũ), sau đó bật lại đúng các slot vừa dừng. Sau khi khôi phục về trước một
 migration, deploy lại bản code cũ tương ứng.
 
 Bản sao lưu luôn được thử khôi phục: mỗi lần build `develop`, staging nạp bản sao lưu mới nhất theo đúng cách trên, chạy
@@ -232,7 +232,7 @@ Hai lớp, không đổi schema database:
 
 - Quay lui tay (blue-green): deploy đã qua kiểm tra nhưng sau đó mới thấy lỗi thì chạy `cd /home/coder/rms-deploy && scripts/rollback.sh`. Script bật lại slot cũ (container chỉ bị dừng, image cũ còn nguyên), healthy thì dừng slot đang chạy, rồi kiểm qua domain. Slot cũ không healthy thì dừng nó, slot hiện tại vẫn phục vụ. Không đụng database (migration expand/contract). Chạy lần nữa để quay lại bản mới. Đã thử: chuyển A→B, B→A, slot cũ hỏng (giữ nguyên slot đang chạy), cả hai slot dừng (từ chối chạy).
 - Quay về bản cũ hơn bản trước: chạy lại build `main` của commit đó trong Jenkins nếu image `rms-release-*:<commit>` còn (5 commit `develop` gần nhất), hoặc kéo từ GHCR.
-- Ổ đĩa: sau mỗi build, Jenkins dọn image mồ côi, cache build quá 48 giờ và cắt tổng cache build xuống 6 GB. Không dọn volume: `rms-m2-cache`, `rms-trivy-cache` là cache của CI, trông "không dùng" khi không có build đang chạy.
+- Ổ đĩa: sau mỗi build, Jenkins dọn image mồ côi và cache build quá 48 giờ (không giới hạn tổng: phần lớn cache là lớp của image phát hành đang dùng, không dọn được). Không dọn volume: `rms-m2-cache`, `rms-trivy-cache` là cache của CI, trông "không dùng" khi không có build đang chạy.
 - Tài nguyên: CI chạy chung máy với production (4 CPU, 7 GB). Container Maven tối đa 2 CPU / 3 GB, Node 2 CPU / 2 GB, staging app 1,5 CPU / 1,5 GB, staging db 1 CPU / 1 GB; tất cả `cpu-shares 512` (production 1024) nên khi tranh CPU production được ưu tiên. Bước build image trong staging (Docker build) chưa giới hạn được.
 - Máy chủ duy nhất: Jenkins, staging và production chung một máy, Jenkins giữ `docker.sock` (tương đương root). Hạn chế đã biết của đồ án; thực tế nên tách máy CI.
 - Quay lui tự động chỉ áp dụng cho image `app` và `web`. Flyway là migration tiến một chiều: nếu bản mới đã migrate schema thì quay lui image không hoàn tác được DB. Vì vậy thay đổi schema phải tương thích ngược. Nếu cần quay DB về trước khi deploy, khôi phục bản `pre-deploy-*.dump` mới nhất (mục 3.6).
