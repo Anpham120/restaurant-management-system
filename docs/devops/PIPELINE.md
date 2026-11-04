@@ -36,7 +36,7 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 | Test backend | `feature/*`, `develop` | `mvn verify` (unit + `*IT` dùng Testcontainers + `ModularityTest`) trong container `maven:3.9-eclipse-temurin-25`. Jenkins hiện kết quả test (JUnit) và lưu báo cáo độ phủ JaCoCo (`target/site/jacoco/index.html`, mục Artifacts của build); log in dòng "Độ phủ dòng code" |
 | Test frontend | `feature/*`, `develop` | `npm ci`, `typecheck`, `build` trong container `node:22-alpine` |
 | Quét bảo mật mã nguồn | `feature/*`, `develop` | `scripts/security-scan.sh fs`: Trivy quét thư viện Maven, npm và secret lộ trong mã |
-| Merge feature vào develop | `feature/*` | `scripts/auto-merge.sh develop` |
+| Merge feature vào develop | `feature/*` | `scripts/auto-merge.sh develop` (GitHub lỗi tạm thời thì tự thử lại tối đa 3 lần, cách 10 rồi 20 giây) |
 | Staging smoke test | `develop` | `scripts/staging-test.sh`: dựng bản tạm trên bản sao lưu production mới nhất, quét đọc 32 API, chạy E2E ghi (`scripts/e2e-flow.sh`) rồi hủy |
 | Quét bảo mật image | `develop` | `scripts/security-scan.sh image`: Trivy quét image `app` và `web` vừa build ở staging. Qua thì `scripts/tag-release.sh` gắn tag `rms-release-{app,web}:<commit>` |
 | Đẩy image lên GHCR | `develop` | `scripts/push-release.sh`: bản lưu image ngoài máy chủ. Thiếu credential `ghcr-token` thì bỏ qua |
