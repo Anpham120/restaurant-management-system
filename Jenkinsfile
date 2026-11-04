@@ -41,55 +41,60 @@ pipeline {
             }
         }
 
-        stage('Test backend') {
+        stage('Kiểm tra song song') {
             when { not { branch 'main' } }
-            steps {
-                sh '''
-                    # Volume cache Maven mới tạo thuộc root, đổi quyền để user Jenkins ghi được
-                    docker run --rm -v rms-m2-cache:/m2 alpine:3.20 chown "$(id -u):$(id -g)" /m2
-                    # Giới hạn tài nguyên: CI chạy chung máy với production (4 CPU, 7 GB). Tối đa 2 CPU, 3 GB;
-                    # cpu-shares 512 (production mặc định 1024): khi tranh CPU, production được ưu tiên gấp đôi.
-                    docker run --rm --network host --cpus=2 --cpu-shares=512 --memory=3g \
-                      --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE" \
-                      --user "$(id -u):$(id -g)" --group-add "$(stat -c %g /var/run/docker.sock)" \
-                      -e HOME=/tmp -v rms-m2-cache:/tmp/.m2 \
-                      maven:3.9-eclipse-temurin-25 \
-                      mvn -B -Dmaven.repo.local=/tmp/.m2/repository verify
-                '''
-            }
-            post {
-                // Kết quả test (biểu đồ pass/fail qua các build) và báo cáo độ phủ JaCoCo (artifact HTML)
-                always {
-                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-                    archiveArtifacts artifacts: 'target/site/jacoco/**', allowEmptyArchive: true
-                    sh '''
-                        # awk chỉ in số (mawk không xử lý tốt chuỗi UTF-8); chữ tiếng Việt in bằng echo
-                        if [ -f target/site/jacoco/jacoco.csv ]; then
-                          COV=$(awk -F, 'NR > 1 { m += $8; c += $9 } END { if (m + c) printf "%.1f%% (%d/%d", 100 * c / (m + c), c, m + c }' target/site/jacoco/jacoco.csv)
-                          echo "Độ phủ dòng code: $COV dòng)"
-                        fi
-                    '''
+            // Ba việc độc lập chạy cùng lúc: tổng thời gian = việc lâu nhất (test backend) thay vì cộng dồn. Không bỏ bước nào;
+            // một nhánh lỗi thì cả stage lỗi như trước, các nhánh còn lại vẫn chạy hết để log đủ thông tin. Kiểm migration vẫn chạy
+            // trước (vài giây, lỗi thì dừng sớm không tốn thời gian test). RAM: Maven tối đa 3 GB + Node 2 GB, máy còn trống ~4 GB.
+            parallel {
+                stage('Test backend') {
+                    steps {
+                        sh '''
+                            # Volume cache Maven mới tạo thuộc root, đổi quyền để user Jenkins ghi được
+                            docker run --rm -v rms-m2-cache:/m2 alpine:3.20 chown "$(id -u):$(id -g)" /m2
+                            # Giới hạn tài nguyên: CI chạy chung máy với production (4 CPU, 7 GB). Tối đa 2 CPU, 3 GB;
+                            # cpu-shares 512 (production mặc định 1024): khi tranh CPU, production được ưu tiên gấp đôi.
+                            docker run --rm --network host --cpus=2 --cpu-shares=512 --memory=3g \
+                              --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE" \
+                              --user "$(id -u):$(id -g)" --group-add "$(stat -c %g /var/run/docker.sock)" \
+                              -e HOME=/tmp -v rms-m2-cache:/tmp/.m2 \
+                              maven:3.9-eclipse-temurin-25 \
+                              mvn -B -Dmaven.repo.local=/tmp/.m2/repository verify
+                        '''
+                    }
+                    post {
+                        // Kết quả test (biểu đồ pass/fail qua các build) và báo cáo độ phủ JaCoCo (artifact HTML)
+                        always {
+                            junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+                            archiveArtifacts artifacts: 'target/site/jacoco/**', allowEmptyArchive: true
+                            sh '''
+                                # awk chỉ in số (mawk không xử lý tốt chuỗi UTF-8); chữ tiếng Việt in bằng echo
+                                if [ -f target/site/jacoco/jacoco.csv ]; then
+                                  COV=$(awk -F, 'NR > 1 { m += $8; c += $9 } END { if (m + c) printf "%.1f%% (%d/%d", 100 * c / (m + c), c, m + c }' target/site/jacoco/jacoco.csv)
+                                  echo "Độ phủ dòng code: $COV dòng)"
+                                fi
+                            '''
+                        }
+                    }
                 }
-            }
-        }
 
-        stage('Test frontend') {
-            when { not { branch 'main' } }
-            steps {
-                sh '''
-                    docker run --rm --cpus=2 --cpu-shares=512 --memory=2g --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE/frontend" \
-                      --user "$(id -u):$(id -g)" -e HOME=/tmp \
-                      node:22-alpine \
-                      sh -c "npm ci --no-audit --no-fund && npm run typecheck && npm run build"
-                '''
-            }
-        }
+                stage('Test frontend') {
+                    steps {
+                        sh '''
+                            docker run --rm --cpus=2 --cpu-shares=512 --memory=2g --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE/frontend" \
+                              --user "$(id -u):$(id -g)" -e HOME=/tmp \
+                              node:22-alpine \
+                              sh -c "npm ci --no-audit --no-fund && npm run typecheck && npm run build"
+                        '''
+                    }
+                }
 
-        stage('Quét bảo mật mã nguồn') {
-            when { not { branch 'main' } }
-            steps {
-                // Trivy: thư viện Maven/npm có lỗ hổng HIGH/CRITICAL đã có bản vá, hoặc secret lộ trong mã
-                sh 'scripts/security-scan.sh fs'
+                stage('Quét bảo mật mã nguồn') {
+                    steps {
+                        // Trivy: thư viện Maven/npm có lỗ hổng HIGH/CRITICAL đã có bản vá, hoặc secret lộ trong mã
+                        sh 'scripts/security-scan.sh fs'
+                    }
+                }
             }
         }
 
@@ -129,28 +134,33 @@ pipeline {
             }
         }
 
-        stage('Đẩy image lên GHCR') {
+        stage('Phát hành') {
             when { branch 'develop' }
-            steps {
-                // Bản lưu image ngoài máy chủ. Không chặn pipeline: thiếu credential ghcr-token hoặc registry lỗi thì chỉ ghi log,
-                // deploy vẫn dùng image phát hành trên máy.
-                script {
-                    try {
-                        withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
-                            sh 'scripts/push-release.sh "$GIT_COMMIT"'
+            // Chỉ chạy khi image đã qua Trivy và được gắn tag (stage trước). Đẩy GHCR là bản lưu, không chặn và không liên quan
+            // đến promote, nên chạy song song: main bắt đầu deploy sớm hơn ~10 giây.
+            parallel {
+                stage('Đẩy image lên GHCR') {
+                    steps {
+                        // Bản lưu image ngoài máy chủ. Không chặn pipeline: thiếu credential ghcr-token hoặc registry lỗi thì chỉ ghi log,
+                        // deploy vẫn dùng image phát hành trên máy.
+                        script {
+                            try {
+                                withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
+                                    sh 'scripts/push-release.sh "$GIT_COMMIT"'
+                                }
+                            } catch (err) {
+                                echo "Bỏ qua đẩy GHCR: ${err.message}"
+                            }
                         }
-                    } catch (err) {
-                        echo "Bỏ qua đẩy GHCR: ${err.message}"
                     }
                 }
-            }
-        }
 
-        stage('Promote develop lên main') {
-            when { branch 'develop' }
-            steps {
-                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
-                    sh 'scripts/auto-merge.sh main'
+                stage('Promote develop lên main') {
+                    steps {
+                        withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                            sh 'scripts/auto-merge.sh main'
+                        }
+                    }
                 }
             }
         }

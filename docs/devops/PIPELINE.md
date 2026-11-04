@@ -43,6 +43,8 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 | Promote develop lên main | `develop` | `scripts/auto-merge.sh main` |
 | Deploy production | `main` | `scripts/deploy.sh` trong thư mục `/home/coder/rms-deploy` |
 
+Chạy song song (không bỏ bước nào, chỉ không chờ nhau): Test backend, Test frontend và Quét bảo mật mã nguồn chạy cùng lúc trong stage "Kiểm tra song song", sau Kiểm migration; Đẩy GHCR và Promote chạy cùng lúc trong stage "Phát hành", sau khi image đã qua Trivy và được gắn tag. Một nhánh lỗi thì build lỗi như trước.
+
 `main` không chạy lại test và quét mã nguồn: promote dùng `--ff-only`, nên commit trên `main` trùng SHA với commit `develop` vừa qua đủ test, staging và Trivy. Chạy lại chỉ cho cùng kết quả.
 
 Build một lần, deploy đúng image đã kiểm:
