@@ -1,0 +1,14 @@
+# Dashboard lưu trong repo (json/), Grafana tự nạp khi khởi động và mỗi 60 giây: cài lại máy không mất.
+# Sửa trên giao diện không lưu được (allowUiUpdates: false): sửa file JSON rồi deploy.
+#   jvm-micrometer.json : grafana.com dashboard 4701 "JVM (Micrometer)", ${DS_PROMETHEUS} thay bằng uid "prometheus"
+#   node-exporter-full.json : grafana.com dashboard 1860 "Node Exporter Full"
+apiVersion: 1
+providers:
+  - name: rms
+    folder: RMS
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

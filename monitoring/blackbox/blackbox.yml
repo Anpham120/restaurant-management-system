@@ -1,0 +1,21 @@
+# Kiểm từ phía người dùng: gọi domain thật qua nginx + HTTPS (prometheus.yml job "site").
+# Bắt lỗi mà số liệu trong app không thấy: database chết (health DOWN, app vẫn chạy), nginx/DNS lỗi, chứng chỉ sắp hết hạn.
+modules:
+  # /actuator/health tổng hợp cả kết nối database: DB chết thì trả 503 và "DOWN"
+  health:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200]
+      fail_if_not_ssl: true
+      fail_if_body_not_matches_regexp: ['"status":"UP"']
+  # Trang web (frontend qua nginx)
+  web:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200]
+      fail_if_not_ssl: true
+      fail_if_body_not_matches_regexp: ['Atlas Restaurant']

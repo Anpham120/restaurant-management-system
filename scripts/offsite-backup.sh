@@ -8,7 +8,7 @@ set -euo pipefail
 
 BACKUP_DIR=${BACKUP_DIR:-/home/coder/rms-backups}
 KEY_FILE=${KEY_FILE:-/home/coder/rms-backups/.offsite.key}
-TOKEN_FILE=${TOKEN_FILE:-/home/coder/projects/RSM/restaurant-management-system/monitoring/secrets/telegram_bot_token}
+TOKEN_FILE=${TOKEN_FILE:-/home/coder/rms-deploy/monitoring/secrets/telegram_bot_token}
 CHAT_ID=${CHAT_ID:-6822487436}
 
 [ -s "$KEY_FILE" ] || { echo "[offsite] thiếu khóa $KEY_FILE"; exit 1; }
@@ -28,3 +28,5 @@ code=$(printf 'url = "https://api.telegram.org/bot%s/sendDocument"\n' "$(cat "$T
       -F "document=@$ENC;filename=$(basename "$LATEST").enc")
 [ "$code" = 200 ] || { echo "[offsite] gửi Telegram lỗi HTTP $code"; exit 1; }
 echo "[offsite] đã gửi $(basename "$LATEST").enc"
+# Báo Prometheus (luật OffsiteBackupStale)
+BACKUP_DIR="$BACKUP_DIR" "$(dirname "$0")/backup-metric.sh" offsite || echo "[offsite] không ghi được số liệu cho Prometheus"

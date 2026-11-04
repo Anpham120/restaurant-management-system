@@ -1,5 +1,5 @@
 # Giám sát: Prometheus (thu thập số liệu + luật cảnh báo), Alertmanager (gửi Telegram), Grafana (hiển thị),
-# node-exporter (CPU/RAM/đĩa máy chủ).
+# node-exporter (CPU/RAM/đĩa máy chủ, thời điểm sao lưu), blackbox-exporter (gọi domain thật như người dùng).
 # Chạy bằng network_mode: host vì app chỉ lắng nghe 127.0.0.1:8081, container bridge không tới được.
 # Mọi cổng chỉ mở trên 127.0.0.1. Chạy từ bản clone main: cd /home/coder/rms-deploy/monitoring && docker compose up -d
 # Cấu hình mount cả thư mục, không mount từng file: deploy cập nhật mã bằng git reset --hard (file mới, inode mới), bind mount
@@ -38,8 +38,22 @@ services:
     command:
       - --path.rootfs=/host
       - --web.listen-address=127.0.0.1:9100
+      # scripts/backup-db.sh, offsite-backup.sh ghi rms_backup_last_success_timestamp_seconds vào đây (luật BackupStale)
+      - --collector.textfile.directory=/textfile
     volumes:
       - /:/host:ro,rslave
+      # Mount thẳng thư mục con: /home/coder và rms-backups chỉ chủ sở hữu vào được, node-exporter chạy bằng nobody
+      - ${BACKUP_DIR:-/home/coder/rms-backups}/metrics:/textfile:ro
+    restart: unless-stopped
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.28.0
+    network_mode: host
+    command:
+      - --config.file=/etc/blackbox_exporter/blackbox.yml
+      - --web.listen-address=127.0.0.1:9115
+    volumes:
+      - ./blackbox:/etc/blackbox_exporter:ro
     restart: unless-stopped
 
   grafana:
