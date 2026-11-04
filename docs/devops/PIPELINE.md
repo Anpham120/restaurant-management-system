@@ -131,11 +131,14 @@ git clone --branch main https://github.com/Anpham120/restaurant-management-syste
 Không cần tạo `.env` tay: pipeline tự ghi từ credential `rms-prod-env` mỗi lần deploy. Kiểm tra uid của user `coder` bằng `id -u coder`. Nếu khác 1000 thì sửa `chown -R 1000:1000` trong `Jenkinsfile`.
 
 ### 3.4 Giám sát
+Chạy từ thư mục triển khai (bản clone `main`), không chạy từ thư mục dev: cấu hình giám sát production phải đi theo `main`, không đổi theo nhánh đang sửa dở.
 ```bash
-cd /home/coder/projects/RSM/restaurant-management-system/monitoring
-echo "GRAFANA_ADMIN_PASSWORD=<mật khẩu mạnh>" > .env
+cd /home/coder/rms-deploy/monitoring
+echo "GRAFANA_ADMIN_PASSWORD=<mật khẩu mạnh>" > .env   # chmod 600; .env và secrets/ bị git bỏ qua, deploy không xóa
 docker compose up -d
 ```
+`monitoring/compose.yaml` mount cả thư mục `prometheus/`, `alertmanager/` (không mount từng file): deploy cập nhật mã bằng `git reset --hard`, file mới có inode mới nên bind mount một file sẽ vẫn đọc bản cũ. Sau mỗi lần deploy, `scripts/deploy.sh` gửi `SIGHUP` để Prometheus và Alertmanager nạp lại cấu hình, chỉ khi chúng đang chạy từ chính thư mục triển khai.
+
 Truy cập Grafana bằng SSH tunnel: `ssh -L 3000:127.0.0.1:3000 <user>@<ip>`, rồi mở `http://127.0.0.1:3000`.
 Import dashboard có sẵn từ grafana.com: **4701** (JVM Micrometer) và **1860** (Node Exporter Full). Datasource Prometheus đã được cấu hình sẵn.
 
@@ -148,9 +151,9 @@ Thiết lập bot một lần:
 1. Trong Telegram, chat với `@BotFather`, gửi `/newbot`, đặt tên. Nhận **bot token**.
 2. Mở chat với bot vừa tạo và gửi một tin bất kỳ.
 3. Lấy chat id: `curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates"`, tìm `"chat":{"id":<số>`.
-4. Ghi token vào file không commit: `printf '%s' '<TOKEN>' > monitoring/secrets/telegram_bot_token && chmod 600 monitoring/secrets/telegram_bot_token`.
+4. Ghi token vào file không commit (trong `/home/coder/rms-deploy`): `printf '%s' '<TOKEN>' > monitoring/secrets/telegram_bot_token && chmod 600 monitoring/secrets/telegram_bot_token`.
 5. Đặt `chat_id` trong `monitoring/alertmanager/alertmanager.yml` (chat id không phải bí mật). Bot không nhắn trước được: phải bấm Start với bot ít nhất một lần.
-6. `cd monitoring && docker compose up -d`. Alertmanager chạy bằng uid 1000 (user `coder`) để file token giữ quyền `600`; nếu user khác thì sửa `user:` trong `monitoring/compose.yaml`.
+6. `cd /home/coder/rms-deploy/monitoring && docker compose up -d`. Token được mount vào `/run/alertmanager-secrets/`. Alertmanager chạy bằng uid 1000 (user `coder`) để file token giữ quyền `600`; nếu user khác thì sửa `user:` trong `monitoring/compose.yaml`.
 
 Thử bắn một cảnh báo giả: `curl -XPOST 127.0.0.1:9093/api/v2/alerts -H 'Content-Type: application/json' -d '[{"labels":{"alertname":"Thu","severity":"warning"},"annotations":{"summary":"Thử gửi cảnh báo"}}]'`
 
@@ -207,17 +210,20 @@ Hai lớp, không đổi schema database:
 
 ## 4. Quay lui và giới hạn
 
+- Quay lui tay (blue-green): deploy đã qua kiểm tra nhưng sau đó mới thấy lỗi thì chạy `cd /home/coder/rms-deploy && scripts/rollback.sh`. Script bật lại slot cũ (container chỉ bị dừng, image cũ còn nguyên), healthy thì dừng slot đang chạy, rồi kiểm qua domain. Slot cũ không healthy thì dừng nó, slot hiện tại vẫn phục vụ. Không đụng database (migration expand/contract). Chạy lần nữa để quay lại bản mới. Đã thử: chuyển A→B, B→A, slot cũ hỏng (giữ nguyên slot đang chạy), cả hai slot dừng (từ chối chạy).
+- Quay về bản cũ hơn bản trước: chạy lại build `main` của commit đó trong Jenkins nếu image `rms-release-*:<commit>` còn (5 commit `develop` gần nhất), hoặc kéo từ GHCR.
+- Ổ đĩa: sau mỗi build, Jenkins dọn image mồ côi, cache build quá 48 giờ và cắt tổng cache build xuống 6 GB. Không dọn volume: `rms-m2-cache`, `rms-trivy-cache` là cache của CI, trông "không dùng" khi không có build đang chạy.
 - Tài nguyên: CI chạy chung máy với production (4 CPU, 7 GB). Container Maven tối đa 2 CPU / 3 GB, Node 2 CPU / 2 GB, staging app 1,5 CPU / 1,5 GB, staging db 1 CPU / 1 GB; tất cả `cpu-shares 512` (production 1024) nên khi tranh CPU production được ưu tiên. Bước build image trong staging (Docker build) chưa giới hạn được.
 - Máy chủ duy nhất: Jenkins, staging và production chung một máy, Jenkins giữ `docker.sock` (tương đương root). Hạn chế đã biết của đồ án; thực tế nên tách máy CI.
 - Quay lui tự động chỉ áp dụng cho image `app` và `web`. Flyway là migration tiến một chiều: nếu bản mới đã migrate schema thì quay lui image không hoàn tác được DB. Vì vậy thay đổi schema phải tương thích ngược. Nếu cần quay DB về trước khi deploy, khôi phục bản `pre-deploy-*.dump` mới nhất (mục 3.6).
 - Không có cổng duyệt tay nghĩa là lỗi logic không bị test bắt được sẽ lên production sau khi pass CI. Đây là đánh đổi của yêu cầu tự động hóa hoàn toàn.
-- `/actuator/prometheus` được permitAll để Prometheus scrape. Nginx máy chủ chỉ proxy `/api/` và `/actuator/health`, nên đường dẫn này không lộ ra internet. App chỉ lắng nghe `127.0.0.1:8081`.
+- `/actuator/prometheus` được permitAll để Prometheus scrape. Nginx máy chủ chỉ proxy `/api/` và `/actuator/health`, nên đường dẫn này không lộ ra internet. App chỉ lắng nghe `127.0.0.1:8081` (slot B: `8086`).
 
 ## 5. Kiểm tra nhanh
 
 ```bash
 # Cú pháp script
-bash -n scripts/auto-merge.sh && bash -n scripts/deploy.sh && bash -n scripts/tag-release.sh && bash -n scripts/e2e-flow.sh && bash -n scripts/push-release.sh
+bash -n scripts/auto-merge.sh && bash -n scripts/deploy.sh && bash -n scripts/tag-release.sh && bash -n scripts/e2e-flow.sh && bash -n scripts/push-release.sh && bash -n scripts/rollback.sh
 # Slot đang chạy (blue-green)
 docker ps --filter name=restaurant-management-system-app --format '{{.Names}} {{.Status}}'
 scripts/check-migrations.sh
