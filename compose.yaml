@@ -60,7 +60,9 @@ services:
       interval: 10s
       timeout: 3s
       retries: 12
+      # Trong 30 giây đầu kiểm 2 giây/lần: báo healthy ngay khi app sẵn sàng (deploy, staging chờ ít hơn)
       start_period: 30s
+      start_interval: 2s
 
   # Frontend (React, file tĩnh). nginx máy chủ: "/" → 127.0.0.1:8083, "/api/" → app.
   web: &web
@@ -69,7 +71,15 @@ services:
     depends_on:
       - app
     ports:
-      - "127.0.0.1:${WEB_PORT:-8083}:80"
+      - "127.0.0.1:${WEB_PORT:-8083}:8080"
+    # nginx không root nghe 8080. Healthcheck để "compose up --wait" (deploy, staging) chờ cả frontend sẵn sàng
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+      start_interval: 2s
 
   # Slot B cho deploy blue-green (scripts/deploy.sh): cùng cấu hình app/web, khác cổng máy chủ. Chỉ chạy khi được gọi
   # đích danh (profile slot-b), nên `docker compose up` thường, staging và dev không dựng hai service này.
@@ -85,7 +95,7 @@ services:
     profiles: ["slot-b"]
     depends_on: []
     ports:
-      - "127.0.0.1:${WEB_B_PORT:-8087}:80"
+      - "127.0.0.1:${WEB_B_PORT:-8087}:8080"
 
 volumes:
   pgdata:

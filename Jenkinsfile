@@ -1,8 +1,9 @@
 // CI/CD tự động, không có bước duyệt tay.
-//   feature/*  : kiểm migration → test → quét bảo mật → tự merge vào develop
-//   develop    : kiểm migration → test → quét bảo mật → staging tạm thời (smoke test đọc + E2E ghi) → quét image
-//                → gắn tag phát hành → đẩy GHCR (nếu có token) → tự promote lên main (fast-forward)
+//   feature/*  : kiểm migration → [test backend | test frontend | quét bảo mật mã nguồn] → tự merge vào develop
+//   develop    : như trên → staging tạm thời (smoke test đọc + E2E ghi) → quét image, gắn tag phát hành
+//                → [đẩy GHCR (nếu có token) | tự promote lên main (fast-forward)]
 //   main       : deploy production đúng image develop đã kiểm (blue-green khi nginx có 2 slot), kiểm qua domain thật
+//   [a | b]    : chạy song song (các bước độc lập, không bỏ bước nào)
 // main không test lại: --ff-only nên commit trên main trùng SHA với commit develop vừa qua đủ test, staging và Trivy.
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
 // Kích hoạt: webhook GitHub. Dự phòng là quét multibranch mỗi phút (cấu hình job). Không dùng pollSCM:
@@ -12,6 +13,9 @@ pipeline {
     agent any
 
     options {
+        // Lưu trạng thái pipeline ít hơn xuống đĩa: chạy nhanh hơn; đổi lại build đang chạy không tự tiếp tục nếu Jenkins
+        // khởi động lại giữa chừng (chạy lại build là đủ, mọi bước đều lặp lại an toàn)
+        durabilityHint('PERFORMANCE_OPTIMIZED')
         disableConcurrentBuilds()
         timestamps()
         timeout(time: 40, unit: 'MINUTES')
@@ -20,6 +24,8 @@ pipeline {
 
     environment {
         JENKINS_CONTAINER = 'jenkins'
+        // Repo GitHub (dùng cho fetch/push bằng token trong các bước chạy ngoài workspace)
+        REPO = 'github.com/Anpham120/restaurant-management-system.git'
         // Thư mục triển khai trên máy chủ (clone nhánh main, có .env thật). Xem docs/devops/PIPELINE.md
         DEPLOY_DIR = '/home/coder/rms-deploy'
         // Thư mục staging tạm thời (clone nhánh develop, tự tạo lần đầu). Không chứa secret thật.
@@ -59,7 +65,7 @@ pipeline {
                               --user "$(id -u):$(id -g)" --group-add "$(stat -c %g /var/run/docker.sock)" \
                               -e HOME=/tmp -v rms-m2-cache:/tmp/.m2 \
                               maven:3.9-eclipse-temurin-25 \
-                              mvn -B -Dmaven.repo.local=/tmp/.m2/repository verify
+                              mvn -B -ntp -Dmaven.repo.local=/tmp/.m2/repository verify
                         '''
                     }
                     post {
@@ -113,13 +119,22 @@ pipeline {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     // Dựng bản develop ở môi trường tách biệt trên bản sao lưu production mới nhất (chỉ đọc), thử các
                     // chức năng chính và quét đọc mọi module rồi hủy. Lỗi thì không promote.
+                    // Container docker:27-cli (có sẵn docker compose, git) mount thư mục staging đúng đường dẫn trên host; lệnh
+                    // trong '...' do shell của container chạy. trap: luôn trả quyền thư mục về user coder, kể cả khi lỗi.
                     sh '''
                         docker run --rm --network host \
                           -v /var/run/docker.sock:/var/run/docker.sock \
                           -v "$STAGING_DIR:$STAGING_DIR" -w "$STAGING_DIR" -v "$BACKUP_DIR:$BACKUP_DIR:ro" \
-                          -e GH_TOKEN -e BACKUP_DIR -e GIT_COMMIT \
-                          docker:27-cli \
-                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash jq && git config --global --add safe.directory \\"\\$PWD\\" && ([ -d .git ] || git init -q) && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" develop && git reset -q --hard \\$GIT_COMMIT && scripts/staging-test.sh; rc=\\$?; chown -R 1000:1000 .; exit \\$rc"
+                          -e GH_TOKEN -e BACKUP_DIR -e GIT_COMMIT -e REPO \
+                          docker:27-cli sh -euc '
+                            trap "chown -R 1000:1000 ." EXIT
+                            apk add -q --no-cache bash curl jq
+                            git config --global --add safe.directory "$PWD"
+                            [ -d .git ] || git init -q
+                            git fetch -q "https://x-access-token:$GH_TOKEN@$REPO" develop
+                            git reset -q --hard "$GIT_COMMIT"
+                            scripts/staging-test.sh
+                          '
                     '''
                 }
             }
@@ -173,15 +188,22 @@ pipeline {
                     string(credentialsId: 'github-token', variable: 'GH_TOKEN'),
                     string(credentialsId: 'rms-prod-env', variable: 'ENV_B64')
                 ]) {
-                    // Chạy trong container docker CLI, mount thư mục triển khai đúng đường dẫn trên host.
-                    // Sau khi deploy, xóa .env và trả quyền thư mục về user coder (uid 1000 — kiểm tra bằng: id -u coder).
+                    // Như staging: container docker:27-cli, mount thư mục triển khai đúng đường dẫn trên host, checkout đúng
+                    // commit của build. trap: luôn xóa .env (kể cả khi deploy lỗi) và trả quyền về user coder (uid 1000).
                     sh '''
                         docker run --rm --network host \
                           -v /var/run/docker.sock:/var/run/docker.sock \
                           -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$DEPLOY_DIR" -v "$BACKUP_DIR:$BACKUP_DIR" -v /etc/nginx:/etc/nginx:ro \
-                          -e GH_TOKEN -e ENV_B64 -e BACKUP_DIR -e GIT_COMMIT -e PUBLIC_URL \
-                          docker:27-cli \
-                          sh -c "apk add -q --no-cache docker-cli-compose git curl bash && git config --global --add safe.directory \\"\\$PWD\\" && git fetch -q \\"https://x-access-token:\\$GH_TOKEN@github.com/Anpham120/restaurant-management-system.git\\" main && git reset -q --hard \\$GIT_COMMIT && (umask 077; printf '%s' \\"\\$ENV_B64\\" | base64 -d > .env) && scripts/deploy.sh; rc=\\$?; rm -f .env; chown -R 1000:1000 . \\$BACKUP_DIR; exit \\$rc"
+                          -e GH_TOKEN -e ENV_B64 -e BACKUP_DIR -e GIT_COMMIT -e PUBLIC_URL -e REPO \
+                          docker:27-cli sh -euc '
+                            trap "rm -f .env; chown -R 1000:1000 . $BACKUP_DIR" EXIT
+                            apk add -q --no-cache bash curl
+                            git config --global --add safe.directory "$PWD"
+                            git fetch -q "https://x-access-token:$GH_TOKEN@$REPO" main
+                            git reset -q --hard "$GIT_COMMIT"
+                            (umask 077; printf "%s" "$ENV_B64" | base64 -d > .env)
+                            scripts/deploy.sh
+                          '
                     '''
                 }
             }

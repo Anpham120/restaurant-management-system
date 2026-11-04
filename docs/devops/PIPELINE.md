@@ -33,7 +33,7 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 | Stage | Chạy ở | Làm gì |
 |---|---|---|
 | Kiểm migration | `feature/*`, `develop` | `scripts/check-migrations.sh`: chặn migration không tương thích ngược (xem dưới) |
-| Test backend | `feature/*`, `develop` | `mvn verify` (unit + `*IT` dùng Testcontainers + `ModularityTest`) trong container `maven:3.9-eclipse-temurin-25`. Jenkins hiện kết quả test (JUnit) và lưu báo cáo độ phủ JaCoCo (`target/site/jacoco/index.html`, mục Artifacts của build); log in dòng "Độ phủ dòng code" |
+| Test backend | `feature/*`, `develop` | `mvn -ntp verify` (unit + `*IT` dùng Testcontainers + `ModularityTest`) trong container `maven:3.9-eclipse-temurin-25`. Jenkins hiện kết quả test (JUnit) và lưu báo cáo độ phủ JaCoCo (`target/site/jacoco/index.html`, mục Artifacts của build); log in dòng "Độ phủ dòng code" |
 | Test frontend | `feature/*`, `develop` | `npm ci`, `typecheck`, `build` trong container `node:22-alpine` |
 | Quét bảo mật mã nguồn | `feature/*`, `develop` | `scripts/security-scan.sh fs`: Trivy quét thư viện Maven, npm và secret lộ trong mã |
 | Merge feature vào develop | `feature/*` | `scripts/auto-merge.sh develop` (GitHub lỗi tạm thời thì tự thử lại tối đa 3 lần, cách 10 rồi 20 giây) |
@@ -42,6 +42,11 @@ Lưu ý: không commit trực tiếp lên `main` hoặc `develop`. Nếu làm v�
 | Đẩy image lên GHCR | `develop` | `scripts/push-release.sh`: bản lưu image ngoài máy chủ. Thiếu credential `ghcr-token` thì bỏ qua |
 | Promote develop lên main | `develop` | `scripts/auto-merge.sh main` |
 | Deploy production | `main` | `scripts/deploy.sh` trong thư mục `/home/coder/rms-deploy` |
+
+Image (đo ngày 2026-11-04):
+- Backend: `.dockerignore` kiểu cho phép (chỉ `.mvn`, `mvnw`, `pom.xml`, `src/main`); cache thư viện Maven bằng BuildKit cache mount (sửa `pom.xml` rồi build lại: 57 s → 19 s); không biên dịch test trong image (test chạy ở stage Test backend); jar tách lớp (`-Djarmode=tools extract --layers`): lớp thư viện 63,7 MB dùng chung giữa các bản, mỗi bản phát hành chỉ thêm lớp ứng dụng ~2,4 MB. Chạy bằng user `app` (uid 10001), `-XX:+ExitOnOutOfMemoryError`.
+- Frontend: nginx không root (`nginxinc/nginx-unprivileged`, uid 101, cổng 8080); cache npm bằng cache mount.
+- `compose.yaml`: healthcheck cho `web`; `start_interval: 2s` để `--wait` (deploy, staging) nhận healthy ngay khi sẵn sàng.
 
 Chạy song song (không bỏ bước nào, chỉ không chờ nhau): Test backend, Test frontend và Quét bảo mật mã nguồn chạy cùng lúc trong stage "Kiểm tra song song", sau Kiểm migration; Đẩy GHCR và Promote chạy cùng lúc trong stage "Phát hành", sau khi image đã qua Trivy và được gắn tag. Một nhánh lỗi thì build lỗi như trước.
 
