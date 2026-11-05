@@ -1,4 +1,5 @@
-# Luật cảnh báo. Prometheus đánh giá mỗi 15 giây; "for" là thời gian phải vi phạm liên tục mới bắn,
+# Luật cảnh báo. Prometheus lấy số liệu mỗi 15 giây (scrape_interval) và đánh giá luật mỗi 1 phút (evaluation_interval
+# mặc định). "for" là thời gian phải vi phạm liên tục mới bắn,
 # để tránh báo nhầm khi app khởi động lại (deploy) vài chục giây.
 groups:
   # Nhịp tim (dead man's switch): luôn bật. Alertmanager gửi nó ra healthchecks.io mỗi phút (receiver heartbeat).
