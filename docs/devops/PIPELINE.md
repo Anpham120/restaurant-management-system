@@ -86,6 +86,8 @@ Deploy (`scripts/deploy.sh`):
 Migration tương thích ngược (`scripts/check-migrations.sh`):
 - Deploy lỗi chỉ quay lui image, không quay lui database. Vì vậy bản app đang chạy phải còn chạy được trên schema sau migration.
 - Script chặn `DROP TABLE`, `DROP COLUMN`, `RENAME`, `ALTER COLUMN … TYPE`, `SET NOT NULL`, `ADD COLUMN … NOT NULL` không có `DEFAULT`.
+- Script dò theo từng mệnh đề SQL, không theo từng dòng. Nhờ vậy nó bắt được cả lệnh viết trên nhiều dòng, cách viết bỏ chữ `COLUMN` (`ALTER TABLE t DROP c`, `ALTER c TYPE …`, `RENAME c TO …`) và `ALTER TABLE` nhiều mệnh đề cách nhau bằng dấu phẩy.
+- Script dò theo chữ nên không thấy được thay đổi về ý nghĩa: thêm ràng buộc `CHECK`/`UNIQUE`/`FOREIGN KEY` mới, hay `UPDATE`/`DELETE` dữ liệu. Các thay đổi này vẫn cần người viết migration tự kiểm.
 - Cách làm đúng là tách 2 lần phát hành: **expand** (thêm cột/bảng mới, cho phép NULL hoặc có DEFAULT) rồi **contract** (lần phát hành sau, khi không còn code dùng phần cũ, mới xóa/đổi). File contract ghi dòng `-- contract: <lý do>` để script cho qua.
 
 Quét bảo mật (Trivy):
