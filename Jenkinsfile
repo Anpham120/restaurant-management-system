@@ -45,6 +45,7 @@ pipeline {
                 // Migration phải tương thích ngược (expand/contract) để quay lui image không cần khôi phục database
                 sh 'scripts/check-migrations.sh'
             }
+            post { failure { script { ghiBuocLoi() } } }
         }
 
         stage('Kiểm tra song song') {
@@ -69,6 +70,7 @@ pipeline {
                         '''
                     }
                     post {
+                        failure { script { ghiBuocLoi() } }
                         // Kết quả test (biểu đồ pass/fail qua các build) và báo cáo độ phủ JaCoCo (artifact HTML)
                         always {
                             junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
@@ -93,6 +95,7 @@ pipeline {
                               sh -c "npm ci --no-audit --no-fund && npm run typecheck && npm run build"
                         '''
                     }
+                    post { failure { script { ghiBuocLoi() } } }
                 }
 
                 stage('Quét bảo mật mã nguồn') {
@@ -100,6 +103,7 @@ pipeline {
                         // Trivy: thư viện Maven/npm có lỗ hổng HIGH/CRITICAL đã có bản vá, hoặc secret lộ trong mã
                         sh 'scripts/security-scan.sh fs'
                     }
+                    post { failure { script { ghiBuocLoi() } } }
                 }
             }
         }
@@ -111,6 +115,7 @@ pipeline {
                     sh 'scripts/auto-merge.sh develop'
                 }
             }
+            post { failure { script { ghiBuocLoi() } } }
         }
 
         stage('Staging smoke test') {
@@ -138,6 +143,7 @@ pipeline {
                     '''
                 }
             }
+            post { failure { script { ghiBuocLoi() } } }
         }
 
         stage('Quét bảo mật image') {
@@ -147,6 +153,7 @@ pipeline {
                 sh 'scripts/security-scan.sh image rms-staging-app rms-staging-web'
                 sh 'scripts/tag-release.sh "$GIT_COMMIT"'
             }
+            post { failure { script { ghiBuocLoi() } } }
         }
 
         stage('Phát hành') {
@@ -176,6 +183,7 @@ pipeline {
                             sh 'scripts/auto-merge.sh main'
                         }
                     }
+                    post { failure { script { ghiBuocLoi() } } }
                 }
             }
         }
@@ -207,18 +215,19 @@ pipeline {
                     '''
                 }
             }
+            post { failure { script { ghiBuocLoi() } } }
         }
     }
 
     post {
         // Telegram: báo build lỗi ở mọi nhánh, chỉ báo thành công khi main deploy xong (tránh 3 tin cho mỗi lần push)
         failure {
-            script { notifyTelegram("❌ Build ${env.BRANCH_NAME} #${env.BUILD_NUMBER} THẤT BẠI") }
+            script { notifyTelegram(false) }
         }
         success {
             script {
                 if (env.BRANCH_NAME == 'main') {
-                    notifyTelegram("✅ Đã deploy lên production")
+                    notifyTelegram(true)
                 }
             }
         }
@@ -231,13 +240,53 @@ pipeline {
     }
 }
 
-// Gửi tin Telegram kèm commit và link build. Thiếu credential telegram-bot-token hoặc mạng lỗi thì chỉ ghi log,
-// không làm hỏng build. Token chỉ dùng trong sh nháy đơn để không lộ qua Groovy.
-def notifyTelegram(String title) {
+// Ghi tên stage lỗi (gọi trong post failure của từng stage) để tin Telegram nói rõ hỏng ở bước nào.
+// Nhiều stage song song cùng lỗi thì ghi đủ.
+def ghiBuocLoi() {
+    env.BUOC_LOI = env.BUOC_LOI ? "${env.BUOC_LOI}, ${env.STAGE_NAME}" : env.STAGE_NAME
+}
+
+// Gửi tin Telegram dễ đọc: kết quả, thay đổi gì (của nhánh tính năng nào, ai viết), commit, slot đang phục vụ, link log.
+// Commit trên develop/main là commit merge "[auto-merge]", nên lấy nội dung từ commit cuối của nhánh tính năng (HEAD^2).
+// Thiếu credential telegram-bot-token hoặc mạng lỗi thì chỉ ghi log, không làm hỏng build. Token chỉ dùng trong sh nháy
+// đơn để không lộ qua Groovy.
+def notifyTelegram(boolean ok) {
     try {
-        def commit = sh(script: 'git log -1 --format="%h %s"', returnStdout: true).trim()
+        def info = sh(returnStdout: true, script: '''
+            if git rev-parse -q --verify HEAD^2 >/dev/null; then
+              nhanh=$(git log -1 --format=%s | sed -nE 's/^Merge (.+) vào .*/\\1/p')
+              thaydoi=$(git log -1 --format=%s HEAD^2 | sed -E 's/^ +//')
+              tacgia=$(git log -1 --format=%an HEAD^2)
+              them=$(( $(git rev-list --count HEAD^1..HEAD^2) - 1 ))
+              if [ "$them" -gt 0 ]; then thaydoi="$thaydoi (+$them commit khác)"; fi
+            else
+              nhanh=$BRANCH_NAME
+              thaydoi=$(git log -1 --format=%s | sed -E 's/^ +//')
+              tacgia=$(git log -1 --format=%an)
+            fi
+            slot=$(docker ps --format '{{.Names}}' \
+              | sed -nE 's/^restaurant-management-system-app-1$/A (8081)/p; s/^restaurant-management-system-app-b-1$/B (8086)/p' \
+              | sort | paste -sd '+' | sed 's/+/ và /')
+            echo "Thay đổi: $thaydoi"
+            echo "Nhánh: ${nhanh:-$BRANCH_NAME} · $tacgia"
+            echo "Commit: $(git rev-parse --short HEAD)"
+            echo "Đang phục vụ: slot ${slot:-không rõ}"
+        ''').trim()
+        long giay = (System.currentTimeMillis() - currentBuild.startTimeInMillis).intdiv(1000)
+        def thoiGian = giay >= 60 ? "${giay.intdiv(60)} phút ${giay % 60} giây" : "${giay} giây"
+        def build = "${env.BRANCH_NAME} #${env.BUILD_NUMBER} · ${thoiGian}"
+        def text
+        if (ok) {
+            text = "✅ ĐÃ LÊN PRODUCTION\n${info}\nBuild: ${build}\nWeb: ${env.PUBLIC_URL}"
+        } else {
+            def hauQua = env.BRANCH_NAME == 'main' ? 'Deploy lỗi: deploy.sh giữ hoặc bật lại slot cũ, xem log để chắc chắn.'
+                       : env.BRANCH_NAME == 'develop' ? 'Không promote lên main. Production không đổi.'
+                       : env.BRANCH_NAME.startsWith('feature/') ? 'Chưa merge vào develop. Production không đổi.'
+                       : 'Production không đổi.'
+            text = "❌ PIPELINE DỪNG · ${env.BRANCH_NAME} #${env.BUILD_NUMBER}\nBước lỗi: ${env.BUOC_LOI ?: 'không rõ, xem log'}\n${info}\nBuild: ${build}\n${hauQua}"
+        }
         withCredentials([string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN')]) {
-            withEnv(["TG_TEXT=${title}\n${commit}\n${env.BUILD_URL}console"]) {
+            withEnv(["TG_TEXT=${text}\nLog: ${env.BUILD_URL}console"]) {
                 sh '''curl -fsS -o /dev/null --max-time 10 "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
                       --data-urlencode chat_id="$TELEGRAM_CHAT_ID" --data-urlencode text="$TG_TEXT"'''
             }
