@@ -9,10 +9,10 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.employee.dto.ShiftDtos.AttendanceAdjustmentView;
-import com.restaurant.core.employee.dto.ShiftDtos.AttendanceResponse;
-import com.restaurant.core.employee.dto.ShiftDtos.ShiftAssignmentResponse;
-import com.restaurant.core.employee.dto.ShiftDtos.ShiftResponse;
+import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceAdjustmentView;
+import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceResponse;
+import com.restaurant.core.employee.dto.response.ShiftResponses.ShiftAssignmentResponse;
+import com.restaurant.core.employee.dto.response.ShiftResponses.ShiftResponse;
 
 /** Truy vấn CHỈ ĐỌC ca, phân ca, chấm công (ghép nhân viên, trả thẳng DTO). Ghi: các JpaRepository. Owner: Nguyễn Quang Hiếu. */
 @Repository

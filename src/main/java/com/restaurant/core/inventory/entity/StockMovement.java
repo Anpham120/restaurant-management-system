@@ -7,9 +7,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -34,35 +37,43 @@ public class StockMovement {
     @Column(name = "movement_type", nullable = false, length = 30)
     private MovementType movementType;
 
-    @Column(name = "raw_batch_id")
-    private Long rawBatchId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "raw_batch_id")
+    private InventoryBatch rawBatch;
 
-    @Column(name = "wip_issue_item_id")
-    private Long wipIssueItemId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "wip_issue_item_id")
+    private StockIssueItem wipIssueItem;
 
-    @Column(name = "kitchen_batch_id")
-    private Long kitchenBatchId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "kitchen_batch_id")
+    private KitchenBatch kitchenBatch;
 
     @Column(name = "quantity_delta", nullable = false, precision = 12, scale = 3)
     private BigDecimal quantityDelta;
 
-    @Column(name = "ref_issue_item_id")
-    private Long refIssueItemId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ref_issue_item_id")
+    private StockIssueItem refIssueItem;
 
-    @Column(name = "preparation_id")
-    private Long preparationId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "preparation_id")
+    private KitchenPreparation preparation;
 
     @Column(name = "order_item_id")
     private Long orderItemId;
 
-    @Column(name = "stock_count_item_id")
-    private Long stockCountItemId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "stock_count_item_id")
+    private StockCountItem stockCountItem;
 
-    @Column(name = "stock_return_item_id")
-    private Long stockReturnItemId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "stock_return_item_id")
+    private StockReturnItem stockReturnItem;
 
-    @Column(name = "stock_adjustment_item_id")
-    private Long stockAdjustmentItemId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "stock_adjustment_item_id")
+    private StockAdjustmentItem stockAdjustmentItem;
 
     @Column(length = 255)
     private String reason;
@@ -83,33 +94,33 @@ public class StockMovement {
     }
 
     /** Lô kho chính (inventory_batches). */
-    public static StockMovement ofRawBatch(MovementType type, long rawBatchId, BigDecimal delta, String eventKey, Instant now) {
+    public static StockMovement ofRawBatch(MovementType type, InventoryBatch rawBatch, BigDecimal delta, String eventKey, Instant now) {
         StockMovement m = of(type, delta, eventKey, now);
-        m.rawBatchId = rawBatchId;
+        m.rawBatch = rawBatch;
         return m;
     }
 
     /** Phần nguyên liệu bếp đã nhận nhưng chưa sơ chế (stock_issue_items.wip_remaining_quantity). */
-    public static StockMovement ofWipIssueItem(MovementType type, long issueItemId, BigDecimal delta, String eventKey, Instant now) {
+    public static StockMovement ofWipIssueItem(MovementType type, StockIssueItem wipIssueItem, BigDecimal delta, String eventKey, Instant now) {
         StockMovement m = of(type, delta, eventKey, now);
-        m.wipIssueItemId = issueItemId;
+        m.wipIssueItem = wipIssueItem;
         return m;
     }
 
     /** Lô bếp (kitchen_batches). */
-    public static StockMovement ofKitchenBatch(MovementType type, long kitchenBatchId, BigDecimal delta, String eventKey, Instant now) {
+    public static StockMovement ofKitchenBatch(MovementType type, KitchenBatch kitchenBatch, BigDecimal delta, String eventKey, Instant now) {
         StockMovement m = of(type, delta, eventKey, now);
-        m.kitchenBatchId = kitchenBatchId;
+        m.kitchenBatch = kitchenBatch;
         return m;
     }
 
-    public StockMovement refIssueItem(Long id) {
-        this.refIssueItemId = id;
+    public StockMovement refIssueItem(StockIssueItem item) {
+        this.refIssueItem = item;
         return this;
     }
 
-    public StockMovement preparation(Long id) {
-        this.preparationId = id;
+    public StockMovement preparation(KitchenPreparation preparation) {
+        this.preparation = preparation;
         return this;
     }
 
@@ -118,23 +129,55 @@ public class StockMovement {
         return this;
     }
 
-    public StockMovement countItem(Long id) {
-        this.stockCountItemId = id;
+    public StockMovement countItem(StockCountItem item) {
+        this.stockCountItem = item;
         return this;
     }
 
-    public StockMovement returnItem(Long id) {
-        this.stockReturnItemId = id;
+    public StockMovement returnItem(StockReturnItem item) {
+        this.stockReturnItem = item;
         return this;
     }
 
-    public StockMovement adjustmentItem(Long id) {
-        this.stockAdjustmentItemId = id;
+    public StockMovement adjustmentItem(StockAdjustmentItem item) {
+        this.stockAdjustmentItem = item;
         return this;
     }
 
     public StockMovement reason(String reason) {
         this.reason = reason;
         return this;
+    }
+
+    public Long getRawBatchId() {
+        return rawBatch == null ? null : rawBatch.getId();
+    }
+
+    public Long getWipIssueItemId() {
+        return wipIssueItem == null ? null : wipIssueItem.getId();
+    }
+
+    public Long getKitchenBatchId() {
+        return kitchenBatch == null ? null : kitchenBatch.getId();
+    }
+
+    public Long getRefIssueItemId() {
+        return refIssueItem == null ? null : refIssueItem.getId();
+    }
+
+    public Long getPreparationId() {
+        return preparation == null ? null : preparation.getId();
+    }
+
+    public Long getStockCountItemId() {
+        return stockCountItem == null ? null : stockCountItem.getId();
+    }
+
+    public Long getStockReturnItemId() {
+        return stockReturnItem == null ? null : stockReturnItem.getId();
+    }
+
+    public Long getStockAdjustmentItemId() {
+        return stockAdjustmentItem == null ? null : stockAdjustmentItem.getId();
     }
 }

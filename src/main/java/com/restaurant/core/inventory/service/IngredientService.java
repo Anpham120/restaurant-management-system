@@ -2,10 +2,10 @@ package com.restaurant.core.inventory.service;
 
 import java.util.List;
 
-import com.restaurant.core.inventory.dto.IngredientDtos.IngredientRequest;
-import com.restaurant.core.inventory.dto.IngredientDtos.IngredientResponse;
-import com.restaurant.core.inventory.dto.IngredientDtos.KitchenTypeRequest;
-import com.restaurant.core.inventory.dto.IngredientDtos.KitchenTypeResponse;
+import com.restaurant.core.inventory.dto.request.IngredientRequests.IngredientRequest;
+import com.restaurant.core.inventory.dto.response.IngredientResponses.IngredientResponse;
+import com.restaurant.core.inventory.dto.request.IngredientRequests.KitchenTypeRequest;
+import com.restaurant.core.inventory.dto.response.IngredientResponses.KitchenTypeResponse;
 
 /** Danh mục nguyên liệu và loại bếp. Owner: Đỗ Tuấn Anh. */
 public interface IngredientService {

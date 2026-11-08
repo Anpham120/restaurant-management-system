@@ -3,9 +3,12 @@ package com.restaurant.core.inventory.entity;
 import java.math.BigDecimal;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -25,8 +28,9 @@ public class KitchenIngredientType {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "raw_ingredient_id", nullable = false)
-    private Long rawIngredientId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "raw_ingredient_id", nullable = false)
+    private Ingredient rawIngredient;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -43,9 +47,9 @@ public class KitchenIngredientType {
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
-    public KitchenIngredientType(long rawIngredientId, String name, String handlingType, Integer shelfLifeHours, BigDecimal minimumQuantity,
+    public KitchenIngredientType(Ingredient rawIngredient, String name, String handlingType, Integer shelfLifeHours, BigDecimal minimumQuantity,
                                  boolean active) {
-        this.rawIngredientId = rawIngredientId;
+        this.rawIngredient = rawIngredient;
         this.handlingType = handlingType;
         changeDetails(name, shelfLifeHours, minimumQuantity, active);
     }
@@ -56,5 +60,9 @@ public class KitchenIngredientType {
         this.shelfLifeHours = shelfLifeHours;
         this.minimumQuantity = minimumQuantity;
         this.active = active;
+    }
+
+    public Long getRawIngredientId() {
+        return rawIngredient.getId();
     }
 }

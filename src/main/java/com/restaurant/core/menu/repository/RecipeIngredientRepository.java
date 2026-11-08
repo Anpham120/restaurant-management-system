@@ -8,5 +8,5 @@ import com.restaurant.core.menu.entity.RecipeIngredient;
 
 public interface RecipeIngredientRepository extends JpaRepository<RecipeIngredient, Long> {
 
-    List<RecipeIngredient> findByRecipeIdOrderByKitchenIngredientTypeId(Long recipeId);
+    List<RecipeIngredient> findByRecipe_IdOrderByKitchenIngredientTypeId(Long recipeId);
 }

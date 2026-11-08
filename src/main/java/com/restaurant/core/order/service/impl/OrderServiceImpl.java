@@ -17,12 +17,12 @@ import com.restaurant.core.menu.DailyMenuLookup.OrderableDish;
 import com.restaurant.core.menu.DailyMenuLookup;
 import com.restaurant.core.menu.QuotaUsageCounter;
 import com.restaurant.core.order.OrderInvoiceAccess;
-import com.restaurant.core.order.dto.ItemEventResponse;
-import com.restaurant.core.order.dto.OrderItemResponse;
-import com.restaurant.core.order.dto.OrderResponse;
-import com.restaurant.core.order.dto.SubmitBatchRequest;
-import com.restaurant.core.order.dto.SubmitBatchResponse.QuotaWarning;
-import com.restaurant.core.order.dto.SubmitBatchResponse;
+import com.restaurant.core.order.dto.response.ItemEventResponse;
+import com.restaurant.core.order.dto.response.OrderItemResponse;
+import com.restaurant.core.order.dto.response.OrderResponse;
+import com.restaurant.core.order.dto.request.SubmitBatchRequest;
+import com.restaurant.core.order.dto.response.SubmitBatchResponse.QuotaWarning;
+import com.restaurant.core.order.dto.response.SubmitBatchResponse;
 import com.restaurant.core.order.entity.CustomerOrder;
 import com.restaurant.core.order.entity.OrderBatch;
 import com.restaurant.core.order.entity.OrderItem;
@@ -100,7 +100,7 @@ public class OrderServiceImpl implements OrderService {
             throw ApiException.invalidState("Đơn " + orderId + " đang thanh toán: mở lại hóa đơn trước khi gọi thêm");
         });
 
-        OrderBatch batch = orderBatchRepository.save(new OrderBatch(orderId, actorId, requestKey, clock.now()));
+        OrderBatch batch = orderBatchRepository.save(new OrderBatch(order, actorId, requestKey, clock.now()));
         for (SubmitBatchRequest.Item line : request.items()) {
             OrderableDish dish = findDishOnSaleToday(line.dailyMenuItemId());
             OrderItem item = orderItemRepository.save(new OrderItem(batch, dish.dailyMenuItemId(), line.quantity(), dish.name(),

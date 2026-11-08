@@ -2,13 +2,13 @@ package com.restaurant.core.inventory.service;
 
 import java.util.List;
 
-import com.restaurant.core.inventory.dto.KitchenStockDtos.AdjustmentRequest;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.AdjustmentResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.MarkUnusableResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.PreparationRequest;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.PreparationResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.ReturnRequest;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.ReturnResponse;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.AdjustmentRequest;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.AdjustmentResponse;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.MarkUnusableResponse;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.PreparationRequest;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.PreparationResponse;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.ReturnRequest;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.ReturnResponse;
 
 /** Kho bếp: sơ chế, hoàn trả về kho chính, hủy hàng, đánh dấu lô hỏng. Owner: Đỗ Tuấn Anh. */
 public interface KitchenStockService {

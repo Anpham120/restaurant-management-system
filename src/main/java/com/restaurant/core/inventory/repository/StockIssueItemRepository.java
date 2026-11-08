@@ -14,10 +14,10 @@ import com.restaurant.core.inventory.entity.StockIssueItem;
 /** Dòng xuất cũng được khóa theo id tăng dần. */
 public interface StockIssueItemRepository extends JpaRepository<StockIssueItem, Long> {
 
-    List<StockIssueItem> findByStockIssueIdOrderById(Long stockIssueId);
+    List<StockIssueItem> findByStockIssue_IdOrderById(Long stockIssueId);
 
     /** Lô kho chính của các dòng xuất (đọc id, không nạp dòng — dòng sẽ được khóa sau). */
-    @Query("SELECT DISTINCT l.inventoryBatchId FROM StockIssueItem l WHERE l.id IN :ids")
+    @Query("SELECT DISTINCT l.inventoryBatch.id FROM StockIssueItem l WHERE l.id IN :ids")
     List<Long> findInventoryBatchIdsOfIssueItems(@Param("ids") Collection<Long> issueItemIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

@@ -13,6 +13,6 @@ public interface KitchenIngredientTypeRepository extends JpaRepository<KitchenIn
     /** Loại bếp DIRECT đang dùng của một nguyên liệu gốc (để xuất thẳng cho bếp). */
     @Query("""
             SELECT t FROM KitchenIngredientType t
-             WHERE t.rawIngredientId = :ingredientId AND t.handlingType = 'DIRECT' AND t.active = true""")
+             WHERE t.rawIngredient.id = :ingredientId AND t.handlingType = 'DIRECT' AND t.active = true""")
     Optional<KitchenIngredientType> findActiveDirectTypeOfIngredient(@Param("ingredientId") Long ingredientId);
 }

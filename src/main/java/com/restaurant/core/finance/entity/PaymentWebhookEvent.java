@@ -7,9 +7,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -29,8 +32,9 @@ public class PaymentWebhookEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "payment_request_id", updatable = false)
-    private Long paymentRequestId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_request_id", updatable = false)
+    private PaymentRequest paymentRequest;
 
     @Column(name = "provider_transaction_code", nullable = false, length = 64, updatable = false)
     private String providerTransactionCode;
@@ -63,9 +67,9 @@ public class PaymentWebhookEvent {
     @Column(name = "resolution_note", length = 255)
     private String resolutionNote;
 
-    public PaymentWebhookEvent(Long paymentRequestId, String transactionCode, String reference, BigDecimal amount,
+    public PaymentWebhookEvent(PaymentRequest paymentRequest, String transactionCode, String reference, BigDecimal amount,
                                WebhookProcessingResult result, String rawPayload, Instant now) {
-        this.paymentRequestId = paymentRequestId;
+        this.paymentRequest = paymentRequest;
         this.providerTransactionCode = transactionCode;
         this.paymentReference = reference;
         this.amount = amount;
@@ -73,5 +77,9 @@ public class PaymentWebhookEvent {
         this.rawPayload = rawPayload;
         this.receivedAt = now;
         this.resolutionStatus = result == WebhookProcessingResult.PROCESSED ? null : "OPEN";
+    }
+
+    public Long getPaymentRequestId() {
+        return paymentRequest == null ? null : paymentRequest.getId();
     }
 }

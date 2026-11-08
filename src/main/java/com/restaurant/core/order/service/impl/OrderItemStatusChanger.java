@@ -24,7 +24,7 @@ public class OrderItemStatusChanger {
 
     /** Ghi nhật ký cho món vừa tạo (null → PENDING). */
     public void recordItemCreated(OrderItem item, long actorId) {
-        orderItemEventRepository.save(new OrderItemEvent(item.getId(), actorId, null, OrderItemStatus.PENDING, null, clock.now()));
+        orderItemEventRepository.save(new OrderItemEvent(item, actorId, null, OrderItemStatus.PENDING, null, clock.now()));
     }
 
     /**
@@ -40,7 +40,7 @@ public class OrderItemStatusChanger {
         }
         item.changeStatus(next);
         orderItemRepository.flush();    // ghi trạng thái mới TRƯỚC nhật ký: DB kiểm nhật ký khớp trạng thái hiện tại của món
-        orderItemEventRepository.save(new OrderItemEvent(item.getId(), actorId, previous, next, reason, clock.now()));
+        orderItemEventRepository.save(new OrderItemEvent(item, actorId, previous, next, reason, clock.now()));
         return previous;
     }
 }

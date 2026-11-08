@@ -9,9 +9,9 @@ import java.util.List;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.finance.dto.FinanceReportRows.ExpenseByCategory;
-import com.restaurant.core.finance.dto.FinanceReportRows.RevenueByDay;
-import com.restaurant.core.finance.dto.FinanceReportRows.RevenueByItem;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.ExpenseByCategory;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.RevenueByDay;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.RevenueByItem;
 
 /**
  * Truy vấn CHỈ ĐỌC cho báo cáo tài chính. Doanh thu thực thu chỉ lấy từ payments (mỗi hóa đơn tối đa một giao dịch,

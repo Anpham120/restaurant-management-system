@@ -11,21 +11,22 @@ import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.common.time.BusinessDateProvider;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.CountLine;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.CountRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.CountResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueLine;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptLine;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptLineView;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.CountLine;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.CountRequest;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.CountResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.IssueLine;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.IssueRequest;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.IssueResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ReceiptLine;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.ReceiptLineView;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ReceiptRequest;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.ReceiptResponse;
 import com.restaurant.core.inventory.entity.DocumentStatus;
 import com.restaurant.core.inventory.entity.FulfillmentMode;
 import com.restaurant.core.inventory.entity.Ingredient;
@@ -90,7 +91,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         StockReceipt receipt = receiptRepository.save(new StockReceipt(blankToNull(request.supplierName()), blankToNull(request.note()),
                 actorId, request.requestKey(), fingerprint, clock.now()));
         for (ReceiptLine line : request.items()) {
-            receiptItemRepository.save(new StockReceiptItem(receipt.getId(), line.ingredientId(), line.inputQuantity(), line.inputUnit().strip(),
+            receiptItemRepository.save(new StockReceiptItem(receipt, ingredientRepository.getReferenceById(line.ingredientId()), line.inputQuantity(), line.inputUnit().strip(),
                     line.conversionFactor(), line.unitPricePerInputUnit(), blankToNull(line.lotCode()), line.expiryDate()));
         }
         receiptItemRepository.flush();
@@ -105,7 +106,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         if (receipt.getStatus() != DocumentStatus.DRAFT) {
             throw ApiException.invalidState("Phiếu nhập " + receiptId + " đang " + receipt.getStatus() + ", không phải nháp");
         }
-        List<StockReceiptItem> lines = receiptItemRepository.findByStockReceiptIdOrderById(receiptId);
+        List<StockReceiptItem> lines = receiptItemRepository.findByStockReceipt_IdOrderById(receiptId);
         if (lines.isEmpty()) {
             throw ApiException.invalidRequest("Phiếu nhập " + receiptId + " rỗng");
         }
@@ -127,8 +128,8 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         Instant now = clock.now();
         for (StockReceiptItem line : lines) {
             BigDecimal quantity = line.calculateBaseQuantity();
-            InventoryBatch batch = inventoryBatchRepository.save(new InventoryBatch(line.getId(), quantity, now));
-            movementRepository.save(StockMovement.ofRawBatch(MovementType.RECEIPT, batch.getId(), quantity, "RECEIPT:" + line.getId(), now));
+            InventoryBatch batch = inventoryBatchRepository.save(new InventoryBatch(line, quantity, now));
+            movementRepository.save(StockMovement.ofRawBatch(MovementType.RECEIPT, batch, quantity, "RECEIPT:" + line.getId(), now));
         }
         receipt.confirm(receivedAt == null ? now : receivedAt, actorId, now);   // ghi sổ trước, đổi trạng thái sau
         receiptRepository.flush();
@@ -143,7 +144,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         if (receipt.getStatus() != DocumentStatus.DRAFT) {
             throw new ApiException(HttpStatus.CONFLICT, "NOT_DRAFT", "Chỉ xóa được phiếu nhập nháp; phiếu " + receiptId + " đang " + receipt.getStatus());
         }
-        receiptItemRepository.deleteAll(receiptItemRepository.findByStockReceiptIdOrderById(receiptId));
+        receiptItemRepository.deleteAll(receiptItemRepository.findByStockReceipt_IdOrderById(receiptId));
         receiptItemRepository.flush();
         receiptRepository.delete(receipt);
         receiptRepository.flush();
@@ -178,7 +179,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         }
         StockIssue issue = issueRepository.save(new StockIssue(actorId, blankToNull(request.note()), request.requestKey(), fingerprint, clock.now()));
         for (IssueLine line : request.items()) {
-            issueItemRepository.save(new StockIssueItem(issue.getId(), line.inventoryBatchId(), line.quantity(),
+            issueItemRepository.save(new StockIssueItem(issue, inventoryBatchRepository.getReferenceById(line.inventoryBatchId()), line.quantity(),
                     FulfillmentMode.valueOf(line.fulfillmentMode())));
         }
         issueItemRepository.flush();
@@ -192,7 +193,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         if (issue.getStatus() != IssueStatus.DRAFT) {
             throw ApiException.invalidState("Phiếu xuất " + issueId + " đang " + issue.getStatus() + ", không phải nháp");
         }
-        List<StockIssueItem> lines = issueItemRepository.findByStockIssueIdOrderById(issueId);
+        List<StockIssueItem> lines = issueItemRepository.findByStockIssue_IdOrderById(issueId);
         if (lines.isEmpty()) {
             throw ApiException.invalidRequest("Phiếu xuất " + issueId + " rỗng");
         }
@@ -224,8 +225,8 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         Instant now = clock.now();
         for (StockIssueItem line : lines) {
             batchById.get(line.getInventoryBatchId()).changeOnHand(line.getQuantity().negate());
-            movementRepository.save(StockMovement.ofRawBatch(MovementType.ISSUE_OUT, line.getInventoryBatchId(), line.getQuantity().negate(),
-                    "ISSUE_OUT:" + line.getId(), now).refIssueItem(line.getId()));
+            movementRepository.save(StockMovement.ofRawBatch(MovementType.ISSUE_OUT, line.getInventoryBatch(), line.getQuantity().negate(),
+                    "ISSUE_OUT:" + line.getId(), now).refIssueItem(line));
         }
         inventoryBatchRepository.flush();
         issue.markIssued(actorId, now);
@@ -241,19 +242,19 @@ public class StockDocumentServiceImpl implements StockDocumentService {
             throw ApiException.invalidState("Phiếu xuất " + issueId + " đang " + issue.getStatus() + ", chưa xuất kho (bếp nhận một lần, đủ cả phiếu)");
         }
         Instant now = clock.now();
-        for (StockIssueItem line : issueItemRepository.findByStockIssueIdOrderById(issueId)) {
+        for (StockIssueItem line : issueItemRepository.findByStockIssue_IdOrderById(issueId)) {
             if (line.getFulfillmentMode() == FulfillmentMode.PREPARE) {
                 line.setWipRemaining(line.getQuantity());
-                movementRepository.save(StockMovement.ofWipIssueItem(MovementType.ISSUE_RECEIVED, line.getId(), line.getQuantity(),
-                        "ISSUE_RECEIVED:" + line.getId(), now).refIssueItem(line.getId()));
+                movementRepository.save(StockMovement.ofWipIssueItem(MovementType.ISSUE_RECEIVED, line, line.getQuantity(),
+                        "ISSUE_RECEIVED:" + line.getId(), now).refIssueItem(line));
             } else {
                 StockReceiptItem source = receiptLineOf(line.getInventoryBatchId());
                 KitchenIngredientType type = kitchenTypeRepository.findActiveDirectTypeOfIngredient(source.getIngredientId())
                         .orElseThrow(() -> ApiException.invalidRequest("Nguyên liệu " + source.getIngredientId() + " chưa khai báo loại bếp dùng thẳng"));
-                KitchenBatch kitchenBatch = kitchenBatchRepository.save(KitchenBatch.fromDirectIssue(type.getId(), line.getId(),
+                KitchenBatch kitchenBatch = kitchenBatchRepository.save(KitchenBatch.fromDirectIssue(type, line,
                         ShelfLifeCalculator.calculateUsableUntil(source.getExpiryDate(), type.getShelfLifeHours(), now), line.getQuantity(), now));
-                movementRepository.save(StockMovement.ofKitchenBatch(MovementType.DIRECT_IN, kitchenBatch.getId(), line.getQuantity(),
-                        "DIRECT_IN:" + line.getId(), now).refIssueItem(line.getId()));
+                movementRepository.save(StockMovement.ofKitchenBatch(MovementType.DIRECT_IN, kitchenBatch, line.getQuantity(),
+                        "DIRECT_IN:" + line.getId(), now).refIssueItem(line));
             }
         }
         issueItemRepository.flush();
@@ -274,14 +275,14 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         }
         Instant now = clock.now();
         if (issue.getStatus() == IssueStatus.ISSUED) {
-            List<StockIssueItem> lines = issueItemRepository.findByStockIssueIdOrderById(issueId);
+            List<StockIssueItem> lines = issueItemRepository.findByStockIssue_IdOrderById(issueId);
             Map<Long, InventoryBatch> batches = inventoryBatchRepository.lockBatchesByIds(
                     lines.stream().map(StockIssueItem::getInventoryBatchId).distinct().toList())
                     .stream().collect(Collectors.toMap(InventoryBatch::getId, Function.identity()));
             for (StockIssueItem line : lines) {
                 batches.get(line.getInventoryBatchId()).changeOnHand(line.getQuantity());
-                movementRepository.save(StockMovement.ofRawBatch(MovementType.ISSUE_REVERSAL, line.getInventoryBatchId(), line.getQuantity(),
-                        "ISSUE_REVERSAL:" + line.getId(), now).refIssueItem(line.getId()));
+                movementRepository.save(StockMovement.ofRawBatch(MovementType.ISSUE_REVERSAL, line.getInventoryBatch(), line.getQuantity(),
+                        "ISSUE_REVERSAL:" + line.getId(), now).refIssueItem(line));
             }
             inventoryBatchRepository.flush();
         }
@@ -318,7 +319,8 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         }
         StockCount count = countRepository.save(new StockCount(blankToNull(request.note()), actorId, request.requestKey(), fingerprint, clock.now()));
         for (CountLine line : request.items()) {
-            countItemRepository.save(new StockCountItem(count.getId(), line.rawBatchId(), line.wipIssueItemId(), line.kitchenBatchId(),
+            countItemRepository.save(new StockCountItem(count, referenceOrNull(inventoryBatchRepository, line.rawBatchId()),
+                    referenceOrNull(issueItemRepository, line.wipIssueItemId()), referenceOrNull(kitchenBatchRepository, line.kitchenBatchId()),
                     findBookQuantity(line), line.actualQuantity(), blankToNull(line.reason())));
         }
         countItemRepository.flush();
@@ -333,7 +335,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         if (count.getStatus() != DocumentStatus.DRAFT) {
             throw ApiException.invalidState("Phiếu kiểm kê " + countId + " đang " + count.getStatus() + ", không phải nháp");
         }
-        List<StockCountItem> lines = countItemRepository.findByStockCountIdOrderById(countId);
+        List<StockCountItem> lines = countItemRepository.findByStockCount_IdOrderById(countId);
         if (lines.isEmpty()) {
             throw ApiException.invalidRequest("Phiếu kiểm kê " + countId + " rỗng");
         }
@@ -372,16 +374,16 @@ public class StockDocumentServiceImpl implements StockDocumentService {
             StockMovement movement;
             if (line.getRawBatchId() != null) {
                 rawBatches.get(line.getRawBatchId()).setOnHand(line.getActualQuantity());
-                movement = StockMovement.ofRawBatch(MovementType.COUNT_ADJUST, line.getRawBatchId(), difference, "COUNT:" + line.getId(), now);
+                movement = StockMovement.ofRawBatch(MovementType.COUNT_ADJUST, line.getRawBatch(), difference, "COUNT:" + line.getId(), now);
             } else if (line.getWipIssueItemId() != null) {
                 wipLines.get(line.getWipIssueItemId()).setWipRemaining(line.getActualQuantity());
-                movement = StockMovement.ofWipIssueItem(MovementType.COUNT_ADJUST, line.getWipIssueItemId(), difference, "COUNT:" + line.getId(), now);
+                movement = StockMovement.ofWipIssueItem(MovementType.COUNT_ADJUST, line.getWipIssueItem(), difference, "COUNT:" + line.getId(), now);
             } else {
                 KitchenBatch kb = kitchenBatches.get(line.getKitchenBatchId());
                 kb.changeOnHand(line.getActualQuantity().subtract(kb.getQuantityOnHand()));
-                movement = StockMovement.ofKitchenBatch(MovementType.COUNT_ADJUST, line.getKitchenBatchId(), difference, "COUNT:" + line.getId(), now);
+                movement = StockMovement.ofKitchenBatch(MovementType.COUNT_ADJUST, line.getKitchenBatch(), difference, "COUNT:" + line.getId(), now);
             }
-            movementRepository.save(movement.countItem(line.getId()).reason(line.getReason()));
+            movementRepository.save(movement.countItem(line).reason(line.getReason()));
         }
         inventoryBatchRepository.flush();
         count.confirm(actorId, now);
@@ -501,5 +503,10 @@ public class StockDocumentServiceImpl implements StockDocumentService {
 
     static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s.strip();
+    }
+
+    /** Tham chiếu tới dòng có id cho trước (không truy vấn); id null (cột khóa ngoại không bắt buộc) thì trả null. */
+    private static <T> T referenceOrNull(JpaRepository<T, Long> repository, Long id) {
+        return id == null ? null : repository.getReferenceById(id);
     }
 }

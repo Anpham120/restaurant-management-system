@@ -3,10 +3,10 @@ package com.restaurant.core.security.service;
 import java.util.List;
 
 import com.restaurant.core.security.LoginThrottle;
-import com.restaurant.core.security.dto.ChangePasswordRequest;
-import com.restaurant.core.security.dto.LoginRequest;
-import com.restaurant.core.security.dto.LoginResponse;
-import com.restaurant.core.security.dto.MeResponse;
+import com.restaurant.core.security.dto.request.ChangePasswordRequest;
+import com.restaurant.core.security.dto.request.LoginRequest;
+import com.restaurant.core.security.dto.response.LoginResponse;
+import com.restaurant.core.security.dto.response.MeResponse;
 
 public interface AuthService {
 

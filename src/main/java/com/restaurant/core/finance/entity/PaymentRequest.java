@@ -7,9 +7,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -29,8 +32,9 @@ public class PaymentRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "invoice_id", nullable = false, updatable = false)
-    private Long invoiceId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "invoice_id", nullable = false, updatable = false)
+    private Invoice invoice;
 
     @Column(name = "cashier_id", nullable = false, updatable = false)
     private Long cashierId;
@@ -69,9 +73,9 @@ public class PaymentRequest {
     private Long cancelledById;
 
     /** Thu tiền mặt: ghi luôn ở trạng thái PAID. */
-    public static PaymentRequest paidInCash(long invoiceId, long cashierId, BigDecimal amountDue, BigDecimal cashReceived, Instant now) {
+    public static PaymentRequest paidInCash(Invoice invoice, long cashierId, BigDecimal amountDue, BigDecimal cashReceived, Instant now) {
         PaymentRequest r = new PaymentRequest();
-        r.invoiceId = invoiceId;
+        r.invoice = invoice;
         r.cashierId = cashierId;
         r.amountDue = amountDue;
         r.cashReceived = cashReceived;
@@ -82,9 +86,9 @@ public class PaymentRequest {
     }
 
     /** QR: chờ khách chuyển khoản với nội dung chứa mã tham chiếu. */
-    public static PaymentRequest waitingForTransfer(long invoiceId, long cashierId, BigDecimal amountDue, String reference, Instant now) {
+    public static PaymentRequest waitingForTransfer(Invoice invoice, long cashierId, BigDecimal amountDue, String reference, Instant now) {
         PaymentRequest r = new PaymentRequest();
-        r.invoiceId = invoiceId;
+        r.invoice = invoice;
         r.cashierId = cashierId;
         r.amountDue = amountDue;
         r.method = PaymentMethod.QR;
@@ -107,5 +111,9 @@ public class PaymentRequest {
         cancelReason = reason;
         cancelledById = actorId;
         cancelledAt = now;
+    }
+
+    public Long getInvoiceId() {
+        return invoice.getId();
     }
 }

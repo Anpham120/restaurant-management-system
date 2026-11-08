@@ -36,7 +36,7 @@ public class DailyMenuLookupImpl implements DailyMenuLookup {
     @Override
     public List<RecipeLine> getRecipeLines(long dailyMenuItemId) {
         long recipeId = dailyMenuItemRepository.findById(dailyMenuItemId).map(DailyMenuItem::getRecipeId).orElseThrow();
-        return recipeIngredientRepository.findByRecipeIdOrderByKitchenIngredientTypeId(recipeId).stream()
+        return recipeIngredientRepository.findByRecipe_IdOrderByKitchenIngredientTypeId(recipeId).stream()
                 .map(r -> new RecipeLine(r.getKitchenIngredientTypeId(), r.getQuantityPerServing()))
                 .toList();
     }

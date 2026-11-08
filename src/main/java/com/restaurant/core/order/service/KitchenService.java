@@ -2,8 +2,8 @@ package com.restaurant.core.order.service;
 
 import java.util.List;
 
-import com.restaurant.core.order.dto.AcceptItemResponse;
-import com.restaurant.core.order.dto.OrderItemResponse;
+import com.restaurant.core.order.dto.response.AcceptItemResponse;
+import com.restaurant.core.order.dto.response.OrderItemResponse;
 
 /** Luồng bếp: nhận món (kiểm hạn mức + giữ nguyên liệu), nấu (trừ kho), xong món. Owner: Phạm Duy An. */
 public interface KitchenService {

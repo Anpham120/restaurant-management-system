@@ -3,10 +3,10 @@ package com.restaurant.core.finance.service;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.restaurant.core.finance.dto.FinanceReportRows.ExpenseByCategory;
-import com.restaurant.core.finance.dto.FinanceReportRows.RevenueByDay;
-import com.restaurant.core.finance.dto.FinanceReportRows.RevenueByItem;
-import com.restaurant.core.finance.dto.FinanceReportRows.UnpaidClosure;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.ExpenseByCategory;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.RevenueByDay;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.RevenueByItem;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.UnpaidClosure;
 
 /** Báo cáo doanh thu, khoản không thu, chi theo nhóm. Owner: Bùi Đào Đức Anh. */
 public interface FinanceReportService {

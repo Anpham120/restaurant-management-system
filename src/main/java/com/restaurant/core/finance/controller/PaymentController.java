@@ -12,10 +12,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.finance.dto.InvoiceResponse;
-import com.restaurant.core.finance.dto.PaymentResponse;
-import com.restaurant.core.finance.dto.ReasonRequest;
-import com.restaurant.core.finance.dto.StartPaymentRequest;
+import com.restaurant.core.finance.dto.response.InvoiceResponse;
+import com.restaurant.core.finance.dto.response.PaymentResponse;
+import com.restaurant.core.finance.dto.request.ReasonRequest;
+import com.restaurant.core.finance.dto.request.StartPaymentRequest;
 import com.restaurant.core.finance.service.PaymentService;
 import com.restaurant.core.security.CurrentUser;
 

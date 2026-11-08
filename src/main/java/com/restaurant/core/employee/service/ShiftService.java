@@ -3,14 +3,14 @@ package com.restaurant.core.employee.service;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.restaurant.core.employee.dto.ShiftDtos.AdjustAttendanceRequest;
-import com.restaurant.core.employee.dto.ShiftDtos.AssignShiftRequest;
-import com.restaurant.core.employee.dto.ShiftDtos.AttendanceAdjustmentView;
-import com.restaurant.core.employee.dto.ShiftDtos.AttendanceRequest;
-import com.restaurant.core.employee.dto.ShiftDtos.AttendanceResponse;
-import com.restaurant.core.employee.dto.ShiftDtos.ShiftAssignmentResponse;
-import com.restaurant.core.employee.dto.ShiftDtos.ShiftRequest;
-import com.restaurant.core.employee.dto.ShiftDtos.ShiftResponse;
+import com.restaurant.core.employee.dto.request.ShiftRequests.AdjustAttendanceRequest;
+import com.restaurant.core.employee.dto.request.ShiftRequests.AssignShiftRequest;
+import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceAdjustmentView;
+import com.restaurant.core.employee.dto.request.ShiftRequests.AttendanceRequest;
+import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceResponse;
+import com.restaurant.core.employee.dto.response.ShiftResponses.ShiftAssignmentResponse;
+import com.restaurant.core.employee.dto.request.ShiftRequests.ShiftRequest;
+import com.restaurant.core.employee.dto.response.ShiftResponses.ShiftResponse;
 
 /** Ca làm, phân ca, chấm công và điều chỉnh công. Owner: Nguyễn Quang Hiếu. */
 public interface ShiftService {

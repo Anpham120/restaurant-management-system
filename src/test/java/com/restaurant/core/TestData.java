@@ -10,12 +10,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.finance.service.InvoiceService;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueLine;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptLine;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptRequest;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.IssueLine;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.IssueRequest;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ReceiptLine;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ReceiptRequest;
 import com.restaurant.core.inventory.service.StockDocumentService;
-import com.restaurant.core.order.dto.SubmitBatchRequest;
+import com.restaurant.core.order.dto.request.SubmitBatchRequest;
 import com.restaurant.core.order.service.KitchenService;
 import com.restaurant.core.order.service.OrderService;
 import com.restaurant.core.order.service.TableService;

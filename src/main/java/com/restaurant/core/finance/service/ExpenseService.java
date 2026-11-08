@@ -3,8 +3,8 @@ package com.restaurant.core.finance.service;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.restaurant.core.finance.dto.ExpenseRequest;
-import com.restaurant.core.finance.dto.ExpenseResponse;
+import com.restaurant.core.finance.dto.request.ExpenseRequest;
+import com.restaurant.core.finance.dto.response.ExpenseResponse;
 
 /** Ghi và hủy khoản chi hoạt động. Owner: Bùi Đào Đức Anh. */
 public interface ExpenseService {

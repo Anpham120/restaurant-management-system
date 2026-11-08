@@ -13,10 +13,10 @@ import com.restaurant.core.menu.entity.MenuItem;
 
 public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
 
-    /** Món đang kinh doanh, thuộc nhóm đang dùng, kèm id công thức hiện hành: [MenuItem, Long recipeId]. */
+    /** Món đang kinh doanh, thuộc nhóm đang dùng, kèm công thức hiện hành: [MenuItem, Recipe]. */
     @Query("""
-            SELECT m, r.id FROM MenuItem m, Recipe r, MenuCategory c
-             WHERE r.menuItemId = m.id AND r.current = true AND c.id = m.menuCategoryId AND m.active = true AND c.active = true""")
+            SELECT m, r FROM MenuItem m, Recipe r, MenuCategory c
+             WHERE r.menuItem = m AND r.current = true AND m.menuCategory = c AND m.active = true AND c.active = true""")
     List<Object[]> findSellableItemsWithCurrentRecipe();
 
     /** Khóa dòng món: hai lần tạo phiên bản công thức cùng lúc chạy lần lượt, không trùng số phiên bản. */

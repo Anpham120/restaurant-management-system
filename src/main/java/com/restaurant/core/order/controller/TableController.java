@@ -20,10 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
 import com.restaurant.core.common.response.PageResponse;
-import com.restaurant.core.order.dto.OpenSessionResponse;
-import com.restaurant.core.order.dto.SessionResponse;
-import com.restaurant.core.order.dto.TableRequest;
-import com.restaurant.core.order.dto.TableResponse;
+import com.restaurant.core.order.dto.response.OpenSessionResponse;
+import com.restaurant.core.order.dto.response.SessionResponse;
+import com.restaurant.core.order.dto.request.TableRequest;
+import com.restaurant.core.order.dto.response.TableResponse;
 import com.restaurant.core.order.service.TableService;
 import com.restaurant.core.security.CurrentUser;
 

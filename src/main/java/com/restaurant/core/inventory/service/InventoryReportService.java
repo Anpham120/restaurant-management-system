@@ -4,14 +4,14 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.restaurant.core.inventory.dto.InventoryReportDtos.HandoverRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.KitchenLotRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.KitchenStockRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.PreparationYieldRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.RawLotRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.RawStockRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.StockHistoryRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.UnusableLotRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.HandoverRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.KitchenLotRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.KitchenStockRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.PreparationYieldRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.RawLotRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.RawStockRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.StockHistoryRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.UnusableLotRow;
 
 /** Báo cáo tồn kho, lịch sử, hiệu suất sơ chế. Owner: Đỗ Tuấn Anh. */
 public interface InventoryReportService {

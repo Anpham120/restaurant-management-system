@@ -11,11 +11,11 @@ import com.restaurant.core.inventory.entity.StockReceiptItem;
 
 public interface StockReceiptItemRepository extends JpaRepository<StockReceiptItem, Long> {
 
-    List<StockReceiptItem> findByStockReceiptIdOrderById(Long stockReceiptId);
+    List<StockReceiptItem> findByStockReceipt_IdOrderById(Long stockReceiptId);
 
     /** Nguyên liệu của các lô kho chính (đọc id, không nạp lô — lô sẽ được khóa sau). */
     @Query("""
-            SELECT DISTINCT s.ingredientId FROM StockReceiptItem s
-             WHERE s.id IN (SELECT b.stockReceiptItemId FROM InventoryBatch b WHERE b.id IN :batchIds)""")
+            SELECT DISTINCT s.ingredient.id FROM StockReceiptItem s
+             WHERE s.id IN (SELECT b.stockReceiptItem.id FROM InventoryBatch b WHERE b.id IN :batchIds)""")
     List<Long> findIngredientIdsOfBatches(@Param("batchIds") Collection<Long> inventoryBatchIds);
 }

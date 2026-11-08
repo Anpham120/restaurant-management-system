@@ -37,8 +37,9 @@ public class DailyMenuItem {
     @JoinColumn(name = "menu_item_id", nullable = false)
     private MenuItem menuItem;
 
-    @Column(name = "recipe_id", nullable = false)
-    private Long recipeId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "recipe_id", nullable = false)
+    private Recipe recipe;
 
     @Column(name = "quota_total")
     private Integer quotaTotal;
@@ -55,10 +56,10 @@ public class DailyMenuItem {
     @Column(name = "paused_at")
     private Instant pausedAt;
 
-    public DailyMenuItem(DailyMenu dailyMenu, MenuItem menuItem, long recipeId, Integer quotaTotal) {
+    public DailyMenuItem(DailyMenu dailyMenu, MenuItem menuItem, Recipe recipe, Integer quotaTotal) {
         this.dailyMenu = dailyMenu;
         this.menuItem = menuItem;
-        this.recipeId = recipeId;
+        this.recipe = recipe;
         this.quotaTotal = quotaTotal;
     }
 
@@ -83,5 +84,9 @@ public class DailyMenuItem {
         pauseReason = null;
         pausedById = null;
         pausedAt = null;
+    }
+
+    public Long getRecipeId() {
+        return recipe.getId();
     }
 }

@@ -2,11 +2,11 @@ package com.restaurant.core.order.service;
 
 import java.util.List;
 
-import com.restaurant.core.order.dto.ItemEventResponse;
-import com.restaurant.core.order.dto.OrderItemResponse;
-import com.restaurant.core.order.dto.OrderResponse;
-import com.restaurant.core.order.dto.SubmitBatchRequest;
-import com.restaurant.core.order.dto.SubmitBatchResponse;
+import com.restaurant.core.order.dto.response.ItemEventResponse;
+import com.restaurant.core.order.dto.response.OrderItemResponse;
+import com.restaurant.core.order.dto.response.OrderResponse;
+import com.restaurant.core.order.dto.request.SubmitBatchRequest;
+import com.restaurant.core.order.dto.response.SubmitBatchResponse;
 
 /** Đơn hàng phía phục vụ: gọi món, phục vụ, hủy món. Phía bếp: {@link KitchenService}. Owner: Phạm Duy An. */
 public interface OrderService {

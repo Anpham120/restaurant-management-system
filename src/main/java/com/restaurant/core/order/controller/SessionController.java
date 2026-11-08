@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.order.dto.AbandonResponse;
-import com.restaurant.core.order.dto.ReasonRequest;
-import com.restaurant.core.order.dto.SessionResponse;
+import com.restaurant.core.order.dto.response.AbandonResponse;
+import com.restaurant.core.order.dto.request.ReasonRequest;
+import com.restaurant.core.order.dto.response.SessionResponse;
 import com.restaurant.core.order.service.TableService;
 import com.restaurant.core.security.CurrentUser;
 

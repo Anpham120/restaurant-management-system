@@ -19,14 +19,14 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.AdjustmentRequest;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.AdjustmentResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.MarkUnusableResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.PreparationRequest;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.PreparationResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.ReturnRequest;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.ReturnResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReasonRequest;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.AdjustmentRequest;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.AdjustmentResponse;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.MarkUnusableResponse;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.PreparationRequest;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.PreparationResponse;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.ReturnRequest;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.ReturnResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ReasonRequest;
 import com.restaurant.core.inventory.service.KitchenStockService;
 import com.restaurant.core.security.CurrentUser;
 

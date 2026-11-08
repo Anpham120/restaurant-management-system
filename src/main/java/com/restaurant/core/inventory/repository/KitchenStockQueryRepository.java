@@ -8,12 +8,12 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.inventory.dto.KitchenStockDtos.AdjustmentLineView;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.AdjustmentResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.OutputView;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.PreparationResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.ReturnLineView;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.ReturnResponse;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.AdjustmentLineView;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.AdjustmentResponse;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.OutputView;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.PreparationResponse;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.ReturnLineView;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.ReturnResponse;
 
 /** Truy vấn CHỈ ĐỌC phiếu sơ chế, hoàn trả, hủy hàng (trả thẳng DTO). Ghi: các JpaRepository. Owner: Đỗ Tuấn Anh. */
 @Repository

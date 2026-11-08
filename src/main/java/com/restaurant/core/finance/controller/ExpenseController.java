@@ -19,9 +19,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.finance.dto.ExpenseRequest;
-import com.restaurant.core.finance.dto.ExpenseResponse;
-import com.restaurant.core.finance.dto.ReasonRequest;
+import com.restaurant.core.finance.dto.request.ExpenseRequest;
+import com.restaurant.core.finance.dto.response.ExpenseResponse;
+import com.restaurant.core.finance.dto.request.ReasonRequest;
 import com.restaurant.core.finance.service.ExpenseService;
 import com.restaurant.core.security.CurrentUser;
 

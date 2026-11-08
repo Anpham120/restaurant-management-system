@@ -7,12 +7,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
-import com.restaurant.core.menu.dto.CategoryRequest;
-import com.restaurant.core.menu.dto.CategoryResponse;
-import com.restaurant.core.menu.dto.MenuItemRequest;
-import com.restaurant.core.menu.dto.MenuItemResponse;
-import com.restaurant.core.menu.dto.RecipeRequest;
-import com.restaurant.core.menu.dto.RecipeResponse;
+import com.restaurant.core.menu.dto.request.CategoryRequest;
+import com.restaurant.core.menu.dto.response.CategoryResponse;
+import com.restaurant.core.menu.dto.request.MenuItemRequest;
+import com.restaurant.core.menu.dto.response.MenuItemResponse;
+import com.restaurant.core.menu.dto.request.RecipeRequest;
+import com.restaurant.core.menu.dto.response.RecipeResponse;
 import com.restaurant.core.menu.entity.MenuCategory;
 import com.restaurant.core.menu.entity.MenuItem;
 import com.restaurant.core.menu.entity.Recipe;
@@ -77,7 +77,7 @@ public class MenuCatalogServiceImpl implements MenuCatalogService {
     @Override
     @Transactional
     public MenuItemResponse createMenuItem(MenuItemRequest r) {
-        MenuItem item = menuItemRepository.saveAndFlush(new MenuItem(r.categoryId(), r.name().strip(), r.price(), r.imageUrl(), isActive(r.active())));
+        MenuItem item = menuItemRepository.saveAndFlush(new MenuItem(categoryRepository.getReferenceById(r.categoryId()), r.name().strip(), r.price(), r.imageUrl(), isActive(r.active())));
         return getMenuItemById(item.getId());
     }
 
@@ -85,7 +85,7 @@ public class MenuCatalogServiceImpl implements MenuCatalogService {
     @Transactional
     public MenuItemResponse updateMenuItem(long id, MenuItemRequest r) {
         MenuItem item = menuItemRepository.findById(id).orElseThrow(() -> notFound("Không tìm thấy món " + id));
-        item.changeDetails(r.categoryId(), r.name().strip(), r.price(), r.imageUrl(), isActive(r.active()));
+        item.changeDetails(categoryRepository.getReferenceById(r.categoryId()), r.name().strip(), r.price(), r.imageUrl(), isActive(r.active()));
         menuItemRepository.flush();
         return getMenuItemById(id);
     }
@@ -97,15 +97,15 @@ public class MenuCatalogServiceImpl implements MenuCatalogService {
     @Override
     @Transactional
     public RecipeResponse createRecipe(long menuItemId, RecipeRequest r) {
-        menuItemRepository.findByIdForUpdate(menuItemId).orElseThrow(() -> notFound("Không tìm thấy món " + menuItemId));
+        MenuItem menuItem = menuItemRepository.findByIdForUpdate(menuItemId).orElseThrow(() -> notFound("Không tìm thấy món " + menuItemId));
         int version = recipeRepository.findLatestVersion(menuItemId) + 1;
-        recipeRepository.findByMenuItemIdAndCurrentTrue(menuItemId).ifPresent(current -> {
+        recipeRepository.findByMenuItem_IdAndCurrentTrue(menuItemId).ifPresent(current -> {
             current.retire();
             recipeRepository.flush();
         });
-        Recipe recipe = recipeRepository.save(new Recipe(menuItemId, version));
+        Recipe recipe = recipeRepository.save(new Recipe(menuItem, version));
         for (RecipeRequest.Ingredient i : r.ingredients()) {
-            recipeIngredientRepository.save(new RecipeIngredient(recipe.getId(), i.kitchenIngredientTypeId(), i.quantityPerServing()));
+            recipeIngredientRepository.save(new RecipeIngredient(recipe, i.kitchenIngredientTypeId(), i.quantityPerServing()));
         }
         recipeIngredientRepository.flush();
         return new RecipeResponse(recipe.getId(), menuItemId, version, true, repo.findRecipeLines(recipe.getId()));

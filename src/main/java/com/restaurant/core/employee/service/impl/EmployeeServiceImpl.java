@@ -222,7 +222,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private void cancelShiftsAfterLeaving(long employeeId, LocalDate endDate, long actorId) {
         Instant now = clock.now();
         shiftAssignmentRepository.findScheduledWithoutAttendanceAfter(employeeId, endDate)
-                .forEach(a -> a.cancel("Nhân viên nghỉ việc từ sau ngày " + endDate, actorId, now));
+                .forEach(a -> a.cancel("Nhân viên nghỉ việc từ sau ngày " + endDate, employeeRepository.getReferenceById(actorId), now));
         shiftAssignmentRepository.flush();
     }
 

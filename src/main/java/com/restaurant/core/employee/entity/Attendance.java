@@ -4,9 +4,13 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -23,8 +27,9 @@ public class Attendance {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "shift_assignment_id", nullable = false, updatable = false)
-    private Long shiftAssignmentId;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "shift_assignment_id", nullable = false, updatable = false)
+    private ShiftAssignment shiftAssignment;
 
     @Column(name = "attendance_status", nullable = false, length = 20)
     private String status;
@@ -41,24 +46,33 @@ public class Attendance {
     @Column(length = 255)
     private String note;
 
-    @Column(name = "confirmed_by_id")
-    private Long confirmedById;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "confirmed_by_id")
+    private Employee confirmedBy;
 
     @Column(name = "confirmed_at")
     private Instant confirmedAt;
 
-    public Attendance(long shiftAssignmentId, String note) {
-        this.shiftAssignmentId = shiftAssignmentId;
+    public Attendance(ShiftAssignment shiftAssignment, String note) {
+        this.shiftAssignment = shiftAssignment;
         this.note = note;
     }
 
     /** Ghi (hoặc sửa) kết quả chấm công và người xác nhận. */
-    public void record(String status, Instant actualStartAt, Instant actualEndAt, Integer workedMinutes, long confirmedById, Instant now) {
+    public void record(String status, Instant actualStartAt, Instant actualEndAt, Integer workedMinutes, Employee confirmedBy, Instant now) {
         this.status = status;
         this.actualStartAt = actualStartAt;
         this.actualEndAt = actualEndAt;
         this.workedMinutes = workedMinutes;
-        this.confirmedById = confirmedById;
+        this.confirmedBy = confirmedBy;
         this.confirmedAt = now;
+    }
+
+    public Long getShiftAssignmentId() {
+        return shiftAssignment.getId();
+    }
+
+    public Long getConfirmedById() {
+        return confirmedBy == null ? null : confirmedBy.getId();
     }
 }

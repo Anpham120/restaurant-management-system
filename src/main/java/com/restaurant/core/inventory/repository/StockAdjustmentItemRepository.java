@@ -8,5 +8,5 @@ import com.restaurant.core.inventory.entity.StockAdjustmentItem;
 
 public interface StockAdjustmentItemRepository extends JpaRepository<StockAdjustmentItem, Long> {
 
-    List<StockAdjustmentItem> findByStockAdjustmentIdOrderById(Long stockAdjustmentId);
+    List<StockAdjustmentItem> findByStockAdjustment_IdOrderById(Long stockAdjustmentId);
 }

@@ -3,11 +3,11 @@ package com.restaurant.core.order.service;
 import java.util.List;
 
 import com.restaurant.core.common.response.PageResponse;
-import com.restaurant.core.order.dto.AbandonResponse;
-import com.restaurant.core.order.dto.OpenSessionResponse;
-import com.restaurant.core.order.dto.SessionResponse;
-import com.restaurant.core.order.dto.TableRequest;
-import com.restaurant.core.order.dto.TableResponse;
+import com.restaurant.core.order.dto.response.AbandonResponse;
+import com.restaurant.core.order.dto.response.OpenSessionResponse;
+import com.restaurant.core.order.dto.response.SessionResponse;
+import com.restaurant.core.order.dto.request.TableRequest;
+import com.restaurant.core.order.dto.response.TableResponse;
 
 /** Bàn và phiên phục vụ. actorId luôn là CurrentUser.employeeId(). Owner: Phạm Duy An. */
 public interface TableService {

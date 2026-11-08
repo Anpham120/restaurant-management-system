@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.finance.dto.FinanceReportRows.ExpenseByCategory;
-import com.restaurant.core.finance.dto.FinanceReportRows.RevenueByDay;
-import com.restaurant.core.finance.dto.FinanceReportRows.RevenueByItem;
-import com.restaurant.core.finance.dto.FinanceReportRows.UnpaidClosure;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.ExpenseByCategory;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.RevenueByDay;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.RevenueByItem;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.UnpaidClosure;
 import com.restaurant.core.finance.service.FinanceReportService;
 
 /** Báo cáo tài chính (5.2, 5.4–5.5). Khoảng ngày theo ngày kinh doanh (mốc 04:00). Owner: Bùi Đào Đức Anh. */

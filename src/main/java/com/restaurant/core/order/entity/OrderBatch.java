@@ -4,9 +4,12 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -23,8 +26,9 @@ public class OrderBatch {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_id", nullable = false, updatable = false)
-    private Long orderId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "order_id", nullable = false, updatable = false)
+    private CustomerOrder order;
 
     @Column(name = "waiter_id", nullable = false, updatable = false)
     private Long waiterId;
@@ -35,10 +39,14 @@ public class OrderBatch {
     @Column(name = "request_key", nullable = false, length = 64, updatable = false)
     private String requestKey;
 
-    public OrderBatch(long orderId, long waiterId, String requestKey, Instant now) {
-        this.orderId = orderId;
+    public OrderBatch(CustomerOrder order, long waiterId, String requestKey, Instant now) {
+        this.order = order;
         this.waiterId = waiterId;
         this.requestKey = requestKey;
         this.submittedAt = now;
+    }
+
+    public Long getOrderId() {
+        return order.getId();
     }
 }

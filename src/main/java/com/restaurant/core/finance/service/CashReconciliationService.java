@@ -2,8 +2,8 @@ package com.restaurant.core.finance.service;
 
 import java.time.LocalDate;
 
-import com.restaurant.core.finance.dto.CashReconciliationResponse;
-import com.restaurant.core.finance.dto.ReconcileRequest;
+import com.restaurant.core.finance.dto.response.CashReconciliationResponse;
+import com.restaurant.core.finance.dto.request.ReconcileRequest;
 
 /** Đối soát tiền mặt cuối ngày (Quản lý). Mỗi lần lập lại là một phiên bản mới. Owner: Bùi Đào Đức Anh. */
 public interface CashReconciliationService {

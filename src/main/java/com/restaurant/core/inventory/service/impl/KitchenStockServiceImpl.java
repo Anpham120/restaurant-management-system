@@ -7,23 +7,24 @@ import java.util.Map;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.inventory.OrderItemStockFlags;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.AdjustmentLine;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.AdjustmentRequest;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.AdjustmentResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.MarkUnusableResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.OutputView;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.PreparationOutput;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.PreparationRequest;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.PreparationResponse;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.ReturnLine;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.ReturnRequest;
-import com.restaurant.core.inventory.dto.KitchenStockDtos.ReturnResponse;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.AdjustmentLine;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.AdjustmentRequest;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.AdjustmentResponse;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.MarkUnusableResponse;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.OutputView;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.PreparationOutput;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.PreparationRequest;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.PreparationResponse;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.ReturnLine;
+import com.restaurant.core.inventory.dto.request.KitchenStockRequests.ReturnRequest;
+import com.restaurant.core.inventory.dto.response.KitchenStockResponses.ReturnResponse;
 import com.restaurant.core.inventory.entity.DocumentStatus;
 import com.restaurant.core.inventory.entity.FulfillmentMode;
 import com.restaurant.core.inventory.entity.InventoryBatch;
@@ -96,10 +97,10 @@ public class KitchenStockServiceImpl implements KitchenStockService {
         if (existing.isPresent()) {
             return getPreparationById(existing.get().getId());
         }
-        KitchenPreparation preparation = preparationRepository.save(new KitchenPreparation(request.stockIssueItemId(), request.inputQuantity(),
+        KitchenPreparation preparation = preparationRepository.save(new KitchenPreparation(issueItemRepository.getReferenceById(request.stockIssueItemId()), request.inputQuantity(),
                 blankToNull(request.lossReason()), actorId, request.requestKey()));
         for (PreparationOutput output : request.outputs()) {
-            preparationOutputRepository.save(new KitchenPreparationOutput(preparation.getId(), output.kitchenIngredientTypeId(),
+            preparationOutputRepository.save(new KitchenPreparationOutput(preparation, kitchenTypeRepository.getReferenceById(output.kitchenIngredientTypeId()),
                     output.outputQuantity(), output.usableUntil()));
         }
         preparationOutputRepository.flush();
@@ -123,7 +124,7 @@ public class KitchenStockServiceImpl implements KitchenStockService {
             throw ApiException.invalidState("Đầu vào " + plain(preparation.getInputQuantity()) + " vượt lượng chờ sơ chế còn "
                     + plain(wipLine.getWipRemainingQuantity()));
         }
-        List<KitchenPreparationOutput> outputs = preparationOutputRepository.findByKitchenPreparationIdOrderById(preparationId);
+        List<KitchenPreparationOutput> outputs = preparationOutputRepository.findByKitchenPreparation_IdOrderById(preparationId);
         BigDecimal totalOutput = outputs.stream().map(KitchenPreparationOutput::getOutputQuantity).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (outputs.isEmpty() || totalOutput.signum() <= 0 || totalOutput.compareTo(preparation.getInputQuantity()) > 0) {
             throw ApiException.invalidRequest("Tổng đầu ra " + plain(totalOutput) + " phải lớn hơn 0 và không vượt đầu vào "
@@ -143,18 +144,18 @@ public class KitchenStockServiceImpl implements KitchenStockService {
         }
 
         wipLine.changeWipRemaining(preparation.getInputQuantity().negate());
-        movementRepository.save(StockMovement.ofWipIssueItem(MovementType.PREP_INPUT, wipLine.getId(), preparation.getInputQuantity().negate(),
-                "PREP_INPUT:" + preparationId, now).preparation(preparationId));
+        movementRepository.save(StockMovement.ofWipIssueItem(MovementType.PREP_INPUT, wipLine, preparation.getInputQuantity().negate(),
+                "PREP_INPUT:" + preparationId, now).preparation(preparation));
         for (KitchenPreparationOutput output : outputs) {
             Instant usableUntil = output.getUsableUntil() != null ? output.getUsableUntil()
                     : ShelfLifeCalculator.calculateUsableUntil(rawSource.getExpiryDate(), types.get(output.getKitchenIngredientTypeId()).getShelfLifeHours(), now);
             if (output.getUsableUntil() == null && usableUntil != null) {
                 output.setUsableUntil(usableUntil);
             }
-            KitchenBatch batch = kitchenBatchRepository.save(KitchenBatch.fromPreparationOutput(output.getKitchenIngredientTypeId(), output.getId(),
+            KitchenBatch batch = kitchenBatchRepository.save(KitchenBatch.fromPreparationOutput(output.getKitchenIngredientType(), output,
                     usableUntil, output.getOutputQuantity(), now));
-            movementRepository.save(StockMovement.ofKitchenBatch(MovementType.PREP_OUTPUT, batch.getId(), output.getOutputQuantity(),
-                    "PREP_OUTPUT:" + output.getId(), now).preparation(preparationId));
+            movementRepository.save(StockMovement.ofKitchenBatch(MovementType.PREP_OUTPUT, batch, output.getOutputQuantity(),
+                    "PREP_OUTPUT:" + output.getId(), now).preparation(preparation));
         }
         preparationOutputRepository.flush();
         preparation.confirm(actorId, now);
@@ -188,7 +189,7 @@ public class KitchenStockServiceImpl implements KitchenStockService {
         }
         StockReturn stockReturn = returnRepository.save(new StockReturn(actorId, request.reason().strip(), request.requestKey(), clock.now()));
         for (ReturnLine line : request.items()) {
-            returnItemRepository.save(new StockReturnItem(stockReturn.getId(), line.sourceIssueItemId(), line.directKitchenBatchId(), line.quantity()));
+            returnItemRepository.save(new StockReturnItem(stockReturn, issueItemRepository.getReferenceById(line.sourceIssueItemId()), referenceOrNull(kitchenBatchRepository, line.directKitchenBatchId()), line.quantity()));
         }
         returnItemRepository.flush();
         return getStockReturnById(stockReturn.getId());
@@ -202,7 +203,7 @@ public class KitchenStockServiceImpl implements KitchenStockService {
         if (stockReturn.getStatus() != DocumentStatus.DRAFT) {
             throw ApiException.invalidState("Phiếu hoàn trả " + returnId + " đang " + stockReturn.getStatus() + ", không phải nháp");
         }
-        List<StockReturnItem> lines = returnItemRepository.findByStockReturnIdOrderById(returnId);
+        List<StockReturnItem> lines = returnItemRepository.findByStockReturn_IdOrderById(returnId);
         if (lines.isEmpty()) {
             throw ApiException.invalidRequest("Phiếu hoàn trả " + returnId + " rỗng");
         }
@@ -225,8 +226,8 @@ public class KitchenStockServiceImpl implements KitchenStockService {
                 takeBackFromKitchenBatch(line, kitchenBatches, now);
             }
             rawBatches.get(source.getInventoryBatchId()).changeOnHand(line.getQuantity());
-            movementRepository.save(StockMovement.ofRawBatch(MovementType.RETURN, source.getInventoryBatchId(), line.getQuantity(),
-                    "RETURN-IN:" + line.getId(), now).returnItem(line.getId()));
+            movementRepository.save(StockMovement.ofRawBatch(MovementType.RETURN, source.getInventoryBatch(), line.getQuantity(),
+                    "RETURN-IN:" + line.getId(), now).returnItem(line));
         }
         inventoryBatchRepository.flush();
         stockReturn.confirm(actorId, now);
@@ -242,8 +243,8 @@ public class KitchenStockServiceImpl implements KitchenStockService {
             throw ApiException.invalidState("Dòng trả " + line.getId() + ": vượt lượng chờ sơ chế còn lại");
         }
         source.changeWipRemaining(line.getQuantity().negate());
-        movementRepository.save(StockMovement.ofWipIssueItem(MovementType.RETURN, source.getId(), line.getQuantity().negate(),
-                "RETURN-OUT:" + line.getId(), now).returnItem(line.getId()));
+        movementRepository.save(StockMovement.ofWipIssueItem(MovementType.RETURN, source, line.getQuantity().negate(),
+                "RETURN-OUT:" + line.getId(), now).returnItem(line));
     }
 
     private void takeBackFromKitchenBatch(StockReturnItem line, Map<Long, KitchenBatch> kitchenBatches, Instant now) {
@@ -255,8 +256,8 @@ public class KitchenStockServiceImpl implements KitchenStockService {
             throw ApiException.invalidState("Dòng trả " + line.getId() + ": vượt lượng khả dụng (phần đang giữ cho món không trả được)");
         }
         batch.changeOnHand(line.getQuantity().negate());
-        movementRepository.save(StockMovement.ofKitchenBatch(MovementType.RETURN, batch.getId(), line.getQuantity().negate(),
-                "RETURN-OUT:" + line.getId(), now).returnItem(line.getId()));
+        movementRepository.save(StockMovement.ofKitchenBatch(MovementType.RETURN, batch, line.getQuantity().negate(),
+                "RETURN-OUT:" + line.getId(), now).returnItem(line));
     }
 
     @Override
@@ -285,7 +286,8 @@ public class KitchenStockServiceImpl implements KitchenStockService {
         StockAdjustment adjustment = adjustmentRepository.save(new StockAdjustment(request.adjustmentType(), request.reason().strip(), actorId,
                 request.requestKey(), clock.now()));
         for (AdjustmentLine line : request.items()) {
-            adjustmentItemRepository.save(new StockAdjustmentItem(adjustment.getId(), line.rawBatchId(), line.wipIssueItemId(), line.kitchenBatchId(),
+            adjustmentItemRepository.save(new StockAdjustmentItem(adjustment, referenceOrNull(inventoryBatchRepository, line.rawBatchId()),
+                    referenceOrNull(issueItemRepository, line.wipIssueItemId()), referenceOrNull(kitchenBatchRepository, line.kitchenBatchId()),
                     line.quantity().negate(), blankToNull(line.note())));
         }
         adjustmentItemRepository.flush();
@@ -300,7 +302,7 @@ public class KitchenStockServiceImpl implements KitchenStockService {
         if (adjustment.getStatus() != DocumentStatus.DRAFT) {
             throw ApiException.invalidState("Phiếu hủy hàng " + adjustmentId + " đang " + adjustment.getStatus() + ", không phải nháp");
         }
-        List<StockAdjustmentItem> lines = adjustmentItemRepository.findByStockAdjustmentIdOrderById(adjustmentId);
+        List<StockAdjustmentItem> lines = adjustmentItemRepository.findByStockAdjustment_IdOrderById(adjustmentId);
         if (lines.isEmpty()) {
             throw ApiException.invalidRequest("Phiếu hủy hàng " + adjustmentId + " rỗng");
         }
@@ -318,19 +320,19 @@ public class KitchenStockServiceImpl implements KitchenStockService {
                 InventoryBatch batch = rawBatches.get(line.getRawBatchId());
                 requireEnough(line, batch.getQuantityOnHand().add(delta).signum() >= 0);
                 batch.changeOnHand(delta);
-                movement = StockMovement.ofRawBatch(MovementType.WASTE, batch.getId(), delta, "WASTE:" + line.getId(), now);
+                movement = StockMovement.ofRawBatch(MovementType.WASTE, batch, delta, "WASTE:" + line.getId(), now);
             } else if (line.getWipIssueItemId() != null) {
                 StockIssueItem wip = wipLines.get(line.getWipIssueItemId());
                 requireEnough(line, wip.getWipRemainingQuantity().add(delta).signum() >= 0);
                 wip.changeWipRemaining(delta);
-                movement = StockMovement.ofWipIssueItem(MovementType.WASTE, wip.getId(), delta, "WASTE:" + line.getId(), now);
+                movement = StockMovement.ofWipIssueItem(MovementType.WASTE, wip, delta, "WASTE:" + line.getId(), now);
             } else {
                 KitchenBatch batch = kitchenBatches.get(line.getKitchenBatchId());
                 requireEnough(line, batch.getQuantityOnHand().add(delta).compareTo(batch.getReservedQuantity()) >= 0);
                 batch.changeOnHand(delta);
-                movement = StockMovement.ofKitchenBatch(MovementType.WASTE, batch.getId(), delta, "WASTE:" + line.getId(), now);
+                movement = StockMovement.ofKitchenBatch(MovementType.WASTE, batch, delta, "WASTE:" + line.getId(), now);
             }
-            movementRepository.save(movement.adjustmentItem(line.getId()).reason(adjustment.getAdjustmentType()));
+            movementRepository.save(movement.adjustmentItem(line).reason(adjustment.getAdjustmentType()));
         }
         inventoryBatchRepository.flush();
         adjustment.confirm(actorId, now);
@@ -393,5 +395,10 @@ public class KitchenStockServiceImpl implements KitchenStockService {
     private StockReceiptItem receiptLineOfInventoryBatch(long inventoryBatchId) {
         return receiptItemRepository.findById(inventoryBatchRepository.findById(inventoryBatchId).orElseThrow().getStockReceiptItemId())
                 .orElseThrow();
+    }
+
+    /** Tham chiếu tới dòng có id cho trước (không truy vấn); id null (cột khóa ngoại không bắt buộc) thì trả null. */
+    private static <T> T referenceOrNull(JpaRepository<T, Long> repository, Long id) {
+        return id == null ? null : repository.getReferenceById(id);
     }
 }

@@ -8,10 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
-import com.restaurant.core.inventory.dto.IngredientDtos.IngredientRequest;
-import com.restaurant.core.inventory.dto.IngredientDtos.IngredientResponse;
-import com.restaurant.core.inventory.dto.IngredientDtos.KitchenTypeRequest;
-import com.restaurant.core.inventory.dto.IngredientDtos.KitchenTypeResponse;
+import com.restaurant.core.inventory.dto.request.IngredientRequests.IngredientRequest;
+import com.restaurant.core.inventory.dto.response.IngredientResponses.IngredientResponse;
+import com.restaurant.core.inventory.dto.request.IngredientRequests.KitchenTypeRequest;
+import com.restaurant.core.inventory.dto.response.IngredientResponses.KitchenTypeResponse;
 import com.restaurant.core.inventory.entity.Ingredient;
 import com.restaurant.core.inventory.entity.KitchenIngredientType;
 import com.restaurant.core.inventory.repository.IngredientQueryRepository;
@@ -75,7 +75,7 @@ public class IngredientServiceImpl implements IngredientService {
     @Override
     @Transactional
     public KitchenTypeResponse createKitchenType(KitchenTypeRequest r) {
-        KitchenIngredientType type = kitchenTypeRepository.saveAndFlush(new KitchenIngredientType(r.rawIngredientId(), r.name().strip(),
+        KitchenIngredientType type = kitchenTypeRepository.saveAndFlush(new KitchenIngredientType(ingredientRepository.getReferenceById(r.rawIngredientId()), r.name().strip(),
                 r.handlingType(), r.shelfLifeHours(), orZero(r.minimumQuantity()), isTrueOrMissing(r.active())));
         return getKitchenTypeById(type.getId());
     }

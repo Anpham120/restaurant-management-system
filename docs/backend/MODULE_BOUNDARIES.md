@@ -23,7 +23,7 @@ Thành phần dùng chung **không phải module**: `security` (Nguyễn Quang H
 | `service/InvoiceService`, `service/PaymentService` | `service/ExpenseService`, `service/CashReconciliationService`, `service/FinanceReportService` |
 | `repository/InvoiceRepository`, `repository/PaymentRepository` | `repository/ExpenseRepository`, `repository/CashReconciliationRepository`, `repository/FinanceReportRepository` |
 | `strategy/**`, `sepay/**` | — |
-| `dto/InvoiceResponse`, `dto/PaymentRequest`, `dto/PaymentResponse`, `dto/ReasonRequest` | DTO mới đặt tên theo tính năng (`Expense…`, `CashReconciliation…`, `…Report…`) |
+| `dto/response/InvoiceResponse`, `dto/request/StartPaymentRequest`, `dto/response/PaymentResponse`, `dto/request/ReasonRequest` | DTO mới đặt tên theo tính năng (`Expense…`, `CashReconciliation…`, `…Report…`) |
 
 Báo cáo cần thông tin thanh toán → đọc bảng/`rpt_*` trong repository của Bùi Đào Đức Anh; **không** gọi hay sửa `PaymentRepository`.
 

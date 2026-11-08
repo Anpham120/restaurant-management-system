@@ -6,8 +6,8 @@ import org.springframework.stereotype.Component;
 
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.common.time.BusinessDateProvider;
-import com.restaurant.core.finance.dto.PaymentResponse;
-import com.restaurant.core.finance.dto.StartPaymentRequest;
+import com.restaurant.core.finance.dto.response.PaymentResponse;
+import com.restaurant.core.finance.dto.request.StartPaymentRequest;
 import com.restaurant.core.finance.entity.Invoice;
 import com.restaurant.core.finance.entity.Payment;
 import com.restaurant.core.finance.entity.PaymentRequest;
@@ -52,8 +52,8 @@ public class CashPaymentStrategy implements PaymentStrategy {
         }
         var now = clock.now();
         PaymentRequest cashRequest = paymentRequestRepository.save(
-                PaymentRequest.paidInCash(invoiceId, actorId, invoice.getTotal(), request.cashReceived(), now));
-        Payment payment = paymentRepository.save(new Payment(invoiceId, cashRequest.getId(), null, invoice.getTotal(), PaymentMethod.CASH,
+                PaymentRequest.paidInCash(invoice, actorId, invoice.getTotal(), request.cashReceived(), now));
+        Payment payment = paymentRepository.save(new Payment(invoice, cashRequest, null, invoice.getTotal(), PaymentMethod.CASH,
                 now, BusinessDateProvider.businessDateOf(now)));
         invoiceSettlement.settlePaidInvoice(invoice, actorId);
         return new PaymentResponse(invoiceId, PaymentMethod.CASH, "PAID", payment.getId(), null, payment.getAmount(), null);

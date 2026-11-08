@@ -13,11 +13,11 @@ import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.inventory.KitchenStockAllocator;
 import com.restaurant.core.order.OrderInvoiceAccess;
-import com.restaurant.core.order.dto.AbandonResponse;
-import com.restaurant.core.order.dto.OpenSessionResponse;
-import com.restaurant.core.order.dto.SessionResponse;
-import com.restaurant.core.order.dto.TableRequest;
-import com.restaurant.core.order.dto.TableResponse;
+import com.restaurant.core.order.dto.response.AbandonResponse;
+import com.restaurant.core.order.dto.response.OpenSessionResponse;
+import com.restaurant.core.order.dto.response.SessionResponse;
+import com.restaurant.core.order.dto.request.TableRequest;
+import com.restaurant.core.order.dto.response.TableResponse;
 import com.restaurant.core.order.entity.CustomerOrder;
 import com.restaurant.core.order.entity.DiningTable;
 import com.restaurant.core.order.entity.OrderItem;
@@ -109,8 +109,8 @@ public class TableServiceImpl implements TableService {
         if (!table.isAvailable()) {
             throw ApiException.invalidState("Bàn " + table.getCode() + " đang có khách");
         }
-        TableSession session = tableSessionRepository.save(new TableSession(tableId, actorId, clock.now()));
-        CustomerOrder order = customerOrderRepository.save(new CustomerOrder(session.getId()));
+        TableSession session = tableSessionRepository.save(new TableSession(table, actorId, clock.now()));
+        CustomerOrder order = customerOrderRepository.save(new CustomerOrder(session));
         table.markOccupied();
         diningTableRepository.flush();
         return new OpenSessionResponse(session.getId(), tableId, order.getId());

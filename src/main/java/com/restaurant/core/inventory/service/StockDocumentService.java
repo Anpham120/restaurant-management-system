@@ -3,12 +3,12 @@ package com.restaurant.core.inventory.service;
 import java.time.Instant;
 import java.util.List;
 
-import com.restaurant.core.inventory.dto.StockDocumentDtos.CountRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.CountResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.CountRequest;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.CountResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.IssueRequest;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.IssueResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ReceiptRequest;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.ReceiptResponse;
 
 /**
  * Phiếu nhập, xuất cho bếp, kiểm kê. Mọi thay đổi tồn kho đi kèm dòng sổ kho (stock_movements).

@@ -10,8 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
-import com.restaurant.core.finance.dto.ExpenseRequest;
-import com.restaurant.core.finance.dto.ExpenseResponse;
+import com.restaurant.core.finance.dto.request.ExpenseRequest;
+import com.restaurant.core.finance.dto.response.ExpenseResponse;
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.finance.entity.OperatingExpense;
 import com.restaurant.core.finance.repository.ExpenseQueryRepository;

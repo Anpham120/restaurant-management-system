@@ -20,16 +20,16 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.menu.dto.DailyMenuItemRequest;
-import com.restaurant.core.menu.dto.DailyMenuItemResponse;
-import com.restaurant.core.menu.dto.DailyMenuRequest;
-import com.restaurant.core.menu.dto.DailyMenuResponse;
-import com.restaurant.core.menu.dto.FillQuotasRequest;
-import com.restaurant.core.menu.dto.FillQuotasResponse;
-import com.restaurant.core.menu.dto.IngredientUsageRow;
-import com.restaurant.core.menu.dto.QuotaRequest;
-import com.restaurant.core.menu.dto.QuotasRequest;
-import com.restaurant.core.menu.dto.ReasonRequest;
+import com.restaurant.core.menu.dto.request.DailyMenuItemRequest;
+import com.restaurant.core.menu.dto.response.DailyMenuItemResponse;
+import com.restaurant.core.menu.dto.request.DailyMenuRequest;
+import com.restaurant.core.menu.dto.response.DailyMenuResponse;
+import com.restaurant.core.menu.dto.request.FillQuotasRequest;
+import com.restaurant.core.menu.dto.response.FillQuotasResponse;
+import com.restaurant.core.menu.dto.response.IngredientUsageRow;
+import com.restaurant.core.menu.dto.request.QuotaRequest;
+import com.restaurant.core.menu.dto.request.QuotasRequest;
+import com.restaurant.core.menu.dto.request.ReasonRequest;
 import com.restaurant.core.menu.service.DailyMenuService;
 import com.restaurant.core.security.CurrentUser;
 
