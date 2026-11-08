@@ -7,9 +7,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -26,8 +29,9 @@ public class KitchenPreparation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "stock_issue_item_id", nullable = false)
-    private Long stockIssueItemId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "stock_issue_item_id", nullable = false)
+    private StockIssueItem stockIssueItem;
 
     @Column(name = "input_quantity", nullable = false, precision = 12, scale = 3)
     private BigDecimal inputQuantity;
@@ -49,8 +53,8 @@ public class KitchenPreparation {
     private String requestKey;
 
     /** Phiếu nháp: chưa ảnh hưởng tồn kho tới khi xác nhận. */
-    public KitchenPreparation(long stockIssueItemId, BigDecimal inputQuantity, String lossReason, long preparedById, String requestKey) {
-        this.stockIssueItemId = stockIssueItemId;
+    public KitchenPreparation(StockIssueItem stockIssueItem, BigDecimal inputQuantity, String lossReason, long preparedById, String requestKey) {
+        this.stockIssueItem = stockIssueItem;
         this.inputQuantity = inputQuantity;
         this.lossReason = lossReason;
         this.preparedById = preparedById;
@@ -62,5 +66,9 @@ public class KitchenPreparation {
         status = DocumentStatus.CONFIRMED;
         preparedById = actorId;
         preparedAt = now;
+    }
+
+    public Long getStockIssueItemId() {
+        return stockIssueItem.getId();
     }
 }

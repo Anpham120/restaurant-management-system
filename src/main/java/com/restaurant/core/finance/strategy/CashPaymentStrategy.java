@@ -52,8 +52,8 @@ public class CashPaymentStrategy implements PaymentStrategy {
         }
         var now = clock.now();
         PaymentRequest cashRequest = paymentRequestRepository.save(
-                PaymentRequest.paidInCash(invoiceId, actorId, invoice.getTotal(), request.cashReceived(), now));
-        Payment payment = paymentRepository.save(new Payment(invoiceId, cashRequest.getId(), null, invoice.getTotal(), PaymentMethod.CASH,
+                PaymentRequest.paidInCash(invoice, actorId, invoice.getTotal(), request.cashReceived(), now));
+        Payment payment = paymentRepository.save(new Payment(invoice, cashRequest, null, invoice.getTotal(), PaymentMethod.CASH,
                 now, BusinessDateProvider.businessDateOf(now)));
         invoiceSettlement.settlePaidInvoice(invoice, actorId);
         return new PaymentResponse(invoiceId, PaymentMethod.CASH, "PAID", payment.getId(), null, payment.getAmount(), null);

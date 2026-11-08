@@ -6,9 +6,12 @@ import java.time.ZoneId;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -32,11 +35,13 @@ public class ShiftAssignment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "employee_id", nullable = false, updatable = false)
-    private Long employeeId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "employee_id", nullable = false, updatable = false)
+    private Employee employee;
 
-    @Column(name = "shift_id", nullable = false, updatable = false)
-    private Long shiftId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "shift_id", nullable = false, updatable = false)
+    private Shift shift;
 
     @Column(name = "work_date", nullable = false, updatable = false)
     private LocalDate workDate;
@@ -59,17 +64,18 @@ public class ShiftAssignment {
     @Column(name = "cancel_reason", length = 255)
     private String cancelReason;
 
-    @Column(name = "cancelled_by_id")
-    private Long cancelledById;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cancelled_by_id")
+    private Employee cancelledBy;
 
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
     /** Chụp giờ ca vào ngày làm theo múi giờ của quán; ca qua đêm kết thúc vào ngày hôm sau. */
-    public static ShiftAssignment schedule(long employeeId, Shift shift, LocalDate workDate, String note, ZoneId zone) {
+    public static ShiftAssignment schedule(Employee employee, Shift shift, LocalDate workDate, String note, ZoneId zone) {
         ShiftAssignment a = new ShiftAssignment();
-        a.employeeId = employeeId;
-        a.shiftId = shift.getId();
+        a.employee = employee;
+        a.shift = shift;
         a.workDate = workDate;
         a.scheduledStartAt = workDate.atTime(shift.getStartTime()).atZone(zone).toInstant();
         a.scheduledEndAt = workDate.plusDays(shift.isOvernight() ? 1 : 0).atTime(shift.getEndTime()).atZone(zone).toInstant();
@@ -90,10 +96,22 @@ public class ShiftAssignment {
         status = COMPLETED;
     }
 
-    public void cancel(String reason, long actorId, Instant now) {
+    public void cancel(String reason, Employee cancelledBy, Instant now) {
         status = CANCELLED;
         cancelReason = reason;
-        cancelledById = actorId;
+        this.cancelledBy = cancelledBy;
         cancelledAt = now;
+    }
+
+    public Long getEmployeeId() {
+        return employee.getId();
+    }
+
+    public Long getShiftId() {
+        return shift.getId();
+    }
+
+    public Long getCancelledById() {
+        return cancelledBy == null ? null : cancelledBy.getId();
     }
 }

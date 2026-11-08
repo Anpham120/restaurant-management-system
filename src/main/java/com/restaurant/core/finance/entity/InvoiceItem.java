@@ -4,9 +4,12 @@ import java.math.BigDecimal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -24,8 +27,9 @@ public class InvoiceItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "invoice_id", nullable = false, updatable = false)
-    private Long invoiceId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "invoice_id", nullable = false, updatable = false)
+    private Invoice invoice;
 
     @Column(name = "order_item_id", nullable = false, updatable = false)
     private Long orderItemId;
@@ -43,8 +47,8 @@ public class InvoiceItem {
     @Column(name = "line_total", precision = 12, scale = 2, insertable = false, updatable = false)
     private BigDecimal lineTotal;
 
-    public InvoiceItem(long invoiceId, long orderItemId, String itemName, int quantity, BigDecimal unitPrice) {
-        this.invoiceId = invoiceId;
+    public InvoiceItem(Invoice invoice, long orderItemId, String itemName, int quantity, BigDecimal unitPrice) {
+        this.invoice = invoice;
         this.orderItemId = orderItemId;
         this.itemName = itemName;
         this.quantity = quantity;
@@ -54,5 +58,9 @@ public class InvoiceItem {
     /** Thành tiền tính trong Java (dùng trước khi database trả line_total). */
     public BigDecimal calculateLineTotal() {
         return unitPrice.multiply(BigDecimal.valueOf(quantity));
+    }
+
+    public Long getInvoiceId() {
+        return invoice.getId();
     }
 }

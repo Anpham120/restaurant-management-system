@@ -39,7 +39,7 @@ public class InvoiceCalculator {
     public void addMissingServedItems(Invoice invoice) {
         for (ServedItem served : orderBillingApi.getServedItems(invoice.getOrderId())) {
             if (!invoiceItemRepository.existsByOrderItemId(served.orderItemId())) {
-                invoiceItemRepository.save(new InvoiceItem(invoice.getId(), served.orderItemId(), served.itemName(), served.quantity(),
+                invoiceItemRepository.save(new InvoiceItem(invoice, served.orderItemId(), served.itemName(), served.quantity(),
                         served.unitPrice()));
             }
         }
@@ -52,7 +52,7 @@ public class InvoiceCalculator {
     public BigDecimal calculateVerifiedTotal(Invoice invoice) {
         Map<Long, ServedItem> served = orderBillingApi.getServedItems(invoice.getOrderId()).stream()
                 .collect(Collectors.toMap(ServedItem::orderItemId, Function.identity()));
-        List<InvoiceItem> lines = invoiceItemRepository.findByInvoiceIdOrderById(invoice.getId());
+        List<InvoiceItem> lines = invoiceItemRepository.findByInvoice_IdOrderById(invoice.getId());
         long invalidLines = lines.stream().filter(line -> !matchesServedItem(line, served.get(line.getOrderItemId()))).count();
         long missingLines = served.keySet().stream()
                 .filter(itemId -> lines.stream().noneMatch(line -> line.getOrderItemId().equals(itemId))).count();

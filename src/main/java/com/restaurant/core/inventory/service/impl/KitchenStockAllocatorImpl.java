@@ -75,7 +75,7 @@ public class KitchenStockAllocatorImpl implements KitchenStockAllocator {
             KitchenBatch batch = reservation.getKitchenBatch();
             batch.consumeReserved(reservation.getQuantity());
             reservation.markConsumed(now);
-            movementRepository.save(StockMovement.ofKitchenBatch(MovementType.COOK, batch.getId(), reservation.getQuantity().negate(),
+            movementRepository.save(StockMovement.ofKitchenBatch(MovementType.COOK, batch, reservation.getQuantity().negate(),
                     "COOK:" + reservation.getId(), now).orderItem(orderItemId));
         }
     }

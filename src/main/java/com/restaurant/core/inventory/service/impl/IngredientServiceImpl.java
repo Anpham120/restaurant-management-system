@@ -75,7 +75,7 @@ public class IngredientServiceImpl implements IngredientService {
     @Override
     @Transactional
     public KitchenTypeResponse createKitchenType(KitchenTypeRequest r) {
-        KitchenIngredientType type = kitchenTypeRepository.saveAndFlush(new KitchenIngredientType(r.rawIngredientId(), r.name().strip(),
+        KitchenIngredientType type = kitchenTypeRepository.saveAndFlush(new KitchenIngredientType(ingredientRepository.getReferenceById(r.rawIngredientId()), r.name().strip(),
                 r.handlingType(), r.shelfLifeHours(), orZero(r.minimumQuantity()), isTrueOrMissing(r.active())));
         return getKitchenTypeById(type.getId());
     }

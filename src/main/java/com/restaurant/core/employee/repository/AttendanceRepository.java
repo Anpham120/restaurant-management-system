@@ -12,7 +12,7 @@ import com.restaurant.core.employee.entity.Attendance;
 
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
-    boolean existsByShiftAssignmentId(Long shiftAssignmentId);
+    boolean existsByShiftAssignment_Id(Long shiftAssignmentId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM Attendance a WHERE a.id = :id")

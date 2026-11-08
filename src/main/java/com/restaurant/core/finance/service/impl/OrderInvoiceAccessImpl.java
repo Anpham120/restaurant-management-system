@@ -42,9 +42,9 @@ public class OrderInvoiceAccessImpl implements OrderInvoiceAccess {
     @Override
     public void removeItemFromDraftInvoice(long orderId, long orderItemId) {
         Invoice invoice = invoiceRepository.findByOrderId(orderId).orElseThrow();
-        invoiceItemRepository.deleteByInvoiceIdAndOrderItemId(invoice.getId(), orderItemId);
+        invoiceItemRepository.deleteByInvoice_IdAndOrderItemId(invoice.getId(), orderItemId);
         invoiceItemRepository.flush();
-        invoice.updateTotal(invoiceCalculator.sumLines(invoiceItemRepository.findByInvoiceIdOrderById(invoice.getId())));
+        invoice.updateTotal(invoiceCalculator.sumLines(invoiceItemRepository.findByInvoice_IdOrderById(invoice.getId())));
         invoiceRepository.flush();
     }
 

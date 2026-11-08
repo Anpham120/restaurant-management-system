@@ -109,8 +109,8 @@ public class TableServiceImpl implements TableService {
         if (!table.isAvailable()) {
             throw ApiException.invalidState("Bàn " + table.getCode() + " đang có khách");
         }
-        TableSession session = tableSessionRepository.save(new TableSession(tableId, actorId, clock.now()));
-        CustomerOrder order = customerOrderRepository.save(new CustomerOrder(session.getId()));
+        TableSession session = tableSessionRepository.save(new TableSession(table, actorId, clock.now()));
+        CustomerOrder order = customerOrderRepository.save(new CustomerOrder(session));
         table.markOccupied();
         diningTableRepository.flush();
         return new OpenSessionResponse(session.getId(), tableId, order.getId());

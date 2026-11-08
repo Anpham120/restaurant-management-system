@@ -100,7 +100,7 @@ public class OrderServiceImpl implements OrderService {
             throw ApiException.invalidState("Đơn " + orderId + " đang thanh toán: mở lại hóa đơn trước khi gọi thêm");
         });
 
-        OrderBatch batch = orderBatchRepository.save(new OrderBatch(orderId, actorId, requestKey, clock.now()));
+        OrderBatch batch = orderBatchRepository.save(new OrderBatch(order, actorId, requestKey, clock.now()));
         for (SubmitBatchRequest.Item line : request.items()) {
             OrderableDish dish = findDishOnSaleToday(line.dailyMenuItemId());
             OrderItem item = orderItemRepository.save(new OrderItem(batch, dish.dailyMenuItemId(), line.quantity(), dish.name(),

@@ -16,13 +16,13 @@ import com.restaurant.core.order.entity.CustomerOrder;
  */
 public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Long> {
 
-    Optional<CustomerOrder> findByTableSessionId(Long tableSessionId);
+    Optional<CustomerOrder> findByTableSession_Id(Long tableSessionId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM CustomerOrder o WHERE o.id = :id")
     Optional<CustomerOrder> findByIdForUpdate(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT o FROM CustomerOrder o WHERE o.tableSessionId = :sessionId")
+    @Query("SELECT o FROM CustomerOrder o WHERE o.tableSession.id = :sessionId")
     Optional<CustomerOrder> findBySessionIdForUpdate(@Param("sessionId") Long sessionId);
 }

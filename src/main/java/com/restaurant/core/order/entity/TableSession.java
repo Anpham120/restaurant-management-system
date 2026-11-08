@@ -6,9 +6,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -25,8 +28,9 @@ public class TableSession {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "dining_table_id", nullable = false, updatable = false)
-    private Long diningTableId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "dining_table_id", nullable = false, updatable = false)
+    private DiningTable diningTable;
 
     @Column(name = "opened_at", nullable = false, updatable = false)
     private Instant openedAt;
@@ -44,8 +48,8 @@ public class TableSession {
     @Column(name = "closed_by_id")
     private Long closedById;
 
-    public TableSession(long diningTableId, long openedById, Instant now) {
-        this.diningTableId = diningTableId;
+    public TableSession(DiningTable diningTable, long openedById, Instant now) {
+        this.diningTable = diningTable;
         this.openedById = openedById;
         this.openedAt = now;
     }
@@ -58,5 +62,9 @@ public class TableSession {
         status = SessionStatus.CLOSED;
         closedAt = now;
         closedById = actorId;
+    }
+
+    public Long getDiningTableId() {
+        return diningTable.getId();
     }
 }

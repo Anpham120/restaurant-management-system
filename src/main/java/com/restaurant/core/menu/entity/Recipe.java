@@ -2,9 +2,12 @@ package com.restaurant.core.menu.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -24,8 +27,9 @@ public class Recipe {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "menu_item_id", nullable = false, updatable = false)
-    private Long menuItemId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "menu_item_id", nullable = false, updatable = false)
+    private MenuItem menuItem;
 
     @Column(nullable = false, updatable = false)
     private int version;
@@ -33,13 +37,17 @@ public class Recipe {
     @Column(name = "is_current", nullable = false)
     private boolean current;
 
-    public Recipe(long menuItemId, int version) {
-        this.menuItemId = menuItemId;
+    public Recipe(MenuItem menuItem, int version) {
+        this.menuItem = menuItem;
         this.version = version;
         this.current = true;
     }
 
     public void retire() {
         current = false;
+    }
+
+    public Long getMenuItemId() {
+        return menuItem.getId();
     }
 }

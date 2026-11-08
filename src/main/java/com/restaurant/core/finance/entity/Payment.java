@@ -8,9 +8,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -29,14 +32,17 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "invoice_id", nullable = false, updatable = false)
-    private Long invoiceId;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "invoice_id", nullable = false, updatable = false)
+    private Invoice invoice;
 
-    @Column(name = "payment_request_id", nullable = false, updatable = false)
-    private Long paymentRequestId;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "payment_request_id", nullable = false, updatable = false)
+    private PaymentRequest paymentRequest;
 
-    @Column(name = "payment_webhook_event_id", updatable = false)
-    private Long paymentWebhookEventId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_webhook_event_id", updatable = false)
+    private PaymentWebhookEvent paymentWebhookEvent;
 
     @Column(nullable = false, precision = 12, scale = 2, updatable = false)
     private BigDecimal amount;
@@ -51,14 +57,26 @@ public class Payment {
     @Column(name = "business_date", nullable = false, updatable = false)
     private LocalDate businessDate;
 
-    public Payment(long invoiceId, long paymentRequestId, Long paymentWebhookEventId, BigDecimal amount, PaymentMethod method,
+    public Payment(Invoice invoice, PaymentRequest paymentRequest, PaymentWebhookEvent paymentWebhookEvent, BigDecimal amount, PaymentMethod method,
                    Instant paidAt, LocalDate businessDate) {
-        this.invoiceId = invoiceId;
-        this.paymentRequestId = paymentRequestId;
-        this.paymentWebhookEventId = paymentWebhookEventId;
+        this.invoice = invoice;
+        this.paymentRequest = paymentRequest;
+        this.paymentWebhookEvent = paymentWebhookEvent;
         this.amount = amount;
         this.method = method;
         this.paidAt = paidAt;
         this.businessDate = businessDate;
+    }
+
+    public Long getInvoiceId() {
+        return invoice.getId();
+    }
+
+    public Long getPaymentRequestId() {
+        return paymentRequest.getId();
+    }
+
+    public Long getPaymentWebhookEventId() {
+        return paymentWebhookEvent == null ? null : paymentWebhookEvent.getId();
     }
 }

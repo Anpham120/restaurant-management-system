@@ -5,9 +5,12 @@ import java.time.LocalDate;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -24,11 +27,13 @@ public class StockReceiptItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "stock_receipt_id", nullable = false, updatable = false)
-    private Long stockReceiptId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "stock_receipt_id", nullable = false, updatable = false)
+    private StockReceipt stockReceipt;
 
-    @Column(name = "ingredient_id", nullable = false)
-    private Long ingredientId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "ingredient_id", nullable = false)
+    private Ingredient ingredient;
 
     @Column(name = "input_quantity", nullable = false, precision = 12, scale = 3)
     private BigDecimal inputQuantity;
@@ -48,10 +53,10 @@ public class StockReceiptItem {
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
 
-    public StockReceiptItem(long stockReceiptId, long ingredientId, BigDecimal inputQuantity, String inputUnit, BigDecimal conversionFactor,
+    public StockReceiptItem(StockReceipt stockReceipt, Ingredient ingredient, BigDecimal inputQuantity, String inputUnit, BigDecimal conversionFactor,
                             BigDecimal unitPricePerInputUnit, String lotCode, LocalDate expiryDate) {
-        this.stockReceiptId = stockReceiptId;
-        this.ingredientId = ingredientId;
+        this.stockReceipt = stockReceipt;
+        this.ingredient = ingredient;
         this.inputQuantity = inputQuantity;
         this.inputUnit = inputUnit;
         this.conversionFactor = conversionFactor;
@@ -63,5 +68,13 @@ public class StockReceiptItem {
     /** Số lượng theo đơn vị gốc của nguyên liệu = số nhập × hệ số quy đổi. */
     public BigDecimal calculateBaseQuantity() {
         return inputQuantity.multiply(conversionFactor);
+    }
+
+    public Long getStockReceiptId() {
+        return stockReceipt.getId();
+    }
+
+    public Long getIngredientId() {
+        return ingredient.getId();
     }
 }

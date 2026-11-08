@@ -8,5 +8,5 @@ import com.restaurant.core.inventory.entity.StockReturnItem;
 
 public interface StockReturnItemRepository extends JpaRepository<StockReturnItem, Long> {
 
-    List<StockReturnItem> findByStockReturnIdOrderById(Long stockReturnId);
+    List<StockReturnItem> findByStockReturn_IdOrderById(Long stockReturnId);
 }

@@ -4,9 +4,12 @@ import java.math.BigDecimal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -23,8 +26,9 @@ public class MenuItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "menu_category_id", nullable = false)
-    private Long menuCategoryId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "menu_category_id", nullable = false)
+    private MenuCategory menuCategory;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -38,15 +42,19 @@ public class MenuItem {
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
-    public MenuItem(long menuCategoryId, String name, BigDecimal price, String imageUrl, boolean active) {
-        changeDetails(menuCategoryId, name, price, imageUrl, active);
+    public MenuItem(MenuCategory menuCategory, String name, BigDecimal price, String imageUrl, boolean active) {
+        changeDetails(menuCategory, name, price, imageUrl, active);
     }
 
-    public void changeDetails(long menuCategoryId, String name, BigDecimal price, String imageUrl, boolean active) {
-        this.menuCategoryId = menuCategoryId;
+    public void changeDetails(MenuCategory menuCategory, String name, BigDecimal price, String imageUrl, boolean active) {
+        this.menuCategory = menuCategory;
         this.name = name;
         this.price = price;
         this.imageUrl = imageUrl;
         this.active = active;
+    }
+
+    public Long getMenuCategoryId() {
+        return menuCategory.getId();
     }
 }

@@ -5,9 +5,13 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -28,14 +32,17 @@ public class KitchenBatch {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "kitchen_ingredient_type_id", nullable = false)
-    private Long kitchenIngredientTypeId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "kitchen_ingredient_type_id", nullable = false)
+    private KitchenIngredientType kitchenIngredientType;
 
-    @Column(name = "preparation_output_id")
-    private Long preparationOutputId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "preparation_output_id")
+    private KitchenPreparationOutput preparationOutput;
 
-    @Column(name = "direct_issue_item_id")
-    private Long directIssueItemId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "direct_issue_item_id")
+    private StockIssueItem directIssueItem;
 
     @Column(name = "usable_until")
     private Instant usableUntil;
@@ -62,11 +69,11 @@ public class KitchenBatch {
     private Instant unusableMarkedAt;
 
     /** Lô sinh ra từ một đầu ra sơ chế. */
-    public static KitchenBatch fromPreparationOutput(long typeId, long preparationOutputId, Instant usableUntil, BigDecimal quantity,
+    public static KitchenBatch fromPreparationOutput(KitchenIngredientType kitchenIngredientType, KitchenPreparationOutput preparationOutput, Instant usableUntil, BigDecimal quantity,
                                                      Instant now) {
         KitchenBatch b = new KitchenBatch();
-        b.kitchenIngredientTypeId = typeId;
-        b.preparationOutputId = preparationOutputId;
+        b.kitchenIngredientType = kitchenIngredientType;
+        b.preparationOutput = preparationOutput;
         b.usableUntil = usableUntil;
         b.quantityOnHand = quantity;
         b.createdAt = now;
@@ -74,10 +81,10 @@ public class KitchenBatch {
     }
 
     /** Lô sinh ra từ dòng phiếu xuất thẳng cho bếp (không qua sơ chế). */
-    public static KitchenBatch fromDirectIssue(long typeId, long issueItemId, Instant usableUntil, BigDecimal quantity, Instant now) {
+    public static KitchenBatch fromDirectIssue(KitchenIngredientType kitchenIngredientType, StockIssueItem directIssueItem, Instant usableUntil, BigDecimal quantity, Instant now) {
         KitchenBatch b = new KitchenBatch();
-        b.kitchenIngredientTypeId = typeId;
-        b.directIssueItemId = issueItemId;
+        b.kitchenIngredientType = kitchenIngredientType;
+        b.directIssueItem = directIssueItem;
         b.usableUntil = usableUntil;
         b.quantityOnHand = quantity;
         b.createdAt = now;
@@ -117,5 +124,17 @@ public class KitchenBatch {
         unusableReason = reason;
         unusableMarkedById = actorId;
         unusableMarkedAt = now;
+    }
+
+    public Long getKitchenIngredientTypeId() {
+        return kitchenIngredientType.getId();
+    }
+
+    public Long getPreparationOutputId() {
+        return preparationOutput == null ? null : preparationOutput.getId();
+    }
+
+    public Long getDirectIssueItemId() {
+        return directIssueItem == null ? null : directIssueItem.getId();
     }
 }

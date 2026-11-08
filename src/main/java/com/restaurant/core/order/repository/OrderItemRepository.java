@@ -21,14 +21,14 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
     /** Khóa mọi món của đơn theo id tăng dần. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT i FROM OrderItem i WHERE i.batch.orderId = :orderId ORDER BY i.id")
+    @Query("SELECT i FROM OrderItem i WHERE i.batch.order.id = :orderId ORDER BY i.id")
     List<OrderItem> findAllOfOrderForUpdate(@Param("orderId") Long orderId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM OrderItem i WHERE i.id IN :ids ORDER BY i.id")
     List<OrderItem> findAllByIdForUpdate(@Param("ids") Collection<Long> ids);
 
-    @Query("SELECT i FROM OrderItem i JOIN FETCH i.batch WHERE i.batch.orderId = :orderId ORDER BY i.id")
+    @Query("SELECT i FROM OrderItem i JOIN FETCH i.batch WHERE i.batch.order.id = :orderId ORDER BY i.id")
     List<OrderItem> findAllOfOrder(@Param("orderId") Long orderId);
 
     boolean existsByDailyMenuItemId(Long dailyMenuItemId);
@@ -36,7 +36,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     @Query("SELECT i FROM OrderItem i WHERE i.batch.id = :batchId ORDER BY i.id")
     List<OrderItem> findAllOfBatch(@Param("batchId") Long batchId);
 
-    @Query("SELECT count(i) > 0 FROM OrderItem i WHERE i.batch.orderId = :orderId AND i.status NOT IN :statuses")
+    @Query("SELECT count(i) > 0 FROM OrderItem i WHERE i.batch.order.id = :orderId AND i.status NOT IN :statuses")
     boolean existsInOrderWithStatusNotIn(@Param("orderId") Long orderId, @Param("statuses") Collection<OrderItemStatus> statuses);
 
     /** Món đã chiếm suất: đang ở trạng thái dùng suất, hoặc bị hủy sau khi đã bắt đầu nấu. */
@@ -46,7 +46,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
                AND (i.status IN :usingQuota
                     OR (i.status = com.restaurant.core.order.entity.OrderItemStatus.CANCELLED
                         AND EXISTS (SELECT 1 FROM OrderItemEvent e
-                                     WHERE e.orderItemId = i.id
+                                     WHERE e.orderItem = i
                                        AND e.toStatus = com.restaurant.core.order.entity.OrderItemStatus.COOKING)))
              GROUP BY i.dailyMenuItemId""")
     List<Object[]> sumUsedPortions(@Param("dmiIds") Collection<Long> dailyMenuItemIds,

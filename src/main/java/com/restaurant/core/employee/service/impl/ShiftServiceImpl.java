@@ -93,7 +93,7 @@ public class ShiftServiceImpl implements ShiftService {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "INVALID_ASSIGNMENT",
                     "Ca không tồn tại/ngừng dùng hoặc nhân viên không còn làm việc");
         }
-        ShiftAssignment assignment = ShiftAssignment.schedule(employee.getId(), shift, r.workDate(), blank(r.note()),
+        ShiftAssignment assignment = ShiftAssignment.schedule(employee, shift, r.workDate(), blank(r.note()),
                 BusinessDateProvider.RESTAURANT_ZONE);
         if (assignmentRepository.existsOverlapping(employee.getId(), assignment.getScheduledStartAt(), assignment.getScheduledEndAt())) {
             throw new ApiException(HttpStatus.CONFLICT, "OVERLAP", "Nhân viên đã có ca trùng khoảng thời gian này");
@@ -117,12 +117,12 @@ public class ShiftServiceImpl implements ShiftService {
     @Transactional
     public ShiftAssignmentResponse cancelAssignment(long id, long actorId, String reason) {
         ShiftAssignment assignment = assignmentRepository.findByIdForUpdate(id).orElseThrow(() -> notFound("Không tìm thấy phân ca " + id));
-        boolean attended = attendanceRepository.existsByShiftAssignmentId(id);
+        boolean attended = attendanceRepository.existsByShiftAssignment_Id(id);
         if (!assignment.isScheduled() || attended) {
             throw new ApiException(HttpStatus.CONFLICT, "NOT_CANCELLABLE",
                     "Phân ca " + id + " đang " + assignment.getStatus() + (attended ? ", đã chấm công" : "") + " — không hủy được");
         }
-        assignment.cancel(reason.strip(), actorId, clock.now());
+        assignment.cancel(reason.strip(), employeeRepository.getReferenceById(actorId), clock.now());
         assignmentRepository.flush();
         return getAssignmentById(id);
     }
@@ -137,12 +137,12 @@ public class ShiftServiceImpl implements ShiftService {
         if (assignment.isCancelled()) {
             throw new ApiException(HttpStatus.CONFLICT, "ASSIGNMENT_CANCELLED", "Phân ca " + r.shiftAssignmentId() + " đã hủy");
         }
-        if (attendanceRepository.existsByShiftAssignmentId(assignment.getId())) {
+        if (attendanceRepository.existsByShiftAssignment_Id(assignment.getId())) {
             throw new ApiException(HttpStatus.CONFLICT, "DUPLICATE", "Phân ca " + assignment.getId() + " đã chấm công: dùng điều chỉnh chấm công");
         }
         Times t = times(r.status(), r.actualStartAt(), r.actualEndAt(), r.workedMinutes(), assignment.getScheduledBreakMinutes());
-        Attendance attendance = new Attendance(assignment.getId(), blank(r.note()));
-        attendance.record(r.status(), t.start, t.end, t.worked, actorId, clock.now());
+        Attendance attendance = new Attendance(assignment, blank(r.note()));
+        attendance.record(r.status(), t.start, t.end, t.worked, employeeRepository.getReferenceById(actorId), clock.now());
         attendanceRepository.saveAndFlush(attendance);
         if (assignment.isScheduled()) {
             assignment.markCompleted();
@@ -160,8 +160,8 @@ public class ShiftServiceImpl implements ShiftService {
         int breakMinutes = assignmentRepository.findById(attendance.getShiftAssignmentId()).orElseThrow().getScheduledBreakMinutes();
         Times t = times(r.status(), r.actualStartAt(), r.actualEndAt(), r.workedMinutes(), breakMinutes);
         Instant now = clock.now();
-        adjustmentRepository.save(AttendanceAdjustment.before(attendance, r.status(), t.start, t.end, t.worked, r.reason().strip(), actorId, now));
-        attendance.record(r.status(), t.start, t.end, t.worked, actorId, now);
+        adjustmentRepository.save(AttendanceAdjustment.before(attendance, r.status(), t.start, t.end, t.worked, r.reason().strip(), employeeRepository.getReferenceById(actorId), now));
+        attendance.record(r.status(), t.start, t.end, t.worked, employeeRepository.getReferenceById(actorId), now);
         attendanceRepository.flush();
         return getAttendanceById(attendanceId);
     }

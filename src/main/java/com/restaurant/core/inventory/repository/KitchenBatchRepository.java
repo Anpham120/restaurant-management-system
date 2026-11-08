@@ -24,15 +24,15 @@ public interface KitchenBatchRepository extends JpaRepository<KitchenBatch, Long
     @Query("""
             SELECT b FROM KitchenBatch b
              WHERE b.id IN :extraIds
-                OR (b.kitchenIngredientTypeId IN :typeIds AND b.usable = true AND b.quantityOnHand > 0
+                OR (b.kitchenIngredientType.id IN :typeIds AND b.usable = true AND b.quantityOnHand > 0
                     AND (b.usableUntil IS NULL OR b.usableUntil > :now))
-             ORDER BY b.kitchenIngredientTypeId, b.id""")
+             ORDER BY b.kitchenIngredientType.id, b.id""")
     List<KitchenBatch> lockUsableBatchesOfTypes(@Param("typeIds") Collection<Long> typeIds,
                                                 @Param("extraIds") Collection<Long> extraIds,
                                                 @Param("now") Instant now);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT b FROM KitchenBatch b WHERE b.id IN :ids ORDER BY b.kitchenIngredientTypeId, b.id")
+    @Query("SELECT b FROM KitchenBatch b WHERE b.id IN :ids ORDER BY b.kitchenIngredientType.id, b.id")
     List<KitchenBatch> lockBatchesByIds(@Param("ids") Collection<Long> ids);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

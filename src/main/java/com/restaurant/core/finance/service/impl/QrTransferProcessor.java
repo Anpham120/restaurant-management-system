@@ -63,9 +63,9 @@ public class QrTransferProcessor {
         WebhookProcessingResult result = decideResult(invoice, paymentRequest, amount);
         Instant now = clock.now();
         PaymentWebhookEvent event = webhookEventRepository.save(new PaymentWebhookEvent(
-                paymentRequest == null ? null : paymentRequest.getId(), transactionCode, reference, amount, result, rawPayload, now));
+                paymentRequest, transactionCode, reference, amount, result, rawPayload, now));
         if (result == WebhookProcessingResult.PROCESSED) {
-            paymentRepository.save(new Payment(invoice.getId(), paymentRequest.getId(), event.getId(), amount, PaymentMethod.QR, now,
+            paymentRepository.save(new Payment(invoice, paymentRequest, event, amount, PaymentMethod.QR, now,
                     BusinessDateProvider.businessDateOf(now)));
             paymentRequest.markPaid();
             paymentRequestRepository.flush();

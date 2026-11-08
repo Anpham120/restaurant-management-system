@@ -8,5 +8,5 @@ import com.restaurant.core.inventory.entity.StockCountItem;
 
 public interface StockCountItemRepository extends JpaRepository<StockCountItem, Long> {
 
-    List<StockCountItem> findByStockCountIdOrderById(Long stockCountId);
+    List<StockCountItem> findByStockCount_IdOrderById(Long stockCountId);
 }

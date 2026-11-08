@@ -4,9 +4,12 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -23,8 +26,9 @@ public class AttendanceAdjustment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "attendance_id", nullable = false, updatable = false)
-    private Long attendanceId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "attendance_id", nullable = false, updatable = false)
+    private Attendance attendance;
 
     @Column(name = "old_status", nullable = false, length = 20, updatable = false)
     private String oldStatus;
@@ -53,17 +57,18 @@ public class AttendanceAdjustment {
     @Column(nullable = false, length = 255, updatable = false)
     private String reason;
 
-    @Column(name = "adjusted_by_id", nullable = false, updatable = false)
-    private Long adjustedById;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "adjusted_by_id", nullable = false, updatable = false)
+    private Employee adjustedBy;
 
     @Column(name = "adjusted_at", nullable = false, updatable = false)
     private Instant adjustedAt;
 
     /** Chụp giá trị hiện tại của bản chấm công TRƯỚC khi sửa. */
     public static AttendanceAdjustment before(Attendance current, String newStatus, Instant newStartAt, Instant newEndAt,
-                                              Integer newWorkedMinutes, String reason, long actorId, Instant now) {
+                                              Integer newWorkedMinutes, String reason, Employee adjustedBy, Instant now) {
         AttendanceAdjustment a = new AttendanceAdjustment();
-        a.attendanceId = current.getId();
+        a.attendance = current;
         a.oldStatus = current.getStatus();
         a.oldStartAt = current.getActualStartAt();
         a.oldEndAt = current.getActualEndAt();
@@ -73,8 +78,16 @@ public class AttendanceAdjustment {
         a.newEndAt = newEndAt;
         a.newWorkedMinutes = newWorkedMinutes;
         a.reason = reason;
-        a.adjustedById = actorId;
+        a.adjustedBy = adjustedBy;
         a.adjustedAt = now;
         return a;
+    }
+
+    public Long getAttendanceId() {
+        return attendance.getId();
+    }
+
+    public Long getAdjustedById() {
+        return adjustedBy.getId();
     }
 }

@@ -5,9 +5,12 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -24,8 +27,9 @@ public class InventoryBatch {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "stock_receipt_item_id", nullable = false, updatable = false)
-    private Long stockReceiptItemId;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "stock_receipt_item_id", nullable = false, updatable = false)
+    private StockReceiptItem stockReceiptItem;
 
     @Column(name = "received_at", nullable = false, updatable = false)
     private Instant receivedAt;
@@ -45,8 +49,8 @@ public class InventoryBatch {
     @Column(name = "unusable_marked_at")
     private Instant unusableMarkedAt;
 
-    public InventoryBatch(long stockReceiptItemId, BigDecimal quantity, Instant receivedAt) {
-        this.stockReceiptItemId = stockReceiptItemId;
+    public InventoryBatch(StockReceiptItem stockReceiptItem, BigDecimal quantity, Instant receivedAt) {
+        this.stockReceiptItem = stockReceiptItem;
         this.quantityOnHand = quantity;
         this.receivedAt = receivedAt;
     }
@@ -65,5 +69,9 @@ public class InventoryBatch {
         unusableReason = reason;
         unusableMarkedById = actorId;
         unusableMarkedAt = now;
+    }
+
+    public Long getStockReceiptItemId() {
+        return stockReceiptItem.getId();
     }
 }

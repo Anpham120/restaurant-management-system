@@ -43,13 +43,13 @@ public class QrPaymentStrategy implements PaymentStrategy {
             throw ApiException.invalidState("Hóa đơn " + invoiceId + " đã có yêu cầu thanh toán đang mở");
         }
         String reference = buildTransferReference(invoiceId);
-        paymentRequestRepository.save(PaymentRequest.waitingForTransfer(invoiceId, actorId, invoice.getTotal(), reference, clock.now()));
+        paymentRequestRepository.save(PaymentRequest.waitingForTransfer(invoice, actorId, invoice.getTotal(), reference, clock.now()));
         return new PaymentResponse(invoiceId, PaymentMethod.QR, "WAITING_TRANSFER", null, reference, invoice.getTotal(),
                 sepayQr.imageUrl(invoice.getTotal(), reference));
     }
 
     /** Mã đưa vào nội dung chuyển khoản, chỉ chữ và số: RC&lt;hóa đơn&gt;Q&lt;lần thứ n&gt;. */
     private String buildTransferReference(long invoiceId) {
-        return "RC" + invoiceId + "Q" + (1 + paymentRequestRepository.countByInvoiceId(invoiceId));
+        return "RC" + invoiceId + "Q" + (1 + paymentRequestRepository.countByInvoice_Id(invoiceId));
     }
 }

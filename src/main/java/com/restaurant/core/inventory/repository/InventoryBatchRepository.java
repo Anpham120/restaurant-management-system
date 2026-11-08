@@ -22,7 +22,7 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT b FROM InventoryBatch b
-             WHERE b.stockReceiptItemId IN (SELECT s.id FROM StockReceiptItem s WHERE s.ingredientId IN :ingredientIds)
+             WHERE b.stockReceiptItem.id IN (SELECT s.id FROM StockReceiptItem s WHERE s.ingredient.id IN :ingredientIds)
              ORDER BY b.id""")
     List<InventoryBatch> lockBatchesOfIngredients(@Param("ingredientIds") Collection<Long> ingredientIds);
 }

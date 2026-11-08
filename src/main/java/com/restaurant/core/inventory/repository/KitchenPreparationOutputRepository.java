@@ -8,5 +8,5 @@ import com.restaurant.core.inventory.entity.KitchenPreparationOutput;
 
 public interface KitchenPreparationOutputRepository extends JpaRepository<KitchenPreparationOutput, Long> {
 
-    List<KitchenPreparationOutput> findByKitchenPreparationIdOrderById(Long kitchenPreparationId);
+    List<KitchenPreparationOutput> findByKitchenPreparation_IdOrderById(Long kitchenPreparationId);
 }

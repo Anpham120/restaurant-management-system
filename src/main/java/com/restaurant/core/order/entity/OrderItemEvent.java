@@ -6,9 +6,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -25,8 +28,9 @@ public class OrderItemEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_item_id", nullable = false, updatable = false)
-    private Long orderItemId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "order_item_id", nullable = false, updatable = false)
+    private OrderItem orderItem;
 
     @Column(name = "actor_id", nullable = false, updatable = false)
     private Long actorId;
@@ -45,12 +49,16 @@ public class OrderItemEvent {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    public OrderItemEvent(long orderItemId, long actorId, OrderItemStatus fromStatus, OrderItemStatus toStatus, String reason, Instant now) {
-        this.orderItemId = orderItemId;
+    public OrderItemEvent(OrderItem orderItem, long actorId, OrderItemStatus fromStatus, OrderItemStatus toStatus, String reason, Instant now) {
+        this.orderItem = orderItem;
         this.actorId = actorId;
         this.fromStatus = fromStatus;
         this.toStatus = toStatus;
         this.reason = reason;
         this.createdAt = now;
+    }
+
+    public Long getOrderItemId() {
+        return orderItem.getId();
     }
 }

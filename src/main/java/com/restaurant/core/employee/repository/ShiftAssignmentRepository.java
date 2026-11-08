@@ -22,7 +22,7 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
     /** Nhân viên đã có ca (chưa hủy) chồng thời gian với khoảng [start, end). */
     @Query("""
             SELECT count(a) > 0 FROM ShiftAssignment a
-             WHERE a.employeeId = :employeeId AND a.status <> 'CANCELLED'
+             WHERE a.employee.id = :employeeId AND a.status <> 'CANCELLED'
                AND a.scheduledStartAt < :end AND a.scheduledEndAt > :start""")
     boolean existsOverlapping(@Param("employeeId") Long employeeId, @Param("start") Instant start, @Param("end") Instant end);
 
@@ -30,8 +30,8 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT a FROM ShiftAssignment a
-             WHERE a.employeeId = :employeeId AND a.status = 'SCHEDULED' AND a.workDate > :afterDate
-               AND NOT EXISTS (SELECT 1 FROM Attendance at WHERE at.shiftAssignmentId = a.id)
+             WHERE a.employee.id = :employeeId AND a.status = 'SCHEDULED' AND a.workDate > :afterDate
+               AND NOT EXISTS (SELECT 1 FROM Attendance at WHERE at.shiftAssignment = a)
              ORDER BY a.id""")
     List<ShiftAssignment> findScheduledWithoutAttendanceAfter(@Param("employeeId") Long employeeId, @Param("afterDate") LocalDate afterDate);
 }

@@ -21,6 +21,7 @@ import com.restaurant.core.menu.entity.DailyMenu;
 import com.restaurant.core.menu.entity.DailyMenuItem;
 import com.restaurant.core.menu.entity.DailyMenuStatus;
 import com.restaurant.core.menu.entity.MenuItem;
+import com.restaurant.core.menu.entity.Recipe;
 import com.restaurant.core.menu.repository.DailyMenuItemRepository;
 import com.restaurant.core.menu.repository.DailyMenuQueryRepository;
 import com.restaurant.core.menu.repository.DailyMenuRepository;
@@ -82,7 +83,7 @@ public class DailyMenuServiceImpl implements DailyMenuService {
         DailyMenu menu = dailyMenuRepository.saveAndFlush(new DailyMenu(businessDate));
         if (fromCatalog) {
             for (Object[] row : menuItemRepository.findSellableItemsWithCurrentRecipe()) {
-                dailyMenuItemRepository.save(new DailyMenuItem(menu, (MenuItem) row[0], (Long) row[1], 0));
+                dailyMenuItemRepository.save(new DailyMenuItem(menu, (MenuItem) row[0], (Recipe) row[1], 0));
             }
             dailyMenuItemRepository.flush();
         }
@@ -137,11 +138,11 @@ public class DailyMenuServiceImpl implements DailyMenuService {
     public DailyMenuResponse addDishToMenu(long dailyMenuId, DailyMenuItemRequest r) {
         DailyMenu menu = requireNotClosed(dailyMenuId);
         MenuItem menuItem = menuItemRepository.findById(r.menuItemId()).filter(MenuItem::isActive).orElse(null);
-        var currentRecipe = recipeRepository.findByMenuItemIdAndCurrentTrue(r.menuItemId());
+        var currentRecipe = recipeRepository.findByMenuItem_IdAndCurrentTrue(r.menuItemId());
         if (menuItem == null || currentRecipe.isEmpty()) {
             throw conflict("MENU_ITEM_NOT_READY", "Món " + r.menuItemId() + " không tồn tại, đã ngừng kinh doanh hoặc chưa có công thức");
         }
-        dailyMenuItemRepository.saveAndFlush(new DailyMenuItem(menu, menuItem, currentRecipe.get().getId(), r.quotaTotal()));
+        dailyMenuItemRepository.saveAndFlush(new DailyMenuItem(menu, menuItem, currentRecipe.get(), r.quotaTotal()));
         return getDailyMenuById(dailyMenuId);
     }
 

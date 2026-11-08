@@ -4,9 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -23,15 +26,16 @@ public class CustomerOrder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "table_session_id", nullable = false, updatable = false)
-    private Long tableSessionId;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "table_session_id", nullable = false, updatable = false)
+    private TableSession tableSession;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OrderStatus status = OrderStatus.OPEN;
 
-    public CustomerOrder(long tableSessionId) {
-        this.tableSessionId = tableSessionId;
+    public CustomerOrder(TableSession tableSession) {
+        this.tableSession = tableSession;
     }
 
     public boolean isOpen() {
@@ -46,5 +50,9 @@ public class CustomerOrder {
     /** Hóa đơn đã kết thúc (đã thu, không thu được hoặc miễn thu). */
     public void close() {
         status = OrderStatus.CLOSED;
+    }
+
+    public Long getTableSessionId() {
+        return tableSession.getId();
     }
 }
