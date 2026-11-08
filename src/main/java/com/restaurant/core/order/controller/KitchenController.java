@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.order.dto.OrderItemResponse;
+import com.restaurant.core.order.dto.response.OrderItemResponse;
 import com.restaurant.core.order.service.KitchenService;
 
 /** Hàng chờ bếp. Hành động trên từng món ở {@link OrderItemController}. Owner: Phạm Duy An. */

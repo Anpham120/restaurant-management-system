@@ -17,12 +17,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.menu.dto.CategoryRequest;
-import com.restaurant.core.menu.dto.CategoryResponse;
-import com.restaurant.core.menu.dto.MenuItemRequest;
-import com.restaurant.core.menu.dto.MenuItemResponse;
-import com.restaurant.core.menu.dto.RecipeRequest;
-import com.restaurant.core.menu.dto.RecipeResponse;
+import com.restaurant.core.menu.dto.request.CategoryRequest;
+import com.restaurant.core.menu.dto.response.CategoryResponse;
+import com.restaurant.core.menu.dto.request.MenuItemRequest;
+import com.restaurant.core.menu.dto.response.MenuItemResponse;
+import com.restaurant.core.menu.dto.request.RecipeRequest;
+import com.restaurant.core.menu.dto.response.RecipeResponse;
 import com.restaurant.core.menu.service.MenuCatalogService;
 
 /** Danh mục món, món, công thức. Bảng ghi trực tiếp → @PreAuthorize là lớp kiểm quyền duy nhất. Owner: Lê Anh. */

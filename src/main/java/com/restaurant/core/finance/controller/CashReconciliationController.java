@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.finance.dto.CashReconciliationResponse;
-import com.restaurant.core.finance.dto.ReconcileRequest;
+import com.restaurant.core.finance.dto.response.CashReconciliationResponse;
+import com.restaurant.core.finance.dto.request.ReconcileRequest;
 import com.restaurant.core.finance.service.CashReconciliationService;
 import com.restaurant.core.security.CurrentUser;
 

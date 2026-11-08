@@ -2,12 +2,12 @@ package com.restaurant.core.menu.service;
 
 import java.util.List;
 
-import com.restaurant.core.menu.dto.CategoryRequest;
-import com.restaurant.core.menu.dto.CategoryResponse;
-import com.restaurant.core.menu.dto.MenuItemRequest;
-import com.restaurant.core.menu.dto.MenuItemResponse;
-import com.restaurant.core.menu.dto.RecipeRequest;
-import com.restaurant.core.menu.dto.RecipeResponse;
+import com.restaurant.core.menu.dto.request.CategoryRequest;
+import com.restaurant.core.menu.dto.response.CategoryResponse;
+import com.restaurant.core.menu.dto.request.MenuItemRequest;
+import com.restaurant.core.menu.dto.response.MenuItemResponse;
+import com.restaurant.core.menu.dto.request.RecipeRequest;
+import com.restaurant.core.menu.dto.response.RecipeResponse;
 
 /** Danh mục, món, công thức. Owner: Lê Anh. */
 public interface MenuCatalogService {

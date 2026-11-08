@@ -13,10 +13,10 @@ import org.springframework.stereotype.Service;
 
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.common.time.BusinessDateProvider;
-import com.restaurant.core.finance.dto.FinanceReportRows.ExpenseByCategory;
-import com.restaurant.core.finance.dto.FinanceReportRows.RevenueByDay;
-import com.restaurant.core.finance.dto.FinanceReportRows.RevenueByItem;
-import com.restaurant.core.finance.dto.FinanceReportRows.UnpaidClosure;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.ExpenseByCategory;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.RevenueByDay;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.RevenueByItem;
+import com.restaurant.core.finance.dto.response.FinanceReportRows.UnpaidClosure;
 import com.restaurant.core.finance.repository.FinanceReportRepository;
 import com.restaurant.core.finance.repository.FinanceReportRepository.UnpaidInvoiceRow;
 import com.restaurant.core.finance.service.FinanceReportService;

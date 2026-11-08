@@ -9,8 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.common.time.BusinessDateProvider;
-import com.restaurant.core.finance.dto.CashReconciliationResponse;
-import com.restaurant.core.finance.dto.ReconcileRequest;
+import com.restaurant.core.finance.dto.response.CashReconciliationResponse;
+import com.restaurant.core.finance.dto.request.ReconcileRequest;
 import com.restaurant.core.finance.entity.DailyCashReconciliation;
 import com.restaurant.core.finance.repository.CashReconciliationQueryRepository;
 import com.restaurant.core.finance.repository.DailyCashReconciliationRepository;

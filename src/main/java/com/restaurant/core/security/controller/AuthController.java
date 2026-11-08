@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
 import com.restaurant.core.security.CurrentUser;
-import com.restaurant.core.security.dto.ChangePasswordRequest;
-import com.restaurant.core.security.dto.LoginRequest;
-import com.restaurant.core.security.dto.LoginResponse;
-import com.restaurant.core.security.dto.MeResponse;
+import com.restaurant.core.security.dto.request.ChangePasswordRequest;
+import com.restaurant.core.security.dto.request.LoginRequest;
+import com.restaurant.core.security.dto.response.LoginResponse;
+import com.restaurant.core.security.dto.response.MeResponse;
 import com.restaurant.core.security.service.AuthService;
 
 @RestController

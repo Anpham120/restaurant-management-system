@@ -17,10 +17,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.inventory.dto.IngredientDtos.IngredientRequest;
-import com.restaurant.core.inventory.dto.IngredientDtos.IngredientResponse;
-import com.restaurant.core.inventory.dto.IngredientDtos.KitchenTypeRequest;
-import com.restaurant.core.inventory.dto.IngredientDtos.KitchenTypeResponse;
+import com.restaurant.core.inventory.dto.request.IngredientRequests.IngredientRequest;
+import com.restaurant.core.inventory.dto.response.IngredientResponses.IngredientResponse;
+import com.restaurant.core.inventory.dto.request.IngredientRequests.KitchenTypeRequest;
+import com.restaurant.core.inventory.dto.response.IngredientResponses.KitchenTypeResponse;
 import com.restaurant.core.inventory.service.IngredientService;
 
 /** Danh mục nguyên liệu và loại nguyên liệu bếp. Bảng ghi trực tiếp → @PreAuthorize là lớp kiểm quyền. Owner: Đỗ Tuấn Anh. */

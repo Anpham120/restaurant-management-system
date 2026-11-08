@@ -7,8 +7,8 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.inventory.dto.IngredientDtos.IngredientResponse;
-import com.restaurant.core.inventory.dto.IngredientDtos.KitchenTypeResponse;
+import com.restaurant.core.inventory.dto.response.IngredientResponses.IngredientResponse;
+import com.restaurant.core.inventory.dto.response.IngredientResponses.KitchenTypeResponse;
 
 /** Danh mục nguyên liệu và loại bếp (rc_app ghi trực tiếp). Owner: Đỗ Tuấn Anh. */
 @Repository

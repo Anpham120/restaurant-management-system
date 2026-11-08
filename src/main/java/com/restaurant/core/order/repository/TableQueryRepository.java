@@ -6,8 +6,8 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.order.dto.SessionResponse;
-import com.restaurant.core.order.dto.TableResponse;
+import com.restaurant.core.order.dto.response.SessionResponse;
+import com.restaurant.core.order.dto.response.TableResponse;
 
 /** Truy vấn CHỈ ĐỌC cho màn hình bàn và phiên (ghép bàn, phiên, đơn, hóa đơn). */
 @Repository

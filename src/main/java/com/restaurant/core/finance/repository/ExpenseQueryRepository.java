@@ -9,7 +9,7 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.finance.dto.ExpenseResponse;
+import com.restaurant.core.finance.dto.response.ExpenseResponse;
 
 /** Truy vấn CHỈ ĐỌC khoản chi (trả thẳng DTO). Ghi: OperatingExpenseRepository. Owner: Bùi Đào Đức Anh. */
 @Repository

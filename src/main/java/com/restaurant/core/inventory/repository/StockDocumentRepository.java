@@ -6,12 +6,12 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.inventory.dto.StockDocumentDtos.CountLineView;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.CountResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueLineView;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptLineView;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptResponse;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.CountLineView;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.CountResponse;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.IssueLineView;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.IssueResponse;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.ReceiptLineView;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.ReceiptResponse;
 
 /**
  * Truy vấn CHỈ ĐỌC phiếu nhập / xuất / kiểm kê (trả thẳng DTO) Ghi sổ kho nằm ở

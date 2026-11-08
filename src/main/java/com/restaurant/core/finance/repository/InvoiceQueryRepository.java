@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.finance.dto.InvoiceResponse;
+import com.restaurant.core.finance.dto.response.InvoiceResponse;
 
 /** Truy vấn CHỈ ĐỌC chi tiết hóa đơn (dòng, yêu cầu thanh toán, giao dịch) trả thẳng DTO. Owner: Phạm Duy An. */
 @Repository

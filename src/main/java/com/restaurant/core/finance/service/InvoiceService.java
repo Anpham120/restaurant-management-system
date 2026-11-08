@@ -1,6 +1,6 @@
 package com.restaurant.core.finance.service;
 
-import com.restaurant.core.finance.dto.InvoiceResponse;
+import com.restaurant.core.finance.dto.response.InvoiceResponse;
 
 /** Hóa đơn: chốt, mở lại, miễn thu, xem. Tổng tiền luôn tính từ món đã phục vụ, không nhận từ client. Owner: Phạm Duy An. */
 public interface InvoiceService {

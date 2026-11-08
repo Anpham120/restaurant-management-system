@@ -20,14 +20,14 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ConfirmReceiptRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.CountRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.CountResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.IssueResponse;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReasonRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptRequest;
-import com.restaurant.core.inventory.dto.StockDocumentDtos.ReceiptResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ConfirmReceiptRequest;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.CountRequest;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.CountResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.IssueRequest;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.IssueResponse;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ReasonRequest;
+import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ReceiptRequest;
+import com.restaurant.core.inventory.dto.response.StockDocumentResponses.ReceiptResponse;
 import com.restaurant.core.inventory.service.StockDocumentService;
 import com.restaurant.core.security.CurrentUser;
 

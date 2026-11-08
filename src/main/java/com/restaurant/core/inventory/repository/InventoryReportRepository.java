@@ -9,14 +9,14 @@ import java.util.List;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.inventory.dto.InventoryReportDtos.HandoverRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.KitchenLotRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.KitchenStockRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.PreparationYieldRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.RawLotRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.RawStockRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.StockHistoryRow;
-import com.restaurant.core.inventory.dto.InventoryReportDtos.UnusableLotRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.HandoverRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.KitchenLotRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.KitchenStockRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.PreparationYieldRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.RawLotRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.RawStockRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.StockHistoryRow;
+import com.restaurant.core.inventory.dto.response.InventoryReportRows.UnusableLotRow;
 
 /**
  * Truy vấn CHỈ ĐỌC cho báo cáo kho và danh sách lô để chọn khi lập chứng từ. Mốc "hôm nay" / "bây giờ" do Service

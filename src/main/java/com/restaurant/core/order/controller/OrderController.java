@@ -13,9 +13,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurant.core.common.response.ApiResponse;
-import com.restaurant.core.order.dto.OrderResponse;
-import com.restaurant.core.order.dto.SubmitBatchRequest;
-import com.restaurant.core.order.dto.SubmitBatchResponse;
+import com.restaurant.core.order.dto.response.OrderResponse;
+import com.restaurant.core.order.dto.request.SubmitBatchRequest;
+import com.restaurant.core.order.dto.response.SubmitBatchResponse;
 import com.restaurant.core.order.service.OrderService;
 import com.restaurant.core.security.CurrentUser;
 

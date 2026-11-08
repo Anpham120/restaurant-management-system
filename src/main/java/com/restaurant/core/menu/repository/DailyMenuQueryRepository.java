@@ -7,9 +7,9 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.menu.dto.DailyMenuItemResponse;
-import com.restaurant.core.menu.dto.DailyMenuResponse;
-import com.restaurant.core.menu.dto.IngredientUsageRow;
+import com.restaurant.core.menu.dto.response.DailyMenuItemResponse;
+import com.restaurant.core.menu.dto.response.DailyMenuResponse;
+import com.restaurant.core.menu.dto.response.IngredientUsageRow;
 
 /** Truy vấn CHỈ ĐỌC thực đơn ngày (ghép món, nhóm, công thức; nguyên liệu dự kiến). Ghi: JpaRepository. Owner: Lê Anh. */
 @Repository

@@ -7,12 +7,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
-import com.restaurant.core.menu.dto.CategoryRequest;
-import com.restaurant.core.menu.dto.CategoryResponse;
-import com.restaurant.core.menu.dto.MenuItemRequest;
-import com.restaurant.core.menu.dto.MenuItemResponse;
-import com.restaurant.core.menu.dto.RecipeRequest;
-import com.restaurant.core.menu.dto.RecipeResponse;
+import com.restaurant.core.menu.dto.request.CategoryRequest;
+import com.restaurant.core.menu.dto.response.CategoryResponse;
+import com.restaurant.core.menu.dto.request.MenuItemRequest;
+import com.restaurant.core.menu.dto.response.MenuItemResponse;
+import com.restaurant.core.menu.dto.request.RecipeRequest;
+import com.restaurant.core.menu.dto.response.RecipeResponse;
 import com.restaurant.core.menu.entity.MenuCategory;
 import com.restaurant.core.menu.entity.MenuItem;
 import com.restaurant.core.menu.entity.Recipe;

@@ -6,8 +6,8 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.order.dto.ItemEventResponse;
-import com.restaurant.core.order.dto.OrderItemResponse;
+import com.restaurant.core.order.dto.response.ItemEventResponse;
+import com.restaurant.core.order.dto.response.OrderItemResponse;
 
 /**
  * Truy vấn CHỈ ĐỌC cho màn hình đơn, món, hàng chờ bếp (ghép nhiều bảng, trả thẳng DTO). Ghi dữ liệu đi qua các

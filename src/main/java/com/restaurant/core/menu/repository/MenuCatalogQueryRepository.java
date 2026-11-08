@@ -7,9 +7,9 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.menu.dto.CategoryResponse;
-import com.restaurant.core.menu.dto.MenuItemResponse;
-import com.restaurant.core.menu.dto.RecipeResponse;
+import com.restaurant.core.menu.dto.response.CategoryResponse;
+import com.restaurant.core.menu.dto.response.MenuItemResponse;
+import com.restaurant.core.menu.dto.response.RecipeResponse;
 
 /** Truy vấn CHỈ ĐỌC danh mục, món, công thức (ghép nhiều bảng, trả thẳng DTO). Ghi: các JpaRepository. Owner: Lê Anh. */
 @Repository

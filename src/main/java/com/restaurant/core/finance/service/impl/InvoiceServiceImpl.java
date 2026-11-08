@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.common.time.BusinessDateProvider;
-import com.restaurant.core.finance.dto.InvoiceResponse;
+import com.restaurant.core.finance.dto.response.InvoiceResponse;
 import com.restaurant.core.finance.entity.Invoice;
 import com.restaurant.core.finance.repository.InvoiceQueryRepository;
 import com.restaurant.core.finance.repository.InvoiceRepository;

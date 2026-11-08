@@ -6,7 +6,7 @@ import java.util.List;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import com.restaurant.core.finance.dto.CashReconciliationResponse;
+import com.restaurant.core.finance.dto.response.CashReconciliationResponse;
 
 /** Truy vấn CHỈ ĐỌC biên bản đối soát tiền mặt (các phiên bản đã lập trong ngày). Owner: Bùi Đào Đức Anh. */
 @Repository

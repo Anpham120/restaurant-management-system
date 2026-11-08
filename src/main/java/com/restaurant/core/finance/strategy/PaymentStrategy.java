@@ -1,7 +1,7 @@
 package com.restaurant.core.finance.strategy;
 
-import com.restaurant.core.finance.dto.PaymentResponse;
-import com.restaurant.core.finance.dto.StartPaymentRequest;
+import com.restaurant.core.finance.dto.response.PaymentResponse;
+import com.restaurant.core.finance.dto.request.StartPaymentRequest;
 
 /**
  * Strategy cho một cách thu tiền hóa đơn đang chờ thu (PAYMENT_PENDING).
