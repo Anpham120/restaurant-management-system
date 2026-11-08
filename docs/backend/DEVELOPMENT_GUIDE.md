@@ -64,12 +64,12 @@ public ApiResponse<SubmitBatchResponse> submitOrderBatch(@PathVariable @Positive
 Quy tắc:
 
 - **Controller**: URL, `@PreAuthorize`, `@Valid`, lấy `currentUser.employeeId()`, bọc `ApiResponse.ok(...)`. Không SQL.
-- **Service**: nghiệp vụ phía Java (ghép dữ liệu, chọn strategy, gọi nhiều repository khi cần). Đặt trong package `..service..` để `PerformanceLoggingAspect` đo thời gian. Không cần interface.
+- **Service**: nghiệp vụ phía Java (ghép dữ liệu, chọn strategy, gọi nhiều repository khi cần). Interface `…Service` liệt kê nghiệp vụ, `service/impl/…ServiceImpl` cài đặt; đặt trong package `..service..` để `PerformanceLoggingAspect` đo thời gian.
 - **Repository**: ghi bằng interface `JpaRepository`; truy vấn chỉ đọc ghép nhiều bảng bằng `JdbcClient` trong `…QueryRepository`, tham số đặt tên (`:name`) — không nối chuỗi SQL. Map kết quả vào `record` (tên cột snake_case tự khớp field camelCase).
 - **Ranh giới module** (Spring Modulith): chỉ import từ `common` và lớp ở package gốc của `security` (như `CurrentUser`). Không import `controller/service/repository/dto` của module khác. `ModularityTest` sẽ báo lỗi nếu vi phạm. Module mới cần `package-info.java` với `@ApplicationModule` ([ARCHITECTURE](ARCHITECTURE.md#module-spring-modulith)).
-- **DTO**: `record` trong `<module>/dto`. Request không bao giờ chứa `actorId`, `employeeId` của người thao tác, tổng tiền phải thu hay trạng thái muốn đặt.
+- **DTO**: `record` trong `<module>/dto/request` (client gửi lên) và `<module>/dto/response` (trả ra). Nhiều DTO nhỏ cùng một tính năng gom trong một lớp `…Requests` / `…Responses` (ví dụ `inventory/dto/request/StockDocumentRequests`). Request không bao giờ chứa `actorId`, `employeeId` của người thao tác, tổng tiền phải thu hay trạng thái muốn đặt.
 
-### Cấu trúc chuẩn của một module (mẫu: `employee`)
+### Cấu trúc chuẩn của một module (mọi module như nhau, ví dụ `employee`)
 
 ```text
 employee/
@@ -77,7 +77,7 @@ employee/
 ├── dto/request/       CreateEmployeeRequest …       record + Bean Validation
 ├── dto/response/      EmployeeResponse …            record trả ra API
 ├── entity/            Employee, Account, Role …     @Entity ánh xạ bảng (Lombok @Getter/@Setter)
-├── mapper/            EmployeeMapper                Entity → Response
+├── mapper/            EmployeeMapper                Entity → Response (chỉ module tự dựng DTO từ Entity)
 ├── repository/        EmployeeRepository …          interface extends JpaRepository
 └── service/
     ├── EmployeeService                              interface: danh sách nghiệp vụ
@@ -85,6 +85,8 @@ employee/
 ```
 
 - Mọi thao tác ghi: Entity + `JpaRepository`, nghiệp vụ trong `…ServiceImpl`. Truy vấn chỉ đọc ghép nhiều bảng cho màn hình: `…QueryRepository` (JdbcClient, trả thẳng DTO).
+- Khóa ngoại tới bảng cùng module: quan hệ JPA `LAZY` (`@ManyToOne`, `@OneToOne` khi cột `UNIQUE`). Tạo bản ghi con thì truyền Entity cha đã nạp, hoặc `repository.getReferenceById(id)` khi chỉ có id (không truy vấn thêm). Khóa ngoại sang module khác giữ dạng id ([ARCHITECTURE](ARCHITECTURE.md#nguyên-tắc-cốt-lõi), mục 6).
+- Derived query đi qua quan hệ viết `findByStockReceipt_IdOrderById` (dấu `_` chỉ đường `stockReceipt.id`); JPQL viết `r.invoice.id`.
 - Ghi xong thì `flush()` trong Service, để lỗi ràng buộc DB thành lỗi API ngay trong method.
 - Sửa cùng một bản ghi đồng thời: đọc bằng method `…ForUpdate` (`@Lock(PESSIMISTIC_WRITE)`).
 

@@ -43,6 +43,21 @@ flowchart TB
     security --> common
 ```
 
+## Module và phân hệ ERD
+
+Mỗi module là một cụm nghiệp vụ, sở hữu một nhóm bảng (danh sách đủ: [MODULE_BOUNDARIES](MODULE_BOUNDARIES.md)). ERD trong `docs/erd` vẽ theo 5 phân hệ của bản phân tích database; bảng của phân hệ 3 chia cho hai module:
+
+| Phân hệ ERD | Module | Bảng |
+| --- | --- | --- |
+| P1 Nhân viên • tài khoản • ca • chấm công | `employee` (đăng nhập ở `security`) | 11 bảng |
+| P2 Thực đơn • món • công thức • thực đơn ngày | `menu` | 6 bảng |
+| P3 Bàn • đơn hàng • hóa đơn • thanh toán | `order`: bàn, phiên, đơn, lượt gọi, món, nhật ký món | 6 bảng |
+| | `finance`: hóa đơn, dòng hóa đơn, yêu cầu thanh toán, thanh toán, webhook | 5 bảng |
+| P4 Kho RAW • bếp • sơ chế • kiểm kê | `inventory` | 18 bảng |
+| P5 Chi phí • báo cáo • đối soát | `finance` | 2 bảng |
+
+Hóa đơn và thanh toán nằm ở `finance` (không ở `order`) vì đây là phần tiền: chiến lược thanh toán (Strategy CASH/QR), webhook ngân hàng, đối soát tiền mặt và báo cáo doanh thu cùng đọc ghi các bảng này. `finance` gọi `order` qua `OrderBillingApi`: khóa đơn, lấy món đã phục vụ để lập hóa đơn, đóng đơn và trả bàn khi thu xong.
+
 ## Module (Spring Modulith)
 
 Mỗi package con trực tiếp của `com.restaurant.core` là một **module**, khai báo trong `package-info.java` bằng `@ApplicationModule`.
@@ -63,7 +78,9 @@ Mỗi package con trực tiếp của `com.restaurant.core` là một **module**
 3. **Ranh giới tin cậy.** Spring Security xác thực JWT; người thao tác (`actorId`) luôn là `CurrentUser.employeeId()` (claim `sub`). Mỗi request đọc lại trạng thái tài khoản, nhân viên và vai trò trong DB (`AccountStateJwtConverter`); vai trò trong token chỉ để frontend hiển thị. Không nhận `actorId`/`employeeId` từ body hay query. `@PreAuthorize` là lớp kiểm vai trò (ma trận ở [docs/07 §10](../07-kiem-toan-ham-rc.md)).
    Ứng dụng chạy bằng tài khoản thuộc role `rc_app` (không phải superuser): đọc/ghi bảng nghiệp vụ (migration `V2`), không có quyền DDL, không ghi được bảng `roles`.
 4. **Một định dạng phản hồi** `ApiResponse` và **một chỗ xử lý lỗi** `GlobalExceptionHandler` (+ `RestSecurityErrorHandler` cho 401/403 ở tầng filter).
-5. **Cấu trúc chuẩn trong module** (mẫu: `employee`): `controller` → `service` (interface) → `service/impl` (`…ServiceImpl`) → `repository` (interface `JpaRepository`) → `entity`; `dto/request`, `dto/response` là `record`; `mapper` chuyển Entity → DTO. Entity không bao giờ trả thẳng ra API. Hibernate chỉ `ddl-auto: validate`, không tự sửa bảng.
+5. **Cấu trúc chuẩn trong module** (cả 5 module và `security` giống nhau): `controller` → `service` (interface) → `service/impl` (`…ServiceImpl`) → `repository` (interface `JpaRepository`) → `entity`; `dto/request` (dữ liệu client gửi lên, có Bean Validation) và `dto/response` (dữ liệu trả ra) là `record`. Entity không bao giờ trả thẳng ra API. Hibernate chỉ `ddl-auto: validate`, không tự sửa bảng.
+   Chuyển dữ liệu ra DTO: màn hình đọc qua `…QueryRepository` (`JdbcClient.query(XxxResponse.class)`), cột SQL tự khớp field của `record`, không cần lớp chuyển đổi. Chỉ khi Service tự dựng DTO từ Entity mới đặt lớp `mapper` (hiện có `employee/mapper/EmployeeMapper`).
+6. **Quan hệ giữa các Entity theo đúng khóa ngoại trong schema.** Khóa ngoại tới bảng **cùng module** ánh xạ thành quan hệ JPA, luôn `LAZY`: cột có `UNIQUE` là `@OneToOne` (1-1, ví dụ `Attendance` → `ShiftAssignment`, `CustomerOrder` → `TableSession`, `Payment` → `Invoice`), cột thường là `@ManyToOne` (n-1, ví dụ `OrderBatch` → `CustomerOrder`, `InvoiceItem` → `Invoice`), bảng nối là `@ManyToMany` (`Account` ↔ `Role` qua `account_roles`) hoặc Entity riêng khi bảng nối có thêm cột (`RecipeIngredient` có `quantity_per_serving`, `DailyMenuItem` có hạn mức suất). Entity vẫn có `getXxxId()` để đọc id mà không nạp bảng cha. Khóa ngoại **sang module khác** (người thao tác `…_by_id` → `employees`, `invoices.order_id` → `orders`, `order_items.daily_menu_item_id` → `daily_menu_items`…) giữ dạng id: module không import Entity của module khác (luật Spring Modulith), ràng buộc vẫn do FK trong database giữ.
 
 ## Thành phần đã có
 
