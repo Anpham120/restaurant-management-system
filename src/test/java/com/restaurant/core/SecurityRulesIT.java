@@ -26,12 +26,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 /**
- * Mọi endpoint: vai trò không được phép nhận 403 FORBIDDEN ngay cả khi gửi body sai (quyền kiểm trước validate, không lộ
- * tên trường); vai trò được phép không bị chặn ở tầng quyền. Vai trò được phép đọc từ @PreAuthorize của chính controller.
+ * Mọi endpoint /api (trừ endpoint công khai và hai endpoint chỉ cần đăng nhập) phải có @PreAuthorize. Vai trò được phép
+ * (đọc từ chính @PreAuthorize) không bị chặn 403; vai trò không được phép nhận 403 FORBIDDEN, hoặc 400 VALIDATION_ERROR khi
+ * body sai (chuẩn Spring: @Valid chạy trước @PreAuthorize của method), không bao giờ vào tới nghiệp vụ (2xx, 404, 409).
  */
 class SecurityRulesIT extends OrderApiTestBase {
 
     private static final Set<String> PUBLIC = Set.of("/api/auth/login", "/api/webhooks/sepay");
+    /** Chỉ cần đăng nhập, khai trong SecurityConfig (tài khoản phải đổi mật khẩu vẫn gọi được). */
+    private static final Set<String> AUTHENTICATED_ONLY = Set.of("/api/auth/change-password", "/api/auth/me");
     private static final Pattern ROLE = Pattern.compile("'(\\w+)'");
 
     @Autowired
@@ -39,7 +42,7 @@ class SecurityRulesIT extends OrderApiTestBase {
     RequestMappingHandlerMapping mappings;
 
     @Test
-    void everyEndpointChecksRoleBeforeReadingBody() throws Exception {
+    void everyEndpointEnforcesItsRoles() throws Exception {
         Map<String, String> tokens = Map.of("MANAGER", manager, "WAITER", waiter, "KITCHEN", kitchen, "CASHIER", cashier);
         List<String> violations = new ArrayList<>();
         int checked = 0;
@@ -48,6 +51,9 @@ class SecurityRulesIT extends OrderApiTestBase {
             for (String pattern : e.getKey().getPatternValues()) {
                 if (PUBLIC.contains(pattern) || !pattern.startsWith("/api/")) {
                     continue;
+                }
+                if (!AUTHENTICATED_ONLY.contains(pattern) && !hasPreAuthorize(e.getValue())) {
+                    violations.add(pattern + " thiếu @PreAuthorize");
                 }
                 String url = pattern.replace("{kind}", "RAW").replace("{businessDate}", "2026-01-01").replaceAll("\\{[^}]+}", "999999999");
                 for (var m : e.getKey().getMethodsCondition().getMethods()) {
@@ -60,8 +66,11 @@ class SecurityRulesIT extends OrderApiTestBase {
                         String body = r.getResponse().getContentAsString();
                         Map<String, Object> error = body.isEmpty() ? null : JsonPath.read(body, "$.error");
                         String code = error == null ? null : (String) error.get("code");
-                        boolean forbidden = r.getResponse().getStatus() == 403 && "FORBIDDEN".equals(code);
-                        if (allowed.contains(role.getKey()) == forbidden) {
+                        int status = r.getResponse().getStatus();
+                        boolean forbidden = status == 403 && "FORBIDDEN".equals(code);
+                        boolean rejectedBody = status == 400 && "VALIDATION_ERROR".equals(code);
+                        boolean ok = allowed.contains(role.getKey()) ? !forbidden : forbidden || rejectedBody;
+                        if (!ok) {
                             violations.add(m + " " + pattern + " as " + role.getKey() + " → " + r.getResponse().getStatus() + " " + code);
                         }
                         checked++;
@@ -71,6 +80,11 @@ class SecurityRulesIT extends OrderApiTestBase {
         }
         assertThat(violations).isEmpty();
         assertThat(checked).isGreaterThan(400);
+    }
+
+    private static boolean hasPreAuthorize(HandlerMethod h) {
+        return AnnotatedElementUtils.findMergedAnnotation(h.getMethod(), PreAuthorize.class) != null
+                || AnnotatedElementUtils.findMergedAnnotation(h.getBeanType(), PreAuthorize.class) != null;
     }
 
     /** "hasAnyRole('A', 'B')" → {A, B}; không có annotation hoặc isAuthenticated() → mọi vai trò. */

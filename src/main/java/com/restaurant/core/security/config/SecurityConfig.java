@@ -2,7 +2,6 @@ package com.restaurant.core.security.config;
 
 import java.nio.charset.StandardCharsets;
 import com.restaurant.core.security.jwt.AccountStateJwtConverter;
-import com.restaurant.core.security.web.HandlerAuthorizationManager;
 import com.restaurant.core.security.web.RestSecurityErrorHandler;
 
 import javax.crypto.SecretKey;
@@ -14,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -30,9 +30,9 @@ import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * Stateless JWT: client gửi "Authorization: Bearer <token>". Vai trò và trạng thái tài khoản đọc lại từ DB mỗi request
- * ({@link AccountStateJwtConverter}). Phân quyền theo endpoint bằng @PreAuthorize trên controller, được kiểm ở tầng filter
- * trước khi đọc body ({@link HandlerAuthorizationManager}). 401 = thiếu/sai token
- * hoặc tài khoản không còn hoạt động, 403 = thiếu vai trò hoặc chưa đổi mật khẩu bắt buộc.
+ * ({@link AccountStateJwtConverter}). Hai lớp kiểm quyền theo chuẩn Spring Security: tầng filter chỉ đòi đã đăng nhập và đã
+ * đổi mật khẩu bắt buộc; vai trò theo từng endpoint do @PreAuthorize trên method controller (@EnableMethodSecurity) kiểm.
+ * 401 = thiếu/sai token hoặc tài khoản không còn hoạt động, 403 = thiếu vai trò hoặc chưa đổi mật khẩu bắt buộc.
  */
 @Configuration
 @EnableMethodSecurity
@@ -40,7 +40,7 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, AccountStateJwtConverter jwtConverter,
-                                            HandlerAuthorizationManager handlerAuthorization, RestSecurityErrorHandler errors) throws Exception {
+                                            RestSecurityErrorHandler errors) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())                       // không dùng cookie session → không cần CSRF
                 .cors(Customizer.withDefaults())
@@ -56,8 +56,8 @@ public class SecurityConfig {
                         // tài khoản phải đổi mật khẩu: chỉ được đổi mật khẩu và xem /me
                         .requestMatchers(HttpMethod.POST, "/api/auth/change-password").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
-                        // còn lại: quyền theo @PreAuthorize của controller, kiểm TRƯỚC khi đọc body
-                        .anyRequest().access(handlerAuthorization))
+                        // còn lại: phải đăng nhập và đã đổi mật khẩu bắt buộc; vai trò do @PreAuthorize trên controller kiểm
+                        .anyRequest().access((authentication, context) -> new AuthorizationDecision(passwordChanged(authentication.get()))))
                 .oauth2ResourceServer(o -> o
                         .jwt(j -> j.jwtAuthenticationConverter(jwtConverter))
                         .authenticationEntryPoint(errors)
