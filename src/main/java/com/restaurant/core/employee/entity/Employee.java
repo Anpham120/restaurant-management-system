@@ -16,13 +16,11 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /** Bảng employees. Ràng buộc ngày (end_date ≥ hire_date, LEFT phải có end_date) do CHECK của database giữ. */
 @Entity
 @Table(name = "employees")
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Employee {
 
@@ -69,6 +67,23 @@ public class Employee {
         this.employeeCode = employeeCode;
         this.fullName = fullName;
         this.department = department;
+    }
+
+    /** Sửa thông tin làm việc: họ tên, phòng ban, trạng thái (nghỉ việc dùng {@link #markAsLeft}). */
+    public void updateWorkInfo(String fullName, Department department, WorkStatus workStatus) {
+        this.fullName = fullName;
+        this.department = department;
+        this.workStatus = workStatus;
+    }
+
+    /** Sửa thông tin cá nhân; các trường văn bản đã được chuẩn hóa (rỗng → null) ở Service. */
+    public void updateProfile(String gender, LocalDate dateOfBirth, String phone, String email, String address, LocalDate hireDate) {
+        this.gender = gender;
+        this.dateOfBirth = dateOfBirth;
+        this.phone = phone;
+        this.email = email;
+        this.address = address;
+        this.hireDate = hireDate;
     }
 
     public boolean hasLeft() {

@@ -88,6 +88,8 @@ employee/
 - Khóa ngoại tới bảng cùng module: quan hệ JPA `LAZY` (`@ManyToOne`, `@OneToOne` khi cột `UNIQUE`). Tạo bản ghi con thì truyền Entity cha đã nạp, hoặc `repository.getReferenceById(id)` khi chỉ có id (không truy vấn thêm). Khóa ngoại sang module khác giữ dạng id ([ARCHITECTURE](ARCHITECTURE.md#nguyên-tắc-cốt-lõi), mục 6).
 - Derived query đi qua quan hệ viết `findByStockReceipt_IdOrderById` (dấu `_` chỉ đường `stockReceipt.id`); JPQL viết `r.invoice.id`.
 - Ghi xong thì `flush()` trong Service, để lỗi ràng buộc DB thành lỗi API ngay trong method.
+- Entity không có `@Setter`: đổi dữ liệu qua method nghiệp vụ trên Entity (`employee.updateWorkInfo(...)`, `table.deactivate()`, `department.rename(...)`).
+- Hàm tiện ích dùng chung đặt ở `common/util` (`TextUtils.blankToNull`, `EntityIdUtils.collectIds`), không chép lại trong từng ServiceImpl và không gọi hàm static của ServiceImpl khác.
 - Sửa cùng một bản ghi đồng thời: đọc bằng method `…ForUpdate` (`@Lock(PESSIMISTIC_WRITE)`).
 
 ### Đặt tên hàm

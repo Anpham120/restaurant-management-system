@@ -1,4 +1,4 @@
-package com.restaurant.core.security;
+package com.restaurant.core.security.service.impl;
 
 import java.time.Clock;
 import java.time.Duration;

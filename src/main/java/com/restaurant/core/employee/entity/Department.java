@@ -9,13 +9,11 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /** Bảng departments. */
 @Entity
 @Table(name = "departments")
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Department {
 
@@ -27,6 +25,10 @@ public class Department {
     private String name;
 
     public Department(String name) {
+        this.name = name;
+    }
+
+    public void rename(String name) {
         this.name = name;
     }
 }

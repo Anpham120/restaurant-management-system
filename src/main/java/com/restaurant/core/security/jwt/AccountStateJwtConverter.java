@@ -1,4 +1,4 @@
-package com.restaurant.core.security;
+package com.restaurant.core.security.jwt;
 
 import java.util.ArrayList;
 import java.util.List;

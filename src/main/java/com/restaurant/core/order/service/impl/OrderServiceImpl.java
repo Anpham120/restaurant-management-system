@@ -34,6 +34,8 @@ import com.restaurant.core.order.repository.OrderQueryRepository;
 import com.restaurant.core.order.repository.TableQueryRepository;
 import com.restaurant.core.order.service.OrderService;
 
+import static com.restaurant.core.common.util.TextUtils.blankToNull;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -222,7 +224,4 @@ public class OrderServiceImpl implements OrderService {
         return reason.strip();
     }
 
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.strip();
-    }
 }

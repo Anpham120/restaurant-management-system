@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,13 +47,20 @@ import com.restaurant.core.inventory.repository.KitchenIngredientTypeRepository;
 import com.restaurant.core.inventory.repository.IngredientRepository;
 import com.restaurant.core.inventory.repository.StockCountItemRepository;
 import com.restaurant.core.inventory.repository.StockCountRepository;
-import com.restaurant.core.inventory.repository.StockDocumentRepository;
+import com.restaurant.core.inventory.repository.StockDocumentQueryRepository;
 import com.restaurant.core.inventory.repository.StockIssueItemRepository;
 import com.restaurant.core.inventory.repository.StockIssueRepository;
 import com.restaurant.core.inventory.repository.StockMovementRepository;
 import com.restaurant.core.inventory.repository.StockReceiptItemRepository;
 import com.restaurant.core.inventory.repository.StockReceiptRepository;
 import com.restaurant.core.inventory.service.StockDocumentService;
+
+import static com.restaurant.core.common.util.TextUtils.blankToNull;
+import static com.restaurant.core.common.util.TextUtils.toPlainText;
+import static com.restaurant.core.common.util.EntityIdUtils.collectIds;
+import static com.restaurant.core.common.util.EntityIdUtils.mapById;
+import static com.restaurant.core.common.util.EntityIdUtils.referenceOrNull;
+import static com.restaurant.core.inventory.service.impl.StockSourceRules.requireOneSource;
 
 @Service
 @RequiredArgsConstructor
@@ -72,7 +78,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
     private final KitchenIngredientTypeRepository kitchenTypeRepository;
     private final IngredientRepository ingredientRepository;
     private final StockMovementRepository movementRepository;
-    private final StockDocumentRepository documentQueryRepository;
+    private final StockDocumentQueryRepository documentQueryRepository;
     private final DocumentRequestKeys requestKeys;
     private final BusinessDateProvider clock;
 
@@ -480,33 +486,4 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         return issueRepository.findByIdForUpdate(issueId).orElseThrow(() -> ApiException.notFound("Không tìm thấy phiếu xuất " + issueId));
     }
 
-    static void requireOneSource(Long raw, Long wip, Long kitchen) {
-        int n = (raw == null ? 0 : 1) + (wip == null ? 0 : 1) + (kitchen == null ? 0 : 1);
-        if (n != 1) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
-                    "Mỗi dòng cần đúng một nguồn: rawBatchId, wipIssueItemId hoặc kitchenBatchId");
-        }
-    }
-
-    static <T> List<Long> collectIds(List<T> lines, Function<T, Long> id) {
-        List<Long> ids = lines.stream().map(id).filter(java.util.Objects::nonNull).distinct().toList();
-        return ids.isEmpty() ? List.of(-1L) : ids;
-    }
-
-    static <T> Map<Long, T> mapById(List<T> entities, Function<T, Long> id) {
-        return entities.stream().collect(Collectors.toMap(id, Function.identity()));
-    }
-
-    static String toPlainText(BigDecimal value) {
-        return value.stripTrailingZeros().toPlainString();
-    }
-
-    static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.strip();
-    }
-
-    /** Tham chiếu tới dòng có id cho trước (không truy vấn); id null (cột khóa ngoại không bắt buộc) thì trả null. */
-    private static <T> T referenceOrNull(JpaRepository<T, Long> repository, Long id) {
-        return id == null ? null : repository.getReferenceById(id);
-    }
 }

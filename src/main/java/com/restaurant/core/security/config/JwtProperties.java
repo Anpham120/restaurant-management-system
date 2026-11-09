@@ -1,4 +1,4 @@
-package com.restaurant.core.security;
+package com.restaurant.core.security.config;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;

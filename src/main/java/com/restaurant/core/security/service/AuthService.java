@@ -2,7 +2,7 @@ package com.restaurant.core.security.service;
 
 import java.util.List;
 
-import com.restaurant.core.security.LoginThrottle;
+import com.restaurant.core.security.service.impl.LoginThrottle;
 import com.restaurant.core.security.dto.request.ChangePasswordRequest;
 import com.restaurant.core.security.dto.request.LoginRequest;
 import com.restaurant.core.security.dto.response.LoginResponse;

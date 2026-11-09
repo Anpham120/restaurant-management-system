@@ -1,6 +1,7 @@
-package com.restaurant.core.security;
+package com.restaurant.core.security.jwt;
 
 import java.time.Instant;
+import com.restaurant.core.security.config.JwtProperties;
 import java.util.List;
 
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;

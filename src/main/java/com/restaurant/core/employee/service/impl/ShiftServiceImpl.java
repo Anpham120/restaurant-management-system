@@ -33,6 +33,8 @@ import com.restaurant.core.employee.repository.ShiftQueryRepository;
 import com.restaurant.core.employee.repository.ShiftRepository;
 import com.restaurant.core.employee.service.ShiftService;
 
+import static com.restaurant.core.common.util.TextUtils.blankToNull;
+
 @Service
 @Transactional(readOnly = true)
 public class ShiftServiceImpl implements ShiftService {
@@ -212,9 +214,6 @@ public class ShiftServiceImpl implements ShiftService {
         return active == null || active;
     }
 
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.strip();
-    }
 
     static ApiException notFoundError(String message) {
         return new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", message);

@@ -72,8 +72,7 @@ public class TableServiceImpl implements TableService {
     @Transactional
     public TableResponse updateTable(long tableId, TableRequest request) {
         DiningTable table = findTableForUpdate(tableId);
-        table.setCode(request.code().strip());
-        table.setCapacity(request.capacity());
+        table.changeDetails(request.code().strip(), request.capacity());
         diningTableRepository.flush();
         return getTableById(tableId);
     }
@@ -85,7 +84,7 @@ public class TableServiceImpl implements TableService {
         if (!table.isAvailable()) {
             throw new ApiException(HttpStatus.CONFLICT, "TABLE_OCCUPIED", "Bàn " + table.getCode() + " đang có khách: đóng phiên trước khi ngừng sử dụng");
         }
-        table.setActive(false);
+        table.deactivate();
         diningTableRepository.flush();
         return getTableById(tableId);
     }
@@ -93,7 +92,7 @@ public class TableServiceImpl implements TableService {
     @Override
     @Transactional
     public TableResponse activateTable(long tableId) {
-        findTableForUpdate(tableId).setActive(true);
+        findTableForUpdate(tableId).activate();
         diningTableRepository.flush();
         return getTableById(tableId);
     }

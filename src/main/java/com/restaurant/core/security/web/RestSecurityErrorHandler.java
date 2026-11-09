@@ -1,4 +1,4 @@
-package com.restaurant.core.security;
+package com.restaurant.core.security.web;
 
 import java.io.IOException;
 
@@ -16,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import com.restaurant.core.common.response.ApiError;
 import com.restaurant.core.common.response.ApiResponse;
+import com.restaurant.core.security.config.SecurityConfig;
 
 /** Trả 401/403 ở tầng filter với cùng định dạng JSON như GlobalExceptionHandler. */
 @Component

@@ -1,6 +1,9 @@
-package com.restaurant.core.security;
+package com.restaurant.core.security.config;
 
 import java.nio.charset.StandardCharsets;
+import com.restaurant.core.security.jwt.AccountStateJwtConverter;
+import com.restaurant.core.security.web.HandlerAuthorizationManager;
+import com.restaurant.core.security.web.RestSecurityErrorHandler;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -80,12 +83,12 @@ public class SecurityConfig {
         return decoder;
     }
 
-    static boolean passwordChanged(Authentication authentication) {
+    public static boolean passwordChanged(Authentication authentication) {
         return authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken)
                 && !requiresPasswordChange(authentication);
     }
 
-    static boolean requiresPasswordChange(Authentication authentication) {
+    public static boolean requiresPasswordChange(Authentication authentication) {
         return authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(a -> AccountStateJwtConverter.PASSWORD_CHANGE_REQUIRED.equals(a.getAuthority()));
     }

@@ -11,7 +11,6 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /** Bảng dining_tables. status chỉ đổi khi mở / đóng phiên. */
 @Entity
@@ -24,11 +23,9 @@ public class DiningTable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Setter
     @Column(nullable = false, length = 20)
     private String code;
 
-    @Setter
     @Column(nullable = false)
     private int capacity;
 
@@ -36,13 +33,26 @@ public class DiningTable {
     @Column(nullable = false, length = 20)
     private TableStatus status = TableStatus.AVAILABLE;
 
-    @Setter
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
     public DiningTable(String code, int capacity) {
         this.code = code;
         this.capacity = capacity;
+    }
+
+    public void changeDetails(String code, int capacity) {
+        this.code = code;
+        this.capacity = capacity;
+    }
+
+    /** Ngừng dùng bàn (hỏng, bỏ): giữ dòng cho lịch sử phiên, không mở phiên mới được. */
+    public void deactivate() {
+        active = false;
+    }
+
+    public void activate() {
+        active = true;
     }
 
     public boolean isAvailable() {

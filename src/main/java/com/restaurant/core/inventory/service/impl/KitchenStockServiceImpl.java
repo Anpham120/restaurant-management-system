@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,11 +58,13 @@ import com.restaurant.core.inventory.repository.StockReturnItemRepository;
 import com.restaurant.core.inventory.repository.StockReturnRepository;
 import com.restaurant.core.inventory.service.KitchenStockService;
 
-import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.blankToNull;
-import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.mapById;
-import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.collectIds;
-import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.toPlainText;
-import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.requireOneSource;
+import static com.restaurant.core.common.util.TextUtils.blankToNull;
+import static com.restaurant.core.common.util.EntityIdUtils.mapById;
+import static com.restaurant.core.common.util.EntityIdUtils.collectIds;
+import static com.restaurant.core.common.util.TextUtils.toPlainText;
+import static com.restaurant.core.inventory.service.impl.StockSourceRules.requireOneSource;
+
+import static com.restaurant.core.common.util.EntityIdUtils.referenceOrNull;
 
 @Service
 @RequiredArgsConstructor
@@ -397,8 +398,4 @@ public class KitchenStockServiceImpl implements KitchenStockService {
                 .orElseThrow();
     }
 
-    /** Tham chiếu tới dòng có id cho trước (không truy vấn); id null (cột khóa ngoại không bắt buộc) thì trả null. */
-    private static <T> T referenceOrNull(JpaRepository<T, Long> repository, Long id) {
-        return id == null ? null : repository.getReferenceById(id);
-    }
 }

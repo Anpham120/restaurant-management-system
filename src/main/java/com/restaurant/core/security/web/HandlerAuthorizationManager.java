@@ -1,6 +1,7 @@
-package com.restaurant.core.security;
+package com.restaurant.core.security.web;
 
 import java.util.Map;
+import com.restaurant.core.security.config.SecurityConfig;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
