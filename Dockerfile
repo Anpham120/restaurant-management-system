@@ -12,6 +12,11 @@ RUN --mount=type=cache,target=/root/.m2 ./mvnw -q -B -Dmaven.test.skip=true pack
  && java -Djarmode=tools -jar target/restaurant-core-*.jar extract --layers --launcher --destination /extracted
 
 FROM eclipse-temurin:25-jre
+# Cài bản vá bảo mật Ubuntu đã phát hành mà image nền chưa kịp build lại (ví dụ CVE-2026-109518 của apt: image nền
+# 29/10 còn apt 3.2.0, bản sửa 3.2.1ubuntu0.1). Không có bước này Trivy chặn pipeline đến khi image nền được build lại.
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends upgrade \
+ && rm -rf /var/lib/apt/lists/*
 RUN useradd --system --uid 10001 app
 WORKDIR /app
 # Thứ tự từ ít đổi đến hay đổi: lớp thư viện được Docker cache và dùng chung giữa các bản phát hành
