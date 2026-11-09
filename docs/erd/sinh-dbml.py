@@ -38,12 +38,12 @@ for m in re.finditer(r'CREATE TABLE (\w+) \((.*?)\n\);', schema_sql, re.S):
         if cm and cm.group(1).upper() not in ('CONSTRAINT', 'PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN'):
             col_notes[t][cm.group(1)] = cm.group(2).strip()
 
-# --- nhóm phân hệ theo mục "-- n. PHÂN HỆ x — …" của docs/04 (mỗi bảng đúng một nhóm); tên nhóm theo docs/02
+# --- nhóm phân hệ theo mục "-- n. PHÂN HỆ x …" hoặc "-- n.m. PHÂN HỆ x …" của docs/04 (mỗi bảng đúng một nhóm); tên nhóm theo docs/02
 names = {m.group(1): m.group(2).strip() for m in re.finditer(r'^## \d+\. Phân hệ (\d) — ([^\n(]+)', doc02, re.M)}
 groups = OrderedDict((f'Phân hệ {n} — {names[n]}', []) for n in sorted(names))
 current = None
 for line in schema_sql.split('\n'):
-    m = re.match(r'^-- \d+\. (PHÂN HỆ (\d)|[A-ZĐ])', line)
+    m = re.match(r'^-- \d+(?:\.\d+)?\. (PHÂN HỆ (\d)|[A-ZĐ])', line)
     if m:
         current = m.group(2)
     t = re.match(r'^CREATE TABLE (\w+)', line)

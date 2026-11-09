@@ -45,18 +45,17 @@ flowchart TB
 
 ## Module và phân hệ ERD
 
-Mỗi module là một cụm nghiệp vụ, sở hữu một nhóm bảng (danh sách đủ: [MODULE_BOUNDARIES](MODULE_BOUNDARIES.md)). ERD trong `docs/erd` vẽ theo 5 phân hệ của bản phân tích database; bảng của phân hệ 3 chia cho hai module:
+Mỗi module là một cụm nghiệp vụ, sở hữu đúng một nhóm bảng (danh sách đủ: [MODULE_BOUNDARIES](MODULE_BOUNDARIES.md)). ERD trong `docs/erd` vẽ theo 5 phân hệ, mỗi phân hệ ứng với một module:
 
 | Phân hệ ERD | Module | Bảng |
 | --- | --- | --- |
-| P1 Nhân viên • tài khoản • ca • chấm công | `employee` (đăng nhập ở `security`) | 11 bảng |
-| P2 Thực đơn • món • công thức • thực đơn ngày | `menu` | 6 bảng |
-| P3 Bàn • đơn hàng • hóa đơn • thanh toán | `order`: bàn, phiên, đơn, lượt gọi, món, nhật ký món | 6 bảng |
-| | `finance`: hóa đơn, dòng hóa đơn, yêu cầu thanh toán, thanh toán, webhook | 5 bảng |
-| P4 Kho RAW • bếp • sơ chế • kiểm kê | `inventory` | 18 bảng |
-| P5 Chi phí • báo cáo • đối soát | `finance` | 2 bảng |
+| P1 Nhân viên • tài khoản • ca • chấm công | `employee` (đăng nhập ở `security`) | 11 |
+| P2 Thực đơn • món • công thức • thực đơn ngày | `menu` | 6 |
+| P3 Bàn • đơn hàng • gọi món | `order` | 6 |
+| P4 Kho RAW • bếp • sơ chế • kiểm kê | `inventory` | 18 |
+| P5 Hóa đơn • thanh toán • chi phí • đối soát | `finance` | 7 |
 
-Hóa đơn và thanh toán nằm ở `finance` (không ở `order`) vì đây là phần tiền: chiến lược thanh toán (Strategy CASH/QR), webhook ngân hàng, đối soát tiền mặt và báo cáo doanh thu cùng đọc ghi các bảng này. `finance` gọi `order` qua `OrderBillingApi`: khóa đơn, lấy món đã phục vụ để lập hóa đơn, đóng đơn và trả bàn khi thu xong.
+Hóa đơn và thanh toán thuộc `finance` (không thuộc `order`) vì đây là phần tiền: chiến lược thanh toán (Strategy CASH/QR), webhook ngân hàng, đối soát tiền mặt và báo cáo doanh thu cùng dùng các bảng này. `finance` gọi `order` qua `OrderBillingApi`: khóa đơn, lấy món đã phục vụ để lập hóa đơn, đóng đơn và trả bàn khi thu xong. Bảng viền đứt trên ERD là bảng của phân hệ khác mà khóa ngoại trỏ tới.
 
 ## Module (Spring Modulith)
 
