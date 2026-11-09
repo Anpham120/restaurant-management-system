@@ -47,8 +47,8 @@ flowchart LR
         daily_menu_items[(daily_menu_items)]
     end
     subgraph P3["Phân hệ 3 · Bán hàng"]
+        orders[(orders)]
         order_items[(order_items)]
-        payments[(payments)]
     end
     subgraph P4["Phân hệ 4 · Kho"]
         kitchen_ingredient_types[(kitchen_ingredient_types)]
@@ -57,6 +57,9 @@ flowchart LR
         stock_receipts[(stock_receipts)]
     end
     subgraph P5["Phân hệ 5 · Tài chính"]
+        invoices[(invoices)]
+        invoice_items[(invoice_items)]
+        payments[(payments)]
         operating_expenses[(operating_expenses)]
         daily_cash_reconciliations[(daily_cash_reconciliations)]
     end
@@ -65,15 +68,17 @@ flowchart LR
     stock_reservations -->|order_item_id| order_items
     stock_movements -->|order_item_id| order_items
     operating_expenses -->|stock_receipt_id| stock_receipts
+    invoices -->|order_id| orders
+    invoice_items -->|order_item_id| order_items
     daily_cash_reconciliations -.->|"SUM, không FK"| payments
     daily_cash_reconciliations -.->|"SUM, không FK"| operating_expenses
     P2 -->|"1 cột paused_by_id"| employees
-    P3 -->|"9 cột người thao tác"| employees
+    P3 -->|"4 cột người thao tác"| employees
     P4 -->|"14 cột *_by_id"| employees
-    P5 -->|"3 cột *_by_id"| employees
+    P5 -->|"9 cột người thao tác"| employees
 ```
 
-- Sơ đồ và số cột người thao tác tính theo schema v4.1 (v4 có 3/10/3 cột ở P3/P4/P5 và 0 ở P2).
+- Sơ đồ và số cột người thao tác tính theo schema v4.1 (v4 có 3/10/3 cột ở P3/P4/P5 và 0 ở P2). Hóa đơn và thanh toán (5 bảng) xếp vào P5 cùng chi phí và đối soát, khớp module `finance` của ứng dụng; P3 còn bàn, phiên, đơn và món (module `order`).
 - Ở mức **bảng** không có vòng FK. Ở mức **phân hệ** có vòng P2 → P4 → P3 → P2 (`recipe_ingredients` → `kitchen_ingredient_types`; `stock_reservations` → `order_items`; `order_items` → `daily_menu_items`). Hệ quả cho Spring Boot modular monolith và migration ở DB-35.
 - `daily_cash_reconciliations` không có FK tới `payments`/`operating_expenses` là **đúng**: bản đối soát là ảnh chụp tổng tại thời điểm chốt (loại S), không phải liên kết dòng.
 
@@ -474,13 +479,13 @@ TableGroup "Liên kết ngoài" {
 - **DB-07 🟢** CHECK `is_paused = (pause_reason IS NOT NULL)`. Nếu cần biết ai tạm dừng món (2.4 có 2 actor) → thêm `paused_by_id`, `paused_at`.
 - **DB-08 🟢** Tên danh mục/món/loại nguyên liệu bếp chưa UNIQUE → trùng tên gây chọn nhầm khi gọi món và lập công thức.
 
-## 5. Phân hệ 3 — Bàn • đơn hàng • hóa đơn • thanh toán (11 bảng)
+## 5. Phân hệ 3 — Bàn • đơn hàng • gọi món (6 bảng)
 
 <!-- GEN:ERD-3 -->
-**ERD phân hệ 3 (schema v4.1)** — mã DBML cho [dbdiagram.io](https://dbdiagram.io/d): mở trang, dán khối dưới đây (hoặc file [erd/rms-schema-p3.dbml](erd/rms-schema-p3.dbml)) vào ô code. Toàn bộ 48 bảng: [erd/rms-schema.dbml](erd/rms-schema.dbml). Sinh từ catalog schema thật bằng [erd/sinh-dbml.sh](erd/sinh-dbml.sh); bảng phân hệ khác mà phân hệ này trỏ tới nằm ở nhóm "Liên kết ngoài". Bản draw.io: [erd/erd-p3-ban-hang-thanh-toan.drawio](erd/erd-p3-ban-hang-thanh-toan.drawio) · ảnh: [erd/erd-p3-ban-hang-thanh-toan.png](erd/erd-p3-ban-hang-thanh-toan.png).
+**ERD phân hệ 3 (schema v4.1)** — mã DBML cho [dbdiagram.io](https://dbdiagram.io/d): mở trang, dán khối dưới đây (hoặc file [erd/rms-schema-p3.dbml](erd/rms-schema-p3.dbml)) vào ô code. Toàn bộ 48 bảng: [erd/rms-schema.dbml](erd/rms-schema.dbml). Sinh từ catalog schema thật bằng [erd/sinh-dbml.sh](erd/sinh-dbml.sh); bảng phân hệ khác mà phân hệ này trỏ tới nằm ở nhóm "Liên kết ngoài". Bản draw.io: [erd/erd-p3-ban-hang.drawio](erd/erd-p3-ban-hang.drawio) · ảnh: [erd/erd-p3-ban-hang.png](erd/erd-p3-ban-hang.png).
 
 ```dbml
-// Phân hệ 3: Bàn • đơn hàng • hóa đơn • thanh toán — 11 bảng, kèm 2 bảng liên kết ngoài.
+// Phân hệ 3: Bàn • đơn hàng • gọi món — 6 bảng, kèm 2 bảng liên kết ngoài.
 // Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
 // nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
 
@@ -566,126 +571,6 @@ Table order_item_events {
   '''
 }
 
-Table invoices {
-  id bigint [pk, increment]
-  order_id bigint [not null, unique]
-  total numeric(12,2) [not null, default: 0]
-  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | PAYMENT_PENDING | PAID | UNCOLLECTED | WAIVED']
-  created_at timestamptz [not null, default: `now()`, note: 'DB-13']
-  created_by_id bigint [not null, note: 'DB-13']
-  uncollected_reason varchar(255)
-  uncollected_by_id bigint
-  uncollected_at timestamptz
-  waived_reason varchar(255)
-  waived_by_id bigint
-  waived_at timestamptz
-
-  Note: '''
-  ck_invoice_uncollected_fields: CHECK (
-CASE
-    WHEN ((status)::text = 'UNCOLLECTED'::text) THEN ((num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 3) AND (btrim((uncollected_reason)::text) <> ''::text) AND (total > (0)::numeric))
-    ELSE (num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 0)
-END)
-  ck_invoice_waived_fields: CHECK (
-CASE
-    WHEN ((status)::text = 'WAIVED'::text) THEN ((num_nonnulls(waived_reason, waived_by_id, waived_at) = 3) AND (btrim((waived_reason)::text) <> ''::text))
-    ELSE (num_nonnulls(waived_reason, waived_by_id, waived_at) = 0)
-END)
-  ck_invoices_total_nonneg: CHECK ((total >= (0)::numeric))
-  '''
-}
-
-Table payment_requests {
-  id bigint [pk, increment]
-  invoice_id bigint [not null]
-  cashier_id bigint [not null, note: 'DB-11']
-  amount_due numeric(12,2) [not null]
-  cash_received numeric(12,2)
-  change_amount numeric(12,2) [note: 'DB-10; Cột tính toán: GENERATED ALWAYS AS ((cash_received - amount_due)) STORED']
-  method varchar(20) [not null, note: 'Giá trị: CASH | QR']
-  status varchar(30) [not null, default: 'REQUESTED', note: 'Giá trị: REQUESTED | WAITING_TRANSFER | PAID | CANCELLED']
-  payment_reference varchar(64) [unique]
-  cancel_reason varchar(255)
-  created_at timestamptz [not null, default: `now()`, note: 'DB-11']
-  cancelled_at timestamptz [note: 'DB-11']
-  cancelled_by_id bigint [note: 'DB-11']
-
-  indexes {
-    (id, invoice_id, method) [unique, name: 'ux_payment_requests_id_invoice_method']
-    (invoice_id) [unique, name: 'ux_payment_request_active', note: 'WHERE ((status)::text = ANY ((ARRAY[\'REQUESTED\'::character varying, \'WAITING_TRANSFER\'::character varying])::text[]))']
-  }
-
-  Note: '''
-  ck_payment_method_fields: CHECK (((((method)::text = 'CASH'::text) AND (cash_received IS NOT NULL) AND (cash_received >= amount_due) AND (payment_reference IS NULL)) OR (((method)::text = 'QR'::text) AND (cash_received IS NULL) AND (payment_reference IS NOT NULL))))
-  ck_payment_request_cancel_fields: CHECK (
-CASE
-    WHEN ((status)::text = 'CANCELLED'::text) THEN (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 3)
-    ELSE (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 0)
-END)
-  ck_payment_requests_amount_due_nonneg: CHECK ((amount_due >= (0)::numeric))
-  '''
-}
-
-Table payment_webhook_events {
-  id bigint [pk, increment]
-  payment_request_id bigint
-  provider_transaction_code varchar(64) [not null, unique]
-  payment_reference varchar(64) [not null]
-  amount numeric(12,2) [not null]
-  processing_result varchar(20) [not null, note: 'Giá trị: PROCESSED | MISMATCH | AFTER_CANCEL']
-  received_at timestamptz [not null, default: `now()`]
-  raw_payload text [not null]
-  resolution_status varchar(20) [note: 'DB-12; Giá trị: OPEN | RESOLVED']
-  resolved_by_id bigint [note: 'DB-12']
-  resolved_at timestamptz [note: 'DB-12']
-  resolution_note varchar(255) [note: 'DB-12']
-
-  indexes {
-    (id, payment_request_id) [unique, name: 'ux_webhook_id_request']
-  }
-
-  Note: '''
-  ck_webhook_resolution: CHECK (
-CASE
-    WHEN ((processing_result)::text = 'PROCESSED'::text) THEN (num_nonnulls(resolution_status, resolved_by_id, resolved_at, resolution_note) = 0)
-    WHEN ((resolution_status)::text = 'OPEN'::text) THEN (num_nonnulls(resolved_by_id, resolved_at, resolution_note) = 0)
-    WHEN ((resolution_status)::text = 'RESOLVED'::text) THEN (num_nonnulls(resolved_by_id, resolved_at, resolution_note) = 3)
-    ELSE false
-END)
-  '''
-}
-
-Table payments {
-  id bigint [pk, increment]
-  invoice_id bigint [not null, unique]
-  payment_request_id bigint [not null, unique]
-  payment_webhook_event_id bigint [unique]
-  amount numeric(12,2) [not null]
-  method varchar(20) [not null, note: 'Giá trị: CASH | QR']
-  paid_at timestamptz [not null, default: `now()`]
-  business_date date [not null]
-
-  Note: '''
-  ck_payments_amount_nonneg: CHECK ((amount >= (0)::numeric))
-  ck_payments_qr_webhook: CHECK ((((method)::text = 'QR'::text) = (payment_webhook_event_id IS NOT NULL)))
-  '''
-}
-
-Table invoice_items {
-  id bigint [pk, increment]
-  invoice_id bigint [not null]
-  order_item_id bigint [not null, unique]
-  item_name varchar(100) [not null]
-  quantity int [not null]
-  unit_price numeric(12,2) [not null]
-  line_total numeric(12,2) [note: 'Cột tính toán: GENERATED ALWAYS AS (((quantity)::numeric * unit_price)) STORED']
-
-  Note: '''
-  ck_invoice_items_quantity_positive: CHECK ((quantity > 0))
-  ck_invoice_items_unit_price_nonneg: CHECK ((unit_price >= (0)::numeric))
-  '''
-}
-
 Table daily_menu_items {
   id bigint [pk, increment]
   daily_menu_id bigint [not null]
@@ -732,12 +617,6 @@ Table employees {
 }
 
 Ref daily_menu_items_paused_by_id_fkey: daily_menu_items.paused_by_id > employees.id
-Ref invoice_items_invoice_id_fkey: invoice_items.invoice_id > invoices.id
-Ref invoice_items_order_item_id_fkey: invoice_items.order_item_id > order_items.id
-Ref invoices_created_by_id_fkey: invoices.created_by_id > employees.id
-Ref invoices_order_id_fkey: invoices.order_id > orders.id
-Ref invoices_uncollected_by_id_fkey: invoices.uncollected_by_id > employees.id
-Ref invoices_waived_by_id_fkey: invoices.waived_by_id > employees.id
 Ref order_batches_order_id_fkey: order_batches.order_id > orders.id
 Ref order_batches_waiter_id_fkey: order_batches.waiter_id > employees.id
 Ref order_item_events_actor_id_fkey: order_item_events.actor_id > employees.id
@@ -745,32 +624,17 @@ Ref order_item_events_order_item_id_fkey: order_item_events.order_item_id > orde
 Ref order_items_daily_menu_item_id_fkey: order_items.daily_menu_item_id > daily_menu_items.id
 Ref order_items_order_batch_id_fkey: order_items.order_batch_id > order_batches.id
 Ref orders_table_session_id_fkey: orders.table_session_id > table_sessions.id
-Ref payment_requests_cancelled_by_id_fkey: payment_requests.cancelled_by_id > employees.id
-Ref payment_requests_cashier_id_fkey: payment_requests.cashier_id > employees.id
-Ref payment_requests_invoice_id_fkey: payment_requests.invoice_id > invoices.id
-Ref payment_webhook_events_payment_request_id_fkey: payment_webhook_events.payment_request_id > payment_requests.id
-Ref payment_webhook_events_resolved_by_id_fkey: payment_webhook_events.resolved_by_id > employees.id
-Ref fk_payments_request_invoice_method: payments.(payment_request_id, invoice_id, method) > payment_requests.(id, invoice_id, method)
-Ref fk_payments_webhook_request: payments.(payment_webhook_event_id, payment_request_id) > payment_webhook_events.(id, payment_request_id)
-Ref payments_invoice_id_fkey: payments.invoice_id > invoices.id
-Ref payments_payment_request_id_fkey: payments.payment_request_id > payment_requests.id
-Ref payments_payment_webhook_event_id_fkey: payments.payment_webhook_event_id > payment_webhook_events.id
 Ref table_sessions_closed_by_id_fkey: table_sessions.closed_by_id > employees.id
 Ref table_sessions_dining_table_id_fkey: table_sessions.dining_table_id > dining_tables.id
 Ref table_sessions_opened_by_id_fkey: table_sessions.opened_by_id > employees.id
 
-TableGroup "P3 · Bàn • đơn hàng • hóa đơn • thanh toán" {
+TableGroup "P3 · Bàn • đơn hàng • gọi món" {
   dining_tables
   table_sessions
   orders
   order_batches
   order_items
   order_item_events
-  invoices
-  payment_requests
-  payment_webhook_events
-  payments
-  invoice_items
 }
 
 TableGroup "Liên kết ngoài" {
@@ -780,7 +644,7 @@ TableGroup "Liên kết ngoài" {
 ```
 <!-- /GEN:ERD-3 -->
 
-**Liên kết.** `dining_tables` 1–N `table_sessions` (≤ 1 phiên OPEN/bàn — `ux_table_sessions_open`) 1–1 `orders` 1–N `order_batches` 1–N `order_items` 1–N `order_item_events`. `orders` 1–0..1 `invoices` 1–N `invoice_items`; mỗi `order_items` vào tối đa 1 `invoice_items`. `invoices` 1–N `payment_requests` (≤ 1 đang mở — `ux_payment_request_active`) và 1–0..1 `payments`. FK ghép: `payments(payment_request_id, invoice_id)` và `payments(payment_webhook_event_id, payment_request_id)`.
+**Liên kết.** `dining_tables` 1–N `table_sessions` (≤ 1 phiên OPEN/bàn — `ux_table_sessions_open`) 1–1 `orders` 1–N `order_batches` 1–N `order_items` 1–N `order_item_events`. Phân hệ 5 trỏ vào đây: `orders` 1–0..1 `invoices`, mỗi `order_items` vào tối đa 1 `invoice_items` (§7).
 
 **Chuẩn hóa.**
 
@@ -792,25 +656,14 @@ TableGroup "Liên kết ngoài" {
 | `order_batches` | `id`, `request_key` | ✅ |
 | `order_items` | `id` | ✅. `item_name_snapshot`, `unit_price` = **S**; `status` = **B** (trạng thái của sự kiện cuối, kiểm lúc COMMIT). Số suất đã chiếm của một món/ngày **không lưu** mà suy ra từ `status` và sự kiện COOKING (`rc_quota_used`, QĐ-8) |
 | `order_item_events` | `id` | ✅ nhật ký, chỉ thêm; sự kiện đầu bắt buộc `NULL → PENDING`, các sự kiện nối đúng chuỗi, REJECTED/CANCELLED bắt buộc lý do khác rỗng (QĐ-2) |
-| `invoices` | `id`, `order_id` | ✅. `total` = **B** (Σ `line_total`, đối chiếu bằng `rc_invoice_total_checked`). `uncollected_reason/by/at` là dữ kiện của sự kiện "khách bỏ về" (QĐ-3): chỉ có khi `status = UNCOLLECTED` (`ck_invoice_uncollected_fields`) — không phải dư thừa | `waived_reason/by/at` (QĐ-MT) tương tự cho sự kiện miễn thu (`ck_invoice_waived_fields`).
-| `invoice_items` | `id`, `order_item_id` | ✅ BCNF (`order_item_id` là khóa). Toàn bộ dòng là **S** của `order_items` đã SERVED; `invoice_id` suy ra được qua order → cần khóa sửa sau chốt (DB-17). Chỉ xóa được khi hóa đơn còn DRAFT (hủy ngoại lệ, QĐ-2) |
-| `payment_requests` | `id` | ❌ `change_amount = cash_received − amount_due` là phụ thuộc bắc cầu trong dòng (DB-10). `amount_due` = **S** |
-| `payments` | `id`, `invoice_id`, `payment_request_id` | ✅ BCNF (mọi định thức đều là khóa). `method` = **X** chưa khóa (DB-09); `business_date` = **S** |
-| `payment_webhook_events` | `id`, `provider_transaction_code` | ✅; `raw_payload` là chứng cứ nguyên văn |
 
-**Tối ưu.** `idx_order_items_daily_quota` (đếm đã bán theo quota), `idx_order_items_batch_status`, `idx_order_item_events_history`, `idx_invoice_items_invoice`, `idx_payrequest_invoice_history`, `idx_webhook_reference_audit`, `idx_payments_business_date (business_date, method, paid_at)` (doanh thu và `cash_sales` đọc thẳng từ index). Thiếu index tra webhook theo request và lịch sử phiên theo bàn (DB-27).
+**Tối ưu.** `idx_order_items_daily_quota` (đếm đã bán theo quota), `idx_order_items_batch_status`, `idx_order_item_events_history`. Thiếu index tra lịch sử phiên theo bàn (DB-27).
 
 **Phát hiện.**
 
-- **DB-09 🔴** `payments.method` lặp `payment_requests.method` nhưng không ràng buộc nào giữ chúng bằng nhau; `payment_webhook_event_id` cũng không bị buộc theo phương thức → có thể ghi payment QR cho request CASH, hoặc payment QR không có webhook. Đề xuất mở rộng FK ghép thành `(payment_request_id, invoice_id, method)` + CHECK `(method = 'QR') = (payment_webhook_event_id IS NOT NULL)`.
-- **DB-10 🟠** `change_amount` vi phạm 3NF → cột `GENERATED ALWAYS AS (cash_received - amount_due) STORED` (giống `invoice_items.line_total`) + CHECK CASH ⇒ `cash_received ≥ amount_due`, QR ⇒ `cash_received` rỗng. v4.1: `rc_pay_cash` không ghi cột này, DB tự tính.
-- **DB-11 🟠** `payment_requests` không có `created_at`, `cancelled_at`, `cancelled_by_id` → không xác định được QR về **trước hay sau** khi hủy (AFTER_CANCEL), không audit được ai hủy. `cashier_id` nên NOT NULL (request luôn do Cashier tạo).
-- **DB-12 🟠** Spec G10/I3.7 coi MISMATCH/AFTER_CANCEL là "sự cố đối soát cần xử lý" nhưng không có cột ghi trạng thái xử lý. Đề xuất `resolution_status` (OPEN/RESOLVED, tự đặt OPEN khi sự kiện không PROCESSED), `resolved_by_id`, `resolved_at`, `resolution_note`; trigger giữ bất biến các cột chứng cứ và chặn DELETE.
-- **DB-13 🟠** `invoices` là chứng từ tài chính nhưng không có thời điểm lập/người chốt → không truy được hóa đơn treo lâu (QĐ-3), không audit được ai chốt. Thêm `created_at`, `created_by_id`.
 - **DB-14 🟠** `order_items.has_stock_exception` có cột nhưng spec không mô tả luồng bật/tắt; `stock_reservations.release_reason` không có miền giá trị. Luồng đề xuất (đã ghi vào [03](03-luong-du-lieu-chuc-nang.md) thẻ 3.4/4.5): lô đang giữ bị đánh dấu hỏng → bật cờ → Kitchen cấp lại (RELEASED `BATCH_UNUSABLE` + reservation mới) hoặc hủy món. CHECK `release_reason IN ('ITEM_CANCELLED','BATCH_UNUSABLE')` (v4.1 chỉ có 2 nguồn giải phóng) và cặp `status`–`closed_at`–`release_reason`.
 - **DB-15 🟢** `dining_tables` thiếu `is_active` → bàn hỏng/bỏ không xóa được (FK lịch sử) cũng không ẩn được. `status` nên chỉ đổi trong routine mở/đóng/thanh toán + truy vấn bất biến I-6.
 - **DB-16 🟢** CHECK `(status = 'OPEN') = (closed_at IS NULL)` và `closed_at ≥ opened_at`; thêm `opened_by_id`, `closed_by_id` (phiên trống bị đóng không biết do ai).
-- **DB-17 🟢** Khóa chứng từ: trigger chặn đổi `invoices.total` khi PAYMENT_PENDING, chặn mọi thay đổi khi PAID, chặn sửa/xóa `invoice_items` khi hóa đơn khác DRAFT. CHECK `ck_invoice_item_nonnegative` có thể trùng hệ quả của 2 CHECK còn lại → xác minh biểu thức rồi bỏ.
 - **DB-18 🟢** `orders` 1–1 với `table_sessions`, ba bảng `dining_tables`/`table_sessions`/`orders` cùng có trạng thái → mọi chuyển trạng thái phải nằm trong cùng routine (đã đúng ở `rc_open_session`, `rc_close_empty_session`, `rc_pay_cash`, `rc_process_verified_qr`). Không đề xuất gộp bảng.
 
 ## 6. Phân hệ 4 — Kho RAW • bếp • sơ chế • kiểm kê (18 bảng)
@@ -1358,19 +1211,139 @@ TableGroup "Liên kết ngoài" {
 - **DB-28 🟢** `kitchen_ingredient_types` không có cột đơn vị → đơn vị ngầm định là `base_unit` của nguyên liệu gốc. Đúng 3NF, nhưng không biểu diễn được đầu ra khác thứ nguyên (xương kg → nước dùng lít), đúng như spec M3 thừa nhận → ghi rõ quy ước (QĐ-6).
 - **DB-29 🟢** `NUMERIC(12,3)` với `base_unit = kg` → bước nhỏ nhất 1 g; gia vị < 1 g/suất bị làm tròn về 0 → chọn `base_unit = g` cho nguyên liệu định lượng nhỏ.
 
-## 7. Phân hệ 5 — Chi phí • báo cáo • đối soát (2 bảng)
+## 7. Phân hệ 5 — Hóa đơn • thanh toán • chi phí • đối soát (7 bảng)
 
 <!-- GEN:ERD-5 -->
 **ERD phân hệ 5 (schema v4.1)** — mã DBML cho [dbdiagram.io](https://dbdiagram.io/d): mở trang, dán khối dưới đây (hoặc file [erd/rms-schema-p5.dbml](erd/rms-schema-p5.dbml)) vào ô code. Toàn bộ 48 bảng: [erd/rms-schema.dbml](erd/rms-schema.dbml). Sinh từ catalog schema thật bằng [erd/sinh-dbml.sh](erd/sinh-dbml.sh); bảng phân hệ khác mà phân hệ này trỏ tới nằm ở nhóm "Liên kết ngoài". Bản draw.io: [erd/erd-p5-tai-chinh.drawio](erd/erd-p5-tai-chinh.drawio) · ảnh: [erd/erd-p5-tai-chinh.png](erd/erd-p5-tai-chinh.png).
 
 ```dbml
-// Phân hệ 5: Chi phí • báo cáo • đối soát — 2 bảng, kèm 2 bảng liên kết ngoài.
+// Phân hệ 5: Hóa đơn • thanh toán • chi phí • đối soát — 7 bảng, kèm 4 bảng liên kết ngoài.
 // Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
 // nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
 
 Project restaurant_core {
   database_type: 'PostgreSQL'
   Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+}
+
+Table invoices {
+  id bigint [pk, increment]
+  order_id bigint [not null, unique]
+  total numeric(12,2) [not null, default: 0]
+  status varchar(20) [not null, default: 'DRAFT', note: 'Giá trị: DRAFT | PAYMENT_PENDING | PAID | UNCOLLECTED | WAIVED']
+  created_at timestamptz [not null, default: `now()`, note: 'DB-13']
+  created_by_id bigint [not null, note: 'DB-13']
+  uncollected_reason varchar(255)
+  uncollected_by_id bigint
+  uncollected_at timestamptz
+  waived_reason varchar(255)
+  waived_by_id bigint
+  waived_at timestamptz
+
+  Note: '''
+  ck_invoice_uncollected_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'UNCOLLECTED'::text) THEN ((num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 3) AND (btrim((uncollected_reason)::text) <> ''::text) AND (total > (0)::numeric))
+    ELSE (num_nonnulls(uncollected_reason, uncollected_by_id, uncollected_at) = 0)
+END)
+  ck_invoice_waived_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'WAIVED'::text) THEN ((num_nonnulls(waived_reason, waived_by_id, waived_at) = 3) AND (btrim((waived_reason)::text) <> ''::text))
+    ELSE (num_nonnulls(waived_reason, waived_by_id, waived_at) = 0)
+END)
+  ck_invoices_total_nonneg: CHECK ((total >= (0)::numeric))
+  '''
+}
+
+Table payment_requests {
+  id bigint [pk, increment]
+  invoice_id bigint [not null]
+  cashier_id bigint [not null, note: 'DB-11']
+  amount_due numeric(12,2) [not null]
+  cash_received numeric(12,2)
+  change_amount numeric(12,2) [note: 'DB-10; Cột tính toán: GENERATED ALWAYS AS ((cash_received - amount_due)) STORED']
+  method varchar(20) [not null, note: 'Giá trị: CASH | QR']
+  status varchar(30) [not null, default: 'REQUESTED', note: 'Giá trị: REQUESTED | WAITING_TRANSFER | PAID | CANCELLED']
+  payment_reference varchar(64) [unique]
+  cancel_reason varchar(255)
+  created_at timestamptz [not null, default: `now()`, note: 'DB-11']
+  cancelled_at timestamptz [note: 'DB-11']
+  cancelled_by_id bigint [note: 'DB-11']
+
+  indexes {
+    (id, invoice_id, method) [unique, name: 'ux_payment_requests_id_invoice_method']
+    (invoice_id) [unique, name: 'ux_payment_request_active', note: 'WHERE ((status)::text = ANY ((ARRAY[\'REQUESTED\'::character varying, \'WAITING_TRANSFER\'::character varying])::text[]))']
+  }
+
+  Note: '''
+  ck_payment_method_fields: CHECK (((((method)::text = 'CASH'::text) AND (cash_received IS NOT NULL) AND (cash_received >= amount_due) AND (payment_reference IS NULL)) OR (((method)::text = 'QR'::text) AND (cash_received IS NULL) AND (payment_reference IS NOT NULL))))
+  ck_payment_request_cancel_fields: CHECK (
+CASE
+    WHEN ((status)::text = 'CANCELLED'::text) THEN (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 3)
+    ELSE (num_nonnulls(cancel_reason, cancelled_at, cancelled_by_id) = 0)
+END)
+  ck_payment_requests_amount_due_nonneg: CHECK ((amount_due >= (0)::numeric))
+  '''
+}
+
+Table payment_webhook_events {
+  id bigint [pk, increment]
+  payment_request_id bigint
+  provider_transaction_code varchar(64) [not null, unique]
+  payment_reference varchar(64) [not null]
+  amount numeric(12,2) [not null]
+  processing_result varchar(20) [not null, note: 'Giá trị: PROCESSED | MISMATCH | AFTER_CANCEL']
+  received_at timestamptz [not null, default: `now()`]
+  raw_payload text [not null]
+  resolution_status varchar(20) [note: 'DB-12; Giá trị: OPEN | RESOLVED']
+  resolved_by_id bigint [note: 'DB-12']
+  resolved_at timestamptz [note: 'DB-12']
+  resolution_note varchar(255) [note: 'DB-12']
+
+  indexes {
+    (id, payment_request_id) [unique, name: 'ux_webhook_id_request']
+  }
+
+  Note: '''
+  ck_webhook_resolution: CHECK (
+CASE
+    WHEN ((processing_result)::text = 'PROCESSED'::text) THEN (num_nonnulls(resolution_status, resolved_by_id, resolved_at, resolution_note) = 0)
+    WHEN ((resolution_status)::text = 'OPEN'::text) THEN (num_nonnulls(resolved_by_id, resolved_at, resolution_note) = 0)
+    WHEN ((resolution_status)::text = 'RESOLVED'::text) THEN (num_nonnulls(resolved_by_id, resolved_at, resolution_note) = 3)
+    ELSE false
+END)
+  '''
+}
+
+Table payments {
+  id bigint [pk, increment]
+  invoice_id bigint [not null, unique]
+  payment_request_id bigint [not null, unique]
+  payment_webhook_event_id bigint [unique]
+  amount numeric(12,2) [not null]
+  method varchar(20) [not null, note: 'Giá trị: CASH | QR']
+  paid_at timestamptz [not null, default: `now()`]
+  business_date date [not null]
+
+  Note: '''
+  ck_payments_amount_nonneg: CHECK ((amount >= (0)::numeric))
+  ck_payments_qr_webhook: CHECK ((((method)::text = 'QR'::text) = (payment_webhook_event_id IS NOT NULL)))
+  '''
+}
+
+Table invoice_items {
+  id bigint [pk, increment]
+  invoice_id bigint [not null]
+  order_item_id bigint [not null, unique]
+  item_name varchar(100) [not null]
+  quantity int [not null]
+  unit_price numeric(12,2) [not null]
+  line_total numeric(12,2) [note: 'Cột tính toán: GENERATED ALWAYS AS (((quantity)::numeric * unit_price)) STORED']
+
+  Note: '''
+  ck_invoice_items_quantity_positive: CHECK ((quantity > 0))
+  ck_invoice_items_unit_price_nonneg: CHECK ((unit_price >= (0)::numeric))
+  '''
 }
 
 Table operating_expenses {
@@ -1454,6 +1427,30 @@ Table employees {
   '''
 }
 
+Table order_items {
+  id bigint [pk, increment]
+  order_batch_id bigint [not null]
+  daily_menu_item_id bigint [not null]
+  quantity int [not null]
+  item_name_snapshot varchar(100) [not null]
+  unit_price numeric(12,2) [not null]
+  status varchar(20) [not null, default: 'PENDING', note: 'Giá trị: PENDING | ACCEPTED | COOKING | READY | SERVED | CANCELLED | REJECTED']
+  has_stock_exception boolean [not null, default: false]
+  note varchar(255)
+
+  Note: '''
+  ck_order_item_exception_accepted: CHECK (((NOT has_stock_exception) OR ((status)::text = 'ACCEPTED'::text)))
+  ck_order_items_quantity_positive: CHECK ((quantity > 0))
+  ck_order_items_unit_price_nonneg: CHECK ((unit_price >= (0)::numeric))
+  '''
+}
+
+Table orders {
+  id bigint [pk, increment]
+  table_session_id bigint [not null, unique]
+  status varchar(20) [not null, default: 'OPEN', note: 'Giá trị: OPEN | CLOSED | CANCELLED']
+}
+
 Table stock_receipts {
   id bigint [pk, increment]
   supplier_name varchar(100)
@@ -1473,37 +1470,71 @@ Table stock_receipts {
 }
 
 Ref daily_cash_reconciliations_reconciled_by_id_fkey: daily_cash_reconciliations.reconciled_by_id > employees.id
+Ref invoice_items_invoice_id_fkey: invoice_items.invoice_id > invoices.id
+Ref invoice_items_order_item_id_fkey: invoice_items.order_item_id > order_items.id
+Ref invoices_created_by_id_fkey: invoices.created_by_id > employees.id
+Ref invoices_order_id_fkey: invoices.order_id > orders.id
+Ref invoices_uncollected_by_id_fkey: invoices.uncollected_by_id > employees.id
+Ref invoices_waived_by_id_fkey: invoices.waived_by_id > employees.id
 Ref operating_expenses_recorded_by_id_fkey: operating_expenses.recorded_by_id > employees.id
 Ref operating_expenses_stock_receipt_id_fkey: operating_expenses.stock_receipt_id > stock_receipts.id
 Ref operating_expenses_voided_by_id_fkey: operating_expenses.voided_by_id > employees.id
+Ref payment_requests_cancelled_by_id_fkey: payment_requests.cancelled_by_id > employees.id
+Ref payment_requests_cashier_id_fkey: payment_requests.cashier_id > employees.id
+Ref payment_requests_invoice_id_fkey: payment_requests.invoice_id > invoices.id
+Ref payment_webhook_events_payment_request_id_fkey: payment_webhook_events.payment_request_id > payment_requests.id
+Ref payment_webhook_events_resolved_by_id_fkey: payment_webhook_events.resolved_by_id > employees.id
+Ref fk_payments_request_invoice_method: payments.(payment_request_id, invoice_id, method) > payment_requests.(id, invoice_id, method)
+Ref fk_payments_webhook_request: payments.(payment_webhook_event_id, payment_request_id) > payment_webhook_events.(id, payment_request_id)
+Ref payments_invoice_id_fkey: payments.invoice_id > invoices.id
+Ref payments_payment_request_id_fkey: payments.payment_request_id > payment_requests.id
+Ref payments_payment_webhook_event_id_fkey: payments.payment_webhook_event_id > payment_webhook_events.id
 Ref stock_receipts_confirmed_by_id_fkey: stock_receipts.confirmed_by_id > employees.id
 Ref stock_receipts_created_by_id_fkey: stock_receipts.created_by_id > employees.id
 
-TableGroup "P5 · Chi phí • báo cáo • đối soát" {
+TableGroup "P5 · Hóa đơn • thanh toán • chi phí • đối soát" {
+  invoices
+  payment_requests
+  payment_webhook_events
+  payments
+  invoice_items
   operating_expenses
   daily_cash_reconciliations
 }
 
 TableGroup "Liên kết ngoài" {
   employees
+  order_items
+  orders
   stock_receipts
 }
 ```
 <!-- /GEN:ERD-5 -->
 
-**Liên kết.** `operating_expenses` → `stock_receipts` (0..1; ≤ 1 khoản chi còn hiệu lực/phiếu — `ux_expense_receipt_live`) và → `employees` (người ghi, người hủy). `daily_cash_reconciliations` → `employees`; số liệu tiền đọc bằng tổng, không FK (§2).
+**Liên kết.** `invoices` 1–N `invoice_items`; `invoices` 1–N `payment_requests` (≤ 1 đang mở — `ux_payment_request_active`) và 1–0..1 `payments`. FK ghép: `payments(payment_request_id, invoice_id)` và `payments(payment_webhook_event_id, payment_request_id)`. Trỏ sang phân hệ 3: `invoices.order_id` → `orders` (1–0..1), `invoice_items.order_item_id` → `order_items` (mỗi món vào tối đa 1 dòng hóa đơn). `operating_expenses` → `stock_receipts` (0..1; ≤ 1 khoản chi còn hiệu lực/phiếu — `ux_expense_receipt_live`) và → `employees` (người ghi, người hủy). `daily_cash_reconciliations` → `employees`; số liệu tiền đọc bằng tổng, không FK (§2).
 
 **Chuẩn hóa.**
 
 | Bảng | Khóa ứng viên | Đánh giá |
 | --- | --- | --- |
+| `invoices` | `id`, `order_id` | ✅. `total` = **B** (Σ `line_total`, đối chiếu bằng `rc_invoice_total_checked`). `uncollected_reason/by/at` là dữ kiện của sự kiện "khách bỏ về" (QĐ-3): chỉ có khi `status = UNCOLLECTED` (`ck_invoice_uncollected_fields`) — không phải dư thừa | `waived_reason/by/at` (QĐ-MT) tương tự cho sự kiện miễn thu (`ck_invoice_waived_fields`).
+| `invoice_items` | `id`, `order_item_id` | ✅ BCNF (`order_item_id` là khóa). Toàn bộ dòng là **S** của `order_items` đã SERVED; `invoice_id` suy ra được qua order → cần khóa sửa sau chốt (DB-17). Chỉ xóa được khi hóa đơn còn DRAFT (hủy ngoại lệ, QĐ-2) |
+| `payment_requests` | `id` | ❌ `change_amount = cash_received − amount_due` là phụ thuộc bắc cầu trong dòng (DB-10). `amount_due` = **S** |
+| `payments` | `id`, `invoice_id`, `payment_request_id` | ✅ BCNF (mọi định thức đều là khóa). `method` = **X** chưa khóa (DB-09); `business_date` = **S** |
+| `payment_webhook_events` | `id`, `provider_transaction_code` | ✅; `raw_payload` là chứng cứ nguyên văn |
 | `operating_expenses` | `id`, `request_key` | ✅. `business_date` = **S**. `category`, `payment_method`, `fund_source` thiếu miền giá trị (DB-30) |
 | `daily_cash_reconciliations` | `id`, `(business_date, version)` | ❌ `expected_cash = opening_cash + cash_sales − cash_expenses` và `difference = actual_cash − expected_cash` là phụ thuộc bắc cầu trong dòng (DB-31). `opening_cash`, `cash_sales`, `cash_expenses` = **S** (ảnh chụp lúc chốt) |
 
-**Tối ưu.** `idx_expense_period_category` (partial PAID), `ux_expense_receipt_live`, `ux_cash_recon_current`, cùng `idx_payments_business_date` ở phân hệ 3 đủ cho tính `cash_sales`/`cash_expenses` theo ngày.
+**Tối ưu.** `idx_invoice_items_invoice`, `idx_payrequest_invoice_history`, `idx_webhook_reference_audit`, `idx_payments_business_date (business_date, method, paid_at)` (doanh thu và `cash_sales` đọc thẳng từ index). Thiếu index tra webhook theo request (DB-27). `idx_expense_period_category` (partial PAID), `ux_expense_receipt_live`, `ux_cash_recon_current`, cùng `idx_payments_business_date` đủ cho tính `cash_sales`/`cash_expenses` theo ngày.
 
 **Phát hiện.**
 
+- **DB-09 🔴** `payments.method` lặp `payment_requests.method` nhưng không ràng buộc nào giữ chúng bằng nhau; `payment_webhook_event_id` cũng không bị buộc theo phương thức → có thể ghi payment QR cho request CASH, hoặc payment QR không có webhook. Đề xuất mở rộng FK ghép thành `(payment_request_id, invoice_id, method)` + CHECK `(method = 'QR') = (payment_webhook_event_id IS NOT NULL)`.
+- **DB-10 🟠** `change_amount` vi phạm 3NF → cột `GENERATED ALWAYS AS (cash_received - amount_due) STORED` (giống `invoice_items.line_total`) + CHECK CASH ⇒ `cash_received ≥ amount_due`, QR ⇒ `cash_received` rỗng. v4.1: `rc_pay_cash` không ghi cột này, DB tự tính.
+- **DB-11 🟠** `payment_requests` không có `created_at`, `cancelled_at`, `cancelled_by_id` → không xác định được QR về **trước hay sau** khi hủy (AFTER_CANCEL), không audit được ai hủy. `cashier_id` nên NOT NULL (request luôn do Cashier tạo).
+- **DB-12 🟠** Spec G10/I3.7 coi MISMATCH/AFTER_CANCEL là "sự cố đối soát cần xử lý" nhưng không có cột ghi trạng thái xử lý. Đề xuất `resolution_status` (OPEN/RESOLVED, tự đặt OPEN khi sự kiện không PROCESSED), `resolved_by_id`, `resolved_at`, `resolution_note`; trigger giữ bất biến các cột chứng cứ và chặn DELETE.
+- **DB-13 🟠** `invoices` là chứng từ tài chính nhưng không có thời điểm lập/người chốt → không truy được hóa đơn treo lâu (QĐ-3), không audit được ai chốt. Thêm `created_at`, `created_by_id`.
+- **DB-17 🟢** Khóa chứng từ: trigger chặn đổi `invoices.total` khi PAYMENT_PENDING, chặn mọi thay đổi khi PAID, chặn sửa/xóa `invoice_items` khi hóa đơn khác DRAFT. CHECK `ck_invoice_item_nonnegative` có thể trùng hệ quả của 2 CHECK còn lại → xác minh biểu thức rồi bỏ.
 - **DB-30 🔴** §E1 không có CHECK cho `category`, `payment_method`, `fund_source`, trong khi công thức đối soát G11 lọc "chi bằng CASH từ quỹ quầy". Nhập tự do (`cash`, `Tiền mặt`, `quy quay`…) làm `cash_expenses` sai mà không báo lỗi. Đề xuất miền giá trị (nhóm chốt danh sách), CHECK quỹ quầy ⇒ CASH, `amount > 0`, VOIDED ⇔ đủ 3 cột hủy.
 - **DB-31 🟠** `expected_cash`, `difference` → cột GENERATED. PostgreSQL không cho cột generated tham chiếu cột generated khác nên `difference` phải viết lại đủ biểu thức. Thêm CHECK có chênh lệch ⇒ có `reason`; `version > 1` ⇒ có `revision_reason`.
 - **DB-32 🟢** `opening_cash` nhập tay, không có bảng nộp/rút quỹ → chấp nhận cho Core; quy ước: quỹ đầu ngày do Manager xác nhận, không tự lấy `actual_cash` hôm trước.
@@ -1512,7 +1543,7 @@ TableGroup "Liên kết ngoài" {
 
 - **DB-33 🟠** `business_date` xuất hiện ở `payments`, `operating_expenses`, `daily_menus`, `daily_cash_reconciliations` nhưng spec không nói giờ chốt ngày lưu ở đâu. Nếu mỗi chỗ tự tính, giao dịch lúc 00:30 có thể rơi vào hai ngày khác nhau. Đề xuất **một** hàm `rc_business_date(timestamptz)` (ví dụ chốt 04:00 giờ Việt Nam) dùng chung cho mọi routine và service.
 - **DB-34 🟠** Spec (I4, M7) yêu cầu thao tác tiền/tồn đi qua routine, không DML trực tiếp; nhưng v4 chưa có hàm cho: gửi đợt món, từ chối món, đánh dấu đã phục vụ, đánh dấu lô hỏng, cấp lại nguyên liệu, đối soát tiền mặt. Nếu REVOKE DML thì các thao tác này không chạy được; nếu GRANT thì app role có thể đặt thẳng `order_items.status = COOKING` bỏ qua tiêu hao. Danh sách hàm đề xuất ở [03 §H](03-luong-du-lieu-chuc-nang.md).
-- **DB-35 🟢** Vòng phụ thuộc phân hệ P2 → P4 → P3 → P2 (§2). Không lỗi ở DB nhưng ảnh hưởng: (1) **thứ tự migration**: P1 → P4-danh mục (`ingredients`, `kitchen_ingredient_types`) → P2 → P3 → P4 còn lại → P5; (2) **code Spring**: module kho tham chiếu `order_items` bằng id, việc nhận/nấu món điều phối qua routine `rc_*` hoặc một application service, tránh hai package gọi lẫn nhau.
+- **DB-35 🟢** Vòng phụ thuộc phân hệ P2 → P4 → P3 → P2 (§2). Không lỗi ở DB nhưng ảnh hưởng: (1) **thứ tự migration**: P1 → P4-danh mục (`ingredients`, `kitchen_ingredient_types`) → P2 → P3 → P5-hóa đơn, thanh toán (trỏ `orders`, `order_items`) → P4 còn lại → P5-chi phí, đối soát; (2) **code Spring**: module kho tham chiếu `order_items` bằng id, việc nhận/nấu món điều phối qua routine `rc_*` hoặc một application service, tránh hai package gọi lẫn nhau.
 
 ### Phát hiện của vòng chốt nghiệp vụ và kiểm thử trên server thật (DB-36…DB-47)
 
@@ -1731,7 +1762,7 @@ Cột cuối ghi tên ràng buộc/cột/hàm trong [04-schema-v4.1.sql](04-sche
 | DB-32 | 🟢 | `daily_cash_reconciliations` | Quy ước quỹ đầu ngày | ✅ ghi chú trong DDL; `rc_reconcile_cash` nhận quỹ đầu ngày làm tham số |
 | DB-33 | 🟠 | nhiều bảng | Một hàm ngày kinh doanh | ✅ `rc_business_date()` dùng trong mọi `rc_*` |
 | DB-34 | 🟠 | bảng số dư/trạng thái | Routine còn thiếu | ✅ `rc_submit_batch`, `rc_reject_item`, `rc_serve_item`, `rc_mark_batch_unusable`, `rc_reallocate_item`, `rc_reconcile_cash` |
-| DB-35 | 🟢 | toàn hệ thống | Thứ tự migration, ranh giới module | ✅ DDL tạo bảng theo thứ tự P1 → P4 (danh mục) → P2 → P3 → P4 → P5 |
+| DB-35 | 🟢 | toàn hệ thống | Thứ tự migration, ranh giới module | ✅ DDL tạo bảng theo thứ tự P1 → P4 (danh mục) → P2 → P3 → P5 (hóa đơn, thanh toán) → P4 → P5 (chi phí, đối soát) |
 | DB-36 | 🔴 | nhiều bảng | Đảo thứ tự khóa orders ↔ invoices → deadlock `40P01` | ✅ thứ tự khóa chung 1 → 9, `rc_lock_invoice`; ca C5, C6, C8 |
 | DB-37 | 🔴 | `payment_webhook_events` | Webhook trùng đến đồng thời: bên sau nhận `23505` | ✅ kiểm lại sau khóa + `ON CONFLICT DO NOTHING` trong `rc_process_verified_qr`; ca C7 |
 | DB-38 | 🔴 | bán hàng, hóa đơn, thanh toán, chứng từ kho | DML trực tiếp đổi được trạng thái / chứng từ đã chốt (baseline chỉ 9 trigger) | ✅ 38 trigger mới: `rc_guard_*` (đồ thị trạng thái E2), `rc_forbid_delete`, `rc_guard_doc_lines`; ca GRD |

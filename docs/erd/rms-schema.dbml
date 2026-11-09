@@ -991,18 +991,13 @@ TableGroup "P2 · Thực đơn • món • công thức • thực đơn ngày"
   daily_menu_items
 }
 
-TableGroup "P3 · Bàn • đơn hàng • hóa đơn • thanh toán" {
+TableGroup "P3 · Bàn • đơn hàng • gọi món" {
   dining_tables
   table_sessions
   orders
   order_batches
   order_items
   order_item_events
-  invoices
-  payment_requests
-  payment_webhook_events
-  payments
-  invoice_items
 }
 
 TableGroup "P4 · Kho RAW • bếp • sơ chế • kiểm kê" {
@@ -1026,7 +1021,12 @@ TableGroup "P4 · Kho RAW • bếp • sơ chế • kiểm kê" {
   stock_movements
 }
 
-TableGroup "P5 · Chi phí • báo cáo • đối soát" {
+TableGroup "P5 · Hóa đơn • thanh toán • chi phí • đối soát" {
+  invoices
+  payment_requests
+  payment_webhook_events
+  payments
+  invoice_items
   operating_expenses
   daily_cash_reconciliations
 }
