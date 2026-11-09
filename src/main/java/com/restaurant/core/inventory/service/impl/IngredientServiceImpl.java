@@ -41,7 +41,7 @@ public class IngredientServiceImpl implements IngredientService {
 
     @Override
     public IngredientResponse getIngredientById(long id) {
-        return repo.findIngredient(id).orElseThrow(() -> notFound("Không tìm thấy nguyên liệu " + id));
+        return repo.findIngredient(id).orElseThrow(() -> notFoundError("Không tìm thấy nguyên liệu " + id));
     }
 
     @Override
@@ -55,7 +55,7 @@ public class IngredientServiceImpl implements IngredientService {
     @Override
     @Transactional
     public IngredientResponse updateIngredient(long id, IngredientRequest r) {
-        Ingredient ingredient = ingredientRepository.findById(id).orElseThrow(() -> notFound("Không tìm thấy nguyên liệu " + id));
+        Ingredient ingredient = ingredientRepository.findById(id).orElseThrow(() -> notFoundError("Không tìm thấy nguyên liệu " + id));
         ingredient.changeDetails(r.name().strip(), r.baseUnit().strip(), orZero(r.minQuantity()), isTrueOrMissing(r.expiryTracked()),
                 isTrueOrMissing(r.active()));
         ingredientRepository.flush();
@@ -63,35 +63,35 @@ public class IngredientServiceImpl implements IngredientService {
     }
 
     @Override
-    public List<KitchenTypeResponse> getAllKitchenTypes(Long ingredientId, boolean activeOnly) {
-        return repo.findTypes(ingredientId, activeOnly);
+    public List<KitchenTypeResponse> getAllKitchenIngredientTypes(Long ingredientId, boolean activeOnly) {
+        return repo.findKitchenIngredientTypes(ingredientId, activeOnly);
     }
 
     @Override
-    public KitchenTypeResponse getKitchenTypeById(long id) {
-        return repo.findType(id).orElseThrow(() -> notFound("Không tìm thấy loại nguyên liệu bếp " + id));
+    public KitchenTypeResponse getKitchenIngredientTypeById(long id) {
+        return repo.findKitchenIngredientType(id).orElseThrow(() -> notFoundError("Không tìm thấy loại nguyên liệu bếp " + id));
     }
 
     @Override
     @Transactional
-    public KitchenTypeResponse createKitchenType(KitchenTypeRequest r) {
+    public KitchenTypeResponse createKitchenIngredientType(KitchenTypeRequest r) {
         KitchenIngredientType type = kitchenTypeRepository.saveAndFlush(new KitchenIngredientType(ingredientRepository.getReferenceById(r.rawIngredientId()), r.name().strip(),
                 r.handlingType(), r.shelfLifeHours(), orZero(r.minimumQuantity()), isTrueOrMissing(r.active())));
-        return getKitchenTypeById(type.getId());
+        return getKitchenIngredientTypeById(type.getId());
     }
 
     /** Không đổi nguyên liệu gốc và handlingType sau khi tạo (lô bếp, công thức đã tham chiếu). */
     @Override
     @Transactional
-    public KitchenTypeResponse updateKitchenType(long id, KitchenTypeRequest r) {
-        KitchenIngredientType type = kitchenTypeRepository.findById(id).orElseThrow(() -> notFound("Không tìm thấy loại nguyên liệu bếp " + id));
+    public KitchenTypeResponse updateKitchenIngredientType(long id, KitchenTypeRequest r) {
+        KitchenIngredientType type = kitchenTypeRepository.findById(id).orElseThrow(() -> notFoundError("Không tìm thấy loại nguyên liệu bếp " + id));
         if (!type.getRawIngredientId().equals(r.rawIngredientId()) || !type.getHandlingType().equals(r.handlingType())) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "IMMUTABLE_FIELD",
                     "Không được đổi nguyên liệu gốc hoặc cách dùng của loại bếp đã tạo");
         }
         type.changeDetails(r.name().strip(), r.shelfLifeHours(), orZero(r.minimumQuantity()), isTrueOrMissing(r.active()));
         kitchenTypeRepository.flush();
-        return getKitchenTypeById(id);
+        return getKitchenIngredientTypeById(id);
     }
 
     /** Không gửi cờ = bật (đang dùng, có theo dõi hạn dùng). */
@@ -104,7 +104,7 @@ public class IngredientServiceImpl implements IngredientService {
         return v == null ? BigDecimal.ZERO : v;
     }
 
-    static ApiException notFound(String message) {
+    static ApiException notFoundError(String message) {
         return new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", message);
     }
 }

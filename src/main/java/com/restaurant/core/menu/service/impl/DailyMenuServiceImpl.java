@@ -55,21 +55,21 @@ public class DailyMenuServiceImpl implements DailyMenuService {
 
     /** Thực đơn của ngày kinh doanh hiện tại (04:00 giờ Việt Nam). */
     @Override
-    public DailyMenuResponse getTodayMenu() {
+    public DailyMenuResponse getTodayDailyMenu() {
         LocalDate date = clock.today();
-        return getMenuByDate(date);
+        return getDailyMenuByDate(date);
     }
 
     @Override
-    public DailyMenuResponse getMenuByDate(LocalDate date) {
+    public DailyMenuResponse getDailyMenuByDate(LocalDate date) {
         DailyMenuResponse.Header h = repo.findHeaderByDate(date)
                 .orElseThrow(() -> ApiException.notFound("Chưa có thực đơn cho ngày " + date));
-        return withItems(h);
+        return buildDailyMenuResponse(h);
     }
 
     @Override
     public DailyMenuResponse getDailyMenuById(long id) {
-        return withItems(header(id));
+        return buildDailyMenuResponse(getDailyMenuHeader(id));
     }
 
     /**
@@ -93,17 +93,17 @@ public class DailyMenuServiceImpl implements DailyMenuService {
     /** Gợi ý hạn mức: số suất đã bán của cùng món ở thực đơn nguồn. Chỉ khi thực đơn còn nháp. */
     @Override
     @Transactional
-    public FillQuotasResponse fillQuotasFromSales(long dailyMenuId, LocalDate fromDate) {
-        DailyMenuResponse.Header target = header(dailyMenuId);
+    public FillQuotasResponse fillDailyMenuQuotasFromSales(long dailyMenuId, LocalDate fromDate) {
+        DailyMenuResponse.Header target = getDailyMenuHeader(dailyMenuId);
         if (!"DRAFT".equals(target.status())) {
-            throw conflict("MENU_NOT_DRAFT", "Chỉ điền hạn mức khi thực đơn còn nháp");
+            throw conflictError("MENU_NOT_DRAFT", "Chỉ điền hạn mức khi thực đơn còn nháp");
         }
         DailyMenuResponse.Header source = (fromDate == null ? repo.findPreviousHeader(target.businessDate()) : repo.findHeaderByDate(fromDate))
                 .orElseThrow(() -> ApiException.notFound(fromDate == null
                         ? "Chưa có thực đơn nào trước ngày " + target.businessDate()
                         : "Chưa có thực đơn cho ngày " + fromDate));
         if (source.id() == target.id()) {
-            throw conflict("SAME_MENU", "Không điền hạn mức từ chính thực đơn này");
+            throw conflictError("SAME_MENU", "Không điền hạn mức từ chính thực đơn này");
         }
         int updated = fillQuotasFromSoldPortions(target.id(), source.id());
         return new FillQuotasResponse(source.businessDate(), updated, getDailyMenuById(target.id()));
@@ -112,7 +112,7 @@ public class DailyMenuServiceImpl implements DailyMenuService {
     /** Đổi hạn mức nhiều món: một dòng lỗi (không thuộc thực đơn, thấp hơn số đã bán) thì không đổi dòng nào. */
     @Override
     @Transactional
-    public DailyMenuResponse updateMenuQuotas(long dailyMenuId, List<QuotasRequest.Line> lines) {
+    public DailyMenuResponse updateDailyMenuQuotas(long dailyMenuId, List<QuotasRequest.Line> lines) {
         requireNotClosed(dailyMenuId);
         for (QuotasRequest.Line l : lines) {
             DailyMenuItem item = dailyMenuItemRepository.findById(l.dailyMenuItemId())
@@ -125,22 +125,22 @@ public class DailyMenuServiceImpl implements DailyMenuService {
     }
 
     @Override
-    public List<IngredientUsageRow> getIngredientUsage(long dailyMenuId) {
-        DailyMenuResponse.Header h = header(dailyMenuId);
-        List<DailyMenuItemResponse> items = repo.findItems(h.id());
+    public List<IngredientUsageRow> getIngredientUsageOfDailyMenu(long dailyMenuId) {
+        DailyMenuResponse.Header h = getDailyMenuHeader(dailyMenuId);
+        List<DailyMenuItemResponse> items = repo.findDailyMenuItems(h.id());
         Map<Long, Long> used = quotaUsageCounter.countUsedPortions(items.stream().map(DailyMenuItemResponse::dailyMenuItemId).toList());
         List<Long> soldItemIds = used.entrySet().stream().filter(e -> e.getValue() > 0).map(Map.Entry::getKey).toList();
-        return repo.ingredientUsage(h.id(), h.businessDate(), soldItemIds);
+        return repo.findIngredientUsage(h.id(), h.businessDate(), soldItemIds);
     }
 
     @Override
     @Transactional
-    public DailyMenuResponse addDishToMenu(long dailyMenuId, DailyMenuItemRequest r) {
+    public DailyMenuResponse addItemToDailyMenu(long dailyMenuId, DailyMenuItemRequest r) {
         DailyMenu menu = requireNotClosed(dailyMenuId);
         MenuItem menuItem = menuItemRepository.findById(r.menuItemId()).filter(MenuItem::isActive).orElse(null);
         var currentRecipe = recipeRepository.findByMenuItem_IdAndCurrentTrue(r.menuItemId());
         if (menuItem == null || currentRecipe.isEmpty()) {
-            throw conflict("MENU_ITEM_NOT_READY", "Món " + r.menuItemId() + " không tồn tại, đã ngừng kinh doanh hoặc chưa có công thức");
+            throw conflictError("MENU_ITEM_NOT_READY", "Món " + r.menuItemId() + " không tồn tại, đã ngừng kinh doanh hoặc chưa có công thức");
         }
         dailyMenuItemRepository.saveAndFlush(new DailyMenuItem(menu, menuItem, currentRecipe.get(), r.quotaTotal()));
         return getDailyMenuById(dailyMenuId);
@@ -148,19 +148,19 @@ public class DailyMenuServiceImpl implements DailyMenuService {
 
     @Override
     @Transactional
-    public DailyMenuItemResponse updateDishQuota(long dailyMenuItemId, Integer quotaTotal) {
-        DailyMenuItem item = findDishForUpdate(dailyMenuItemId);
+    public DailyMenuItemResponse updateDailyMenuItemQuota(long dailyMenuItemId, Integer quotaTotal) {
+        DailyMenuItem item = findDailyMenuItemForUpdate(dailyMenuItemId);
         requireNotClosed(item.getDailyMenu().getId());
         changeQuotaNotBelowUsed(item, quotaTotal);
         dailyMenuItemRepository.flush();
-        return item(dailyMenuItemId);
+        return getDailyMenuItemResponse(dailyMenuItemId);
     }
 
     /** Chỉ xóa được khi món chưa từng được gọi. */
     @Override
     @Transactional
-    public void removeDishFromMenu(long dailyMenuItemId) {
-        DailyMenuItem item = findDishForUpdate(dailyMenuItemId);
+    public void removeItemFromDailyMenu(long dailyMenuItemId) {
+        DailyMenuItem item = findDailyMenuItemForUpdate(dailyMenuItemId);
         requireNotClosed(item.getDailyMenu().getId());
         if (quotaUsageCounter.hasBeenOrdered(dailyMenuItemId)) {
             throw ApiException.invalidState("Món " + item.getMenuItem().getName() + " đã có khách gọi: không xóa khỏi thực đơn, hãy tạm dừng");
@@ -198,28 +198,28 @@ public class DailyMenuServiceImpl implements DailyMenuService {
 
     @Override
     @Transactional
-    public DailyMenuItemResponse pauseDish(long dailyMenuItemId, long actorId, String reason) {
-        DailyMenuItem dish = findDishForUpdate(dailyMenuItemId);
+    public DailyMenuItemResponse pauseDailyMenuItem(long dailyMenuItemId, long actorId, String reason) {
+        DailyMenuItem dish = findDailyMenuItemForUpdate(dailyMenuItemId);
         requireNotClosed(dish.getDailyMenu().getId());
         if (dish.isPaused()) {
-            throw conflict("ALREADY_PAUSED", "Món " + dish.getMenuItem().getName() + " đang tạm dừng");
+            throw conflictError("ALREADY_PAUSED", "Món " + dish.getMenuItem().getName() + " đang tạm dừng");
         }
         dish.pause(reason, actorId, clock.now());
         dailyMenuItemRepository.flush();
-        return item(dailyMenuItemId);
+        return getDailyMenuItemResponse(dailyMenuItemId);
     }
 
     @Override
     @Transactional
-    public DailyMenuItemResponse resumeDish(long dailyMenuItemId) {
-        DailyMenuItem dish = findDishForUpdate(dailyMenuItemId);
+    public DailyMenuItemResponse resumeDailyMenuItem(long dailyMenuItemId) {
+        DailyMenuItem dish = findDailyMenuItemForUpdate(dailyMenuItemId);
         requireNotClosed(dish.getDailyMenu().getId());
         if (!dish.isPaused()) {
-            throw conflict("NOT_PAUSED", "Món " + dish.getMenuItem().getName() + " không tạm dừng");
+            throw conflictError("NOT_PAUSED", "Món " + dish.getMenuItem().getName() + " không tạm dừng");
         }
         dish.resume();
         dailyMenuItemRepository.flush();
-        return item(dailyMenuItemId);
+        return getDailyMenuItemResponse(dailyMenuItemId);
     }
 
     /** Thực đơn đã đóng là số liệu đã chốt của ngày (tóm tắt cuối ngày dựa vào nó): không sửa món, hạn mức, tạm dừng nữa. */
@@ -227,7 +227,7 @@ public class DailyMenuServiceImpl implements DailyMenuService {
         DailyMenu menu = dailyMenuRepository.findById(dailyMenuId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy thực đơn ngày " + dailyMenuId));
         if (menu.isClosed()) {
-            throw conflict("MENU_CLOSED", "Thực đơn ngày đã đóng");
+            throw conflictError("MENU_CLOSED", "Thực đơn ngày đã đóng");
         }
         return menu;
     }
@@ -236,7 +236,7 @@ public class DailyMenuServiceImpl implements DailyMenuService {
         return dailyMenuRepository.findByIdForUpdate(id).orElseThrow(() -> ApiException.notFound("Không tìm thấy thực đơn ngày " + id));
     }
 
-    private DailyMenuItem findDishForUpdate(long dailyMenuItemId) {
+    private DailyMenuItem findDailyMenuItemForUpdate(long dailyMenuItemId) {
         return dailyMenuItemRepository.findByIdForUpdate(dailyMenuItemId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy món trong thực đơn ngày " + dailyMenuItemId));
     }
@@ -252,19 +252,19 @@ public class DailyMenuServiceImpl implements DailyMenuService {
         item.changeQuota(quotaTotal);
     }
 
-    private DailyMenuItemResponse item(long id) {
-        return repo.findItem(id).map(item -> withQuotaUsage(List.of(item)).getFirst()).orElseThrow(() -> ApiException.notFound("Không tìm thấy món trong thực đơn ngày " + id));
+    private DailyMenuItemResponse getDailyMenuItemResponse(long id) {
+        return repo.findDailyMenuItem(id).map(item -> withQuotaUsage(List.of(item)).getFirst()).orElseThrow(() -> ApiException.notFound("Không tìm thấy món trong thực đơn ngày " + id));
     }
 
-    private DailyMenuResponse.Header header(long id) {
-        return repo.findHeader(id).orElseThrow(() -> ApiException.notFound("Không tìm thấy thực đơn ngày " + id));
+    private DailyMenuResponse.Header getDailyMenuHeader(long id) {
+        return repo.findDailyMenuHeader(id).orElseThrow(() -> ApiException.notFound("Không tìm thấy thực đơn ngày " + id));
     }
 
-    private DailyMenuResponse withItems(DailyMenuResponse.Header h) {
-        return new DailyMenuResponse(h.id(), h.businessDate(), h.status(), h.publishedAt(), withQuotaUsage(repo.findItems(h.id())));
+    private DailyMenuResponse buildDailyMenuResponse(DailyMenuResponse.Header h) {
+        return new DailyMenuResponse(h.id(), h.businessDate(), h.status(), h.publishedAt(), withQuotaUsage(repo.findDailyMenuItems(h.id())));
     }
 
-    private static ApiException conflict(String code, String message) {
+    private static ApiException conflictError(String code, String message) {
         return new ApiException(HttpStatus.CONFLICT, code, message);
     }
 

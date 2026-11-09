@@ -70,12 +70,12 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     public ExpenseResponse getExpenseById(long id) {
-        return repo.find(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Không tìm thấy khoản chi " + id));
+        return repo.findExpenseById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Không tìm thấy khoản chi " + id));
     }
 
     @Override
     public List<ExpenseResponse> getExpenses(LocalDate from, LocalDate to, String category, String status) {
         FinanceReportServiceImpl.checkRange(from, to);
-        return repo.find(from, to, category, status);
+        return repo.findExpenses(from, to, category, status);
     }
 }

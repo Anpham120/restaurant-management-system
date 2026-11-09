@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SessionEndIT extends OrderApiTestBase {
 
     @Test
-    void closeEmptySessionOnlyWithoutObligation() throws Exception {
+    void closeEmptyTableSessionOnlyWithoutObligation() throws Exception {
         long[] t = openTable();
         long item = submitOne(t[2], data.dish(10000, null, null).dailyMenuItemId(), 1);
         postEmpty(waiter, "/api/sessions/{id}/close-empty", t[1]).andExpect(status().isConflict());

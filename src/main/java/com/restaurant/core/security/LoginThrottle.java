@@ -38,7 +38,7 @@ public class LoginThrottle {
 
     /** Số giây còn bị khóa; 0 = được thử đăng nhập. */
     public long lockedSeconds(String username) {
-        Attempts a = byUser.get(key(username));
+        Attempts a = byUser.get(throttleKeyOf(username));
         if (a == null || a.lockedUntil() == null) {
             return 0;
         }
@@ -50,7 +50,7 @@ public class LoginThrottle {
         if (byUser.size() >= MAX_TRACKED) {
             byUser.entrySet().removeIf(e -> expired(e.getValue(), now));
         }
-        byUser.compute(key(username), (k, a) -> {
+        byUser.compute(throttleKeyOf(username), (k, a) -> {
             if (a == null || expired(a, now)) {
                 a = new Attempts(0, now, null);
             }
@@ -60,7 +60,7 @@ public class LoginThrottle {
     }
 
     public void recordSuccess(String username) {
-        byUser.remove(key(username));
+        byUser.remove(throttleKeyOf(username));
     }
 
     /** Hết khóa, hoặc chưa bị khóa mà lần sai đầu đã quá cửa sổ đếm. */
@@ -68,7 +68,7 @@ public class LoginThrottle {
         return a.lockedUntil() != null ? !now.isBefore(a.lockedUntil()) : now.isAfter(a.firstFailure().plus(WINDOW));
     }
 
-    private static String key(String username) {
+    private static String throttleKeyOf(String username) {
         return username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
     }
 }

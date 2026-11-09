@@ -76,7 +76,7 @@ public class ShiftServiceImpl implements ShiftService {
     @Override
     @Transactional
     public ShiftResponse updateShift(long id, ShiftRequest r) {
-        Shift shift = shiftRepository.findById(id).orElseThrow(() -> notFound("Không tìm thấy ca " + id));
+        Shift shift = shiftRepository.findById(id).orElseThrow(() -> notFoundError("Không tìm thấy ca " + id));
         shift.changeDetails(r.name().strip(), r.startTime(), r.endTime(), breakOf(r), isActive(r.active()));
         shiftRepository.flush();
         return repo.findShift(id).orElseThrow();
@@ -93,30 +93,30 @@ public class ShiftServiceImpl implements ShiftService {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "INVALID_ASSIGNMENT",
                     "Ca không tồn tại/ngừng dùng hoặc nhân viên không còn làm việc");
         }
-        ShiftAssignment assignment = ShiftAssignment.schedule(employee, shift, r.workDate(), blank(r.note()),
+        ShiftAssignment assignment = ShiftAssignment.schedule(employee, shift, r.workDate(), blankToNull(r.note()),
                 BusinessDateProvider.RESTAURANT_ZONE);
         if (assignmentRepository.existsOverlapping(employee.getId(), assignment.getScheduledStartAt(), assignment.getScheduledEndAt())) {
             throw new ApiException(HttpStatus.CONFLICT, "OVERLAP", "Nhân viên đã có ca trùng khoảng thời gian này");
         }
-        return getAssignmentById(assignmentRepository.saveAndFlush(assignment).getId());
+        return getShiftAssignmentById(assignmentRepository.saveAndFlush(assignment).getId());
     }
 
     @Override
-    public ShiftAssignmentResponse getAssignmentById(long id) {
-        return repo.findAssignment(id).orElseThrow(() -> notFound("Không tìm thấy phân ca " + id));
+    public ShiftAssignmentResponse getShiftAssignmentById(long id) {
+        return repo.findShiftAssignment(id).orElseThrow(() -> notFoundError("Không tìm thấy phân ca " + id));
     }
 
     @Override
-    public List<ShiftAssignmentResponse> getAssignments(LocalDate from, LocalDate to, Long employeeId) {
-        checkRange(from, to);
-        return repo.findAssignments(from, to, employeeId);
+    public List<ShiftAssignmentResponse> getShiftAssignments(LocalDate from, LocalDate to, Long employeeId) {
+        validateDateRange(from, to);
+        return repo.findShiftAssignments(from, to, employeeId);
     }
 
     /** Chỉ hủy ca SCHEDULED chưa chấm công. */
     @Override
     @Transactional
-    public ShiftAssignmentResponse cancelAssignment(long id, long actorId, String reason) {
-        ShiftAssignment assignment = assignmentRepository.findByIdForUpdate(id).orElseThrow(() -> notFound("Không tìm thấy phân ca " + id));
+    public ShiftAssignmentResponse cancelShiftAssignment(long id, long actorId, String reason) {
+        ShiftAssignment assignment = assignmentRepository.findByIdForUpdate(id).orElseThrow(() -> notFoundError("Không tìm thấy phân ca " + id));
         boolean attended = attendanceRepository.existsByShiftAssignment_Id(id);
         if (!assignment.isScheduled() || attended) {
             throw new ApiException(HttpStatus.CONFLICT, "NOT_CANCELLABLE",
@@ -124,7 +124,7 @@ public class ShiftServiceImpl implements ShiftService {
         }
         assignment.cancel(reason.strip(), employeeRepository.getReferenceById(actorId), clock.now());
         assignmentRepository.flush();
-        return getAssignmentById(id);
+        return getShiftAssignmentById(id);
     }
 
     // ---------- chấm công
@@ -133,15 +133,15 @@ public class ShiftServiceImpl implements ShiftService {
     @Transactional
     public AttendanceResponse recordAttendance(long actorId, AttendanceRequest r) {
         ShiftAssignment assignment = assignmentRepository.findByIdForUpdate(r.shiftAssignmentId())
-                .orElseThrow(() -> notFound("Không tìm thấy phân ca " + r.shiftAssignmentId()));
+                .orElseThrow(() -> notFoundError("Không tìm thấy phân ca " + r.shiftAssignmentId()));
         if (assignment.isCancelled()) {
             throw new ApiException(HttpStatus.CONFLICT, "ASSIGNMENT_CANCELLED", "Phân ca " + r.shiftAssignmentId() + " đã hủy");
         }
         if (attendanceRepository.existsByShiftAssignment_Id(assignment.getId())) {
             throw new ApiException(HttpStatus.CONFLICT, "DUPLICATE", "Phân ca " + assignment.getId() + " đã chấm công: dùng điều chỉnh chấm công");
         }
-        Times t = times(r.status(), r.actualStartAt(), r.actualEndAt(), r.workedMinutes(), assignment.getScheduledBreakMinutes());
-        Attendance attendance = new Attendance(assignment, blank(r.note()));
+        Times t = calculateWorkTimes(r.status(), r.actualStartAt(), r.actualEndAt(), r.workedMinutes(), assignment.getScheduledBreakMinutes());
+        Attendance attendance = new Attendance(assignment, blankToNull(r.note()));
         attendance.record(r.status(), t.start, t.end, t.worked, employeeRepository.getReferenceById(actorId), clock.now());
         attendanceRepository.saveAndFlush(attendance);
         if (assignment.isScheduled()) {
@@ -156,9 +156,9 @@ public class ShiftServiceImpl implements ShiftService {
     @Transactional
     public AttendanceResponse adjustAttendance(long attendanceId, long actorId, AdjustAttendanceRequest r) {
         Attendance attendance = attendanceRepository.findByIdForUpdate(attendanceId)
-                .orElseThrow(() -> notFound("Không tìm thấy bản chấm công " + attendanceId));
+                .orElseThrow(() -> notFoundError("Không tìm thấy bản chấm công " + attendanceId));
         int breakMinutes = assignmentRepository.findById(attendance.getShiftAssignmentId()).orElseThrow().getScheduledBreakMinutes();
-        Times t = times(r.status(), r.actualStartAt(), r.actualEndAt(), r.workedMinutes(), breakMinutes);
+        Times t = calculateWorkTimes(r.status(), r.actualStartAt(), r.actualEndAt(), r.workedMinutes(), breakMinutes);
         Instant now = clock.now();
         adjustmentRepository.save(AttendanceAdjustment.before(attendance, r.status(), t.start, t.end, t.worked, r.reason().strip(), employeeRepository.getReferenceById(actorId), now));
         attendance.record(r.status(), t.start, t.end, t.worked, employeeRepository.getReferenceById(actorId), now);
@@ -168,26 +168,26 @@ public class ShiftServiceImpl implements ShiftService {
 
     @Override
     public AttendanceResponse getAttendanceById(long id) {
-        return repo.findAttendance(id).orElseThrow(() -> notFound("Không tìm thấy bản chấm công " + id));
+        return repo.findAttendance(id).orElseThrow(() -> notFoundError("Không tìm thấy bản chấm công " + id));
     }
 
     @Override
     public List<AttendanceResponse> getAttendances(LocalDate from, LocalDate to, Long employeeId) {
-        checkRange(from, to);
+        validateDateRange(from, to);
         return repo.findAttendances(from, to, employeeId);
     }
 
     @Override
     public List<AttendanceAdjustmentView> getAttendanceAdjustments(long attendanceId) {
         getAttendanceById(attendanceId);
-        return repo.findAdjustments(attendanceId);
+        return repo.findAttendanceAdjustments(attendanceId);
     }
 
     private record Times(Instant start, Instant end, Integer worked) {
     }
 
     /** ABSENT: không giờ, không công. PRESENT: cần vào < ra; công mặc định = khoảng có mặt − phút nghỉ (≥ 0). */
-    private static Times times(String status, Instant start, Instant end, Integer worked, int breakMinutes) {
+    private static Times calculateWorkTimes(String status, Instant start, Instant end, Integer worked, int breakMinutes) {
         if ("ABSENT".equals(status)) {
             return new Times(null, null, null);
         }
@@ -198,7 +198,7 @@ public class ShiftServiceImpl implements ShiftService {
         return new Times(start, end, worked == null ? computed : worked);
     }
 
-    private static void checkRange(LocalDate from, LocalDate to) {
+    private static void validateDateRange(LocalDate from, LocalDate to) {
         if (from.isAfter(to) || from.plusDays(MAX_RANGE_DAYS).isBefore(to)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Khoảng ngày không hợp lệ (from ≤ to, tối đa " + MAX_RANGE_DAYS + " ngày)");
         }
@@ -212,11 +212,11 @@ public class ShiftServiceImpl implements ShiftService {
         return active == null || active;
     }
 
-    private static String blank(String s) {
+    private static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s.strip();
     }
 
-    static ApiException notFound(String message) {
+    static ApiException notFoundError(String message) {
         return new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", message);
     }
 }

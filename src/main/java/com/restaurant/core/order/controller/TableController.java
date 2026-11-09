@@ -88,9 +88,9 @@ public class TableController {
 
     @GetMapping("/{tableId}/sessions")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'CASHIER')")
-    public ApiResponse<PageResponse<SessionResponse>> getSessionHistory(@PathVariable @Positive long tableId,
+    public ApiResponse<PageResponse<SessionResponse>> getTableSessionHistory(@PathVariable @Positive long tableId,
                                                                     @RequestParam(defaultValue = "0") @Min(0) int page,
                                                                     @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(tableService.getSessionHistory(tableId, page, size));
+        return ApiResponse.ok(tableService.getTableSessionHistory(tableId, page, size));
     }
 }

@@ -26,7 +26,7 @@ public class PerformanceLoggingAspect {
     }
 
     @Around("within(com.restaurant.core..service..*) && execution(public * *(..))")
-    public Object measure(ProceedingJoinPoint pjp) throws Throwable {
+    public Object measureServiceCall(ProceedingJoinPoint pjp) throws Throwable {
         String name = pjp.getSignature().getDeclaringType().getSimpleName() + "." + pjp.getSignature().getName();
         long start = System.nanoTime();
         try {

@@ -41,7 +41,7 @@ public class CashReconciliationController {
     }
 
     @GetMapping("/{businessDate}")
-    public ApiResponse<CashReconciliationResponse> getCashReconciliation(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
-        return ApiResponse.ok(service.getCashReconciliation(businessDate));
+    public ApiResponse<CashReconciliationResponse> getCashReconciliationByDate(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
+        return ApiResponse.ok(service.getCashReconciliationByDate(businessDate));
     }
 }

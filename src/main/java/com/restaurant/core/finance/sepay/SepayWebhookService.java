@@ -45,25 +45,25 @@ public class SepayWebhookService {
         this.json = json;
     }
 
-    public WebhookResult handle(String authorizationHeader, String rawBody) {
+    public WebhookResult receiveTransferWebhook(String authorizationHeader, String rawBody) {
         verifyApiKey(authorizationHeader);
         JsonNode body;
         try {
             body = json.readTree(rawBody);
         } catch (JacksonException e) {
-            throw badPayload("Payload không phải JSON");
+            throw badPayloadError("Payload không phải JSON");
         }
         JsonNode id = body.get("id");
         JsonNode amount = body.get("transferAmount");
         if (id == null || id.isNull() || amount == null || !amount.isNumber()) {
-            throw badPayload("Payload thiếu id hoặc transferAmount");
+            throw badPayloadError("Payload thiếu id hoặc transferAmount");
         }
         String transactionCode = id.asString();
-        if (!"in".equals(text(body, "transferType"))) {
+        if (!"in".equals(readTextField(body, "transferType"))) {
             log.info("SePay giao dịch {} không phải tiền vào: bỏ qua", transactionCode);
             return new WebhookResult(transactionCode, "IGNORED_OUTGOING", null);
         }
-        String reference = extractReference(text(body, "code"), text(body, "content"));
+        String reference = extractReference(readTextField(body, "code"), readTextField(body, "content"));
         BigDecimal transferAmount = amount.decimalValue();
         String result = qrTransferProcessor.recordVerifiedTransfer(transactionCode, reference, transferAmount, rawBody).name();
         log.info("SePay giao dịch {} tham chiếu {} → {}", transactionCode, reference, result);
@@ -94,12 +94,12 @@ public class SepayWebhookService {
         return code != null ? code : "";
     }
 
-    private static String text(JsonNode body, String field) {
+    private static String readTextField(JsonNode body, String field) {
         JsonNode n = body.get(field);
         return n == null || n.isNull() ? null : n.asString();
     }
 
-    private static ApiException badPayload(String message) {
+    private static ApiException badPayloadError(String message) {
         return new ApiException(HttpStatus.BAD_REQUEST, "BAD_REQUEST", message);
     }
 }

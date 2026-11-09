@@ -39,12 +39,12 @@ public class IngredientQueryRepository {
 
 
 
-    public List<KitchenTypeResponse> findTypes(Long ingredientId, boolean activeOnly) {
+    public List<KitchenTypeResponse> findKitchenIngredientTypes(Long ingredientId, boolean activeOnly) {
         return jdbc.sql(TYPE_SELECT + " WHERE (CAST(:g AS bigint) IS NULL OR t.raw_ingredient_id = :g) AND (t.is_active OR NOT :a) ORDER BY g.name, t.name")
                 .param("g", ingredientId).param("a", activeOnly).query(KitchenTypeResponse.class).list();
     }
 
-    public Optional<KitchenTypeResponse> findType(long id) {
+    public Optional<KitchenTypeResponse> findKitchenIngredientType(long id) {
         return jdbc.sql(TYPE_SELECT + " WHERE t.id = :id").param("id", id).query(KitchenTypeResponse.class).optional();
     }
 

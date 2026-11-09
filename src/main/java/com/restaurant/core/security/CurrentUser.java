@@ -15,11 +15,11 @@ import org.springframework.stereotype.Component;
 public class CurrentUser {
 
     public long employeeId() {
-        return Long.parseLong(jwt().getSubject());
+        return Long.parseLong(currentJwt().getSubject());
     }
 
     public String username() {
-        return jwt().getClaimAsString("username");
+        return currentJwt().getClaimAsString("username");
     }
 
     /** Vai trò hiện hành trong DB (AccountStateJwtConverter), không phải claim lúc phát token. */
@@ -32,7 +32,7 @@ public class CurrentUser {
                 .map(a -> a.substring(5)).sorted().toList();
     }
 
-    private static Jwt jwt() {
+    private static Jwt currentJwt() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
             return jwt;

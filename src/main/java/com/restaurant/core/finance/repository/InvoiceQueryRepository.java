@@ -22,7 +22,7 @@ public class InvoiceQueryRepository {
         return jdbc.sql("SELECT id FROM invoices WHERE order_id = :o").param("o", orderId).query(Long.class).optional();
     }
 
-    public Optional<InvoiceResponse.Header> findHeader(long invoiceId) {
+    public Optional<InvoiceResponse.Header> findInvoiceHeader(long invoiceId) {
         return jdbc.sql("""
                         SELECT id AS invoice_id, order_id, status, total, created_at, created_by_id,
                                uncollected_reason, uncollected_at, waived_reason, waived_at
@@ -31,7 +31,7 @@ public class InvoiceQueryRepository {
                 .param("i", invoiceId).query(InvoiceResponse.Header.class).optional();
     }
 
-    public List<InvoiceResponse.Line> findLines(long invoiceId) {
+    public List<InvoiceResponse.Line> findInvoiceLines(long invoiceId) {
         return jdbc.sql("SELECT order_item_id, item_name, quantity, unit_price, line_total FROM invoice_items WHERE invoice_id = :i ORDER BY id")
                 .param("i", invoiceId).query(InvoiceResponse.Line.class).list();
     }
@@ -45,7 +45,7 @@ public class InvoiceQueryRepository {
                 .param("i", invoiceId).query(InvoiceResponse.PaymentRequestView.class).list();
     }
 
-    public Optional<InvoiceResponse.PaymentView> findPayment(long invoiceId) {
+    public Optional<InvoiceResponse.PaymentView> findPaymentOfInvoice(long invoiceId) {
         return jdbc.sql("SELECT id, method, amount, paid_at, business_date FROM payments WHERE invoice_id = :i")
                 .param("i", invoiceId).query(InvoiceResponse.PaymentView.class).optional();
     }

@@ -21,11 +21,11 @@ public class SepayQr {
         if (!sepay.qrConfigured()) {
             return null;
         }
-        return "https://qr.sepay.vn/img?acc=" + enc(sepay.bankAccount()) + "&bank=" + enc(sepay.bankName())
-                + "&amount=" + amount.toBigInteger() + "&des=" + enc(reference);
+        return "https://qr.sepay.vn/img?acc=" + urlEncode(sepay.bankAccount()) + "&bank=" + urlEncode(sepay.bankName())
+                + "&amount=" + amount.toBigInteger() + "&des=" + urlEncode(reference);
     }
 
-    private static String enc(String s) {
+    private static String urlEncode(String s) {
         return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 }

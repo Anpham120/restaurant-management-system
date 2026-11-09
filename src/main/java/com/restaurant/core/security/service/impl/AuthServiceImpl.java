@@ -55,11 +55,11 @@ public class AuthServiceImpl implements AuthService {
         AccountCredentials acc = accounts.findByUsername(request.username()).orElse(null);
         boolean passwordOk = passwordEncoder.matches(request.password(), acc == null ? dummyHash : acc.passwordHash());
         if (acc == null || !passwordOk || !"ACTIVE".equals(acc.accountStatus()) || !"ACTIVE".equals(acc.workStatus())) {
-            throw invalid(request.username());
+            throw invalidCredentialsError(request.username());
         }
         List<String> roles = accounts.findRoleCodes(acc.employeeId());
         if (roles.isEmpty()) {
-            throw invalid(request.username());
+            throw invalidCredentialsError(request.username());
         }
         throttle.recordSuccess(request.username());
         JwtTokenService.IssuedToken token = tokens.issue(acc.employeeId(), acc.username(), roles);
@@ -67,7 +67,7 @@ public class AuthServiceImpl implements AuthService {
                 acc.mustChangePassword());
     }
 
-    private ApiException invalid(String username) {
+    private ApiException invalidCredentialsError(String username) {
         throttle.recordFailure(username);
         return new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", INVALID);
     }

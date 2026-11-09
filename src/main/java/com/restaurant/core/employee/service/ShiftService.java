@@ -23,12 +23,12 @@ public interface ShiftService {
 
     ShiftAssignmentResponse assignShift(AssignShiftRequest r);
 
-    ShiftAssignmentResponse getAssignmentById(long id);
+    ShiftAssignmentResponse getShiftAssignmentById(long id);
 
-    List<ShiftAssignmentResponse> getAssignments(LocalDate from, LocalDate to, Long employeeId);
+    List<ShiftAssignmentResponse> getShiftAssignments(LocalDate from, LocalDate to, Long employeeId);
 
     /** Chỉ hủy ca SCHEDULED chưa chấm công. */
-    ShiftAssignmentResponse cancelAssignment(long id, long actorId, String reason);
+    ShiftAssignmentResponse cancelShiftAssignment(long id, long actorId, String reason);
 
     /** Chấm một lần cho mỗi ca (UNIQUE → 409 DUPLICATE); ca chuyển COMPLETED trong cùng transaction. */
     AttendanceResponse recordAttendance(long actorId, AttendanceRequest r);

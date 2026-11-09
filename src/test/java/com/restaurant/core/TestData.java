@@ -164,9 +164,9 @@ public class TestData {
                 List.of(new SubmitBatchRequest.Item(dishId, 1, null)))).items().getFirst().id();
         KitchenService kitchenService = services.getBean(KitchenService.class);
         kitchenService.acceptOrderItem(item, kitchen.employeeId());
-        kitchenService.startCookingItem(item, kitchen.employeeId());
-        kitchenService.finishCookingItem(item, kitchen.employeeId());
-        orders.markItemServed(item, waiter.employeeId());
+        kitchenService.startCookingOrderItem(item, kitchen.employeeId());
+        kitchenService.finishCookingOrderItem(item, kitchen.employeeId());
+        orders.markOrderItemServed(item, waiter.employeeId());
         return services.getBean(InvoiceService.class).checkoutOrder(order, cashier.employeeId()).invoiceId();
     }
 

@@ -38,7 +38,7 @@ public class CredentialQueryRepository {
                 .optional();
     }
 
-    public Optional<AccountState> findState(long employeeId) {
+    public Optional<AccountState> findAccountState(long employeeId) {
         return jdbc.sql("""
                         SELECT a.account_status, e.work_status, a.must_change_password,
                                (SELECT string_agg(r.role_code, ',' ORDER BY r.role_code)

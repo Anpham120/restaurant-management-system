@@ -73,16 +73,16 @@ public class ShiftController {
     /** Manager xem mọi người (lọc employeeId tùy chọn); vai trò khác luôn chỉ thấy ca của mình. */
     @GetMapping("/shift-assignments")
     @PreAuthorize("isAuthenticated()")
-    public ApiResponse<List<ShiftAssignmentResponse>> getAssignments(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ApiResponse<List<ShiftAssignmentResponse>> getShiftAssignments(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                                                   @RequestParam(required = false) @Positive Long employeeId) {
-        return ApiResponse.ok(service.getAssignments(from, to, scope(employeeId)));
+        return ApiResponse.ok(service.getShiftAssignments(from, to, resolveEmployeeScope(employeeId)));
     }
 
     @PostMapping("/shift-assignments/{id}/cancel")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<ShiftAssignmentResponse> cancelAssignment(@PathVariable @Positive long id, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(service.cancelAssignment(id, currentUser.employeeId(), request.reason()));
+    public ApiResponse<ShiftAssignmentResponse> cancelShiftAssignment(@PathVariable @Positive long id, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(service.cancelShiftAssignment(id, currentUser.employeeId(), request.reason()));
     }
 
     @PostMapping("/attendances")
@@ -97,7 +97,7 @@ public class ShiftController {
     public ApiResponse<List<AttendanceResponse>> getAttendances(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                                              @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                                              @RequestParam(required = false) @Positive Long employeeId) {
-        return ApiResponse.ok(service.getAttendances(from, to, scope(employeeId)));
+        return ApiResponse.ok(service.getAttendances(from, to, resolveEmployeeScope(employeeId)));
     }
 
     @PostMapping("/attendances/{id}/adjustments")
@@ -112,7 +112,7 @@ public class ShiftController {
         return ApiResponse.ok(service.getAttendanceAdjustments(id));
     }
 
-    private Long scope(Long requested) {
+    private Long resolveEmployeeScope(Long requested) {
         return currentUser.roles().contains("MANAGER") ? requested : Long.valueOf(currentUser.employeeId());
     }
 }

@@ -22,11 +22,11 @@ public interface StockDocumentService {
     /** Xác nhận nhập kho: mỗi dòng thành một lô kho chính. Lô đã hết hạn, nguyên liệu ngừng dùng → từ chối. */
     ReceiptResponse confirmStockReceipt(long receiptId, long actorId, Instant receivedAt);
 
-    void deleteDraftReceipt(long receiptId);
+    void deleteDraftStockReceipt(long receiptId);
 
-    ReceiptResponse getReceiptById(long receiptId);
+    ReceiptResponse getStockReceiptById(long receiptId);
 
-    List<ReceiptResponse.Header> getReceipts(String status, int page, int size);
+    List<ReceiptResponse.Header> getStockReceipts(String status, int page, int size);
 
     // ---------- phiếu xuất
     IssueResponse createStockIssue(long actorId, IssueRequest request);
@@ -40,9 +40,9 @@ public interface StockDocumentService {
     /** Hủy phiếu nháp hoặc đã xuất (trả lại kho chính). Bếp đã nhận → dùng phiếu hoàn trả. */
     IssueResponse cancelStockIssue(long issueId, long actorId, String reason);
 
-    IssueResponse getIssueById(long issueId);
+    IssueResponse getStockIssueById(long issueId);
 
-    List<IssueResponse.Header> getIssues(String status, int page, int size);
+    List<IssueResponse.Header> getStockIssues(String status, int page, int size);
 
     // ---------- phiếu kiểm kê
     /** Tạo phiếu kiểm kê: chụp số sổ hiện tại của từng nguồn. */
@@ -51,7 +51,7 @@ public interface StockDocumentService {
     /** Xác nhận kiểm kê: số sổ phải chưa đổi từ lúc tạo phiếu; chỉnh tồn theo số thực đếm. */
     CountResponse confirmStockCount(long countId, long actorId);
 
-    CountResponse getCountById(long countId);
+    CountResponse getStockCountById(long countId);
 
-    List<CountResponse.Header> getCounts(String status, int page, int size);
+    List<CountResponse.Header> getStockCounts(String status, int page, int size);
 }

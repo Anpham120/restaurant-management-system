@@ -62,19 +62,19 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse getOrderById(long orderId) {
         OrderQueryRepository.OrderRow order = orderQueryRepository.findOrder(orderId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy đơn " + orderId));
-        return new OrderResponse(order.id(), order.status(), tableQueryRepository.findSession(order.tableSessionId()).orElseThrow(),
-                orderQueryRepository.findItemsOfOrder(orderId));
+        return new OrderResponse(order.id(), order.status(), tableQueryRepository.findTableSession(order.tableSessionId()).orElseThrow(),
+                orderQueryRepository.findOrderItemsOfOrder(orderId));
     }
 
     @Override
     public OrderItemResponse getOrderItemById(long itemId) {
-        return orderQueryRepository.findItem(itemId).orElseThrow(() -> ApiException.notFound("Không tìm thấy món " + itemId));
+        return orderQueryRepository.findOrderItem(itemId).orElseThrow(() -> ApiException.notFound("Không tìm thấy món " + itemId));
     }
 
     @Override
     public List<ItemEventResponse> getOrderItemHistory(long itemId) {
         getOrderItemById(itemId);
-        return orderQueryRepository.findItemEvents(itemId);
+        return orderQueryRepository.findOrderItemEvents(itemId);
     }
 
     // ---------- gọi món
@@ -112,14 +112,14 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderItemResponse markItemServed(long itemId, long actorId) {
+    public OrderItemResponse markOrderItemServed(long itemId, long actorId) {
         statusChanger.changeItemStatus(findItemForUpdate(itemId), EnumSet.of(OrderItemStatus.READY), OrderItemStatus.SERVED, actorId, null);
         return getOrderItemById(itemId);
     }
 
     @Override
     @Transactional
-    public OrderItemResponse cancelItemBeforeCooking(long itemId, long actorId, String reason) {
+    public OrderItemResponse cancelOrderItemBeforeCooking(long itemId, long actorId, String reason) {
         String cleanReason = requireReason(reason, "Hủy món bắt buộc có lý do");
         OrderItem item = findItemForUpdate(itemId);
         if (COOKED.contains(item.getStatus())) {
@@ -136,7 +136,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderItemResponse cancelItemAfterCooking(long itemId, long actorId, String reason) {
+    public OrderItemResponse cancelOrderItemAfterCooking(long itemId, long actorId, String reason) {
         String cleanReason = requireReason(reason, "Hủy ngoại lệ bắt buộc có lý do");
         long orderId = orderItemRepository.findById(itemId).map(OrderItem::getOrderId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy món " + itemId));
@@ -175,7 +175,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderableDish findDishOnSaleToday(long dailyMenuItemId) {
-        OrderableDish dish = dailyMenuLookup.findDish(dailyMenuItemId)
+        OrderableDish dish = dailyMenuLookup.findOrderableDish(dailyMenuItemId)
                 .filter(OrderableDish::onSaleToday)
                 .orElseThrow(() -> ApiException.invalidState("Món " + dailyMenuItemId + " không có trong thực đơn đang bán hôm nay"));
         if (!dish.menuItemActive()) {
@@ -197,7 +197,7 @@ public class OrderServiceImpl implements OrderService {
             if (item.getStatus() != OrderItemStatus.PENDING) {
                 continue;
             }
-            Integer quota = dailyMenuLookup.findDish(item.getDailyMenuItemId()).map(OrderableDish::quotaTotal).orElse(null);
+            Integer quota = dailyMenuLookup.findOrderableDish(item.getDailyMenuItemId()).map(OrderableDish::quotaTotal).orElse(null);
             if (quota == null) {
                 continue;
             }
@@ -208,7 +208,7 @@ public class OrderServiceImpl implements OrderService {
                         item.getQuantity(), quota, used, remaining));
             }
         }
-        return new SubmitBatchResponse(batch.getId(), replayed, warnings, orderQueryRepository.findItemsOfBatch(batch.getId()));
+        return new SubmitBatchResponse(batch.getId(), replayed, warnings, orderQueryRepository.findOrderItemsOfBatch(batch.getId()));
     }
 
     private OrderItem findItemForUpdate(long itemId) {

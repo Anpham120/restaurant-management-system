@@ -18,7 +18,7 @@ public class CashReconciliationQueryRepository {
         this.jdbc = jdbc;
     }
 
-    public List<CashReconciliationResponse.Version> versions(LocalDate date) {
+    public List<CashReconciliationResponse.Version> findVersionsByDate(LocalDate date) {
         return jdbc.sql("""
                         SELECT id, version, status, opening_cash, cash_sales, cash_expenses, expected_cash, actual_cash, difference, reason,
                                revision_reason, reconciled_by_id, reconciled_at

@@ -49,17 +49,17 @@ public class OrderQueryRepository {
         return jdbc.sql("SELECT id FROM orders WHERE table_session_id = :s").param("s", sessionId).query(Long.class).single();
     }
 
-    public List<OrderItemResponse> findItemsOfOrder(long orderId) {
+    public List<OrderItemResponse> findOrderItemsOfOrder(long orderId) {
         return jdbc.sql(ITEM_SELECT + " WHERE b.order_id = :o ORDER BY b.submitted_at, oi.id").param("o", orderId)
                 .query(OrderItemResponse.class).list();
     }
 
-    public List<OrderItemResponse> findItemsOfBatch(long batchId) {
+    public List<OrderItemResponse> findOrderItemsOfBatch(long batchId) {
         return jdbc.sql(ITEM_SELECT + " WHERE oi.order_batch_id = :b ORDER BY oi.id").param("b", batchId)
                 .query(OrderItemResponse.class).list();
     }
 
-    public Optional<OrderItemResponse> findItem(long itemId) {
+    public Optional<OrderItemResponse> findOrderItem(long itemId) {
         return jdbc.sql(ITEM_SELECT + " WHERE oi.id = :id").param("id", itemId).query(OrderItemResponse.class).optional();
     }
 
@@ -69,7 +69,7 @@ public class OrderQueryRepository {
                 .param("statuses", statuses).query(OrderItemResponse.class).list();
     }
 
-    public List<ItemEventResponse> findItemEvents(long itemId) {
+    public List<ItemEventResponse> findOrderItemEvents(long itemId) {
         return jdbc.sql("""
                         SELECT e.id, e.from_status, e.to_status, e.actor_id, emp.full_name AS actor_name, e.reason, e.created_at
                           FROM order_item_events e JOIN employees emp ON emp.id = e.actor_id

@@ -19,10 +19,10 @@ public interface DailyMenuLookup {
     record RecipeLine(long kitchenIngredientTypeId, BigDecimal quantityPerServing) {
     }
 
-    Optional<OrderableDish> findDish(long dailyMenuItemId);
+    Optional<OrderableDish> findOrderableDish(long dailyMenuItemId);
 
-    /** Như {@link #findDish} nhưng khóa dòng món (SELECT … FOR UPDATE) để kiểm hạn mức an toàn khi nhận món đồng thời. */
-    Optional<OrderableDish> findDishForUpdate(long dailyMenuItemId);
+    /** Như {@link #findOrderableDish} nhưng khóa dòng món (SELECT … FOR UPDATE) để kiểm hạn mức an toàn khi nhận món đồng thời. */
+    Optional<OrderableDish> findOrderableDishForUpdate(long dailyMenuItemId);
 
     /** Công thức áp dụng cho món trong thực đơn ngày, xếp theo loại nguyên liệu. */
     List<RecipeLine> getRecipeLines(long dailyMenuItemId);

@@ -55,15 +55,15 @@ public class CashReconciliationServiceImpl implements CashReconciliationService 
         });
         reconciliationRepository.saveAndFlush(new DailyCashReconciliation(day, nextVersion, request.openingCash(), cashSales, cashExpenses,
                 request.actualCash(), reason, revisionReason, actorId, clock.now()));
-        return getCashReconciliation(day);
+        return getCashReconciliationByDate(day);
     }
 
     @Override
-    public CashReconciliationResponse getCashReconciliation(LocalDate businessDate) {
+    public CashReconciliationResponse getCashReconciliationByDate(LocalDate businessDate) {
         CashReconciliationResponse.Summary s = buildSummary(businessDate);
         return new CashReconciliationResponse(s.businessDate(), s.openingCash(), s.cashSales(), s.cashExpenses(), s.expectedCash(),
                 s.actualCash(), s.difference(), s.reason(), s.reconVersion(), s.reconciledById(), s.stale(),
-                reconciliationQueryRepository.versions(businessDate));
+                reconciliationQueryRepository.findVersionsByDate(businessDate));
     }
 
     private static String blankToNull(String s) {

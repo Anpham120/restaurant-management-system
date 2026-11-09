@@ -33,7 +33,7 @@ public class DailyMenuQueryRepository {
         this.jdbc = jdbc;
     }
 
-    public Optional<DailyMenuResponse.Header> findHeader(long id) {
+    public Optional<DailyMenuResponse.Header> findDailyMenuHeader(long id) {
         return jdbc.sql(HEADER_SELECT + " WHERE id = :id").param("id", id).query(DailyMenuResponse.Header.class).optional();
     }
 
@@ -41,12 +41,12 @@ public class DailyMenuQueryRepository {
         return jdbc.sql(HEADER_SELECT + " WHERE business_date = :d").param("d", date).query(DailyMenuResponse.Header.class).optional();
     }
 
-    public List<DailyMenuItemResponse> findItems(long dailyMenuId) {
+    public List<DailyMenuItemResponse> findDailyMenuItems(long dailyMenuId) {
         return jdbc.sql(ITEM_SELECT + " WHERE d.daily_menu_id = :m ORDER BY c.sort_order, m.name").param("m", dailyMenuId)
                 .query(DailyMenuItemResponse.class).list();
     }
 
-    public Optional<DailyMenuItemResponse> findItem(long dailyMenuItemId) {
+    public Optional<DailyMenuItemResponse> findDailyMenuItem(long dailyMenuItemId) {
         return jdbc.sql(ITEM_SELECT + " WHERE d.id = :id").param("id", dailyMenuItemId).query(DailyMenuItemResponse.class).optional();
     }
 
@@ -64,7 +64,7 @@ public class DailyMenuQueryRepository {
      * Nguyên liệu bếp của các món đã mở bán (hạn mức khác 0 hoặc đã bán) trong thực đơn: dự kiến theo hạn mức,
      * tiêu hao thực tế (sổ COOK của chính các món này) và tồn bếp tính từ sổ kho tới cuối ngày kinh doanh.
      */
-    public List<IngredientUsageRow> ingredientUsage(long dailyMenuId, LocalDate businessDate, List<Long> soldDailyMenuItemIds) {
+    public List<IngredientUsageRow> findIngredientUsage(long dailyMenuId, LocalDate businessDate, List<Long> soldDailyMenuItemIds) {
         return jdbc.sql("""
                         WITH dmi AS (
                             SELECT d.id, d.recipe_id, d.quota_total, d.id = ANY (:sold) AS sold

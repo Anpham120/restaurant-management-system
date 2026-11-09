@@ -41,12 +41,12 @@ public class MenuCatalogQueryRepository {
 
 
 
-    public List<MenuItemResponse> findItems(Long categoryId, boolean activeOnly) {
+    public List<MenuItemResponse> findMenuItems(Long categoryId, boolean activeOnly) {
         return jdbc.sql(ITEM_SELECT + " WHERE (:cat::bigint IS NULL OR m.menu_category_id = :cat) AND (m.is_active OR NOT :activeOnly) ORDER BY c.sort_order, m.name")
                 .param("cat", categoryId).param("activeOnly", activeOnly).query(MenuItemResponse.class).list();
     }
 
-    public Optional<MenuItemResponse> findItem(long id) {
+    public Optional<MenuItemResponse> findMenuItem(long id) {
         return jdbc.sql(ITEM_SELECT + " WHERE m.id = :id").param("id", id).query(MenuItemResponse.class).optional();
     }
 

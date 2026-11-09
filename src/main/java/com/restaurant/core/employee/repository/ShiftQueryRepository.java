@@ -57,11 +57,11 @@ public class ShiftQueryRepository {
 
     // ---------- phân ca
 
-    public Optional<ShiftAssignmentResponse> findAssignment(long id) {
+    public Optional<ShiftAssignmentResponse> findShiftAssignment(long id) {
         return jdbc.sql(ASSIGNMENT_SELECT + " WHERE sa.id = :id").param("id", id).query(ShiftAssignmentResponse.class).optional();
     }
 
-    public List<ShiftAssignmentResponse> findAssignments(LocalDate from, LocalDate to, Long employeeId) {
+    public List<ShiftAssignmentResponse> findShiftAssignments(LocalDate from, LocalDate to, Long employeeId) {
         return jdbc.sql(ASSIGNMENT_SELECT + """
                          WHERE sa.work_date BETWEEN :f AND :t AND (CAST(:e AS bigint) IS NULL OR sa.employee_id = :e)
                          ORDER BY sa.scheduled_start_at, sa.id""")
@@ -81,7 +81,7 @@ public class ShiftQueryRepository {
                 .param("f", from).param("t", to).param("e", employeeId).query(AttendanceResponse.class).list();
     }
 
-    public List<AttendanceAdjustmentView> findAdjustments(long attendanceId) {
+    public List<AttendanceAdjustmentView> findAttendanceAdjustments(long attendanceId) {
         return jdbc.sql("""
                         SELECT id, old_status, new_status, old_start_at, new_start_at, old_end_at, new_end_at, old_worked_minutes,
                                new_worked_minutes, reason, adjusted_by_id, adjusted_at

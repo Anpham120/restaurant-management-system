@@ -117,12 +117,12 @@ public class TableServiceImpl implements TableService {
     }
 
     @Override
-    public SessionResponse getSessionById(long sessionId) {
-        return tableQueryRepository.findSession(sessionId).orElseThrow(() -> ApiException.notFound("Không tìm thấy phiên " + sessionId));
+    public SessionResponse getTableSessionById(long sessionId) {
+        return tableQueryRepository.findTableSession(sessionId).orElseThrow(() -> ApiException.notFound("Không tìm thấy phiên " + sessionId));
     }
 
     @Override
-    public PageResponse<SessionResponse> getSessionHistory(long tableId, int page, int size) {
+    public PageResponse<SessionResponse> getTableSessionHistory(long tableId, int page, int size) {
         getTableById(tableId);
         return new PageResponse<>(tableQueryRepository.findSessionsOfTable(tableId, page, size), page, size,
                 tableQueryRepository.countSessionsOfTable(tableId));
@@ -130,7 +130,7 @@ public class TableServiceImpl implements TableService {
 
     @Override
     @Transactional
-    public SessionResponse closeEmptySession(long sessionId, long actorId) {
+    public SessionResponse closeEmptyTableSession(long sessionId, long actorId) {
         CustomerOrder order = findOrderOfSessionForUpdate(sessionId);
         TableSession session = tableSessionRepository.findByIdForUpdate(sessionId).orElseThrow();
         if (!session.isOpen() || !order.isOpen()) {
@@ -146,12 +146,12 @@ public class TableServiceImpl implements TableService {
         order.cancel();
         customerOrderRepository.flush();      // đơn đóng TRƯỚC phiên: DB không cho đóng phiên khi đơn còn mở
         closeSessionAndReleaseTable(session, table, actorId);
-        return getSessionById(sessionId);
+        return getTableSessionById(sessionId);
     }
 
     @Override
     @Transactional
-    public AbandonResponse handleCustomerLeftWithoutPaying(long sessionId, long actorId, String reason) {
+    public AbandonResponse recordCustomerLeftWithoutPaying(long sessionId, long actorId, String reason) {
         if (reason == null || reason.isBlank()) {
             throw ApiException.invalidRequest("Xử lý khách bỏ về bắt buộc có lý do");
         }
@@ -192,7 +192,7 @@ public class TableServiceImpl implements TableService {
         }
         customerOrderRepository.flush();
         closeSessionAndReleaseTable(session, table, actorId);
-        return new AbandonResponse(sessionId, invoiceId, getSessionById(sessionId).invoiceStatus());
+        return new AbandonResponse(sessionId, invoiceId, getTableSessionById(sessionId).invoiceStatus());
     }
 
     // ---------- hỗ trợ

@@ -61,27 +61,27 @@ public class IngredientController {
 
     @GetMapping("/kitchen-ingredient-types")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<KitchenTypeResponse>> getAllKitchenTypes(@RequestParam(required = false) @Positive Long ingredientId,
+    public ApiResponse<List<KitchenTypeResponse>> getAllKitchenIngredientTypes(@RequestParam(required = false) @Positive Long ingredientId,
                                                         @RequestParam(defaultValue = "true") boolean activeOnly) {
-        return ApiResponse.ok(service.getAllKitchenTypes(ingredientId, activeOnly));
+        return ApiResponse.ok(service.getAllKitchenIngredientTypes(ingredientId, activeOnly));
     }
 
     @GetMapping("/kitchen-ingredient-types/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<KitchenTypeResponse> getKitchenTypeById(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.getKitchenTypeById(id));
+    public ApiResponse<KitchenTypeResponse> getKitchenIngredientTypeById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getKitchenIngredientTypeById(id));
     }
 
     @PostMapping("/kitchen-ingredient-types")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<KitchenTypeResponse> createKitchenType(@Valid @RequestBody KitchenTypeRequest request) {
-        return ApiResponse.ok(service.createKitchenType(request));
+    public ApiResponse<KitchenTypeResponse> createKitchenIngredientType(@Valid @RequestBody KitchenTypeRequest request) {
+        return ApiResponse.ok(service.createKitchenIngredientType(request));
     }
 
     @PutMapping("/kitchen-ingredient-types/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<KitchenTypeResponse> updateKitchenType(@PathVariable @Positive long id, @Valid @RequestBody KitchenTypeRequest request) {
-        return ApiResponse.ok(service.updateKitchenType(id, request));
+    public ApiResponse<KitchenTypeResponse> updateKitchenIngredientType(@PathVariable @Positive long id, @Valid @RequestBody KitchenTypeRequest request) {
+        return ApiResponse.ok(service.updateKitchenIngredientType(id, request));
     }
 }
