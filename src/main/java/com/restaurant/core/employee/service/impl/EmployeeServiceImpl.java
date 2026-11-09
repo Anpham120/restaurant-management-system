@@ -41,6 +41,8 @@ import com.restaurant.core.employee.repository.RoleRepository;
 import com.restaurant.core.employee.repository.ShiftAssignmentRepository;
 import com.restaurant.core.employee.service.EmployeeService;
 
+import static com.restaurant.core.common.util.TextUtils.blankToNull;
+
 /**
  * Nghiệp vụ nhân sự. @PreAuthorize ở controller là lớp kiểm quyền; ở đây chặn thêm việc Manager tự khóa, tự cho nghỉ
  * hoặc tự bỏ vai trò MANAGER của chính mình. Mỗi method ghi chạy trong một transaction và flush trước khi trả về,
@@ -79,7 +81,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional
     public DepartmentResponse updateDepartment(long id, DepartmentRequest request) {
         Department department = departmentRepository.findById(id).orElseThrow(() -> notFoundError("Không tìm thấy phòng ban " + id));
-        department.setName(request.name().strip());
+        department.rename(request.name().strip());
         departmentRepository.flush();
         return mapper.toResponse(department);
     }
@@ -134,9 +136,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employee.hasLeft()) {
             throw new ApiException(HttpStatus.CONFLICT, "EMPLOYEE_LEFT", "Nhân viên " + id + " đã nghỉ việc, không sửa hồ sơ");
         }
-        employee.setFullName(request.fullName().strip());
-        employee.setDepartment(departmentRepository.getReferenceById(request.departmentId()));
-        employee.setWorkStatus(newStatus);
+        employee.updateWorkInfo(request.fullName().strip(), departmentRepository.getReferenceById(request.departmentId()), newStatus);
         applyProfileFields(employee, request.gender(), request.dateOfBirth(), request.phone(), request.email(), request.address(),
                 request.hireDate());
         employeeRepository.flush();
@@ -246,17 +246,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private static void applyProfileFields(Employee e, String gender, LocalDate dateOfBirth, String phone, String email, String address,
                                      LocalDate hireDate) {
-        e.setGender(blankToNull(gender));
-        e.setDateOfBirth(dateOfBirth);
-        e.setPhone(blankToNull(phone));
-        e.setEmail(blankToNull(email));
-        e.setAddress(blankToNull(address));
-        e.setHireDate(hireDate);
+        e.updateProfile(blankToNull(gender), dateOfBirth, blankToNull(phone), blankToNull(email), blankToNull(address), hireDate);
     }
 
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.strip();
-    }
 
     private static ApiException selfLockoutError() {
         return new ApiException(HttpStatus.CONFLICT, "SELF_LOCKOUT", "Không được tự khóa, tự cho nghỉ hoặc tự bỏ vai trò MANAGER của chính mình");

@@ -16,6 +16,8 @@ import com.restaurant.core.finance.repository.CashReconciliationQueryRepository;
 import com.restaurant.core.finance.repository.DailyCashReconciliationRepository;
 import com.restaurant.core.finance.service.CashReconciliationService;
 
+import static com.restaurant.core.common.util.TextUtils.blankToNull;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -66,9 +68,6 @@ public class CashReconciliationServiceImpl implements CashReconciliationService 
                 reconciliationQueryRepository.findVersionsByDate(businessDate));
     }
 
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.strip();
-    }
 
     /**
      * Số liệu TƯƠI của ngày (thu tiền mặt, chi từ két) đặt cạnh biên bản hiện hành. stale = biên bản đã lập lệch số

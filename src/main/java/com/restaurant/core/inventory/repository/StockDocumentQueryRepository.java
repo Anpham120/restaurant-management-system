@@ -18,11 +18,11 @@ import com.restaurant.core.inventory.dto.response.StockDocumentResponses.Receipt
  * StockDocumentServiceImpl. Owner: Đỗ Tuấn Anh.
  */
 @Repository
-public class StockDocumentRepository {
+public class StockDocumentQueryRepository {
 
     private final JdbcClient jdbc;
 
-    public StockDocumentRepository(JdbcClient jdbc) {
+    public StockDocumentQueryRepository(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }
 
