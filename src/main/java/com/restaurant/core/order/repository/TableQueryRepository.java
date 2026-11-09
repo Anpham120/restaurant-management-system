@@ -45,7 +45,7 @@ public class TableQueryRepository {
         return jdbc.sql(TABLE_SELECT + " WHERE t.id = :id").param("id", tableId).query(TableResponse.class).optional();
     }
 
-    public Optional<SessionResponse> findSession(long sessionId) {
+    public Optional<SessionResponse> findTableSession(long sessionId) {
         return jdbc.sql(SESSION_SELECT + " WHERE s.id = :id").param("id", sessionId).query(SessionResponse.class).optional();
     }
 

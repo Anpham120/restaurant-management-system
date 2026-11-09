@@ -59,38 +59,38 @@ public class OrderItemController {
 
     @PostMapping("/{itemId}/start-cooking")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> startCookingItem(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(kitchenService.startCookingItem(itemId, currentUser.employeeId()));
+    public ApiResponse<OrderItemResponse> startCookingOrderItem(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(kitchenService.startCookingOrderItem(itemId, currentUser.employeeId()));
     }
 
     @PostMapping("/{itemId}/finish")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> finishCookingItem(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(kitchenService.finishCookingItem(itemId, currentUser.employeeId()));
+    public ApiResponse<OrderItemResponse> finishCookingOrderItem(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(kitchenService.finishCookingOrderItem(itemId, currentUser.employeeId()));
     }
 
     @PostMapping("/{itemId}/reallocate")
     @PreAuthorize("hasAnyRole('KITCHEN', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> reallocateItemIngredients(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(kitchenService.reallocateItemIngredients(itemId, currentUser.employeeId()));
+    public ApiResponse<OrderItemResponse> reallocateOrderItemIngredients(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(kitchenService.reallocateOrderItemIngredients(itemId, currentUser.employeeId()));
     }
 
     @PostMapping("/{itemId}/serve")
     @PreAuthorize("hasAnyRole('WAITER', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> markItemServed(@PathVariable @Positive long itemId) {
-        return ApiResponse.ok(orderService.markItemServed(itemId, currentUser.employeeId()));
+    public ApiResponse<OrderItemResponse> markOrderItemServed(@PathVariable @Positive long itemId) {
+        return ApiResponse.ok(orderService.markOrderItemServed(itemId, currentUser.employeeId()));
     }
 
     /** Hủy trước khi nấu (PENDING/ACCEPTED). Từ COOKING phải dùng cancel-exception. */
     @PostMapping("/{itemId}/cancel")
     @PreAuthorize("hasAnyRole('WAITER', 'KITCHEN', 'MANAGER')")
-    public ApiResponse<OrderItemResponse> cancelItemBeforeCooking(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(orderService.cancelItemBeforeCooking(itemId, currentUser.employeeId(), request.reason()));
+    public ApiResponse<OrderItemResponse> cancelOrderItemBeforeCooking(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(orderService.cancelOrderItemBeforeCooking(itemId, currentUser.employeeId(), request.reason()));
     }
 
     @PostMapping("/{itemId}/cancel-exception")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<OrderItemResponse> cancelItemAfterCooking(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
-        return ApiResponse.ok(orderService.cancelItemAfterCooking(itemId, currentUser.employeeId(), request.reason()));
+    public ApiResponse<OrderItemResponse> cancelOrderItemAfterCooking(@PathVariable @Positive long itemId, @Valid @RequestBody ReasonRequest request) {
+        return ApiResponse.ok(orderService.cancelOrderItemAfterCooking(itemId, currentUser.employeeId(), request.reason()));
     }
 }

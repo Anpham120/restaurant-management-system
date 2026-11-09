@@ -102,9 +102,13 @@ Tên hàm nói rõ **làm gì với cái gì**: động từ + đối tượng, 
 | Đổi trạng thái | động từ nghiệp vụ + đối tượng | `lockAccount`, `unlockAccount`, `markEmployeeAsLeft`, `resetAccountPassword` |
 | Kiểm tra | `is…`, `has…`, `can…` | `hasLeft()` |
 | Truy vấn khóa dòng | `find…ForUpdate` | `findAccountForUpdate(id)` |
-| Tạo lỗi | `…Error` | `notFoundError(...)`, `selfLockoutError()` |
+| Truy vấn trong repository | `find…` (Service dùng `get…`) | `findStockReceiptHeader(id)`, `findStockReceiptLines(id)`, `findInvoiceLines(id)` |
+| Tạo lỗi | `…Error` | `notFoundError(...)`, `selfLockoutError()`, `conflictError(...)` |
+| Dựng / tính giá trị | `build…`, `calculate…`, `to…` | `buildDailyMenuResponse(header)`, `calculateWorkTimes(...)`, `toPlainText(value)` |
 
-Không đặt tên chung chung (`process`, `handle`, `doAction`, `data`). Method controller trùng tên method service nó gọi.
+- **Một đối tượng một tên ở mọi tầng**, lấy theo tên Entity: phiếu nhập là `StockReceipt` thì `getStockReceiptById`, `confirmStockReceipt`, `findStockReceiptHeader` (không lúc `Receipt` lúc `StockReceipt`); món trong thực đơn ngày là `DailyMenuItem` (`pauseDailyMenuItem`, không `pauseDish`); món của đơn là `OrderItem` (`markOrderItemServed`); phiên bàn là `TableSession`; loại nguyên liệu bếp là `KitchenIngredientType`.
+- Không đặt tên chung chung (`process`, `handle`, `doAction`, `data`, `item`, `header`, `find`). Ngoại lệ: tên do framework quy định (`AccessDeniedHandler.handle`, `Converter.convert`) và `@ExceptionHandler` đặt `handle…` theo loại lỗi.
+- Method controller trùng tên method service nó gọi.
 
 ## 3. Viết nghiệp vụ trong Service
 

@@ -24,11 +24,11 @@ public interface OrderService {
     SubmitBatchResponse submitOrderBatch(long orderId, long actorId, SubmitBatchRequest request);
 
     /** Món đã xong → đã bưng ra cho khách. */
-    OrderItemResponse markItemServed(long itemId, long actorId);
+    OrderItemResponse markOrderItemServed(long itemId, long actorId);
 
     /** Hủy món chưa nấu (chờ bếp / đã nhận): trả lại nguyên liệu đã giữ. */
-    OrderItemResponse cancelItemBeforeCooking(long itemId, long actorId, String reason);
+    OrderItemResponse cancelOrderItemBeforeCooking(long itemId, long actorId, String reason);
 
     /** Quản lý hủy món đã nấu / đã phục vụ (ngoại lệ): không thu tiền món đó, nguyên liệu đã dùng không hoàn lại. */
-    OrderItemResponse cancelItemAfterCooking(long itemId, long actorId, String reason);
+    OrderItemResponse cancelOrderItemAfterCooking(long itemId, long actorId, String reason);
 }

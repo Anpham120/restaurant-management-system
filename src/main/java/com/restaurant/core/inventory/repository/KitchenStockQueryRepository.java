@@ -29,7 +29,7 @@ public class KitchenStockQueryRepository {
     // ---------- sơ chế
 
 
-    public Optional<PreparationResponse.Header> findPreparation(long id) {
+    public Optional<PreparationResponse.Header> findPreparationHeader(long id) {
         return jdbc.sql("""
                         SELECT id, status, stock_issue_item_id, input_quantity, loss_reason, prepared_by_id, prepared_at, request_key
                           FROM kitchen_preparations WHERE id = :id""")
@@ -50,14 +50,14 @@ public class KitchenStockQueryRepository {
     // ---------- hoàn trả
 
 
-    public Optional<ReturnResponse.Header> findReturn(long id) {
+    public Optional<ReturnResponse.Header> findStockReturnHeader(long id) {
         return jdbc.sql("""
                         SELECT id, status, reason, requested_by_id, confirmed_by_id, created_at, confirmed_at, request_key
                           FROM stock_returns WHERE id = :id""")
                 .param("id", id).query(ReturnResponse.Header.class).optional();
     }
 
-    public List<ReturnLineView> findReturnLines(long id) {
+    public List<ReturnLineView> findStockReturnLines(long id) {
         return jdbc.sql("SELECT id, source_issue_item_id, direct_kitchen_batch_id, quantity FROM stock_return_items WHERE stock_return_id = :r ORDER BY id")
                 .param("r", id).query(ReturnLineView.class).list();
     }
@@ -65,14 +65,14 @@ public class KitchenStockQueryRepository {
     // ---------- hủy hàng
 
 
-    public Optional<AdjustmentResponse.Header> findAdjustment(long id) {
+    public Optional<AdjustmentResponse.Header> findStockAdjustmentHeader(long id) {
         return jdbc.sql("""
                         SELECT id, status, adjustment_type, reason, created_by_id, confirmed_by_id, created_at, confirmed_at, request_key
                           FROM stock_adjustments WHERE id = :id""")
                 .param("id", id).query(AdjustmentResponse.Header.class).optional();
     }
 
-    public List<AdjustmentLineView> findAdjustmentLines(long id) {
+    public List<AdjustmentLineView> findStockAdjustmentLines(long id) {
         return jdbc.sql("""
                         SELECT id, raw_batch_id, wip_issue_item_id, kitchen_batch_id, quantity_delta, note
                           FROM stock_adjustment_items WHERE stock_adjustment_id = :a ORDER BY id""")
@@ -88,7 +88,7 @@ public class KitchenStockQueryRepository {
                 .param("s", status).param("size", size).param("off", (long) page * size).query(PreparationResponse.Header.class).list();
     }
 
-    public List<ReturnResponse.Header> findReturns(String status, int page, int size) {
+    public List<ReturnResponse.Header> findStockReturns(String status, int page, int size) {
         return jdbc.sql("""
                         SELECT id, status, reason, requested_by_id, confirmed_by_id, created_at, confirmed_at, request_key
                           FROM stock_returns WHERE CAST(:s AS text) IS NULL OR status = :s
@@ -96,7 +96,7 @@ public class KitchenStockQueryRepository {
                 .param("s", status).param("size", size).param("off", (long) page * size).query(ReturnResponse.Header.class).list();
     }
 
-    public List<AdjustmentResponse.Header> findAdjustments(String status, int page, int size) {
+    public List<AdjustmentResponse.Header> findStockAdjustments(String status, int page, int size) {
         return jdbc.sql("""
                         SELECT id, status, adjustment_type, reason, created_by_id, confirmed_by_id, created_at, confirmed_at, request_key
                           FROM stock_adjustments WHERE CAST(:s AS text) IS NULL OR status = :s

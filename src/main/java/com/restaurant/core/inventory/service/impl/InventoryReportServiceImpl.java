@@ -72,7 +72,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     @Override
     public List<StockHistoryRow> getStockHistory(Instant from, Instant to, Long ingredientId) {
         if (!from.isBefore(to)) {
-            throw badRange();
+            throw invalidDateRangeError();
         }
         return repo.findMovements(from, to, ingredientId).stream()
                 .map(m -> new StockHistoryRow(m.movementId(), m.createdAt(), BusinessDateProvider.businessDateOf(m.createdAt()),
@@ -84,7 +84,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     @Override
     public List<PreparationYieldRow> getPreparationYield(LocalDate from, LocalDate to) {
         if (from.isAfter(to)) {
-            throw badRange();
+            throw invalidDateRangeError();
         }
         return repo.findConfirmedPreparations(BusinessDateProvider.startOf(from), BusinessDateProvider.startOf(to.plusDays(1))).stream()
                 .map(InventoryReportServiceImpl::toYieldRow)
@@ -93,15 +93,15 @@ public class InventoryReportServiceImpl implements InventoryReportService {
 
     @Override
     public List<RawLotRow> getRawLots(Long ingredientId) {
-        return repo.rawLots(ingredientId, clock.today());
+        return repo.findRawLots(ingredientId, clock.today());
     }
 
     @Override
     public List<KitchenLotRow> getKitchenLots(Long typeId) {
-        return repo.kitchenLots(typeId);
+        return repo.findKitchenLots(typeId);
     }
 
-    private static ApiException badRange() {
+    private static ApiException invalidDateRangeError() {
         return new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Khoảng thời gian không hợp lệ: from phải trước to");
     }
 

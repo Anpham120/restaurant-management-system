@@ -58,7 +58,7 @@ public class MenuCatalogServiceImpl implements MenuCatalogService {
     @Override
     @Transactional
     public CategoryResponse updateCategory(long id, CategoryRequest r) {
-        MenuCategory category = categoryRepository.findById(id).orElseThrow(() -> notFound("Không tìm thấy danh mục " + id));
+        MenuCategory category = categoryRepository.findById(id).orElseThrow(() -> notFoundError("Không tìm thấy danh mục " + id));
         category.changeDetails(r.name().strip(), sortOrderOf(r), isActive(r.active()));
         categoryRepository.flush();
         return repo.findCategory(id).orElseThrow();
@@ -66,12 +66,12 @@ public class MenuCatalogServiceImpl implements MenuCatalogService {
 
     @Override
     public List<MenuItemResponse> getMenuItems(Long categoryId, boolean activeOnly) {
-        return repo.findItems(categoryId, activeOnly);
+        return repo.findMenuItems(categoryId, activeOnly);
     }
 
     @Override
     public MenuItemResponse getMenuItemById(long id) {
-        return repo.findItem(id).orElseThrow(() -> notFound("Không tìm thấy món " + id));
+        return repo.findMenuItem(id).orElseThrow(() -> notFoundError("Không tìm thấy món " + id));
     }
 
     @Override
@@ -84,7 +84,7 @@ public class MenuCatalogServiceImpl implements MenuCatalogService {
     @Override
     @Transactional
     public MenuItemResponse updateMenuItem(long id, MenuItemRequest r) {
-        MenuItem item = menuItemRepository.findById(id).orElseThrow(() -> notFound("Không tìm thấy món " + id));
+        MenuItem item = menuItemRepository.findById(id).orElseThrow(() -> notFoundError("Không tìm thấy món " + id));
         item.changeDetails(categoryRepository.getReferenceById(r.categoryId()), r.name().strip(), r.price(), r.imageUrl(), isActive(r.active()));
         menuItemRepository.flush();
         return getMenuItemById(id);
@@ -97,7 +97,7 @@ public class MenuCatalogServiceImpl implements MenuCatalogService {
     @Override
     @Transactional
     public RecipeResponse createRecipe(long menuItemId, RecipeRequest r) {
-        MenuItem menuItem = menuItemRepository.findByIdForUpdate(menuItemId).orElseThrow(() -> notFound("Không tìm thấy món " + menuItemId));
+        MenuItem menuItem = menuItemRepository.findByIdForUpdate(menuItemId).orElseThrow(() -> notFoundError("Không tìm thấy món " + menuItemId));
         int version = recipeRepository.findLatestVersion(menuItemId) + 1;
         recipeRepository.findByMenuItem_IdAndCurrentTrue(menuItemId).ifPresent(current -> {
             current.retire();
@@ -128,7 +128,7 @@ public class MenuCatalogServiceImpl implements MenuCatalogService {
         return active == null || active;
     }
 
-    private static ApiException notFound(String message) {
+    private static ApiException notFoundError(String message) {
         return ApiException.notFound(message);
     }
 }

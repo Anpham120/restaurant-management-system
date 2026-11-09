@@ -169,7 +169,7 @@ public class InventoryReportRepository {
     }
 
     /** Lô RAW còn hàng, xếp FEFO (hạn sớm trước, cùng hạn thì nhận trước) — đúng thứ tự xuất kho FEFO đòi hỏi. */
-    public List<RawLotRow> rawLots(Long ingredientId, LocalDate today) {
+    public List<RawLotRow> findRawLots(Long ingredientId, LocalDate today) {
         return jdbc.sql("""
                         SELECT b.id AS inventory_batch_id, s.ingredient_id, g.name AS ingredient_name, s.lot_code, s.expiry_date,
                                b.received_at, b.quantity_on_hand, g.base_unit,
@@ -182,7 +182,7 @@ public class InventoryReportRepository {
                 .param("g", ingredientId).param("today", today).query(RawLotRow.class).list();
     }
 
-    public List<KitchenLotRow> kitchenLots(Long typeId) {
+    public List<KitchenLotRow> findKitchenLots(Long typeId) {
         return jdbc.sql("""
                         SELECT k.id AS kitchen_batch_id, k.kitchen_ingredient_type_id, t.name AS type_name, k.quantity_on_hand,
                                k.reserved_quantity, k.usable_until,

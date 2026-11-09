@@ -86,7 +86,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         var existing = receiptRepository.findByRequestKey(request.requestKey());
         if (existing.isPresent()) {
             requestKeys.requireSameRequest(existing.get().getRequestHash(), fingerprint, request.requestKey(), "phiếu nhập");
-            return getReceiptById(existing.get().getId());
+            return getStockReceiptById(existing.get().getId());
         }
         StockReceipt receipt = receiptRepository.save(new StockReceipt(blankToNull(request.supplierName()), blankToNull(request.note()),
                 actorId, request.requestKey(), fingerprint, clock.now()));
@@ -95,7 +95,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
                     line.conversionFactor(), line.unitPricePerInputUnit(), blankToNull(line.lotCode()), line.expiryDate()));
         }
         receiptItemRepository.flush();
-        return getReceiptById(receipt.getId());
+        return getStockReceiptById(receipt.getId());
     }
 
     @Override
@@ -133,12 +133,12 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         }
         receipt.confirm(receivedAt == null ? now : receivedAt, actorId, now);   // ghi sổ trước, đổi trạng thái sau
         receiptRepository.flush();
-        return getReceiptById(receiptId);
+        return getStockReceiptById(receiptId);
     }
 
     @Override
     @Transactional
-    public void deleteDraftReceipt(long receiptId) {
+    public void deleteDraftStockReceipt(long receiptId) {
         StockReceipt receipt = receiptRepository.findByIdForUpdate(receiptId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy phiếu nhập " + receiptId));
         if (receipt.getStatus() != DocumentStatus.DRAFT) {
@@ -151,18 +151,18 @@ public class StockDocumentServiceImpl implements StockDocumentService {
     }
 
     @Override
-    public ReceiptResponse getReceiptById(long receiptId) {
-        ReceiptResponse.Header h = documentQueryRepository.findReceipt(receiptId)
+    public ReceiptResponse getStockReceiptById(long receiptId) {
+        ReceiptResponse.Header h = documentQueryRepository.findStockReceiptHeader(receiptId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy phiếu nhập " + receiptId));
-        List<ReceiptLineView> lines = documentQueryRepository.findReceiptLines(receiptId);
+        List<ReceiptLineView> lines = documentQueryRepository.findStockReceiptLines(receiptId);
         BigDecimal total = lines.stream().map(ReceiptLineView::lineAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new ReceiptResponse(h.id(), h.status(), h.supplierName(), h.note(), h.requestKey(), h.createdAt(), h.createdById(),
                 h.receivedAt(), h.confirmedById(), h.confirmedAt(), total, lines);
     }
 
     @Override
-    public List<ReceiptResponse.Header> getReceipts(String status, int page, int size) {
-        return documentQueryRepository.findReceipts(status, page, size);
+    public List<ReceiptResponse.Header> getStockReceipts(String status, int page, int size) {
+        return documentQueryRepository.findStockReceipts(status, page, size);
     }
 
     // ==================== phiếu xuất
@@ -175,7 +175,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         var existing = issueRepository.findByRequestKey(request.requestKey());
         if (existing.isPresent()) {
             requestKeys.requireSameRequest(existing.get().getRequestHash(), fingerprint, request.requestKey(), "phiếu xuất");
-            return getIssueById(existing.get().getId());
+            return getStockIssueById(existing.get().getId());
         }
         StockIssue issue = issueRepository.save(new StockIssue(actorId, blankToNull(request.note()), request.requestKey(), fingerprint, clock.now()));
         for (IssueLine line : request.items()) {
@@ -183,7 +183,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
                     FulfillmentMode.valueOf(line.fulfillmentMode())));
         }
         issueItemRepository.flush();
-        return getIssueById(issue.getId());
+        return getStockIssueById(issue.getId());
     }
 
     @Override
@@ -216,8 +216,8 @@ public class StockDocumentServiceImpl implements StockDocumentService {
                 throw ApiException.invalidState("Lô kho " + batch.getId() + " không dùng được hoặc đã hết hạn");
             }
             if (used.getValue().compareTo(batch.getQuantityOnHand()) > 0) {
-                throw ApiException.invalidState("Lô kho " + batch.getId() + " chỉ còn " + plain(batch.getQuantityOnHand())
-                        + ", phiếu cần " + plain(used.getValue()));
+                throw ApiException.invalidState("Lô kho " + batch.getId() + " chỉ còn " + toPlainText(batch.getQuantityOnHand())
+                        + ", phiếu cần " + toPlainText(used.getValue()));
             }
         }
         requireFirstExpiredFirstOut(issueId, requestedByBatch, lockedBatches, receiptLineOfBatch, today);
@@ -231,7 +231,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         inventoryBatchRepository.flush();
         issue.markIssued(actorId, now);
         issueRepository.flush();
-        return getIssueById(issueId);
+        return getStockIssueById(issueId);
     }
 
     @Override
@@ -260,7 +260,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         issueItemRepository.flush();
         issue.markReceived(actorId, now);
         issueRepository.flush();
-        return getIssueById(issueId);
+        return getStockIssueById(issueId);
     }
 
     @Override
@@ -288,20 +288,20 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         }
         issue.cancel(reason.strip(), actorId, now);
         issueRepository.flush();
-        return getIssueById(issueId);
+        return getStockIssueById(issueId);
     }
 
     @Override
-    public IssueResponse getIssueById(long issueId) {
-        IssueResponse.Header h = documentQueryRepository.findIssue(issueId)
+    public IssueResponse getStockIssueById(long issueId) {
+        IssueResponse.Header h = documentQueryRepository.findStockIssueHeader(issueId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy phiếu xuất " + issueId));
         return new IssueResponse(h.id(), h.status(), h.note(), h.requestKey(), h.createdAt(), h.issuedById(), h.issuedAt(),
-                h.receivedById(), h.receivedAt(), h.cancelReason(), h.cancelledAt(), documentQueryRepository.findIssueLines(issueId));
+                h.receivedById(), h.receivedAt(), h.cancelReason(), h.cancelledAt(), documentQueryRepository.findStockIssueLines(issueId));
     }
 
     @Override
-    public List<IssueResponse.Header> getIssues(String status, int page, int size) {
-        return documentQueryRepository.findIssues(status, page, size);
+    public List<IssueResponse.Header> getStockIssues(String status, int page, int size) {
+        return documentQueryRepository.findStockIssues(status, page, size);
     }
 
     // ==================== phiếu kiểm kê
@@ -315,7 +315,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         var existing = countRepository.findByRequestKey(request.requestKey());
         if (existing.isPresent()) {
             requestKeys.requireSameRequest(existing.get().getRequestHash(), fingerprint, request.requestKey(), "phiếu kiểm kê");
-            return getCountById(existing.get().getId());
+            return getStockCountById(existing.get().getId());
         }
         StockCount count = countRepository.save(new StockCount(blankToNull(request.note()), actorId, request.requestKey(), fingerprint, clock.now()));
         for (CountLine line : request.items()) {
@@ -324,7 +324,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
                     findBookQuantity(line), line.actualQuantity(), blankToNull(line.reason())));
         }
         countItemRepository.flush();
-        return getCountById(count.getId());
+        return getStockCountById(count.getId());
     }
 
     @Override
@@ -340,11 +340,11 @@ public class StockDocumentServiceImpl implements StockDocumentService {
             throw ApiException.invalidRequest("Phiếu kiểm kê " + countId + " rỗng");
         }
         // khóa đúng thứ tự chung: lô kho chính → dòng xuất (WIP) → lô bếp
-        Map<Long, InventoryBatch> rawBatches = idMap(inventoryBatchRepository.lockBatchesByIds(idsOf(lines, StockCountItem::getRawBatchId)),
+        Map<Long, InventoryBatch> rawBatches = mapById(inventoryBatchRepository.lockBatchesByIds(collectIds(lines, StockCountItem::getRawBatchId)),
                 InventoryBatch::getId);
-        Map<Long, StockIssueItem> wipLines = idMap(issueItemRepository.lockIssueItemsByIds(idsOf(lines, StockCountItem::getWipIssueItemId)),
+        Map<Long, StockIssueItem> wipLines = mapById(issueItemRepository.lockIssueItemsByIds(collectIds(lines, StockCountItem::getWipIssueItemId)),
                 StockIssueItem::getId);
-        Map<Long, KitchenBatch> kitchenBatches = idMap(kitchenBatchRepository.lockBatchesByIds(idsOf(lines, StockCountItem::getKitchenBatchId)),
+        Map<Long, KitchenBatch> kitchenBatches = mapById(kitchenBatchRepository.lockBatchesByIds(collectIds(lines, StockCountItem::getKitchenBatchId)),
                 KitchenBatch::getId);
         Instant now = clock.now();
         for (StockCountItem line : lines) {
@@ -360,12 +360,12 @@ public class StockDocumentServiceImpl implements StockDocumentService {
                 reserved = kb.getReservedQuantity();
             }
             if (current.compareTo(line.getBookQuantity()) != 0) {
-                throw ApiException.invalidState("Dòng kiểm kê " + line.getId() + ": số sổ đã đổi từ " + plain(line.getBookQuantity())
-                        + " thành " + plain(current) + " — lập lại phiếu");
+                throw ApiException.invalidState("Dòng kiểm kê " + line.getId() + ": số sổ đã đổi từ " + toPlainText(line.getBookQuantity())
+                        + " thành " + toPlainText(current) + " — lập lại phiếu");
             }
             if (line.getActualQuantity().compareTo(reserved) < 0) {
-                throw ApiException.invalidState("Dòng kiểm kê " + line.getId() + ": thực đếm " + plain(line.getActualQuantity())
-                        + " nhỏ hơn lượng đang giữ cho món " + plain(reserved));
+                throw ApiException.invalidState("Dòng kiểm kê " + line.getId() + ": thực đếm " + toPlainText(line.getActualQuantity())
+                        + " nhỏ hơn lượng đang giữ cho món " + toPlainText(reserved));
             }
             BigDecimal difference = line.calculateDifference();
             if (difference.signum() == 0) {
@@ -388,20 +388,20 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         inventoryBatchRepository.flush();
         count.confirm(actorId, now);
         countRepository.flush();
-        return getCountById(countId);
+        return getStockCountById(countId);
     }
 
     @Override
-    public CountResponse getCountById(long countId) {
-        CountResponse.Header h = documentQueryRepository.findCount(countId)
+    public CountResponse getStockCountById(long countId) {
+        CountResponse.Header h = documentQueryRepository.findStockCountHeader(countId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy phiếu kiểm kê " + countId));
         return new CountResponse(h.id(), h.status(), h.note(), h.requestKey(), h.createdAt(), h.createdById(), h.confirmedById(),
-                h.confirmedAt(), documentQueryRepository.findCountLines(countId));
+                h.confirmedAt(), documentQueryRepository.findStockCountLines(countId));
     }
 
     @Override
-    public List<CountResponse.Header> getCounts(String status, int page, int size) {
-        return documentQueryRepository.findCounts(status, page, size);
+    public List<CountResponse.Header> getStockCounts(String status, int page, int size) {
+        return documentQueryRepository.findStockCounts(status, page, size);
     }
 
     // ==================== quy tắc
@@ -488,16 +488,16 @@ public class StockDocumentServiceImpl implements StockDocumentService {
         }
     }
 
-    static <T> List<Long> idsOf(List<T> lines, Function<T, Long> id) {
+    static <T> List<Long> collectIds(List<T> lines, Function<T, Long> id) {
         List<Long> ids = lines.stream().map(id).filter(java.util.Objects::nonNull).distinct().toList();
         return ids.isEmpty() ? List.of(-1L) : ids;
     }
 
-    static <T> Map<Long, T> idMap(List<T> entities, Function<T, Long> id) {
+    static <T> Map<Long, T> mapById(List<T> entities, Function<T, Long> id) {
         return entities.stream().collect(Collectors.toMap(id, Function.identity()));
     }
 
-    static String plain(BigDecimal value) {
+    static String toPlainText(BigDecimal value) {
         return value.stripTrailingZeros().toPlainString();
     }
 

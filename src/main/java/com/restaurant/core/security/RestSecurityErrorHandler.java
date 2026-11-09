@@ -30,20 +30,20 @@ public class RestSecurityErrorHandler implements AuthenticationEntryPoint, Acces
     @Override
     public void commence(HttpServletRequest req, HttpServletResponse res, AuthenticationException ex) throws IOException {
         res.setHeader("WWW-Authenticate", "Bearer");
-        write(res, HttpStatus.UNAUTHORIZED, ApiError.of("UNAUTHORIZED", "Chưa đăng nhập hoặc token không hợp lệ", req.getRequestURI()));
+        writeErrorResponse(res, HttpStatus.UNAUTHORIZED, ApiError.of("UNAUTHORIZED", "Chưa đăng nhập hoặc token không hợp lệ", req.getRequestURI()));
     }
 
     @Override
     public void handle(HttpServletRequest req, HttpServletResponse res, AccessDeniedException ex) throws IOException {
         if (SecurityConfig.requiresPasswordChange(SecurityContextHolder.getContext().getAuthentication())) {
-            write(res, HttpStatus.FORBIDDEN, ApiError.of("PASSWORD_CHANGE_REQUIRED",
+            writeErrorResponse(res, HttpStatus.FORBIDDEN, ApiError.of("PASSWORD_CHANGE_REQUIRED",
                     "Cần đổi mật khẩu trước khi sử dụng hệ thống (POST /api/auth/change-password)", req.getRequestURI()));
             return;
         }
-        write(res, HttpStatus.FORBIDDEN, ApiError.of("FORBIDDEN", "Không có quyền thực hiện thao tác này", req.getRequestURI()));
+        writeErrorResponse(res, HttpStatus.FORBIDDEN, ApiError.of("FORBIDDEN", "Không có quyền thực hiện thao tác này", req.getRequestURI()));
     }
 
-    private void write(HttpServletResponse res, HttpStatus status, ApiError error) throws IOException {
+    private void writeErrorResponse(HttpServletResponse res, HttpStatus status, ApiError error) throws IOException {
         res.setStatus(status.value());
         res.setContentType(MediaType.APPLICATION_JSON_VALUE);
         res.setCharacterEncoding("UTF-8");

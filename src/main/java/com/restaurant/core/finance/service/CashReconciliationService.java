@@ -11,5 +11,5 @@ public interface CashReconciliationService {
     /** Lập biên bản: tự tính thu tiền mặt và chi từ két của ngày; lệch tiền phải có lý do, lập lại phải có lý do lập lại. */
     CashReconciliationResponse reconcileCashForDay(long actorId, ReconcileRequest request);
 
-    CashReconciliationResponse getCashReconciliation(LocalDate businessDate);
+    CashReconciliationResponse getCashReconciliationByDate(LocalDate businessDate);
 }

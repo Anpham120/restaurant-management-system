@@ -43,7 +43,7 @@ public class AccountStateJwtConverter implements Converter<Jwt, AbstractAuthenti
         } catch (NumberFormatException e) {
             throw new InvalidBearerTokenException("Token không hợp lệ");
         }
-        AccountState s = accounts.findState(employeeId).orElse(null);
+        AccountState s = accounts.findAccountState(employeeId).orElse(null);
         if (s == null || !"ACTIVE".equals(s.accountStatus()) || !"ACTIVE".equals(s.workStatus()) || s.roleCodes() == null) {
             throw new InvalidBearerTokenException("Tài khoản không còn hoạt động");
         }

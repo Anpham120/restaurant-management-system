@@ -26,6 +26,6 @@ public class SepayWebhookController {
     @PostMapping(path = "/sepay", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<SepayWebhookService.WebhookResult> receive(
             @RequestHeader(name = "Authorization", required = false) String authorization, @RequestBody String rawBody) {
-        return ApiResponse.ok(service.handle(authorization, rawBody));
+        return ApiResponse.ok(service.receiveTransferWebhook(authorization, rawBody));
     }
 }

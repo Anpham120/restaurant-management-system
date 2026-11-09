@@ -70,7 +70,7 @@ public class KitchenServiceImpl implements KitchenService {
 
     @Override
     @Transactional
-    public OrderItemResponse startCookingItem(long itemId, long actorId) {
+    public OrderItemResponse startCookingOrderItem(long itemId, long actorId) {
         OrderItem item = findItemForUpdate(itemId);
         if (item.getStatus() != OrderItemStatus.ACCEPTED) {
             throw ApiException.invalidState("Món " + itemId + " đang " + item.getStatus() + ", chưa được nhận để nấu");
@@ -85,14 +85,14 @@ public class KitchenServiceImpl implements KitchenService {
 
     @Override
     @Transactional
-    public OrderItemResponse finishCookingItem(long itemId, long actorId) {
+    public OrderItemResponse finishCookingOrderItem(long itemId, long actorId) {
         statusChanger.changeItemStatus(findItemForUpdate(itemId), EnumSet.of(OrderItemStatus.COOKING), OrderItemStatus.READY, actorId, null);
         return orderService.getOrderItemById(itemId);
     }
 
     @Override
     @Transactional
-    public OrderItemResponse reallocateItemIngredients(long itemId, long actorId) {
+    public OrderItemResponse reallocateOrderItemIngredients(long itemId, long actorId) {
         OrderItem item = findItemForUpdate(itemId);
         if (item.getStatus() != OrderItemStatus.ACCEPTED) {
             throw ApiException.invalidState("Món " + itemId + " đang " + item.getStatus() + ", không phải đã nhận");
@@ -108,7 +108,7 @@ public class KitchenServiceImpl implements KitchenService {
      * Khóa dòng món trong thực đơn để hai món cùng loại được nhận cùng lúc thì kiểm suất lần lượt.
      */
     private String findReasonDishCannotBeServed(OrderItem item) {
-        OrderableDish dish = dailyMenuLookup.findDishForUpdate(item.getDailyMenuItemId()).orElseThrow();
+        OrderableDish dish = dailyMenuLookup.findOrderableDishForUpdate(item.getDailyMenuItemId()).orElseThrow();
         if (!dish.onSaleToday()) {
             return "Thực đơn ngày không còn mở bán";
         }

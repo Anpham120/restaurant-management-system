@@ -28,13 +28,13 @@ public interface TableService {
     /** Mở phiên cho bàn trống: tạo phiên + đơn hàng, bàn chuyển OCCUPIED. */
     OpenSessionResponse openTableSession(long tableId, long actorId);
 
-    SessionResponse getSessionById(long sessionId);
+    SessionResponse getTableSessionById(long sessionId);
 
-    PageResponse<SessionResponse> getSessionHistory(long tableId, int page, int size);
+    PageResponse<SessionResponse> getTableSessionHistory(long tableId, int page, int size);
 
     /** Đóng phiên không phát sinh tiền (mọi món đã hủy/bị từ chối, chưa có hóa đơn): đơn CANCELLED, trả bàn. */
-    SessionResponse closeEmptySession(long sessionId, long actorId);
+    SessionResponse closeEmptyTableSession(long sessionId, long actorId);
 
     /** Khách bỏ về (Quản lý): hủy món chưa phục vụ, hóa đơn UNCOLLECTED hoặc WAIVED nếu 0 đồng, trả bàn. */
-    AbandonResponse handleCustomerLeftWithoutPaying(long sessionId, long actorId, String reason);
+    AbandonResponse recordCustomerLeftWithoutPaying(long sessionId, long actorId, String reason);
 }

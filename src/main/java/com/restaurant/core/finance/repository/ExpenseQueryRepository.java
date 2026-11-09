@@ -30,11 +30,11 @@ public class ExpenseQueryRepository {
 
 
 
-    public Optional<ExpenseResponse> find(long id) {
+    public Optional<ExpenseResponse> findExpenseById(long id) {
         return jdbc.sql(SELECT + "WHERE id = :id").param("id", id).query(ExpenseResponse.class).optional();
     }
 
-    public List<ExpenseResponse> find(LocalDate from, LocalDate to, String category, String status) {
+    public List<ExpenseResponse> findExpenses(LocalDate from, LocalDate to, String category, String status) {
         return jdbc.sql(SELECT + """
                          WHERE business_date BETWEEN :f AND :t
                            AND (CAST(:c AS text) IS NULL OR category = :c) AND (CAST(:s AS text) IS NULL OR status = :s)

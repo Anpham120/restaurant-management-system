@@ -60,9 +60,9 @@ import com.restaurant.core.inventory.repository.StockReturnRepository;
 import com.restaurant.core.inventory.service.KitchenStockService;
 
 import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.blankToNull;
-import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.idMap;
-import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.idsOf;
-import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.plain;
+import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.mapById;
+import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.collectIds;
+import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.toPlainText;
 import static com.restaurant.core.inventory.service.impl.StockDocumentServiceImpl.requireOneSource;
 
 @Service
@@ -121,17 +121,17 @@ public class KitchenStockServiceImpl implements KitchenStockService {
             throw ApiException.invalidState("Dòng xuất " + wipLine.getId() + " không phải hàng chờ sơ chế đã nhận");
         }
         if (preparation.getInputQuantity().compareTo(wipLine.getWipRemainingQuantity()) > 0) {
-            throw ApiException.invalidState("Đầu vào " + plain(preparation.getInputQuantity()) + " vượt lượng chờ sơ chế còn "
-                    + plain(wipLine.getWipRemainingQuantity()));
+            throw ApiException.invalidState("Đầu vào " + toPlainText(preparation.getInputQuantity()) + " vượt lượng chờ sơ chế còn "
+                    + toPlainText(wipLine.getWipRemainingQuantity()));
         }
         List<KitchenPreparationOutput> outputs = preparationOutputRepository.findByKitchenPreparation_IdOrderById(preparationId);
         BigDecimal totalOutput = outputs.stream().map(KitchenPreparationOutput::getOutputQuantity).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (outputs.isEmpty() || totalOutput.signum() <= 0 || totalOutput.compareTo(preparation.getInputQuantity()) > 0) {
-            throw ApiException.invalidRequest("Tổng đầu ra " + plain(totalOutput) + " phải lớn hơn 0 và không vượt đầu vào "
-                    + plain(preparation.getInputQuantity()));
+            throw ApiException.invalidRequest("Tổng đầu ra " + toPlainText(totalOutput) + " phải lớn hơn 0 và không vượt đầu vào "
+                    + toPlainText(preparation.getInputQuantity()));
         }
         StockReceiptItem rawSource = receiptLineOfInventoryBatch(wipLine.getInventoryBatchId());
-        Map<Long, KitchenIngredientType> types = idMap(kitchenTypeRepository.findAllById(
+        Map<Long, KitchenIngredientType> types = mapById(kitchenTypeRepository.findAllById(
                 outputs.stream().map(KitchenPreparationOutput::getKitchenIngredientTypeId).toList()), KitchenIngredientType::getId);
         if (types.values().stream().anyMatch(t -> !KitchenIngredientType.PREPARED.equals(t.getHandlingType())
                 || !t.getRawIngredientId().equals(rawSource.getIngredientId()))) {
@@ -165,7 +165,7 @@ public class KitchenStockServiceImpl implements KitchenStockService {
 
     @Override
     public PreparationResponse getPreparationById(long preparationId) {
-        PreparationResponse.Header h = kitchenQueryRepository.findPreparation(preparationId)
+        PreparationResponse.Header h = kitchenQueryRepository.findPreparationHeader(preparationId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy phiếu sơ chế " + preparationId));
         List<OutputView> outputs = kitchenQueryRepository.findPreparationOutputs(preparationId);
         BigDecimal out = outputs.stream().map(OutputView::outputQuantity).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -209,11 +209,11 @@ public class KitchenStockServiceImpl implements KitchenStockService {
         }
         // khóa đúng thứ tự chung: lô kho chính → dòng xuất → lô bếp
         List<Long> sourceLineIds = lines.stream().map(StockReturnItem::getSourceIssueItemId).distinct().toList();
-        Map<Long, InventoryBatch> rawBatches = idMap(inventoryBatchRepository.lockBatchesByIds(
+        Map<Long, InventoryBatch> rawBatches = mapById(inventoryBatchRepository.lockBatchesByIds(
                 issueItemRepository.findInventoryBatchIdsOfIssueItems(sourceLineIds)), InventoryBatch::getId);
-        Map<Long, StockIssueItem> sourceLines = idMap(issueItemRepository.lockIssueItemsByIds(sourceLineIds), StockIssueItem::getId);
-        Map<Long, KitchenBatch> kitchenBatches = idMap(kitchenBatchRepository.lockBatchesByIds(
-                idsOf(lines, StockReturnItem::getDirectKitchenBatchId)), KitchenBatch::getId);
+        Map<Long, StockIssueItem> sourceLines = mapById(issueItemRepository.lockIssueItemsByIds(sourceLineIds), StockIssueItem::getId);
+        Map<Long, KitchenBatch> kitchenBatches = mapById(kitchenBatchRepository.lockBatchesByIds(
+                collectIds(lines, StockReturnItem::getDirectKitchenBatchId)), KitchenBatch::getId);
         Instant now = clock.now();
         for (StockReturnItem line : lines) {
             StockIssueItem source = sourceLines.get(line.getSourceIssueItemId());
@@ -262,15 +262,15 @@ public class KitchenStockServiceImpl implements KitchenStockService {
 
     @Override
     public ReturnResponse getStockReturnById(long returnId) {
-        ReturnResponse.Header h = kitchenQueryRepository.findReturn(returnId)
+        ReturnResponse.Header h = kitchenQueryRepository.findStockReturnHeader(returnId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy phiếu hoàn trả " + returnId));
         return new ReturnResponse(h.id(), h.status(), h.reason(), h.requestedById(), h.confirmedById(), h.createdAt(), h.confirmedAt(),
-                h.requestKey(), kitchenQueryRepository.findReturnLines(returnId));
+                h.requestKey(), kitchenQueryRepository.findStockReturnLines(returnId));
     }
 
     @Override
     public List<ReturnResponse.Header> getStockReturns(String status, int page, int size) {
-        return kitchenQueryRepository.findReturns(status, page, size);
+        return kitchenQueryRepository.findStockReturns(status, page, size);
     }
 
     // ==================== hủy hàng
@@ -306,11 +306,11 @@ public class KitchenStockServiceImpl implements KitchenStockService {
         if (lines.isEmpty()) {
             throw ApiException.invalidRequest("Phiếu hủy hàng " + adjustmentId + " rỗng");
         }
-        Map<Long, InventoryBatch> rawBatches = idMap(inventoryBatchRepository.lockBatchesByIds(idsOf(lines, StockAdjustmentItem::getRawBatchId)),
+        Map<Long, InventoryBatch> rawBatches = mapById(inventoryBatchRepository.lockBatchesByIds(collectIds(lines, StockAdjustmentItem::getRawBatchId)),
                 InventoryBatch::getId);
-        Map<Long, StockIssueItem> wipLines = idMap(issueItemRepository.lockIssueItemsByIds(idsOf(lines, StockAdjustmentItem::getWipIssueItemId)),
+        Map<Long, StockIssueItem> wipLines = mapById(issueItemRepository.lockIssueItemsByIds(collectIds(lines, StockAdjustmentItem::getWipIssueItemId)),
                 StockIssueItem::getId);
-        Map<Long, KitchenBatch> kitchenBatches = idMap(kitchenBatchRepository.lockBatchesByIds(idsOf(lines, StockAdjustmentItem::getKitchenBatchId)),
+        Map<Long, KitchenBatch> kitchenBatches = mapById(kitchenBatchRepository.lockBatchesByIds(collectIds(lines, StockAdjustmentItem::getKitchenBatchId)),
                 KitchenBatch::getId);
         Instant now = clock.now();
         for (StockAdjustmentItem line : lines) {
@@ -348,15 +348,15 @@ public class KitchenStockServiceImpl implements KitchenStockService {
 
     @Override
     public AdjustmentResponse getStockAdjustmentById(long adjustmentId) {
-        AdjustmentResponse.Header h = kitchenQueryRepository.findAdjustment(adjustmentId)
+        AdjustmentResponse.Header h = kitchenQueryRepository.findStockAdjustmentHeader(adjustmentId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy phiếu hủy hàng " + adjustmentId));
         return new AdjustmentResponse(h.id(), h.status(), h.adjustmentType(), h.reason(), h.createdById(), h.confirmedById(),
-                h.createdAt(), h.confirmedAt(), h.requestKey(), kitchenQueryRepository.findAdjustmentLines(adjustmentId));
+                h.createdAt(), h.confirmedAt(), h.requestKey(), kitchenQueryRepository.findStockAdjustmentLines(adjustmentId));
     }
 
     @Override
     public List<AdjustmentResponse.Header> getStockAdjustments(String status, int page, int size) {
-        return kitchenQueryRepository.findAdjustments(status, page, size);
+        return kitchenQueryRepository.findStockAdjustments(status, page, size);
     }
 
     // ==================== lô hỏng

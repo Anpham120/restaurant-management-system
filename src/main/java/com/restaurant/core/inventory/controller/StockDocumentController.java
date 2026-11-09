@@ -54,16 +54,16 @@ public class StockDocumentController {
 
     @GetMapping("/stock-receipts")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<ReceiptResponse.Header>> getReceipts(
+    public ApiResponse<List<ReceiptResponse.Header>> getStockReceipts(
             @RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(service.getReceipts(status, page, size));
+        return ApiResponse.ok(service.getStockReceipts(status, page, size));
     }
 
     @GetMapping("/stock-receipts/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<ReceiptResponse> getReceiptById(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.getReceiptById(id));
+    public ApiResponse<ReceiptResponse> getStockReceiptById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getStockReceiptById(id));
     }
 
     /** Tạo lô RAW cho từng dòng và ghi sổ RECEIPT. receivedAt bỏ trống = bây giờ. */
@@ -76,8 +76,8 @@ public class StockDocumentController {
 
     @DeleteMapping("/stock-receipts/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<Void> deleteDraftReceipt(@PathVariable @Positive long id) {
-        service.deleteDraftReceipt(id);
+    public ApiResponse<Void> deleteDraftStockReceipt(@PathVariable @Positive long id) {
+        service.deleteDraftStockReceipt(id);
         return ApiResponse.ok(null);
     }
 
@@ -91,16 +91,16 @@ public class StockDocumentController {
 
     @GetMapping("/stock-issues")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<IssueResponse.Header>> getIssues(
+    public ApiResponse<List<IssueResponse.Header>> getStockIssues(
             @RequestParam(required = false) @Pattern(regexp = "DRAFT|ISSUED|RECEIVED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(service.getIssues(status, page, size));
+        return ApiResponse.ok(service.getStockIssues(status, page, size));
     }
 
     @GetMapping("/stock-issues/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<IssueResponse> getIssueById(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.getIssueById(id));
+    public ApiResponse<IssueResponse> getStockIssueById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getStockIssueById(id));
     }
 
     /** Kho xuất: trừ lô RAW (FEFO), hàng chuyển sang trạng thái chờ bếp nhận. */
@@ -133,15 +133,15 @@ public class StockDocumentController {
 
     @GetMapping("/stock-counts")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<CountResponse.Header>> getCounts(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+    public ApiResponse<List<CountResponse.Header>> getStockCounts(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.ok(service.getCounts(status, page, size));
+        return ApiResponse.ok(service.getStockCounts(status, page, size));
     }
 
     @GetMapping("/stock-counts/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<CountResponse> getCountById(@PathVariable @Positive long id) {
-        return ApiResponse.ok(service.getCountById(id));
+    public ApiResponse<CountResponse> getStockCountById(@PathVariable @Positive long id) {
+        return ApiResponse.ok(service.getStockCountById(id));
     }
 
     /** Ghi chênh lệch COUNT_ADJUST; RC409 nếu số sổ đã đổi kể từ lúc lập phiếu. */

@@ -121,14 +121,14 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     public InvoiceResponse getInvoiceById(long invoiceId) {
-        InvoiceResponse.Header header = invoiceQueryRepository.findHeader(invoiceId)
+        InvoiceResponse.Header header = invoiceQueryRepository.findInvoiceHeader(invoiceId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy hóa đơn " + invoiceId));
         List<InvoiceResponse.PaymentRequestView> requests = invoiceQueryRepository.findPaymentRequests(invoiceId).stream()
                 .map(r -> "QR".equals(r.method()) && "WAITING_TRANSFER".equals(r.status())
                         ? r.withQrImageUrl(sepayQr.imageUrl(r.amountDue(), r.paymentReference())) : r)
                 .toList();
-        return InvoiceResponse.of(header, invoiceQueryRepository.findLines(invoiceId), requests,
-                invoiceQueryRepository.findPayment(invoiceId).orElse(null));
+        return InvoiceResponse.of(header, invoiceQueryRepository.findInvoiceLines(invoiceId), requests,
+                invoiceQueryRepository.findPaymentOfInvoice(invoiceId).orElse(null));
     }
 
     static String requireReason(String reason, String message) {

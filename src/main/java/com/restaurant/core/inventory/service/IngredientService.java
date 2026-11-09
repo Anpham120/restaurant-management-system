@@ -18,12 +18,12 @@ public interface IngredientService {
 
     IngredientResponse updateIngredient(long id, IngredientRequest r);
 
-    List<KitchenTypeResponse> getAllKitchenTypes(Long ingredientId, boolean activeOnly);
+    List<KitchenTypeResponse> getAllKitchenIngredientTypes(Long ingredientId, boolean activeOnly);
 
-    KitchenTypeResponse getKitchenTypeById(long id);
+    KitchenTypeResponse getKitchenIngredientTypeById(long id);
 
-    KitchenTypeResponse createKitchenType(KitchenTypeRequest r);
+    KitchenTypeResponse createKitchenIngredientType(KitchenTypeRequest r);
 
     /** Không đổi nguyên liệu gốc và handlingType sau khi tạo (lô bếp, công thức đã tham chiếu). */
-    KitchenTypeResponse updateKitchenType(long id, KitchenTypeRequest r);
+    KitchenTypeResponse updateKitchenIngredientType(long id, KitchenTypeRequest r);
 }

@@ -64,7 +64,7 @@ public class HandlerAuthorizationManager implements AuthorizationManager<Request
         Object previous = request.getAttribute(ServletRequestPathUtils.PATH_ATTRIBUTE);
         ServletRequestPathUtils.parseAndCache(request);
         try {
-            HandlerExecutionChain chain = mapping().getHandler(request);
+            HandlerExecutionChain chain = getHandlerMapping().getHandler(request);
             return chain != null && chain.getHandler() instanceof HandlerMethod hm ? hm : null;
         } catch (Exception e) {
             return null;                          // ví dụ sai method HTTP → MVC tự trả lỗi; @PreAuthorize vẫn là lớp thứ hai
@@ -77,7 +77,7 @@ public class HandlerAuthorizationManager implements AuthorizationManager<Request
         }
     }
 
-    private RequestMappingHandlerMapping mapping() {
+    private RequestMappingHandlerMapping getHandlerMapping() {
         RequestMappingHandlerMapping m = handlerMapping;
         if (m == null) {
             m = context.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class);

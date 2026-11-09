@@ -21,10 +21,10 @@ public interface KitchenService {
     OrderItemResponse rejectOrderItem(long itemId, long actorId, String reason);
 
     /** Bắt đầu nấu: trừ kho đúng phần nguyên liệu đã giữ. */
-    OrderItemResponse startCookingItem(long itemId, long actorId);
+    OrderItemResponse startCookingOrderItem(long itemId, long actorId);
 
-    OrderItemResponse finishCookingItem(long itemId, long actorId);
+    OrderItemResponse finishCookingOrderItem(long itemId, long actorId);
 
     /** Lô nguyên liệu đang giữ bị hỏng/hết hạn: giữ lại từ lô khác. */
-    OrderItemResponse reallocateItemIngredients(long itemId, long actorId);
+    OrderItemResponse reallocateOrderItemIngredients(long itemId, long actorId);
 }

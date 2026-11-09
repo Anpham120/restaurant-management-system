@@ -23,13 +23,13 @@ public class DailyMenuLookupImpl implements DailyMenuLookup {
     private final BusinessDateProvider businessDate;
 
     @Override
-    public Optional<OrderableDish> findDish(long dailyMenuItemId) {
+    public Optional<OrderableDish> findOrderableDish(long dailyMenuItemId) {
         return dailyMenuItemRepository.findWithMenuById(dailyMenuItemId).map(this::toOrderableDish);
     }
 
     @Override
     @Transactional
-    public Optional<OrderableDish> findDishForUpdate(long dailyMenuItemId) {
+    public Optional<OrderableDish> findOrderableDishForUpdate(long dailyMenuItemId) {
         return dailyMenuItemRepository.findByIdForUpdate(dailyMenuItemId).map(this::toOrderableDish);
     }
 
