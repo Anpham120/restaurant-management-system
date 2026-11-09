@@ -56,7 +56,7 @@ Thao tác client có thể gửi lặp (gửi món, tạo phiếu kho, sơ chế
 | 400 | `BAD_REQUEST` | Spring | JSON hỏng, sai kiểu tham số |
 | 401 | `UNAUTHORIZED` | Security | Thiếu/sai/hết hạn token, hoặc token còn hạn nhưng tài khoản đã khóa / nhân viên đã nghỉ / không còn vai trò (đọc lại DB mỗi request) |
 | 401 | `INVALID_CREDENTIALS` | AuthService | Sai đăng nhập, tài khoản khóa hoặc nhân viên nghỉ |
-| 403 | `FORBIDDEN` | `@PreAuthorize` (kiểm ở tầng filter trước khi đọc body) | Vai trò không được gọi endpoint (vai trò lấy từ DB, đổi vai trò có hiệu lực ngay); người không có quyền không bao giờ nhận 400 |
+| 403 | `FORBIDDEN` | `@PreAuthorize` trên method controller (`@EnableMethodSecurity`) | Vai trò không được gọi endpoint (vai trò lấy từ DB, đổi vai trò có hiệu lực ngay); người không có quyền không bao giờ nhận 400 |
 | 403 | `PASSWORD_CHANGE_REQUIRED` | Security | Tài khoản `must_change_password`: chỉ được gọi `POST /api/auth/change-password` và `GET /api/auth/me` |
 | 404 | `NOT_FOUND` | Spring / `ApiException` | Không có đường dẫn / bản ghi |
 | 409 | `INVALID_STATE` | `ApiException.invalidState` (Service) | Sai trạng thái: gọi lặp, sai bước, đối tượng đã đổi |
