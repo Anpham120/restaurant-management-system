@@ -20,6 +20,9 @@ route:
 inhibit_rules:
   - source_matchers: [alertname="AppDown"]
     target_matchers: [alertname="SiteDown"]
+  # Mất kết nối DB thì health DOWN (SiteDown) và API trả 5xx (HighErrorRate) chỉ là hệ quả: gửi một tin nói đúng nguyên nhân
+  - source_matchers: [alertname="DatabaseUnreachable"]
+    target_matchers: [alertname=~"SiteDown|HighErrorRate"]
 
 receivers:
   - name: heartbeat

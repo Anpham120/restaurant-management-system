@@ -44,6 +44,19 @@ groups:
           summary: "Bộ nhớ heap JVM trên 90%"
           description: "App có thể sắp hết bộ nhớ (rò rỉ hoặc tải cao)."
 
+      - alert: DatabaseUnreachable
+        # App chờ hết connectionTimeout của Hikari (30 giây) mà không lấy được kết nối PostgreSQL: DB dừng, sai mật khẩu
+        # sau khi đổi credential, hoặc pool cạn. App vẫn sống nên AppDown không bắt được. Không cần người dùng truy cập:
+        # healthcheck của compose (10 giây/lần) và blackbox (30 giây/lần) đều gọi /actuator/health, health kiểm DB.
+        # Đã thử: dừng DB của một stack thử, counter tăng từ lần gọi health đầu tiên; bật lại DB, app tự kết nối lại.
+        # increase() chịu được counter về 0 khi app khởi động lại (deploy).
+        expr: sum(increase(hikaricp_connections_timeout_total{job="rms-app"}[2m])) > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Ứng dụng không kết nối được database"
+          description: "Hikari không lấy được kết nối PostgreSQL trong 2 phút gần nhất: kiểm container db (docker ps), mật khẩu DB_APP_PASSWORD, số kết nối."
+
   # Kiểm từ phía người dùng (blackbox-exporter gọi domain thật mỗi 30 giây)
   - name: site
     rules:

@@ -163,12 +163,12 @@ Prometheus đánh giá các luật trong `monitoring/prometheus/alerts.yml`. Khi
 
 | Nhóm | Luật | Bắt được |
 |---|---|---|
-| App | `AppDown`, `HighErrorRate`, `JvmHeapHigh` | cả 2 slot không trả số liệu; 5xx trên 5%; heap trên 90% (từng slot) |
+| App | `AppDown`, `HighErrorRate`, `JvmHeapHigh`, `DatabaseUnreachable` | cả 2 slot không trả số liệu; 5xx trên 5%; heap trên 90% (từng slot); app không lấy được kết nối PostgreSQL (`hikaricp_connections_timeout_total` tăng: DB dừng, sai mật khẩu, pool cạn), báo sau khoảng 2 phút |
 | Người dùng | `SiteDown`, `CertExpiringSoon`, `ProbeExporterDown` | blackbox gọi `https://rms.atlasplatform12.tech/actuator/health` và `/` mỗi 30 giây: database chết (health DOWN dù app vẫn chạy), nginx/DNS lỗi; chứng chỉ còn dưới 14 ngày |
 | Sao lưu | `BackupStale`, `OffsiteBackupStale` | quá 26 giờ không có bản `daily` / chưa gửi bản offsite (`scripts/backup-metric.sh` ghi thời điểm thành công) |
 | Máy chủ | `NodeExporterDown`, `DiskAlmostFull`, `HighMemory`, `HighCpu` | ổ đĩa dưới 15%; RAM, CPU trên 90% |
 
-`AppDown` đang bật thì `SiteDown` bị chặn (inhibit) để không nhận hai tin cùng một sự cố.
+`AppDown` đang bật thì `SiteDown` bị chặn (inhibit) để không nhận hai tin cùng một sự cố. Tương tự, `DatabaseUnreachable` chặn `SiteDown` và `HighErrorRate` (health DOWN và lỗi 5xx chỉ là hệ quả của mất DB).
 
 **Nhịp tim (dead man's switch).** Luật `Watchdog` luôn bật; Alertmanager gửi nó tới healthchecks.io mỗi phút thay vì Telegram. Prometheus, Alertmanager, mạng hoặc cả máy chủ chết thì nhịp tim dừng và healthchecks.io (ngoài máy chủ) báo qua Telegram hoặc email. Cài một lần:
 1. Đăng ký https://healthchecks.io (gói miễn phí), **Add Check**: Period 5 phút, Grace 5 phút. Chép **Ping URL** (`https://hc-ping.com/<uuid>`); URL này là bí mật (ai có đều ping được).
