@@ -10,6 +10,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -47,10 +49,16 @@ public class StockReturn {
     @Column(name = "request_key", nullable = false, length = 64, updatable = false)
     private String requestKey;
 
-    public StockReturn(long requestedById, String reason, String requestKey, Instant now) {
+    /** SHA-256 nội dung yêu cầu tạo (RequestKeys): gửi lặp cùng khóa khác nội dung → 409. NULL ở dòng tạo trước migration V5. */
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "request_hash", length = 64, updatable = false, columnDefinition = "char(64)")
+    private String requestHash;
+
+    public StockReturn(long requestedById, String reason, String requestKey, String requestHash, Instant now) {
         this.requestedById = requestedById;
         this.reason = reason;
         this.requestKey = requestKey;
+        this.requestHash = requestHash;
         this.createdAt = now;
         this.status = DocumentStatus.DRAFT;
     }

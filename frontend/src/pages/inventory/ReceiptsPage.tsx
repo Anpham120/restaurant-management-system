@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { api, newRequestKey } from '../../api/client';
-import type { Receipt, ReceiptHeader } from '../../api/types';
+import type { Receipt, ReceiptHeader, PageResponse } from '../../api/types';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { DataTable, Field, FormModal, PageHead, num, useAction } from '../../components/ui';
@@ -24,7 +24,7 @@ export function ReceiptsPage() {
   const [deleting, setDeleting] = useState(false);
 
   const ings = useIngredients();
-  const list = useQuery({ queryKey: ['receipts', status], queryFn: () => api.get<ReceiptHeader[]>(`/api/stock-receipts?size=100${status ? `&status=${status}` : ''}`) });
+  const list = useQuery({ queryKey: ['receipts', status], queryFn: () => api.get<PageResponse<ReceiptHeader>>(`/api/stock-receipts?size=100${status ? `&status=${status}` : ''}`).then((p) => p.items) });
   const detail = useQuery({ queryKey: ['receipt', selectedId], queryFn: () => api.get<Receipt>(`/api/stock-receipts/${selectedId}`), enabled: selectedId != null });
 
   const create = useAction(

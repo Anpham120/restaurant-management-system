@@ -14,7 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.common.exception.ApiException;
+import com.restaurant.core.common.idempotency.RequestKeys;
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.inventory.dto.request.StockDocumentRequests.CountLine;
 import com.restaurant.core.inventory.dto.request.StockDocumentRequests.CountRequest;
@@ -79,7 +81,7 @@ public class StockDocumentServiceImpl implements StockDocumentService {
     private final IngredientRepository ingredientRepository;
     private final StockMovementRepository movementRepository;
     private final StockDocumentQueryRepository documentQueryRepository;
-    private final DocumentRequestKeys requestKeys;
+    private final RequestKeys requestKeys;
     private final BusinessDateProvider clock;
 
     // ==================== phiếu nhập
@@ -167,8 +169,8 @@ public class StockDocumentServiceImpl implements StockDocumentService {
     }
 
     @Override
-    public List<ReceiptResponse.Header> getStockReceipts(String status, int page, int size) {
-        return documentQueryRepository.findStockReceipts(status, page, size);
+    public PageResponse<ReceiptResponse.Header> getStockReceipts(String status, int page, int size) {
+        return new PageResponse<>(documentQueryRepository.findStockReceipts(status, page, size), page, size, documentQueryRepository.countStockReceipts(status));
     }
 
     // ==================== phiếu xuất
@@ -306,8 +308,8 @@ public class StockDocumentServiceImpl implements StockDocumentService {
     }
 
     @Override
-    public List<IssueResponse.Header> getStockIssues(String status, int page, int size) {
-        return documentQueryRepository.findStockIssues(status, page, size);
+    public PageResponse<IssueResponse.Header> getStockIssues(String status, int page, int size) {
+        return new PageResponse<>(documentQueryRepository.findStockIssues(status, page, size), page, size, documentQueryRepository.countStockIssues(status));
     }
 
     // ==================== phiếu kiểm kê
@@ -406,8 +408,8 @@ public class StockDocumentServiceImpl implements StockDocumentService {
     }
 
     @Override
-    public List<CountResponse.Header> getStockCounts(String status, int page, int size) {
-        return documentQueryRepository.findStockCounts(status, page, size);
+    public PageResponse<CountResponse.Header> getStockCounts(String status, int page, int size) {
+        return new PageResponse<>(documentQueryRepository.findStockCounts(status, page, size), page, size, documentQueryRepository.countStockCounts(status));
     }
 
     // ==================== quy tắc

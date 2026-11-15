@@ -10,6 +10,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -63,6 +65,11 @@ public class OperatingExpense {
     @Column(name = "request_key", nullable = false, length = 64, updatable = false)
     private String requestKey;
 
+    /** SHA-256 nội dung yêu cầu tạo (RequestKeys): gửi lặp cùng khóa khác nội dung → 409. NULL ở dòng tạo trước migration V5. */
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "request_hash", length = 64, updatable = false, columnDefinition = "char(64)")
+    private String requestHash;
+
     @Column(nullable = false, length = 20)
     private String status = PAID;
 
@@ -75,9 +82,10 @@ public class OperatingExpense {
     @Column(name = "voided_at")
     private Instant voidedAt;
 
-    public OperatingExpense(String requestKey, String category, String description, BigDecimal amount, String paymentMethod,
+    public OperatingExpense(String requestKey, String requestHash, String category, String description, BigDecimal amount, String paymentMethod,
                             String fundSource, Long stockReceiptId, long recordedById, Instant paidAt, LocalDate businessDate, Instant now) {
         this.requestKey = requestKey;
+        this.requestHash = requestHash;
         this.category = category;
         this.description = description;
         this.amount = amount;

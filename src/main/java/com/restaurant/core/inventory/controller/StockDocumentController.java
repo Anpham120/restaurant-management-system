@@ -1,7 +1,5 @@
 package com.restaurant.core.inventory.controller;
 
-import java.util.List;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -19,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.common.response.ApiResponse;
 import com.restaurant.core.inventory.dto.request.StockDocumentRequests.ConfirmReceiptRequest;
 import com.restaurant.core.inventory.dto.request.StockDocumentRequests.CountRequest;
@@ -54,7 +53,7 @@ public class StockDocumentController {
 
     @GetMapping("/stock-receipts")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<ReceiptResponse.Header>> getStockReceipts(
+    public ApiResponse<PageResponse<ReceiptResponse.Header>> getStockReceipts(
             @RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ApiResponse.ok(service.getStockReceipts(status, page, size));
@@ -91,7 +90,7 @@ public class StockDocumentController {
 
     @GetMapping("/stock-issues")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<IssueResponse.Header>> getStockIssues(
+    public ApiResponse<PageResponse<IssueResponse.Header>> getStockIssues(
             @RequestParam(required = false) @Pattern(regexp = "DRAFT|ISSUED|RECEIVED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ApiResponse.ok(service.getStockIssues(status, page, size));
@@ -133,7 +132,7 @@ public class StockDocumentController {
 
     @GetMapping("/stock-counts")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<CountResponse.Header>> getStockCounts(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+    public ApiResponse<PageResponse<CountResponse.Header>> getStockCounts(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ApiResponse.ok(service.getStockCounts(status, page, size));
     }

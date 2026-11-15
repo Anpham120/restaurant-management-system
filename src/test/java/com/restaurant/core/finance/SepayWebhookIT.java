@@ -8,6 +8,9 @@ import com.restaurant.core.order.OrderApiTestBase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -102,6 +105,53 @@ class SepayWebhookIT extends OrderApiTestBase {
                 .replace("\"subAccount\":null", "\"subAccount\":\"0010000000355\"");
         webhook("Apikey " + SEPAY_API_KEY, viaSubAccount).andExpect(jsonPath("$.data.result").value("PROCESSED"));
         assertThat(data.invoiceStatus(s[2])).isEqualTo("PAID");
+    }
+
+    /** Sự cố MISMATCH: Quản lý xem danh sách, chi tiết (kèm payload gốc), xử lý một lần; vai trò khác không được xem. */
+    @Test
+    void managerListsAndResolvesPaymentIncidents() throws Exception {
+        long[] s = servedAndCheckedOut(60000);
+        String ref = startQr(s[2]);
+        long tx = ++txSeq;
+        webhook("Apikey " + SEPAY_API_KEY, payload(tx, ref, ref, 50000, "in")).andExpect(jsonPath("$.data.result").value("MISMATCH"));
+        long incident = data.count("SELECT id FROM payment_webhook_events WHERE provider_transaction_code = ?", String.valueOf(tx));
+
+        getAs(manager, "/api/payment-incidents?size=100").andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalItems").value(greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.data.items[?(@.id == " + incident + ")].invoiceId").value(hasItem((int) s[2])))
+                .andExpect(jsonPath("$.data.items[?(@.id == " + incident + ")].rawPayload").value(hasItem(nullValue())));
+        getAs(manager, "/api/payment-incidents/{id}", incident).andExpect(jsonPath("$.data.processingResult").value("MISMATCH"))
+                .andExpect(jsonPath("$.data.amount").value(50000.0)).andExpect(jsonPath("$.data.amountDue").value(60000.0))
+                .andExpect(jsonPath("$.data.rawPayload").value(containsString("\"transferAmount\":50000")));
+        getAs(cashier, "/api/payment-incidents").andExpect(status().isForbidden());
+
+        postJson(manager, "/api/payment-incidents/{id}/resolve", "{\"note\":\"Đã hoàn 50.000 đ cho khách\"}", incident)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.resolutionStatus").value("RESOLVED"))
+                .andExpect(jsonPath("$.data.resolutionNote").value("Đã hoàn 50.000 đ cho khách"))
+                .andExpect(jsonPath("$.data.resolvedByName").isNotEmpty());
+        postJson(manager, "/api/payment-incidents/{id}/resolve", "{\"note\":\"lần hai\"}", incident).andExpect(status().isConflict());
+        getAs(manager, "/api/payment-incidents?status=RESOLVED&size=100")
+                .andExpect(jsonPath("$.data.items[?(@.id == " + incident + ")]").isNotEmpty());
+        assertThat(data.invoiceStatus(s[2])).isEqualTo("PAYMENT_PENDING");      // xử lý sự cố không tự thu tiền
+    }
+
+    /** Webhook bị mất: Quản lý ghi nhận tay theo mã giao dịch SePay; webhook đến muộn cùng mã không thu lần hai. */
+    @Test
+    void manualTransferWhenWebhookIsLost() throws Exception {
+        long[] s = servedAndCheckedOut(35000);
+        String ref = startQr(s[2]);
+        long requestId = data.count("SELECT id FROM payment_requests WHERE payment_reference = ?", ref);
+        long tx = ++txSeq;
+        postJson(cashier, "/api/payment-requests/{id}/manual-transfer",
+                "{\"transactionCode\":\"" + tx + "\",\"amount\":35000,\"note\":\"Khớp sao kê\"}", requestId).andExpect(status().isForbidden());
+        postJson(manager, "/api/payment-requests/{id}/manual-transfer",
+                "{\"transactionCode\":\"" + tx + "\",\"amount\":35000,\"note\":\"Khớp sao kê 10:05\"}", requestId)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.result").value("PROCESSED"))
+                .andExpect(jsonPath("$.data.invoice.status").value("PAID"));
+        assertThat(data.value("SELECT raw_payload FROM payment_webhook_events WHERE provider_transaction_code = ?", String.valueOf(tx)))
+                .contains("\"source\":\"MANUAL\"");
+        webhook("Apikey " + SEPAY_API_KEY, payload(tx, ref, ref, 35000, "in")).andExpect(jsonPath("$.data.result").value("PROCESSED"));
+        assertThat(data.count("SELECT count(*) FROM payments WHERE invoice_id = ?", s[2])).isEqualTo(1);
     }
 
     @Test

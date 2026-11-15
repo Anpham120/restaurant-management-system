@@ -1,7 +1,5 @@
 package com.restaurant.core.inventory.controller;
 
-import java.util.List;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -18,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.common.response.ApiResponse;
 import com.restaurant.core.inventory.dto.request.KitchenStockRequests.AdjustmentRequest;
 import com.restaurant.core.inventory.dto.response.KitchenStockResponses.AdjustmentResponse;
@@ -52,7 +51,7 @@ public class KitchenStockController {
 
     @GetMapping("/kitchen-preparations")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<PreparationResponse.Header>> getPreparations(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+    public ApiResponse<PageResponse<PreparationResponse.Header>> getPreparations(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ApiResponse.ok(service.getPreparations(status, page, size));
     }
@@ -79,7 +78,7 @@ public class KitchenStockController {
 
     @GetMapping("/stock-returns")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<ReturnResponse.Header>> getStockReturns(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+    public ApiResponse<PageResponse<ReturnResponse.Header>> getStockReturns(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ApiResponse.ok(service.getStockReturns(status, page, size));
     }
@@ -105,7 +104,7 @@ public class KitchenStockController {
 
     @GetMapping("/stock-adjustments")
     @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN')")
-    public ApiResponse<List<AdjustmentResponse.Header>> getStockAdjustments(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
+    public ApiResponse<PageResponse<AdjustmentResponse.Header>> getStockAdjustments(@RequestParam(required = false) @Pattern(regexp = "DRAFT|CONFIRMED|CANCELLED") String status,
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ApiResponse.ok(service.getStockAdjustments(status, page, size));
     }

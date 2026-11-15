@@ -83,6 +83,29 @@ public abstract class OrderApiTestBase extends IntegrationTestBase {
         return new long[] {t[1], t[2], invoice};
     }
 
+    /** Chạy các lời gọi cùng lúc (mỗi lời gọi một kết nối DB riêng): tất cả cùng chờ một hiệu lệnh rồi mới chạy. */
+    protected static <T> java.util.List<T> concurrently(java.util.List<java.util.concurrent.Callable<T>> calls) throws Exception {
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(calls.size());
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            java.util.List<java.util.concurrent.Future<T>> futures = new java.util.ArrayList<>();
+            for (java.util.concurrent.Callable<T> c : calls) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return c.call();
+                }));
+            }
+            start.countDown();
+            java.util.List<T> results = new java.util.ArrayList<>();
+            for (java.util.concurrent.Future<T> f : futures) {
+                results.add(f.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            return results;
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
     protected static String reason(String r) {
         return "{\"reason\":\"" + r + "\"}";
     }

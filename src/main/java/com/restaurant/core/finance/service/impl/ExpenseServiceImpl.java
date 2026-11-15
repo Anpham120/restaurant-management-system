@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
+import com.restaurant.core.common.idempotency.RequestKeys;
 import com.restaurant.core.finance.dto.request.ExpenseRequest;
 import com.restaurant.core.finance.dto.response.ExpenseResponse;
 import com.restaurant.core.common.time.BusinessDateProvider;
@@ -27,20 +28,26 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     private final ExpenseQueryRepository repo;
     private final OperatingExpenseRepository expenseRepository;
+    private final RequestKeys requestKeys;
     private final BusinessDateProvider clock;
 
-    public ExpenseServiceImpl(ExpenseQueryRepository repo, OperatingExpenseRepository expenseRepository, BusinessDateProvider clock) {
+    public ExpenseServiceImpl(ExpenseQueryRepository repo, OperatingExpenseRepository expenseRepository, RequestKeys requestKeys,
+                              BusinessDateProvider clock) {
         this.repo = repo;
         this.expenseRepository = expenseRepository;
+        this.requestKeys = requestKeys;
         this.clock = clock;
     }
 
-    /** Gửi lặp cùng requestKey → trả khoản chi đã ghi (request_key UNIQUE). */
+    /** Gửi lặp cùng requestKey + cùng nội dung → trả khoản chi đã ghi; cùng khóa khác nội dung → 409 (RequestKeys). */
     @Override
     @Transactional
     public ExpenseResponse recordExpense(long actorId, ExpenseRequest r) {
+        String fingerprint = requestKeys.fingerprintOf(r);
+        requestKeys.lockRequestKey("operating_expenses", r.requestKey());
         var existing = expenseRepository.findByRequestKey(r.requestKey());
         if (existing.isPresent()) {
+            requestKeys.requireSameRequest(existing.get().getRequestHash(), fingerprint, r.requestKey(), "khoản chi");
             return getExpenseById(existing.get().getId());
         }
         Instant now = clock.now();
@@ -51,7 +58,7 @@ public class ExpenseServiceImpl implements ExpenseService {
         if (OperatingExpense.CASH_DRAWER.equals(r.fundSource()) && !OperatingExpense.CASH.equals(r.paymentMethod())) {
             throw ApiException.invalidRequest("Chi từ két tiền mặt thì phương thức phải là tiền mặt");
         }
-        OperatingExpense expense = expenseRepository.saveAndFlush(new OperatingExpense(r.requestKey(), r.category(), r.description().strip(),
+        OperatingExpense expense = expenseRepository.saveAndFlush(new OperatingExpense(r.requestKey(), fingerprint, r.category(), r.description().strip(),
                 r.amount(), r.paymentMethod(), r.fundSource(), r.stockReceiptId(), actorId, paidAt, BusinessDateProvider.businessDateOf(paidAt), now));
         return getExpenseById(expense.getId());
     }

@@ -1,7 +1,6 @@
 package com.restaurant.core.inventory.service;
 
-import java.util.List;
-
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.inventory.dto.request.KitchenStockRequests.AdjustmentRequest;
 import com.restaurant.core.inventory.dto.response.KitchenStockResponses.AdjustmentResponse;
 import com.restaurant.core.inventory.dto.response.KitchenStockResponses.MarkUnusableResponse;
@@ -21,7 +20,7 @@ public interface KitchenStockService {
 
     PreparationResponse getPreparationById(long preparationId);
 
-    List<PreparationResponse.Header> getPreparations(String status, int page, int size);
+    PageResponse<PreparationResponse.Header> getPreparations(String status, int page, int size);
 
     // ---------- hoàn trả
     ReturnResponse createStockReturn(long actorId, ReturnRequest request);
@@ -31,7 +30,7 @@ public interface KitchenStockService {
 
     ReturnResponse getStockReturnById(long returnId);
 
-    List<ReturnResponse.Header> getStockReturns(String status, int page, int size);
+    PageResponse<ReturnResponse.Header> getStockReturns(String status, int page, int size);
 
     // ---------- hủy hàng
     AdjustmentResponse createStockAdjustment(long actorId, AdjustmentRequest request);
@@ -41,7 +40,7 @@ public interface KitchenStockService {
 
     AdjustmentResponse getStockAdjustmentById(long adjustmentId);
 
-    List<AdjustmentResponse.Header> getStockAdjustments(String status, int page, int size);
+    PageResponse<AdjustmentResponse.Header> getStockAdjustments(String status, int page, int size);
 
     // ---------- lô hỏng
     /**

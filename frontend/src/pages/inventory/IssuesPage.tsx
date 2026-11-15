@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { api, newRequestKey } from '../../api/client';
-import type { Issue, IssueHeader } from '../../api/types';
+import type { Issue, IssueHeader, PageResponse } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { ReasonDialog } from '../../components/ReasonDialog';
@@ -24,7 +24,7 @@ export function IssuesPage() {
   const [cancelling, setCancelling] = useState(false);
 
   const lots = useRawLots(isManager);
-  const list = useQuery({ queryKey: ['issues', status], queryFn: () => api.get<IssueHeader[]>(`/api/stock-issues?size=100${status ? `&status=${status}` : ''}`), refetchInterval: 15_000 });
+  const list = useQuery({ queryKey: ['issues', status], queryFn: () => api.get<PageResponse<IssueHeader>>(`/api/stock-issues?size=100${status ? `&status=${status}` : ''}`).then((p) => p.items), refetchInterval: 15_000 });
   const detail = useQuery({ queryKey: ['issue', selectedId], queryFn: () => api.get<Issue>(`/api/stock-issues/${selectedId}`), enabled: selectedId != null });
   const keys = [['issues'], ['issue'], ...STOCK_KEYS];
 

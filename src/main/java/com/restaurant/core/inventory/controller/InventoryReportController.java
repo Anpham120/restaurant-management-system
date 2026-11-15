@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.common.response.ApiResponse;
 import com.restaurant.core.inventory.dto.response.InventoryReportRows.HandoverRow;
 import com.restaurant.core.inventory.dto.response.InventoryReportRows.KitchenLotRow;
@@ -60,10 +63,12 @@ public class InventoryReportController {
 
     @GetMapping("/history")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<List<StockHistoryRow>> getStockHistory(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
-                                                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
-                                                      @RequestParam(required = false) @Positive Long ingredientId) {
-        return ApiResponse.ok(service.getStockHistory(from, to, ingredientId));
+    public ApiResponse<PageResponse<StockHistoryRow>> getStockHistory(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+                                                              @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+                                                              @RequestParam(required = false) @Positive Long ingredientId,
+                                                              @RequestParam(defaultValue = "0") @Min(0) int page,
+                                                              @RequestParam(defaultValue = "100") @Min(1) @Max(500) int size) {
+        return ApiResponse.ok(service.getStockHistory(from, to, ingredientId, page, size));
     }
 
     @GetMapping("/preparation-yield")

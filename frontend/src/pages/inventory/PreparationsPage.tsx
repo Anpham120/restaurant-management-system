@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { api, newRequestKey } from '../../api/client';
-import type { Preparation, PreparationHeader } from '../../api/types';
+import type { Preparation, PreparationHeader, PageResponse } from '../../api/types';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { DataTable, Field, FormModal, PageHead, num, useAction } from '../../components/ui';
 import { amount, dateTime, fromLocalInput } from '../../lib/format';
@@ -22,7 +22,7 @@ export function PreparationsPage() {
 
   const handover = useHandover();
   const types = useKitchenTypes();
-  const list = useQuery({ queryKey: ['preparations'], queryFn: () => api.get<PreparationHeader[]>('/api/kitchen-preparations?size=100') });
+  const list = useQuery({ queryKey: ['preparations'], queryFn: () => api.get<PageResponse<PreparationHeader>>('/api/kitchen-preparations?size=100').then((p) => p.items) });
   const detail = useQuery({ queryKey: ['preparation', selectedId], queryFn: () => api.get<Preparation>(`/api/kitchen-preparations/${selectedId}`), enabled: selectedId != null });
   const keys = [['preparations'], ['preparation'], ...STOCK_KEYS];
 
