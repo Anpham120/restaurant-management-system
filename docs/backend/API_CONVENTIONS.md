@@ -46,7 +46,9 @@ Danh sách nhỏ cố định (bàn, vai trò, danh mục) trả mảng trực t
 
 ## Idempotency
 
-Thao tác client có thể gửi lặp (gửi món, tạo phiếu kho, sơ chế, hoàn trả, hủy hàng, khoản chi): client sinh `requestKey` (UUID) **một lần cho mỗi lần bấm** và gửi lại đúng khóa đó khi retry, trong body (`requestKey`). Hành vi khi gửi lặp: tạo phiếu nhập/xuất/kiểm kê trả phiếu cũ (khác nội dung → `INVALID_STATE`); gửi món trả đợt cũ với `replayed = true`; sơ chế, hoàn trả, hủy hàng, khoản chi (ghi trực tiếp, `request_key` UNIQUE) nhận `DUPLICATE` — backend nên đọc lại bản ghi theo khóa và trả về như thành công.
+Thao tác client có thể gửi lặp (gửi món, tạo phiếu kho, sơ chế, hoàn trả, hủy hàng, khoản chi): client sinh `requestKey` (UUID) **một lần cho mỗi lần bấm** và gửi lại đúng khóa đó khi retry, trong body (`requestKey`). Hợp đồng chung (`common.idempotency.RequestKeys`, áp dụng cho phiếu nhập/xuất/kiểm kê, sơ chế, hoàn trả, hủy hàng, khoản chi và gửi món): backend khóa theo (bảng, `requestKey`) đến hết transaction, đọc lại theo khóa, rồi so dấu vân tay SHA-256 của nội dung (`request_hash`). Cùng khóa + cùng nội dung → trả bản ghi đã tạo như thành công (gửi món: `replayed = true`), kể cả khi hai request đến cùng lúc; cùng khóa khác nội dung → 409 `INVALID_STATE`. Bản ghi tạo trước migration `V5` không có `request_hash` nên gửi lặp trên chúng không so nội dung.
+
+Danh sách có phân trang (`?page&size`) trả `PageResponse{items, page, size, totalItems}`: nhân viên, lịch sử phiên bàn, sáu loại chứng từ kho, sổ kho, sự cố thanh toán.
 
 ## Mã lỗi
 

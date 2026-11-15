@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { api, newRequestKey } from '../../api/client';
-import type { Count, CountHeader } from '../../api/types';
+import type { Count, CountHeader, PageResponse } from '../../api/types';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { DataTable, Field, FormModal, PageHead, num, useAction } from '../../components/ui';
 import { amount, dateTime } from '../../lib/format';
@@ -21,7 +21,7 @@ export function CountsPage() {
   const raw = useRawLots();
   const kitchen = useKitchenLots();
   const handover = useHandover();
-  const list = useQuery({ queryKey: ['counts'], queryFn: () => api.get<CountHeader[]>('/api/stock-counts?size=100') });
+  const list = useQuery({ queryKey: ['counts'], queryFn: () => api.get<PageResponse<CountHeader>>('/api/stock-counts?size=100').then((p) => p.items) });
   const detail = useQuery({ queryKey: ['count', selectedId], queryFn: () => api.get<Count>(`/api/stock-counts/${selectedId}`), enabled: selectedId != null });
   const keys = [['counts'], ['count'], ...STOCK_KEYS];
 

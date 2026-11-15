@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
+import com.restaurant.core.common.idempotency.RequestKeys;
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.inventory.KitchenStockAllocator;
 import com.restaurant.core.menu.DailyMenuLookup.OrderableDish;
@@ -56,6 +57,7 @@ public class OrderServiceImpl implements OrderService {
     private final QuotaUsageCounter quotaUsageCounter;
     private final KitchenStockAllocator kitchenStockAllocator;
     private final OrderInvoiceAccess invoiceAccess;
+    private final RequestKeys requestKeys;
     private final BusinessDateProvider clock;
 
     // ---------- đọc
@@ -85,7 +87,8 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public SubmitBatchResponse submitOrderBatch(long orderId, long actorId, SubmitBatchRequest request) {
         String requestKey = request.requestKey().strip();
-        var alreadySubmitted = findBatchSubmittedEarlier(requestKey, orderId);
+        String fingerprint = requestKeys.fingerprintOf(request);
+        var alreadySubmitted = findBatchSubmittedEarlier(requestKey, orderId, fingerprint);
         if (alreadySubmitted != null) {
             return buildBatchResult(alreadySubmitted, true);
         }
@@ -94,7 +97,7 @@ public class OrderServiceImpl implements OrderService {
         if (!order.isOpen()) {
             throw ApiException.invalidState("Đơn " + orderId + " không còn mở");
         }
-        alreadySubmitted = findBatchSubmittedEarlier(requestKey, orderId);   // một yêu cầu song song cùng khóa vừa ghi xong
+        alreadySubmitted = findBatchSubmittedEarlier(requestKey, orderId, fingerprint);   // một yêu cầu song song cùng khóa vừa ghi xong
         if (alreadySubmitted != null) {
             return buildBatchResult(alreadySubmitted, true);
         }
@@ -102,7 +105,7 @@ public class OrderServiceImpl implements OrderService {
             throw ApiException.invalidState("Đơn " + orderId + " đang thanh toán: mở lại hóa đơn trước khi gọi thêm");
         });
 
-        OrderBatch batch = orderBatchRepository.save(new OrderBatch(order, actorId, requestKey, clock.now()));
+        OrderBatch batch = orderBatchRepository.save(new OrderBatch(order, actorId, requestKey, fingerprint, clock.now()));
         for (SubmitBatchRequest.Item line : request.items()) {
             OrderableDish dish = findDishOnSaleToday(line.dailyMenuItemId());
             OrderItem item = orderItemRepository.save(new OrderItem(batch, dish.dailyMenuItemId(), line.quantity(), dish.name(),
@@ -166,12 +169,16 @@ public class OrderServiceImpl implements OrderService {
 
     // ---------- hỗ trợ
 
-    /** Lượt món đã gửi trước đó với cùng requestKey; khóa đã dùng cho đơn khác → lỗi. */
-    private OrderBatch findBatchSubmittedEarlier(String requestKey, long orderId) {
+    /**
+     * Lượt món đã gửi trước đó với cùng requestKey (gửi lặp → trả lượt cũ). Khóa đã dùng cho đơn khác, hoặc cho cùng đơn
+     * nhưng khác món/số lượng → 409: không lặng lẽ bỏ qua một lượt gọi món khác mà người phục vụ tưởng đã gửi.
+     */
+    private OrderBatch findBatchSubmittedEarlier(String requestKey, long orderId, String fingerprint) {
         return orderBatchRepository.findByRequestKey(requestKey).map(batch -> {
             if (batch.getOrderId() != orderId) {
                 throw ApiException.invalidState("requestKey " + requestKey + " đã dùng cho đơn khác");
             }
+            requestKeys.requireSameRequest(batch.getRequestHash(), fingerprint, requestKey, "lượt gọi món");
             return batch;
         }).orElse(null);
     }

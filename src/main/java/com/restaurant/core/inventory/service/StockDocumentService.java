@@ -1,8 +1,8 @@
 package com.restaurant.core.inventory.service;
 
 import java.time.Instant;
-import java.util.List;
 
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.inventory.dto.request.StockDocumentRequests.CountRequest;
 import com.restaurant.core.inventory.dto.response.StockDocumentResponses.CountResponse;
 import com.restaurant.core.inventory.dto.request.StockDocumentRequests.IssueRequest;
@@ -26,7 +26,7 @@ public interface StockDocumentService {
 
     ReceiptResponse getStockReceiptById(long receiptId);
 
-    List<ReceiptResponse.Header> getStockReceipts(String status, int page, int size);
+    PageResponse<ReceiptResponse.Header> getStockReceipts(String status, int page, int size);
 
     // ---------- phiếu xuất
     IssueResponse createStockIssue(long actorId, IssueRequest request);
@@ -42,7 +42,7 @@ public interface StockDocumentService {
 
     IssueResponse getStockIssueById(long issueId);
 
-    List<IssueResponse.Header> getStockIssues(String status, int page, int size);
+    PageResponse<IssueResponse.Header> getStockIssues(String status, int page, int size);
 
     // ---------- phiếu kiểm kê
     /** Tạo phiếu kiểm kê: chụp số sổ hiện tại của từng nguồn. */
@@ -53,5 +53,5 @@ public interface StockDocumentService {
 
     CountResponse getStockCountById(long countId);
 
-    List<CountResponse.Header> getStockCounts(String status, int page, int size);
+    PageResponse<CountResponse.Header> getStockCounts(String status, int page, int size);
 }

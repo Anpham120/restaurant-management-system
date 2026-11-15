@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { api, newRequestKey } from '../../api/client';
-import type { Adjustment, AdjustmentHeader, ReturnHeader, StockReturn } from '../../api/types';
+import type { Adjustment, AdjustmentHeader, ReturnHeader, StockReturn, PageResponse } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { DataTable, Field, FormModal, PageHead, Tabs, num, useAction } from '../../components/ui';
@@ -28,7 +28,7 @@ export function ReturnsPage() {
   const kitchenLots = useKitchenLots();
   const rawLots = useRawLots(isManager && tab === 'adjustments');
   const path = tab === 'returns' ? 'stock-returns' : 'stock-adjustments';
-  const list = useQuery({ queryKey: [path], queryFn: () => api.get<(ReturnHeader | AdjustmentHeader)[]>(`/api/${path}?size=100`) });
+  const list = useQuery({ queryKey: [path], queryFn: () => api.get<PageResponse<ReturnHeader | AdjustmentHeader>>(`/api/${path}?size=100`).then((p) => p.items) });
   const detail = useQuery({ queryKey: [path, selectedId], queryFn: () => api.get<StockReturn | Adjustment>(`/api/${path}/${selectedId}`), enabled: selectedId != null });
   const keys = [[path], ...STOCK_KEYS];
 

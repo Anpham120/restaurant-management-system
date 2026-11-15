@@ -9,7 +9,7 @@ import com.restaurant.core.finance.dto.response.ExpenseResponse;
 /** Ghi và hủy khoản chi hoạt động. Owner: Bùi Đào Đức Anh. */
 public interface ExpenseService {
 
-    /** Gửi lặp cùng requestKey → trả khoản chi đã ghi (request_key UNIQUE). */
+    /** Gửi lặp cùng requestKey + cùng nội dung → trả khoản chi đã ghi; cùng khóa khác nội dung → 409. */
     ExpenseResponse recordExpense(long actorId, ExpenseRequest r);
 
     ExpenseResponse voidExpense(long id, long actorId, String reason);

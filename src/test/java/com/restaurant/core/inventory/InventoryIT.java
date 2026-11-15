@@ -116,7 +116,7 @@ class InventoryIT extends OrderApiTestBase {
         long draft = readLong(postJson(manager, "/api/stock-receipts", receiptBody(key(), rice, 2)), "$.data.id");
         mvc.perform(delete("/api/stock-receipts/{id}", draft).header("Authorization", manager)).andExpect(status().isOk());
         getAs(manager, "/api/stock-receipts/{id}", draft).andExpect(status().isNotFound());
-        getAs(manager, "/api/stock-receipts?status=CONFIRMED&size=5").andExpect(jsonPath("$.data[*].id", hasItem((int) id)));
+        getAs(manager, "/api/stock-receipts?status=CONFIRMED&size=5").andExpect(jsonPath("$.data.items[*].id", hasItem((int) id)));
 
         getAs(manager, "/api/inventory/raw-stock").andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[?(@.ingredientId == " + rice + ")].usableQuantity").value(hasItem(10000.0)));
@@ -159,6 +159,9 @@ class InventoryIT extends OrderApiTestBase {
         long prep = readLong(postJson(kitchen, "/api/kitchen-preparations", prepBody).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.lossQuantity").value(500.0)), "$.data.id");
         assertThat(readLong(postJson(kitchen, "/api/kitchen-preparations", prepBody), "$.data.id")).isEqualTo(prep);
+        // cùng requestKey khác nội dung: 409, không lặng lẽ trả phiếu cũ
+        postJson(kitchen, "/api/kitchen-preparations", prepBody.replace("\"inputQuantity\":3000", "\"inputQuantity\":2900"))
+                .andExpect(status().isConflict());
         postEmpty(kitchen, "/api/kitchen-preparations/{id}/confirm", prep).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.data.outputs[0].kitchenBatchId", notNullValue()))
@@ -169,9 +172,12 @@ class InventoryIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data[?(@.preparationId == " + prep + ")].lossQuantity").value(hasItem(500.0)));
 
         // hủy 100 g lô bếp DIRECT: bếp lập, chỉ Manager xác nhận
-        long adj = readLong(postJson(kitchen, "/api/stock-adjustments", "{\"requestKey\":\"" + key() + "\",\"adjustmentType\":\"DAMAGE\","
-                + "\"reason\":\"rơi vỡ\",\"items\":[{\"kitchenBatchId\":" + directBatch + ",\"quantity\":100}]}")
+        String adjBody = "{\"requestKey\":\"" + key() + "\",\"adjustmentType\":\"DAMAGE\","
+                + "\"reason\":\"rơi vỡ\",\"items\":[{\"kitchenBatchId\":" + directBatch + ",\"quantity\":100}]}";
+        long adj = readLong(postJson(kitchen, "/api/stock-adjustments", adjBody)
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.data.lines[0].quantityDelta").value(-100.0)), "$.data.id");
+        assertThat(readLong(postJson(kitchen, "/api/stock-adjustments", adjBody), "$.data.id")).isEqualTo(adj);
+        postJson(kitchen, "/api/stock-adjustments", adjBody.replace("\"quantity\":100", "\"quantity\":150")).andExpect(status().isConflict());
         postEmpty(kitchen, "/api/stock-adjustments/{id}/confirm", adj).andExpect(status().isForbidden());
         postEmpty(manager, "/api/stock-adjustments/{id}/confirm", adj).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CONFIRMED"));
         postJson(kitchen, "/api/stock-adjustments", "{\"requestKey\":\"" + key() + "\",\"adjustmentType\":\"DAMAGE\",\"reason\":\"x\","
@@ -179,9 +185,11 @@ class InventoryIT extends OrderApiTestBase {
                 .andExpect(status().isBadRequest());
 
         // trả 400 g DIRECT về kho RAW
-        long ret = readLong(postJson(kitchen, "/api/stock-returns", "{\"requestKey\":\"" + key() + "\",\"reason\":\"dư\",\"items\":[{"
-                + "\"sourceIssueItemId\":" + directLine.get(0) + ",\"directKitchenBatchId\":" + directBatch + ",\"quantity\":400}]}")
-                .andExpect(status().isCreated()), "$.data.id");
+        String retBody = "{\"requestKey\":\"" + key() + "\",\"reason\":\"dư\",\"items\":[{"
+                + "\"sourceIssueItemId\":" + directLine.get(0) + ",\"directKitchenBatchId\":" + directBatch + ",\"quantity\":400}]}";
+        long ret = readLong(postJson(kitchen, "/api/stock-returns", retBody).andExpect(status().isCreated()), "$.data.id");
+        assertThat(readLong(postJson(kitchen, "/api/stock-returns", retBody), "$.data.id")).isEqualTo(ret);
+        postJson(kitchen, "/api/stock-returns", retBody.replace("\"quantity\":400", "\"quantity\":300")).andExpect(status().isConflict());
         postEmpty(manager, "/api/stock-returns/{id}/confirm", ret).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CONFIRMED"));
         assertThat(rawOnHand(batch).intValue()).isEqualTo(5400);
         getAs(kitchen, "/api/inventory/kitchen-lots?typeId=" + whole).andExpect(jsonPath("$.data[0].quantityOnHand").value(1500.0));
@@ -195,16 +203,23 @@ class InventoryIT extends OrderApiTestBase {
         assertThat(rawOnHand(batch).intValue()).isEqualTo(5350);
 
         // danh sách phiếu (mới nhất trước) cho màn hình duyệt nháp
-        getAs(kitchen, "/api/kitchen-preparations?status=CONFIRMED&size=5").andExpect(jsonPath("$.data[*].id", hasItem((int) prep)));
-        getAs(kitchen, "/api/stock-adjustments").andExpect(jsonPath("$.data[*].id", hasItem((int) adj)));
-        getAs(manager, "/api/stock-returns?status=CONFIRMED").andExpect(jsonPath("$.data[*].id", hasItem((int) ret)));
-        getAs(manager, "/api/stock-counts").andExpect(jsonPath("$.data[*].id", hasItem((int) count)));
+        getAs(kitchen, "/api/kitchen-preparations?status=CONFIRMED&size=5").andExpect(jsonPath("$.data.items[*].id", hasItem((int) prep)));
+        getAs(kitchen, "/api/stock-adjustments").andExpect(jsonPath("$.data.items[*].id", hasItem((int) adj)));
+        getAs(manager, "/api/stock-returns?status=CONFIRMED").andExpect(jsonPath("$.data.items[*].id", hasItem((int) ret)));
+        getAs(manager, "/api/stock-counts").andExpect(jsonPath("$.data.items[*].id", hasItem((int) count)));
         getAs(kitchen, "/api/stock-counts").andExpect(status().isForbidden());
         getAs(kitchen, "/api/inventory/kitchen-lots?typeId=" + whole).andExpect(jsonPath("$.data[0].directIssueItemId").value(directLine.get(0).intValue()));
 
         Instant now = Instant.now();
         getAs(manager, "/api/inventory/history?from=" + now.minus(1, ChronoUnit.HOURS) + "&to=" + now.plus(1, ChronoUnit.HOURS) + "&ingredientId=" + fish)
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(6)));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalItems").value(org.hamcrest.Matchers.greaterThanOrEqualTo(6)))
+                .andExpect(jsonPath("$.data.items.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(6)));
+        // phân trang: trang 2 dòng một, tổng không đổi
+        getAs(manager, "/api/inventory/history?from=" + now.minus(1, ChronoUnit.HOURS) + "&to=" + now.plus(1, ChronoUnit.HOURS) + "&ingredientId=" + fish
+                + "&page=1&size=2").andExpect(jsonPath("$.data.items.length()").value(2)).andExpect(jsonPath("$.data.page").value(1));
+        // khoảng quá 93 ngày bị từ chối: không kéo cả sổ kho nhiều năm vào bộ nhớ
+        getAs(manager, "/api/inventory/history?from=" + now.minus(100, ChronoUnit.DAYS) + "&to=" + now)
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
 
     @Test

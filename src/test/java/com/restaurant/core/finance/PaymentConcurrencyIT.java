@@ -1,12 +1,7 @@
 package com.restaurant.core.finance;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -18,28 +13,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 /** Nhiều request đồng thời qua REST thật (nhiều kết nối PostgreSQL): không thu hai lần, không mở trùng phiên. */
 class PaymentConcurrencyIT extends OrderApiTestBase {
-
-    private List<Integer> concurrently(List<Callable<Integer>> calls) throws Exception {
-        ExecutorService pool = Executors.newFixedThreadPool(calls.size());
-        CountDownLatch start = new CountDownLatch(1);
-        try {
-            List<Future<Integer>> futures = new ArrayList<>();
-            for (Callable<Integer> c : calls) {
-                futures.add(pool.submit(() -> {
-                    start.await();
-                    return c.call();
-                }));
-            }
-            start.countDown();
-            List<Integer> statuses = new ArrayList<>();
-            for (Future<Integer> f : futures) {
-                statuses.add(f.get());
-            }
-            return statuses;
-        } finally {
-            pool.shutdownNow();
-        }
-    }
 
     private Callable<Integer> payCash(long invoice) {
         return () -> mvc.perform(post("/api/invoices/{id}/payments", invoice).header("Authorization", cashier)

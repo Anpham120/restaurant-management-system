@@ -120,8 +120,8 @@ public class InventoryReportRepository {
                               String ingredientName, BigDecimal quantityDelta, String reference, String reason, String baseUnit) {
     }
 
-    public List<MovementRow> findMovements(Instant from, Instant to, Long ingredientId) {
-        return jdbc.sql("""
+    /** Biến động sổ kho trong [from, to): CTE dùng chung cho trang dữ liệu và đếm tổng. */
+    private static final String MOVEMENTS_CTE = """
                         WITH m AS (
                             SELECT m.*,
                                    CASE WHEN m.raw_batch_id IS NOT NULL THEN 'RAW' WHEN m.wip_issue_item_id IS NOT NULL THEN 'WIP' ELSE 'KITCHEN' END AS loc,
@@ -135,13 +135,24 @@ public class InventoryReportRepository {
                               LEFT JOIN kitchen_batches kb ON kb.id = m.kitchen_batch_id
                               LEFT JOIN kitchen_ingredient_types kt ON kt.id = kb.kitchen_ingredient_type_id
                              WHERE m.created_at >= :f AND m.created_at < :t)
+                        """;
+
+    public List<MovementRow> findMovements(Instant from, Instant to, Long ingredientId, int page, int size) {
+        return jdbc.sql(MOVEMENTS_CTE + """
                         SELECT m.id AS movement_id, m.created_at, m.movement_type, m.loc AS location, m.ing AS ingredient_id,
                                g.name AS ingredient_name, m.quantity_delta, m.event_key AS reference, m.reason, g.base_unit
                           FROM m JOIN ingredients g ON g.id = m.ing
                          WHERE CAST(:g AS bigint) IS NULL OR m.ing = :g
-                         ORDER BY m.created_at, m.id""")
+                         ORDER BY m.created_at, m.id LIMIT :size OFFSET :off""")
                 .param("f", Timestamp.from(from)).param("t", Timestamp.from(to)).param("g", ingredientId)
+                .param("size", size).param("off", (long) page * size)
                 .query(MovementRow.class).list();
+    }
+
+    public long countMovements(Instant from, Instant to, Long ingredientId) {
+        return jdbc.sql(MOVEMENTS_CTE + " SELECT count(*) FROM m JOIN ingredients g ON g.id = m.ing WHERE CAST(:g AS bigint) IS NULL OR m.ing = :g")
+                .param("f", Timestamp.from(from)).param("t", Timestamp.from(to)).param("g", ingredientId)
+                .query(Long.class).single();
     }
 
     /** Phiếu sơ chế đã xác nhận trong khoảng thời gian, kèm tổng đầu ra. */

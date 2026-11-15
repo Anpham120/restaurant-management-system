@@ -41,6 +41,8 @@ class FinanceIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.businessDate").value(bd.toString()));
         long id = readLong(created, "$.data.id");
         assertThat(readLong(postJson(manager, "/api/expenses", expenseBody(key, "OWNER", "BANK_TRANSFER", 120000)), "$.data.id")).isEqualTo(id);
+        // cùng requestKey khác số tiền: 409, không lặng lẽ trả khoản chi cũ
+        postJson(manager, "/api/expenses", expenseBody(key, "OWNER", "BANK_TRANSFER", 130000)).andExpect(status().isConflict());
         postJson(manager, "/api/expenses", expenseBody(UUID.randomUUID().toString(), "CASH_DRAWER", "BANK_TRANSFER", 1000))
                 .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         postJson(manager, "/api/expenses", expenseBody(UUID.randomUUID().toString(), "OWNER", "CASH", 0)).andExpect(status().isBadRequest());

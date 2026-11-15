@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.common.exception.ApiException;
+import com.restaurant.core.common.idempotency.RequestKeys;
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.inventory.OrderItemStockFlags;
 import com.restaurant.core.inventory.dto.request.KitchenStockRequests.AdjustmentLine;
@@ -87,6 +89,7 @@ public class KitchenStockServiceImpl implements KitchenStockService {
     private final StockReservationRepository reservationRepository;
     private final StockMovementRepository movementRepository;
     private final OrderItemStockFlags orderItemStockFlags;
+    private final RequestKeys requestKeys;
     private final BusinessDateProvider clock;
 
     // ==================== sơ chế
@@ -94,12 +97,15 @@ public class KitchenStockServiceImpl implements KitchenStockService {
     @Override
     @Transactional
     public PreparationResponse createPreparation(long actorId, PreparationRequest request) {
+        String fingerprint = requestKeys.fingerprintOf(request);
+        requestKeys.lockRequestKey("kitchen_preparations", request.requestKey());
         Optional<KitchenPreparation> existing = preparationRepository.findByRequestKey(request.requestKey());
         if (existing.isPresent()) {
+            requestKeys.requireSameRequest(existing.get().getRequestHash(), fingerprint, request.requestKey(), "phiếu sơ chế");
             return getPreparationById(existing.get().getId());
         }
         KitchenPreparation preparation = preparationRepository.save(new KitchenPreparation(issueItemRepository.getReferenceById(request.stockIssueItemId()), request.inputQuantity(),
-                blankToNull(request.lossReason()), actorId, request.requestKey()));
+                blankToNull(request.lossReason()), actorId, request.requestKey(), fingerprint));
         for (PreparationOutput output : request.outputs()) {
             preparationOutputRepository.save(new KitchenPreparationOutput(preparation, kitchenTypeRepository.getReferenceById(output.kitchenIngredientTypeId()),
                     output.outputQuantity(), output.usableUntil()));
@@ -175,8 +181,8 @@ public class KitchenStockServiceImpl implements KitchenStockService {
     }
 
     @Override
-    public List<PreparationResponse.Header> getPreparations(String status, int page, int size) {
-        return kitchenQueryRepository.findPreparations(status, page, size);
+    public PageResponse<PreparationResponse.Header> getPreparations(String status, int page, int size) {
+        return new PageResponse<>(kitchenQueryRepository.findPreparations(status, page, size), page, size, kitchenQueryRepository.countPreparations(status));
     }
 
     // ==================== hoàn trả
@@ -184,11 +190,14 @@ public class KitchenStockServiceImpl implements KitchenStockService {
     @Override
     @Transactional
     public ReturnResponse createStockReturn(long actorId, ReturnRequest request) {
+        String fingerprint = requestKeys.fingerprintOf(request);
+        requestKeys.lockRequestKey("stock_returns", request.requestKey());
         Optional<StockReturn> existing = returnRepository.findByRequestKey(request.requestKey());
         if (existing.isPresent()) {
+            requestKeys.requireSameRequest(existing.get().getRequestHash(), fingerprint, request.requestKey(), "phiếu hoàn trả");
             return getStockReturnById(existing.get().getId());
         }
-        StockReturn stockReturn = returnRepository.save(new StockReturn(actorId, request.reason().strip(), request.requestKey(), clock.now()));
+        StockReturn stockReturn = returnRepository.save(new StockReturn(actorId, request.reason().strip(), request.requestKey(), fingerprint, clock.now()));
         for (ReturnLine line : request.items()) {
             returnItemRepository.save(new StockReturnItem(stockReturn, issueItemRepository.getReferenceById(line.sourceIssueItemId()), referenceOrNull(kitchenBatchRepository, line.directKitchenBatchId()), line.quantity()));
         }
@@ -270,8 +279,8 @@ public class KitchenStockServiceImpl implements KitchenStockService {
     }
 
     @Override
-    public List<ReturnResponse.Header> getStockReturns(String status, int page, int size) {
-        return kitchenQueryRepository.findStockReturns(status, page, size);
+    public PageResponse<ReturnResponse.Header> getStockReturns(String status, int page, int size) {
+        return new PageResponse<>(kitchenQueryRepository.findStockReturns(status, page, size), page, size, kitchenQueryRepository.countStockReturns(status));
     }
 
     // ==================== hủy hàng
@@ -280,12 +289,15 @@ public class KitchenStockServiceImpl implements KitchenStockService {
     @Transactional
     public AdjustmentResponse createStockAdjustment(long actorId, AdjustmentRequest request) {
         request.items().forEach(l -> requireOneSource(l.rawBatchId(), l.wipIssueItemId(), l.kitchenBatchId()));
+        String fingerprint = requestKeys.fingerprintOf(request);
+        requestKeys.lockRequestKey("stock_adjustments", request.requestKey());
         Optional<StockAdjustment> existing = adjustmentRepository.findByRequestKey(request.requestKey());
         if (existing.isPresent()) {
+            requestKeys.requireSameRequest(existing.get().getRequestHash(), fingerprint, request.requestKey(), "phiếu hủy hàng");
             return getStockAdjustmentById(existing.get().getId());
         }
         StockAdjustment adjustment = adjustmentRepository.save(new StockAdjustment(request.adjustmentType(), request.reason().strip(), actorId,
-                request.requestKey(), clock.now()));
+                request.requestKey(), fingerprint, clock.now()));
         for (AdjustmentLine line : request.items()) {
             adjustmentItemRepository.save(new StockAdjustmentItem(adjustment, referenceOrNull(inventoryBatchRepository, line.rawBatchId()),
                     referenceOrNull(issueItemRepository, line.wipIssueItemId()), referenceOrNull(kitchenBatchRepository, line.kitchenBatchId()),
@@ -356,8 +368,8 @@ public class KitchenStockServiceImpl implements KitchenStockService {
     }
 
     @Override
-    public List<AdjustmentResponse.Header> getStockAdjustments(String status, int page, int size) {
-        return kitchenQueryRepository.findStockAdjustments(status, page, size);
+    public PageResponse<AdjustmentResponse.Header> getStockAdjustments(String status, int page, int size) {
+        return new PageResponse<>(kitchenQueryRepository.findStockAdjustments(status, page, size), page, size, kitchenQueryRepository.countStockAdjustments(status));
     }
 
     // ==================== lô hỏng

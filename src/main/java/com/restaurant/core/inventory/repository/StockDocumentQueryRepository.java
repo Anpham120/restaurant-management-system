@@ -35,6 +35,11 @@ public class StockDocumentQueryRepository {
                 .param("id", id).query(ReceiptResponse.Header.class).optional();
     }
 
+    public long countStockReceipts(String status) {
+        return jdbc.sql("SELECT count(*) FROM stock_receipts WHERE CAST(:s AS text) IS NULL OR status = :s")
+                .param("s", status).query(Long.class).single();
+    }
+
     public List<ReceiptResponse.Header> findStockReceipts(String status, int page, int size) {
         return jdbc.sql("""
                         SELECT id, status, supplier_name, note, request_key, created_at, created_by_id, received_at, confirmed_by_id, confirmed_at
@@ -67,6 +72,11 @@ public class StockDocumentQueryRepository {
         return jdbc.sql(ISSUE_HEADER + " WHERE id = :id").param("id", id).query(IssueResponse.Header.class).optional();
     }
 
+    public long countStockIssues(String status) {
+        return jdbc.sql("SELECT count(*) FROM stock_issues WHERE CAST(:s AS text) IS NULL OR status = :s")
+                .param("s", status).query(Long.class).single();
+    }
+
     public List<IssueResponse.Header> findStockIssues(String status, int page, int size) {
         return jdbc.sql(ISSUE_HEADER + " WHERE CAST(:s AS text) IS NULL OR status = :s ORDER BY id DESC LIMIT :size OFFSET :off")
                 .param("s", status).param("size", size).param("off", (long) page * size).query(IssueResponse.Header.class).list();
@@ -90,6 +100,11 @@ public class StockDocumentQueryRepository {
     public Optional<CountResponse.Header> findStockCountHeader(long id) {
         return jdbc.sql("SELECT id, status, note, request_key, created_at, created_by_id, confirmed_by_id, confirmed_at FROM stock_counts WHERE id = :id")
                 .param("id", id).query(CountResponse.Header.class).optional();
+    }
+
+    public long countStockCounts(String status) {
+        return jdbc.sql("SELECT count(*) FROM stock_counts WHERE CAST(:s AS text) IS NULL OR status = :s")
+                .param("s", status).query(Long.class).single();
     }
 
     public List<CountResponse.Header> findStockCounts(String status, int page, int size) {

@@ -35,12 +35,17 @@ class OrderLifecycleIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.items[?(@.dailyMenuItemId == " + beef + ")].note").value(org.hamcrest.Matchers.hasItem("ít cay")));
         long batchId = readLong(batch, "$.data.batchId");
         List<Integer> ids = read(batch, "$.data.items[*].id");
-        // gửi lặp cùng requestKey: trả đợt cũ, không ghi thêm dòng
-        postJson(waiter, "/api/orders/{id}/batches", "{\"requestKey\":\"life-1\",\"items\":[{\"dailyMenuItemId\":" + tea + ",\"quantity\":5}]}", orderId)
+        // gửi lặp cùng requestKey, cùng nội dung: trả đợt cũ, không ghi thêm dòng
+        postJson(waiter, "/api/orders/{id}/batches", """
+                {"requestKey":"life-1","items":[{"dailyMenuItemId":%d,"quantity":2,"note":"ít cay"},{"dailyMenuItemId":%d,"quantity":1}]}"""
+                .formatted(beef, tea), orderId)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.batchId").value(batchId))
                 .andExpect(jsonPath("$.data.replayed").value(true))
                 .andExpect(jsonPath("$.data.items", hasSize(2)));
+        // cùng requestKey nhưng khác món/số lượng: 409, không lặng lẽ bỏ qua lượt gọi món mới
+        postJson(waiter, "/api/orders/{id}/batches", "{\"requestKey\":\"life-1\",\"items\":[{\"dailyMenuItemId\":" + tea + ",\"quantity\":5}]}", orderId)
+                .andExpect(status().isConflict());
 
         getAs(kitchen, "/api/kitchen/queue?status=PENDING").andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[?(@.id == " + ids.get(0) + ")].tableCode").exists());

@@ -10,6 +10,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.inventory.entity.MovementType;
 import com.restaurant.core.common.time.BusinessDateProvider;
@@ -70,15 +71,20 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     @Override
-    public List<StockHistoryRow> getStockHistory(Instant from, Instant to, Long ingredientId) {
+    public PageResponse<StockHistoryRow> getStockHistory(Instant from, Instant to, Long ingredientId, int page, int size) {
         if (!from.isBefore(to)) {
             throw invalidDateRangeError();
         }
-        return repo.findMovements(from, to, ingredientId).stream()
+        if (java.time.Duration.between(from, to).compareTo(java.time.Duration.ofDays(MAX_HISTORY_DAYS)) > 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                    "Khoảng thời gian tối đa " + MAX_HISTORY_DAYS + " ngày: hãy xem từng quý");
+        }
+        List<StockHistoryRow> rows = repo.findMovements(from, to, ingredientId, page, size).stream()
                 .map(m -> new StockHistoryRow(m.movementId(), m.createdAt(), BusinessDateProvider.businessDateOf(m.createdAt()),
                         MovementType.valueOf(m.movementType()).reportCategory(), m.movementType(), m.location(), m.ingredientId(),
                         m.ingredientName(), m.quantityDelta(), m.reference(), m.reason(), m.baseUnit()))
                 .toList();
+        return new PageResponse<>(rows, page, size, repo.countMovements(from, to, ingredientId));
     }
 
     @Override

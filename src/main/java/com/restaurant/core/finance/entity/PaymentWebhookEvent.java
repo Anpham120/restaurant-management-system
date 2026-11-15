@@ -79,6 +79,18 @@ public class PaymentWebhookEvent {
         this.resolutionStatus = result == WebhookProcessingResult.PROCESSED ? null : "OPEN";
     }
 
+    public boolean isOpenIncident() {
+        return "OPEN".equals(resolutionStatus);
+    }
+
+    /** Quản lý đã đối soát (hoàn tiền cho khách, thu bù, xác nhận khớp sao kê…): ghi người xử lý, thời điểm, ghi chú. */
+    public void resolve(long resolvedById, String note, Instant now) {
+        this.resolutionStatus = "RESOLVED";
+        this.resolvedById = resolvedById;
+        this.resolvedAt = now;
+        this.resolutionNote = note;
+    }
+
     public Long getPaymentRequestId() {
         return paymentRequest == null ? null : paymentRequest.getId();
     }

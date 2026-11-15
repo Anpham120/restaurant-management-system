@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.restaurant.core.common.response.PageResponse;
 import com.restaurant.core.inventory.dto.response.InventoryReportRows.HandoverRow;
 import com.restaurant.core.inventory.dto.response.InventoryReportRows.KitchenLotRow;
 import com.restaurant.core.inventory.dto.response.InventoryReportRows.KitchenStockRow;
@@ -24,7 +25,11 @@ public interface InventoryReportService {
 
     List<UnusableLotRow> getUnusableLots();
 
-    List<StockHistoryRow> getStockHistory(Instant from, Instant to, Long ingredientId);
+    /** Sổ kho theo thời gian, cũ trước. Khoảng tối đa {@code MAX_HISTORY_DAYS} ngày, phân trang. */
+    PageResponse<StockHistoryRow> getStockHistory(Instant from, Instant to, Long ingredientId, int page, int size);
+
+    /** Khoảng thời gian tối đa của một lần xem sổ kho: tránh một truy vấn kéo toàn bộ sổ nhiều năm vào bộ nhớ. */
+    int MAX_HISTORY_DAYS = 93;
 
     List<PreparationYieldRow> getPreparationYield(LocalDate from, LocalDate to);
 

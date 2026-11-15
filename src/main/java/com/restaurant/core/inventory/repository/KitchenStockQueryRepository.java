@@ -80,6 +80,11 @@ public class KitchenStockQueryRepository {
     }
 
     // ---------- danh sách (mới nhất trước)
+    public long countPreparations(String status) {
+        return jdbc.sql("SELECT count(*) FROM kitchen_preparations WHERE CAST(:s AS text) IS NULL OR status = :s")
+                .param("s", status).query(Long.class).single();
+    }
+
     public List<PreparationResponse.Header> findPreparations(String status, int page, int size) {
         return jdbc.sql("""
                         SELECT id, status, stock_issue_item_id, input_quantity, loss_reason, prepared_by_id, prepared_at, request_key
@@ -88,12 +93,22 @@ public class KitchenStockQueryRepository {
                 .param("s", status).param("size", size).param("off", (long) page * size).query(PreparationResponse.Header.class).list();
     }
 
+    public long countStockReturns(String status) {
+        return jdbc.sql("SELECT count(*) FROM stock_returns WHERE CAST(:s AS text) IS NULL OR status = :s")
+                .param("s", status).query(Long.class).single();
+    }
+
     public List<ReturnResponse.Header> findStockReturns(String status, int page, int size) {
         return jdbc.sql("""
                         SELECT id, status, reason, requested_by_id, confirmed_by_id, created_at, confirmed_at, request_key
                           FROM stock_returns WHERE CAST(:s AS text) IS NULL OR status = :s
                          ORDER BY id DESC LIMIT :size OFFSET :off""")
                 .param("s", status).param("size", size).param("off", (long) page * size).query(ReturnResponse.Header.class).list();
+    }
+
+    public long countStockAdjustments(String status) {
+        return jdbc.sql("SELECT count(*) FROM stock_adjustments WHERE CAST(:s AS text) IS NULL OR status = :s")
+                .param("s", status).query(Long.class).single();
     }
 
     public List<AdjustmentResponse.Header> findStockAdjustments(String status, int page, int size) {
