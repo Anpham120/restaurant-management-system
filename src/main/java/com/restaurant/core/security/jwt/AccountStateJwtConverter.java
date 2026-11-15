@@ -18,10 +18,11 @@ import com.restaurant.core.security.repository.CredentialQueryRepository;
 /**
  * Chữ ký JWT hợp lệ chưa đủ: mỗi request đọc lại trạng thái tài khoản trong DB (một câu SELECT).
  * <ul>
- * <li>Tài khoản bị khóa / nhân viên nghỉ việc / không còn vai trò → 401 ngay, kể cả với các API ghi trực tiếp mà
- * rc_authorize không bảo vệ (nhân viên, thực đơn, danh mục kho…).</li>
+ * <li>Tài khoản bị khóa / nhân viên nghỉ việc / không còn vai trò → 401 ngay, không chờ token hết hạn.</li>
  * <li>Vai trò lấy từ DB, không từ claim "roles" → đổi vai trò có hiệu lực ngay, không chờ token hết hạn.</li>
  * <li>must_change_password → thêm quyền {@link #PASSWORD_CHANGE_REQUIRED}; SecurityConfig chỉ cho gọi đổi mật khẩu và /me.</li>
+ * <li>Claim "tv" khác accounts.token_version → 401: token đã bị thu hồi do đổi/đặt lại mật khẩu hoặc đăng xuất.
+ * Token phát trước khi có cột này không có claim "tv", được coi là phiên bản 0.</li>
  * </ul>
  */
 @Component
@@ -47,6 +48,9 @@ public class AccountStateJwtConverter implements Converter<Jwt, AbstractAuthenti
         if (s == null || !"ACTIVE".equals(s.accountStatus()) || !"ACTIVE".equals(s.workStatus()) || s.roleCodes() == null) {
             throw new InvalidBearerTokenException("Tài khoản không còn hoạt động");
         }
+        if (tokenVersionOf(jwt) != s.tokenVersion()) {
+            throw new InvalidBearerTokenException("Phiên đăng nhập đã hết hiệu lực, hãy đăng nhập lại");
+        }
         List<GrantedAuthority> authorities = new ArrayList<>();
         for (String role : s.roleCodes().split(",")) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
@@ -55,5 +59,16 @@ public class AccountStateJwtConverter implements Converter<Jwt, AbstractAuthenti
             authorities.add(new SimpleGrantedAuthority(PASSWORD_CHANGE_REQUIRED));
         }
         return new JwtAuthenticationToken(jwt, authorities, jwt.getSubject());
+    }
+
+    private static long tokenVersionOf(Jwt jwt) {
+        Object tv = jwt.getClaims().get(JwtTokenService.TOKEN_VERSION_CLAIM);
+        if (tv == null) {
+            return 0;
+        }
+        if (tv instanceof Number n) {
+            return n.longValue();
+        }
+        throw new InvalidBearerTokenException("Token không hợp lệ");
     }
 }

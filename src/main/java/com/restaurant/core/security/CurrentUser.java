@@ -8,8 +8,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
 /**
- * Danh tính đã xác thực của request hiện tại. {@link #employeeId()} là giá trị DUY NHẤT được truyền vào tham số
- * p_actor của các hàm rc_* — không bao giờ nhận actor/employeeId từ body hay query của client.
+ * Danh tính đã xác thực của request hiện tại. {@link #employeeId()} là nguồn DUY NHẤT của "người thao tác" (actorId)
+ * truyền vào Service — không bao giờ nhận actor/employeeId từ body hay query của client.
  */
 @Component
 public class CurrentUser {

@@ -13,7 +13,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-/** Sơ chế, hoàn trả về kho, hủy hàng (hư hỏng/hết hạn). Phiếu nháp ghi trực tiếp; xác nhận bằng hàm rc_*. */
+/** Sơ chế, hoàn trả về kho, hủy hàng (hư hỏng/hết hạn). Lưu phiếu nháp, xác nhận thì KitchenStockServiceImpl ghi sổ kho. */
 public final class KitchenStockRequests {
 
     private KitchenStockRequests() {

@@ -80,11 +80,16 @@ class EmployeeIT extends OrderApiTestBase {
                 .andExpect(status().isUnauthorized());
         postJson(token, "/api/auth/change-password", "{\"currentPassword\":\"Tam-thoi-123\",\"newPassword\":\"ngan\"}")
                 .andExpect(status().isBadRequest());
-        postJson(token, "/api/auth/change-password", "{\"currentPassword\":\"Tam-thoi-123\",\"newPassword\":\"Moi-mat-khau-1\"}")
-                .andExpect(status().isOk());
+        String oldToken = token;
+        token = "Bearer " + read(postJson(token, "/api/auth/change-password", "{\"currentPassword\":\"Tam-thoi-123\",\"newPassword\":\"Moi-mat-khau-1\"}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.mustChangePassword").value(false)), "$.data.accessToken");
         loginAs(user, "Tam-thoi-123").andExpect(status().isUnauthorized());
-        loginAs(user, "Moi-mat-khau-1").andExpect(status().isOk()).andExpect(jsonPath("$.data.mustChangePassword").value(false));
-        getAs(token, "/api/tables").andExpect(status().isOk());                    // cùng token, hết bị chặn ngay
+        // đổi mật khẩu thu hồi token cũ (kể cả token đã bị lộ); token mới dùng được ngay
+        getAs(oldToken, "/api/auth/me").andExpect(status().isUnauthorized());
+        getAs(token, "/api/tables").andExpect(status().isOk());
+        String otherDevice = "Bearer " + read(loginAs(user, "Moi-mat-khau-1").andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.mustChangePassword").value(false)), "$.data.accessToken");
+        getAs(otherDevice, "/api/auth/me").andExpect(status().isOk());
 
         // vai trò, khóa/mở, đặt lại mật khẩu
         putJson(manager, "/api/accounts/{id}/roles", "{\"roles\":[\"KITCHEN\",\"CASHIER\"]}", acc).andExpect(status().isOk())
@@ -98,8 +103,17 @@ class EmployeeIT extends OrderApiTestBase {
         loginAs(user, "Moi-mat-khau-1").andExpect(status().isUnauthorized());
         getAs(token, "/api/auth/me").andExpect(status().isUnauthorized());
         postEmpty(manager, "/api/accounts/{id}/unlock", acc).andExpect(jsonPath("$.data.accountStatus").value("ACTIVE"));
+        String beforeReset = "Bearer " + read(loginAs(user, "Moi-mat-khau-1").andExpect(status().isOk()), "$.data.accessToken");
+        getAs(beforeReset, "/api/auth/me").andExpect(status().isOk());
         postJson(manager, "/api/accounts/{id}/reset-password", "{\"newPassword\":\"Reset-12345\"}", acc)
                 .andExpect(jsonPath("$.data.mustChangePassword").value(true));
+        getAs(beforeReset, "/api/auth/me").andExpect(status().isUnauthorized());   // quản lý đặt lại mật khẩu: token cũ hết hiệu lực
+        token = "Bearer " + read(loginAs(user, "Reset-12345").andExpect(status().isOk()), "$.data.accessToken");
+        // đăng xuất phía server: mọi token của tài khoản hết hiệu lực (kể cả token ở thiết bị khác)
+        String secondDevice = "Bearer " + read(loginAs(user, "Reset-12345").andExpect(status().isOk()), "$.data.accessToken");
+        postEmpty(secondDevice, "/api/auth/logout").andExpect(status().isOk());
+        getAs(token, "/api/auth/me").andExpect(status().isUnauthorized());
+        getAs(secondDevice, "/api/auth/me").andExpect(status().isUnauthorized());
         token = "Bearer " + read(loginAs(user, "Reset-12345").andExpect(status().isOk()), "$.data.accessToken");
 
         // sửa hồ sơ; nghỉ việc với ngày trước ngày vào làm → CHECK

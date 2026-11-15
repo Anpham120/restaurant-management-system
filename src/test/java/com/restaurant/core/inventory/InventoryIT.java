@@ -71,6 +71,11 @@ class InventoryIT extends OrderApiTestBase {
         postJson(kitchen, "/api/ingredients", "{\"name\":\"x\",\"baseUnit\":\"g\"}").andExpect(status().isForbidden());
         getAs(waiter, "/api/ingredients").andExpect(status().isForbidden());
         getAs(kitchen, "/api/ingredients/{id}", beef).andExpect(status().isOk()).andExpect(jsonPath("$.data.expiryTracked").value(true));
+        // chưa được dùng ở đâu: đổi đơn vị gốc được
+        putJson(manager, "/api/ingredients/{id}", "{\"name\":\"" + name + "\",\"baseUnit\":\"kg\"}", beef)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.baseUnit").value("kg"));
+        putJson(manager, "/api/ingredients/{id}", "{\"name\":\"" + name + "\",\"baseUnit\":\"g\",\"minQuantity\":1000,\"expiryTracked\":true}", beef)
+                .andExpect(status().isOk());
 
         long direct = type(beef, uniq("Bò nguyên miếng"), "DIRECT");
         postJson(manager, "/api/kitchen-ingredient-types", "{\"rawIngredientId\":" + beef + ",\"name\":\"" + uniq("Bò khác") + "\",\"handlingType\":\"DIRECT\"}")
@@ -83,6 +88,10 @@ class InventoryIT extends OrderApiTestBase {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.active").value(false));
         putJson(manager, "/api/ingredients/{id}", "{\"name\":\"" + name + "\",\"baseUnit\":\"g\",\"minQuantity\":5000}", beef)
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.minQuantity").value(5000));
+        // đã có loại nguyên liệu bếp: đổi đơn vị gốc bị chặn, đơn vị giữ nguyên
+        putJson(manager, "/api/ingredients/{id}", "{\"name\":\"" + name + "\",\"baseUnit\":\"kg\",\"minQuantity\":5000}", beef)
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("BASE_UNIT_LOCKED"));
+        getAs(kitchen, "/api/ingredients/{id}", beef).andExpect(jsonPath("$.data.baseUnit").value("g"));
     }
 
     @Test

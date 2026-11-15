@@ -1,6 +1,7 @@
 package com.restaurant.core.finance.strategy;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import com.restaurant.core.common.exception.ApiException;
@@ -41,6 +42,11 @@ public class QrPaymentStrategy implements PaymentStrategy {
         }
         if (!locked.openRequests().isEmpty()) {
             throw ApiException.invalidState("Hóa đơn " + invoiceId + " đã có yêu cầu thanh toán đang mở");
+        }
+        if (invoice.getTotal().stripTrailingZeros().scale() > 0) {
+            // Giá nhập vào đã bắt buộc là số nguyên đồng; chặn thêm ở đây để không bao giờ tạo QR mà webhook không khớp được
+            throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "AMOUNT_NOT_WHOLE_VND",
+                    "Tổng hóa đơn " + invoice.getTotal().toPlainString() + " có phần lẻ: không tạo được mã QR, hãy thu tiền mặt");
         }
         String reference = buildTransferReference(invoiceId);
         paymentRequestRepository.save(PaymentRequest.waitingForTransfer(invoice, actorId, invoice.getTotal(), reference, clock.now()));

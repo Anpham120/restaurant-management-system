@@ -22,8 +22,8 @@ import com.restaurant.core.order.service.OrderService;
 import com.restaurant.core.security.CurrentUser;
 
 /**
- * Chuyển trạng thái một dòng món — mỗi endpoint là một hàm rc_* (state machine của DB, docs/01 §7.3).
- * Vai trò theo ma trận docs/07 §10. Owner: Phạm Duy An.
+ * Chuyển trạng thái một dòng món — mỗi endpoint là một bước của máy trạng thái (OrderItemStatusChanger, docs/01 §7.3);
+ * trigger trong DB chặn bước sai làm lưới an toàn. Owner: Phạm Duy An.
  */
 @RestController
 @RequestMapping("/api/order-items")

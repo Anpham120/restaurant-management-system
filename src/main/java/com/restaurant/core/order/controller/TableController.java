@@ -78,7 +78,7 @@ public class TableController {
         return ApiResponse.ok(tableService.getTableById(tableId));
     }
 
-    /** Vai trò khớp ma trận rc_open_session ở docs/07 §10 (WAITER, MANAGER); DB kiểm lại bằng rc_authorize. */
+    /** Vai trò: WAITER, MANAGER. */
     @PostMapping("/{tableId}/sessions")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('WAITER', 'MANAGER')")

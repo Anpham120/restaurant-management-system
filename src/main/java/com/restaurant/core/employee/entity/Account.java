@@ -79,7 +79,7 @@ public class Account {
         status = AccountStatus.ACTIVE;
     }
 
-    /** Mật khẩu tạm do quản lý đặt: người dùng phải đổi khi đăng nhập lại. */
+    /** Mật khẩu tạm do quản lý đặt: người dùng phải đổi khi đăng nhập lại. Token cũ bị thu hồi qua AccountRepository.revokeTokens. */
     public void resetPassword(String newPasswordHash) {
         passwordHash = newPasswordHash;
         mustChangePassword = true;

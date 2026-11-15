@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
-/** Sơ chế, hoàn trả về kho, hủy hàng (hư hỏng/hết hạn). Phiếu nháp ghi trực tiếp; xác nhận bằng hàm rc_*. */
+/** Sơ chế, hoàn trả về kho, hủy hàng (hư hỏng/hết hạn). Lưu phiếu nháp, xác nhận thì KitchenStockServiceImpl ghi sổ kho. */
 public final class KitchenStockResponses {
 
     private KitchenStockResponses() {

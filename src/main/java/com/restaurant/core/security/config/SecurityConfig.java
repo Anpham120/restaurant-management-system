@@ -55,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         // tài khoản phải đổi mật khẩu: chỉ được đổi mật khẩu và xem /me
                         .requestMatchers(HttpMethod.POST, "/api/auth/change-password").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                         // còn lại: phải đăng nhập và đã đổi mật khẩu bắt buộc; vai trò do @PreAuthorize trên controller kiểm
                         .anyRequest().access((authentication, context) -> new AuthorizationDecision(passwordChanged(authentication.get()))))

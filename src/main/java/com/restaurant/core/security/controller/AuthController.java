@@ -33,10 +33,19 @@ public class AuthController {
         return ApiResponse.ok(authService.login(request));
     }
 
-    /** Mọi người đã đăng nhập; bắt buộc khi LoginResponse.mustChangePassword = true. */
+    /**
+     * Mọi người đã đăng nhập; bắt buộc khi LoginResponse.mustChangePassword = true.
+     * Token đang dùng bị thu hồi: client phải thay bằng accessToken trong kết quả.
+     */
     @PostMapping("/change-password")
-    public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        authService.changePassword(currentUser.employeeId(), request);
+    public ApiResponse<LoginResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        return ApiResponse.ok(authService.changePassword(currentUser.employeeId(), request));
+    }
+
+    /** Mọi người đã đăng nhập. Thu hồi mọi token của tài khoản (đăng xuất trên mọi thiết bị). */
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout() {
+        authService.logout(currentUser.employeeId());
         return ApiResponse.ok(null);
     }
 

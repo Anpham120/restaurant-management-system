@@ -90,7 +90,7 @@ public class Employee {
         return workStatus == WorkStatus.LEFT;
     }
 
-    /** Nghỉ việc: không quay lại được; đăng nhập và mọi hàm rc_* của người này bị từ chối từ đây. */
+    /** Nghỉ việc: không quay lại được; đăng nhập và mọi request bằng token cũ của người này bị từ chối từ đây. */
     public void markAsLeft(LocalDate endDate) {
         this.workStatus = WorkStatus.LEFT;
         this.endDate = endDate;

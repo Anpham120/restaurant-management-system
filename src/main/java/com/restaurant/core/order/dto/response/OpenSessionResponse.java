@@ -1,5 +1,5 @@
 package com.restaurant.core.order.dto.response;
 
-/** rc_open_session tạo phiên và đơn hàng (1–1) trong cùng một lần gọi. */
+/** Mở bàn tạo phiên và đơn hàng (1–1) trong cùng một transaction. */
 public record OpenSessionResponse(long sessionId, long tableId, long orderId) {
 }

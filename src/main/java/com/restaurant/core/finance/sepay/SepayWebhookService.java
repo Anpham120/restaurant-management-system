@@ -65,9 +65,27 @@ public class SepayWebhookService {
         }
         String reference = extractReference(readTextField(body, "code"), readTextField(body, "content"));
         BigDecimal transferAmount = amount.decimalValue();
-        String result = qrTransferProcessor.recordVerifiedTransfer(transactionCode, reference, transferAmount, rawBody).name();
+        boolean toRestaurantAccount = isRestaurantAccount(readTextField(body, "accountNumber"), readTextField(body, "subAccount"));
+        if (!toRestaurantAccount) {
+            log.warn("SePay giao dịch {} vào tài khoản khác tài khoản nhận của nhà hàng: ghi MISMATCH để đối soát", transactionCode);
+        }
+        String result = qrTransferProcessor.recordVerifiedTransfer(transactionCode, reference, transferAmount, toRestaurantAccount, rawBody).name();
         log.info("SePay giao dịch {} tham chiếu {} → {}", transactionCode, reference, result);
         return new WebhookResult(transactionCode, result, reference);
+    }
+
+    /**
+     * Tiền phải vào đúng tài khoản in trên ảnh QR (SEPAY_BANK_ACCOUNT). Một tài khoản SePay có thể nhận thông báo từ nhiều
+     * tài khoản ngân hàng: thiếu bước này, một giao dịch đúng mã và đúng số tiền ở tài khoản khác vẫn được tính là đã thu.
+     * Tài khoản ảo (VA) đến trong "subAccount", tài khoản chính trong "accountNumber": khớp một trong hai là đủ.
+     */
+    boolean isRestaurantAccount(String accountNumber, String subAccount) {
+        String expected = props.bankAccount();
+        if (!SepayProperties.hasText(expected)) {
+            return false;                                   // chưa cấu hình tài khoản nhận: không có QR nào hợp lệ
+        }
+        return expected.strip().equals(accountNumber == null ? null : accountNumber.strip())
+                || expected.strip().equals(subAccount == null ? null : subAccount.strip());
     }
 
     private void verifyApiKey(String header) {

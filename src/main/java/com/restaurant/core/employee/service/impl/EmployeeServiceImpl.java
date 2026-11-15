@@ -144,7 +144,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     /**
-     * Sau khi nghỉ: đăng nhập bị từ chối, token cũ gọi rc_* nhận RC403 (rc_authorize kiểm work_status). Các ca đã xếp
+     * Sau khi nghỉ: đăng nhập bị từ chối, token cũ nhận 401 (AccountStateJwtConverter kiểm work_status). Các ca đã xếp
      * sau ngày nghỉ mà chưa chấm công bị hủy kèm lý do, để lịch không còn tính người đã nghỉ.
      */
     @Override
@@ -213,6 +213,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         Account account = findAccountForUpdate(accountId);
         account.resetPassword(passwordEncoder.encode(newPassword));
         accountRepository.flush();
+        accountRepository.revokeTokens(accountId);         // token cũ của nhân viên hết hiệu lực ngay
         return getEmployeeById(account.getEmployee().getId());
     }
 

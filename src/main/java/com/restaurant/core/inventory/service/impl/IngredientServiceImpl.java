@@ -52,11 +52,21 @@ public class IngredientServiceImpl implements IngredientService {
         return getIngredientById(ingredient.getId());
     }
 
+    /**
+     * Đơn vị gốc chỉ đổi được khi nguyên liệu chưa được dùng ở đâu. Tồn kho, phiếu nhập, định lượng công thức và loại bếp
+     * đều lưu số lượng theo đơn vị gốc mà không lưu lại đơn vị: đổi "g" thành "kg" sẽ biến 10.000 g thành 10.000 kg.
+     */
     @Override
     @Transactional
     public IngredientResponse updateIngredient(long id, IngredientRequest r) {
         Ingredient ingredient = ingredientRepository.findById(id).orElseThrow(() -> notFoundError("Không tìm thấy nguyên liệu " + id));
-        ingredient.changeDetails(r.name().strip(), r.baseUnit().strip(), orZero(r.minQuantity()), isTrueOrMissing(r.expiryTracked()),
+        String newBaseUnit = r.baseUnit().strip();
+        if (!newBaseUnit.equals(ingredient.getBaseUnit()) && repo.isIngredientInUse(id)) {
+            throw new ApiException(HttpStatus.CONFLICT, "BASE_UNIT_LOCKED", "Nguyên liệu " + ingredient.getName()
+                    + " đã có phiếu nhập hoặc loại nguyên liệu bếp: không đổi đơn vị gốc " + ingredient.getBaseUnit()
+                    + " được, vì số lượng đã lưu sẽ bị hiểu sai. Hãy tạo nguyên liệu mới với đơn vị " + newBaseUnit);
+        }
+        ingredient.changeDetails(r.name().strip(), newBaseUnit, orZero(r.minQuantity()), isTrueOrMissing(r.expiryTracked()),
                 isTrueOrMissing(r.active()));
         ingredientRepository.flush();
         return getIngredientById(id);

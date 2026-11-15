@@ -3,7 +3,7 @@ package com.restaurant.core.order.dto.response;
 import java.util.List;
 
 /**
- * Kết quả rc_submit_batch (JSONB). warnings là CẢNH BÁO hết suất (QĐ-4) — đợt món vẫn được ghi; Kitchen sẽ kiểm cứng
+ * Kết quả gửi lượt món. warnings là CẢNH BÁO hết suất (QĐ-4) — đợt món vẫn được ghi; Kitchen sẽ kiểm cứng
  * khi nhận món. Không chuyển cảnh báo thành lỗi.
  */
 public record SubmitBatchResponse(long batchId, boolean replayed, List<QuotaWarning> warnings, List<OrderItemResponse> items) {
