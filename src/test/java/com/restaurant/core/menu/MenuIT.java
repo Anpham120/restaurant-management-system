@@ -1,15 +1,23 @@
 package com.restaurant.core.menu;
 
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.ResultActions;
 
 import com.restaurant.core.order.OrderApiTestBase;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
@@ -60,6 +68,11 @@ class MenuIT extends OrderApiTestBase {
         getAs(manager, "/api/menu-items?categoryId=" + cat + "&activeOnly=false").andExpect(jsonPath("$.data", hasSize(1)));
         postJson(manager, "/api/menu-items", "{\"categoryId\":" + cat + ",\"name\":\"Âm\",\"price\":-1}")
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.details[0].field").value("price"));
+        // VND không có phần lẻ: giá 10000,50 sẽ in QR 10000 và webhook không bao giờ khớp
+        postJson(manager, "/api/menu-items", "{\"categoryId\":" + cat + ",\"name\":\"Lẻ\",\"price\":10000.50}")
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.details[0].field").value("price"));
+        postJson(manager, "/api/menu-items", "{\"categoryId\":" + cat + ",\"name\":\"" + uniq("Chẵn") + "\",\"price\":10000.00}")
+                .andExpect(status().isCreated());
         postJson(manager, "/api/menu-items", "{\"categoryId\":999999999,\"name\":\"" + uniq("Không nhóm") + "\",\"price\":1}")
                 .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("REFERENCE_NOT_FOUND"));
         putJson(manager, "/api/menu-categories/{id}", "{\"name\":\"" + name + "\",\"sortOrder\":5,\"active\":false}", cat)
@@ -283,5 +296,36 @@ class MenuIT extends OrderApiTestBase {
         submit(t[2], "pause-" + dmi, dmi, 1).andExpect(status().isConflict());
         postEmpty(kitchen, "/api/daily-menu-items/{id}/resume", dmi).andExpect(status().isOk()).andExpect(jsonPath("$.data.paused").value(false));
         submit(t[2], "resume-" + dmi, dmi, 1).andExpect(status().isCreated());
+    }
+
+    /**
+     * Bếp tạm dừng món (đang giữ khóa dòng, chưa commit) đúng lúc quản lý đổi hạn mức hàng loạt. Hạn mức phải chờ khóa,
+     * rồi đọc lại món: hạn mức đổi, món vẫn tạm dừng. Trước đây hạn mức đọc món không khóa và ghi đè is_paused = false.
+     */
+    @Test
+    void quotaUpdateDoesNotUndoConcurrentPause() throws Exception {
+        long dmi = data.dish(30000, 10, null).dailyMenuItemId();
+        long menu = data.count("SELECT daily_menu_id FROM daily_menu_items WHERE id = ?", dmi);
+        long pausedBy = data.count("SELECT min(id) FROM employees");
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try (Connection kitchenTx = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
+            kitchenTx.setAutoCommit(false);
+            try (PreparedStatement pause = kitchenTx.prepareStatement(
+                    "UPDATE daily_menu_items SET is_paused = true, pause_reason = 'Hết hàng', paused_by_id = ?, paused_at = now() WHERE id = ?")) {
+                pause.setLong(1, pausedBy);
+                pause.setLong(2, dmi);
+                pause.executeUpdate();
+            }
+            Future<Integer> quotas = pool.submit(() -> putJson(manager, "/api/daily-menus/{id}/quotas",
+                    "{\"items\":[{\"dailyMenuItemId\":" + dmi + ",\"quotaTotal\":50}]}", menu).andReturn().getResponse().getStatus());
+            Thread.sleep(500);
+            assertThat(quotas.isDone()).as("đổi hạn mức phải chờ khóa dòng của bếp").isFalse();
+            kitchenTx.commit();
+            assertEquals(200, quotas.get(10, TimeUnit.SECONDS));
+        } finally {
+            pool.shutdownNow();
+        }
+        assertEquals("true", data.value("SELECT is_paused::text FROM daily_menu_items WHERE id = ?", dmi));
+        assertEquals("50", data.value("SELECT quota_total::text FROM daily_menu_items WHERE id = ?", dmi));
     }
 }

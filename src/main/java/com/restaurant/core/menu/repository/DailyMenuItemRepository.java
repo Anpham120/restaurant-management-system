@@ -1,5 +1,6 @@
 package com.restaurant.core.menu.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,4 +25,17 @@ public interface DailyMenuItemRepository extends JpaRepository<DailyMenuItem, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT d FROM DailyMenuItem d WHERE d.id = :id")
     Optional<DailyMenuItem> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * Khóa nhiều món theo id tăng dần (PostgreSQL khóa theo thứ tự trả về), nên hai thao tác cùng sửa nhiều món không
+     * khóa chéo nhau. Đọc sau khi khóa: không ghi đè trạng thái tạm dừng mà người khác vừa đổi.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT d FROM DailyMenuItem d WHERE d.id IN :ids ORDER BY d.id")
+    List<DailyMenuItem> findAllByIdForUpdate(@Param("ids") Collection<Long> ids);
+
+    /** Mọi món của một thực đơn ngày, khóa theo id tăng dần. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT d FROM DailyMenuItem d WHERE d.dailyMenu.id = :dailyMenuId ORDER BY d.id")
+    List<DailyMenuItem> findByDailyMenuIdForUpdate(@Param("dailyMenuId") Long dailyMenuId);
 }

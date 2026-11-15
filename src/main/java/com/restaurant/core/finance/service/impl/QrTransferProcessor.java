@@ -40,8 +40,10 @@ public class QrTransferProcessor {
     private final InvoiceSettlement invoiceSettlement;
     private final BusinessDateProvider clock;
 
+    /** toRestaurantAccount = false: tiền vào tài khoản khác tài khoản in trên QR → MISMATCH, lưu lại để đối soát. */
     @Transactional
-    public WebhookProcessingResult recordVerifiedTransfer(String transactionCode, String reference, BigDecimal amount, String rawPayload) {
+    public WebhookProcessingResult recordVerifiedTransfer(String transactionCode, String reference, BigDecimal amount,
+                                                         boolean toRestaurantAccount, String rawPayload) {
         if (transactionCode == null || transactionCode.isBlank() || reference == null || amount == null || rawPayload == null) {
             throw ApiException.invalidRequest("Webhook thiếu mã giao dịch, mã tham chiếu, số tiền hoặc payload");
         }
@@ -60,7 +62,7 @@ public class QrTransferProcessor {
             paymentRequest = paymentRequestRepository.findByPaymentReferenceForUpdate(reference).orElseThrow();
         }
 
-        WebhookProcessingResult result = decideResult(invoice, paymentRequest, amount);
+        WebhookProcessingResult result = toRestaurantAccount ? decideResult(invoice, paymentRequest, amount) : WebhookProcessingResult.MISMATCH;
         Instant now = clock.now();
         PaymentWebhookEvent event = webhookEventRepository.save(new PaymentWebhookEvent(
                 paymentRequest, transactionCode, reference, amount, result, rawPayload, now));

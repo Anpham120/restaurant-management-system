@@ -32,7 +32,7 @@ public class PaymentController {
         this.currentUser = currentUser;
     }
 
-    /** Thu tiền một hóa đơn đã chốt (PAYMENT_PENDING). Vai trò khớp rc_pay_cash/rc_start_qr: CASHIER, MANAGER. */
+    /** Thu tiền một hóa đơn đã chốt (PAYMENT_PENDING). Vai trò: CASHIER, MANAGER. */
     @PostMapping("/invoices/{invoiceId}/payments")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('CASHIER', 'MANAGER')")

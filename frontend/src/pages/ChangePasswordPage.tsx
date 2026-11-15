@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../api/client';
+import type { LoginResponse } from '../api/types';
 import { AuthLayout, PasswordInput } from '../components/AuthLayout';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { useToast } from '../components/Toast';
@@ -29,8 +30,7 @@ export function ChangePasswordPage() {
     setBusy(true);
     setError(null);
     try {
-      await api.post('/api/auth/change-password', { currentPassword: current, newPassword: next });
-      passwordChanged();
+      passwordChanged(await api.post<LoginResponse>('/api/auth/change-password', { currentPassword: current, newPassword: next }));
       toast('Đã đổi mật khẩu');
       navigate(homeFor(user!.roles), { replace: true });
     } catch (err) {

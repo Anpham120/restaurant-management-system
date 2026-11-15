@@ -72,10 +72,13 @@ unauthorized() { [ "$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL/api/table
 TOKEN=$(curl -fsS -H 'Content-Type: application/json' -d "{\"username\":\"smoke\",\"password\":\"$SMOKE_PASSWORD\"}" \
   "$APP_URL/api/auth/login" | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p' || true)
 login() { [ -n "$TOKEN" ]; }
-# Tài khoản mới tạo bị buộc đổi mật khẩu (server trả 403 PASSWORD_CHANGE_REQUIRED); đổi xong thì token đang có dùng được
+# Tài khoản mới tạo bị buộc đổi mật khẩu (server trả 403 PASSWORD_CHANGE_REQUIRED). Đổi mật khẩu thu hồi token cũ:
+# dùng token mới trong kết quả (bản cũ không trả token thì giữ token đang có).
 if [ -n "$TOKEN" ]; then
-  curl -fsS -o /dev/null -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-    -d "{\"currentPassword\":\"$SMOKE_PASSWORD\",\"newPassword\":\"$(rand 20)\"}" "$APP_URL/api/auth/change-password" || true
+  NEW_TOKEN=$(curl -fsS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+    -d "{\"currentPassword\":\"$SMOKE_PASSWORD\",\"newPassword\":\"$(rand 20)\"}" "$APP_URL/api/auth/change-password" \
+    | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p' || true)
+  [ -n "$NEW_TOKEN" ] && TOKEN=$NEW_TOKEN
 fi
 
 # Quét đọc mọi module bằng quyền quản lý: bắt lỗi SQL lệch schema hoặc dữ liệu thật mà test tích hợp không có

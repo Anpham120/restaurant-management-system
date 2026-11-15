@@ -84,6 +84,26 @@ class SepayWebhookIT extends OrderApiTestBase {
         assertThat(data.value("SELECT resolution_status FROM payment_webhook_events WHERE payment_reference = ?", ref)).isEqualTo("OPEN");
     }
 
+    /** Đúng mã tham chiếu, đúng số tiền nhưng tiền vào tài khoản khác tài khoản in trên QR: không tính là đã thu. */
+    @Test
+    void transferToAnotherAccountIsMismatch() throws Exception {
+        long[] s = servedAndCheckedOut(45000);
+        String ref = startQr(s[2]);
+        String otherAccount = payload(++txSeq, ref, ref, 45000, "in").replace("\"accountNumber\":\"0010000000355\"", "\"accountNumber\":\"9999888877\"");
+        webhook("Apikey " + SEPAY_API_KEY, otherAccount)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.result").value("MISMATCH"));
+        assertThat(data.invoiceStatus(s[2])).isEqualTo("PAYMENT_PENDING");
+        assertThat(data.count("SELECT count(*) FROM payments WHERE invoice_id = ?", s[2])).isZero();
+        assertThat(data.value("SELECT resolution_status FROM payment_webhook_events WHERE provider_transaction_code = ?", String.valueOf(txSeq)))
+                .isEqualTo("OPEN");
+
+        // tài khoản ảo (VA) của nhà hàng đến trong subAccount: vẫn hợp lệ
+        String viaSubAccount = payload(++txSeq, ref, ref, 45000, "in").replace("\"accountNumber\":\"0010000000355\"", "\"accountNumber\":\"1234567890\"")
+                .replace("\"subAccount\":null", "\"subAccount\":\"0010000000355\"");
+        webhook("Apikey " + SEPAY_API_KEY, viaSubAccount).andExpect(jsonPath("$.data.result").value("PROCESSED"));
+        assertThat(data.invoiceStatus(s[2])).isEqualTo("PAID");
+    }
+
     @Test
     void referenceIsFoundInContentWhenCodeMissing() throws Exception {
         long[] s = servedAndCheckedOut(30000);

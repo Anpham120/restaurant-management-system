@@ -3,7 +3,7 @@ package com.restaurant.core.menu.dto.response;
 import java.math.BigDecimal;
 
 /**
- * Món trong thực đơn ngày. dailyMenuItemId là khóa Order dùng khi gửi món. quotaUsed suy ra bằng rc_quota_used
+ * Món trong thực đơn ngày. dailyMenuItemId là khóa Order dùng khi gửi món. quotaUsed do QuotaUsageCounter đếm
  * (ACCEPTED trở đi, kể cả hủy sau khi nấu); remaining null khi không giới hạn suất.
  */
 public record DailyMenuItemResponse(long dailyMenuItemId, long dailyMenuId, long menuItemId, String name, String categoryName,

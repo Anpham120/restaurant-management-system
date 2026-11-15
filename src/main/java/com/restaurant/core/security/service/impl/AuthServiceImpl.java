@@ -62,7 +62,7 @@ public class AuthServiceImpl implements AuthService {
             throw invalidCredentialsError(request.username());
         }
         throttle.recordSuccess(request.username());
-        JwtTokenService.IssuedToken token = tokens.issue(acc.employeeId(), acc.username(), roles);
+        JwtTokenService.IssuedToken token = tokens.issue(acc.employeeId(), acc.username(), roles, acc.tokenVersion());
         return new LoginResponse(token.value(), "Bearer", token.expiresAt(), acc.employeeId(), acc.username(), roles,
                 acc.mustChangePassword());
     }
@@ -72,10 +72,13 @@ public class AuthServiceImpl implements AuthService {
         return new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", INVALID);
     }
 
-    /** Kiểm mật khẩu cũ, lưu hash mới, tắt cờ bắt buộc đổi. Token đang dùng vẫn hợp lệ tới khi hết hạn. */
+    /**
+     * Kiểm mật khẩu cũ, lưu hash mới, tắt cờ bắt buộc đổi, tăng token_version: token cũ (kể cả token bị lộ) hết hiệu lực
+     * ngay. Trả token mới mang phiên bản mới cho người vừa đổi.
+     */
     @Override
     @Transactional
-    public void changePassword(long employeeId, ChangePasswordRequest request) {
+    public LoginResponse changePassword(long employeeId, ChangePasswordRequest request) {
         String hash = accounts.findPasswordHash(employeeId).orElse(dummyHash);
         if (!passwordEncoder.matches(request.currentPassword(), hash)) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Mật khẩu hiện tại không đúng");
@@ -86,6 +89,17 @@ public class AuthServiceImpl implements AuthService {
         UserCredential credential = credentialRepository.findByEmployeeIdForUpdate(employeeId)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Mật khẩu hiện tại không đúng"));
         credential.changePassword(passwordEncoder.encode(request.newPassword()));
+        credentialRepository.flush();
+        AccountCredentials acc = accounts.findByEmployeeId(employeeId).orElseThrow();
+        List<String> roles = accounts.findRoleCodes(employeeId);
+        JwtTokenService.IssuedToken token = tokens.issue(employeeId, acc.username(), roles, credential.getTokenVersion());
+        return new LoginResponse(token.value(), "Bearer", token.expiresAt(), employeeId, acc.username(), roles, false);
+    }
+
+    @Override
+    @Transactional
+    public void logout(long employeeId) {
+        credentialRepository.findByEmployeeIdForUpdate(employeeId).ifPresent(UserCredential::revokeTokens);
         credentialRepository.flush();
     }
 

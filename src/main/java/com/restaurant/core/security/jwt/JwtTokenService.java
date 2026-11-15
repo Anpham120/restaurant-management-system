@@ -11,9 +11,11 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Component;
 
-/** Phát JWT sau khi đăng nhập thành công: sub = employees.id, roles = mã vai trò. */
+/** Phát JWT sau khi đăng nhập thành công: sub = employees.id, roles = mã vai trò, tv = accounts.token_version lúc phát. */
 @Component
 public class JwtTokenService {
+
+    public static final String TOKEN_VERSION_CLAIM = "tv";
 
     public record IssuedToken(String value, Instant expiresAt) {
     }
@@ -26,7 +28,7 @@ public class JwtTokenService {
         this.props = props;
     }
 
-    public IssuedToken issue(long employeeId, String username, List<String> roles) {
+    public IssuedToken issue(long employeeId, String username, List<String> roles, int tokenVersion) {
         Instant now = Instant.now();
         Instant exp = now.plus(props.ttl());
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -36,6 +38,7 @@ public class JwtTokenService {
                 .subject(Long.toString(employeeId))
                 .claim("username", username)
                 .claim("roles", roles)
+                .claim(TOKEN_VERSION_CLAIM, tokenVersion)
                 .build();
         String token = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
         return new IssuedToken(token, exp);

@@ -34,7 +34,7 @@ class SecurityRulesIT extends OrderApiTestBase {
 
     private static final Set<String> PUBLIC = Set.of("/api/auth/login", "/api/webhooks/sepay");
     /** Chỉ cần đăng nhập, khai trong SecurityConfig (tài khoản phải đổi mật khẩu vẫn gọi được). */
-    private static final Set<String> AUTHENTICATED_ONLY = Set.of("/api/auth/change-password", "/api/auth/me");
+    private static final Set<String> AUTHENTICATED_ONLY = Set.of("/api/auth/change-password", "/api/auth/me", "/api/auth/logout");
     private static final Pattern ROLE = Pattern.compile("'(\\w+)'");
 
     @Autowired
@@ -54,6 +54,9 @@ class SecurityRulesIT extends OrderApiTestBase {
                 }
                 if (!AUTHENTICATED_ONLY.contains(pattern) && !hasPreAuthorize(e.getValue())) {
                     violations.add(pattern + " thiếu @PreAuthorize");
+                }
+                if (pattern.equals("/api/auth/logout")) {
+                    continue;   // gọi thật sẽ thu hồi token dùng chung của các test; logout được kiểm trong EmployeeIT
                 }
                 String url = pattern.replace("{kind}", "RAW").replace("{businessDate}", "2026-01-01").replaceAll("\\{[^}]+}", "999999999");
                 for (var m : e.getKey().getMethodsCondition().getMethods()) {

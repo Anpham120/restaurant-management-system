@@ -33,6 +33,15 @@ public class IngredientQueryRepository {
                 .query(IngredientResponse.class).list();
     }
 
+    /** Nguyên liệu đã có phiếu nhập (kéo theo lô, tồn, sổ kho) hoặc loại nguyên liệu bếp (kéo theo công thức, tồn bếp). */
+    public boolean isIngredientInUse(long id) {
+        return jdbc.sql("""
+                        SELECT EXISTS (SELECT 1 FROM stock_receipt_items WHERE ingredient_id = :id)
+                            OR EXISTS (SELECT 1 FROM kitchen_ingredient_types WHERE raw_ingredient_id = :id)
+                        """)
+                .param("id", id).query(Boolean.class).single();
+    }
+
     public Optional<IngredientResponse> findIngredient(long id) {
         return jdbc.sql(INGREDIENT_SELECT + " WHERE id = :id").param("id", id).query(IngredientResponse.class).optional();
     }

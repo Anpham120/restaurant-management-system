@@ -33,9 +33,19 @@ public class UserCredential {
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword;
 
-    /** Người dùng tự đổi mật khẩu: tắt cờ bắt buộc đổi. */
+    /** Tăng lên thì mọi JWT phát trước đó hết hiệu lực (claim "tv" khác giá trị này). */
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion;
+
+    /** Người dùng tự đổi mật khẩu: tắt cờ bắt buộc đổi, thu hồi mọi token cũ (kể cả token đã bị lộ). */
     public void changePassword(String newPasswordHash) {
         passwordHash = newPasswordHash;
         mustChangePassword = false;
+        revokeTokens();
+    }
+
+    /** Đăng xuất phía server: mọi token của tài khoản này hết hiệu lực trên mọi thiết bị. */
+    public void revokeTokens() {
+        tokenVersion++;
     }
 }

@@ -16,13 +16,16 @@ public class SepayQr {
         this.sepay = sepay;
     }
 
-    /** null nếu chưa cấu hình tài khoản nhận (SEPAY_BANK_*). */
+    /**
+     * null nếu chưa cấu hình tài khoản nhận (SEPAY_BANK_*). Số tiền phải là số nguyên đồng: toBigIntegerExact() báo lỗi
+     * thay vì cắt phần lẻ, vì QR in 10000 cho hóa đơn 10000,50 sẽ không bao giờ khớp khi webhook đối chiếu số tiền.
+     */
     public String imageUrl(BigDecimal amount, String reference) {
         if (!sepay.qrConfigured()) {
             return null;
         }
         return "https://qr.sepay.vn/img?acc=" + urlEncode(sepay.bankAccount()) + "&bank=" + urlEncode(sepay.bankName())
-                + "&amount=" + amount.toBigInteger() + "&des=" + urlEncode(reference);
+                + "&amount=" + amount.toBigIntegerExact() + "&des=" + urlEncode(reference);
     }
 
     private static String urlEncode(String s) {

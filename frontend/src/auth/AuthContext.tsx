@@ -11,7 +11,8 @@ interface AuthState {
   mustChangePassword: boolean;
   login: (username: string, password: string) => Promise<LoginResponse>;
   logout: () => void;
-  passwordChanged: () => void;
+  /** Đổi mật khẩu thu hồi token cũ: lưu token mới server trả về. */
+  passwordChanged: (res: LoginResponse) => void;
   hasRole: (...roles: Role[]) => boolean;
 }
 
@@ -23,19 +24,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(() => tokenStore.get() !== null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
 
-  const logout = useCallback(() => {
+  /** Chỉ xóa phiên trên trình duyệt (token đã hết hiệu lực hoặc bị thu hồi). */
+  const clearSession = useCallback(() => {
     tokenStore.set(null);
     setUser(null);
     setMustChangePassword(false);
     queryClient.clear();
   }, [queryClient]);
 
+  /** Người dùng bấm đăng xuất: thu hồi token phía server (mọi thiết bị), rồi xóa phiên. Lỗi mạng vẫn đăng xuất. */
+  const logout = useCallback(() => {
+    if (tokenStore.get()) api.post('/api/auth/logout').catch(() => {});
+    clearSession();
+  }, [clearSession]);
+
   useEffect(() => {
     setAuthProblemHandler((e) => {
       if (e.code === 'PASSWORD_CHANGE_REQUIRED') setMustChangePassword(true);
-      else logout();
+      else clearSession();
     });
-  }, [logout]);
+  }, [clearSession]);
 
   // Mở lại trang: token còn thì lấy lại thông tin người dùng (vai trò hiện hành do backend đọc từ DB).
   useEffect(() => {
@@ -62,7 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mustChangePassword,
       login,
       logout,
-      passwordChanged: () => setMustChangePassword(false),
+      passwordChanged: (res) => {
+        tokenStore.set(res.accessToken);
+        setMustChangePassword(false);
+      },
       hasRole: (...roles) => !!user && roles.some((r) => user.roles.includes(r)),
     }),
     [user, loading, mustChangePassword, login, logout],

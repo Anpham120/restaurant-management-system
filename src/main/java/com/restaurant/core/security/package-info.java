@@ -1,6 +1,6 @@
 /**
  * Xác thực và phân quyền: đăng nhập, JWT, đổi mật khẩu, chống dò mật khẩu.
- * API cho module khác: các lớp ở package gốc, chủ yếu {@link com.restaurant.core.security.CurrentUser} (p_actor của hàm rc_*).
+ * API cho module khác: các lớp ở package gốc, chủ yếu {@link com.restaurant.core.security.CurrentUser} (người thao tác ghi vào dữ liệu).
  * Package con (controller, service, repository, dto) là nội bộ.
  */
 @ApplicationModule(displayName = "Bảo mật", allowedDependencies = "common")

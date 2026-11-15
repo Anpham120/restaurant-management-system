@@ -12,11 +12,11 @@ public class CredentialQueryRepository {
 
     /** Dữ liệu cần để xác thực. passwordHash chỉ dùng trong AuthService, không bao giờ trả ra API hay ghi log. */
     public record AccountCredentials(long employeeId, String username, String passwordHash, String accountStatus,
-                                     String workStatus, boolean mustChangePassword) {
+                                     String workStatus, boolean mustChangePassword, int tokenVersion) {
     }
 
     /** Trạng thái hiện tại để kiểm mỗi request (token còn hạn không có nghĩa tài khoản còn dùng được). */
-    public record AccountState(String accountStatus, String workStatus, boolean mustChangePassword, String roleCodes) {
+    public record AccountState(String accountStatus, String workStatus, boolean mustChangePassword, String roleCodes, int tokenVersion) {
     }
 
     private final JdbcClient jdbc;
@@ -28,7 +28,7 @@ public class CredentialQueryRepository {
     public Optional<AccountCredentials> findByUsername(String username) {
         return jdbc.sql("""
                         SELECT e.id AS employee_id, a.username, a.password_hash, a.account_status,
-                               e.work_status, a.must_change_password
+                               e.work_status, a.must_change_password, a.token_version
                           FROM accounts a
                           JOIN employees e ON e.id = a.employee_id
                          WHERE a.username = :username
@@ -38,11 +38,25 @@ public class CredentialQueryRepository {
                 .optional();
     }
 
+    public Optional<AccountCredentials> findByEmployeeId(long employeeId) {
+        return jdbc.sql("""
+                        SELECT e.id AS employee_id, a.username, a.password_hash, a.account_status,
+                               e.work_status, a.must_change_password, a.token_version
+                          FROM accounts a
+                          JOIN employees e ON e.id = a.employee_id
+                         WHERE a.employee_id = :e
+                        """)
+                .param("e", employeeId)
+                .query(AccountCredentials.class)
+                .optional();
+    }
+
     public Optional<AccountState> findAccountState(long employeeId) {
         return jdbc.sql("""
                         SELECT a.account_status, e.work_status, a.must_change_password,
                                (SELECT string_agg(r.role_code, ',' ORDER BY r.role_code)
-                                  FROM account_roles ar JOIN roles r ON r.id = ar.role_id WHERE ar.account_id = a.id) AS role_codes
+                                  FROM account_roles ar JOIN roles r ON r.id = ar.role_id WHERE ar.account_id = a.id) AS role_codes,
+                               a.token_version
                           FROM accounts a
                           JOIN employees e ON e.id = a.employee_id
                          WHERE a.employee_id = :e

@@ -109,13 +109,20 @@ public class DailyMenuServiceImpl implements DailyMenuService {
         return new FillQuotasResponse(source.businessDate(), updated, getDailyMenuById(target.id()));
     }
 
-    /** Đổi hạn mức nhiều món: một dòng lỗi (không thuộc thực đơn, thấp hơn số đã bán) thì không đổi dòng nào. */
+    /**
+     * Đổi hạn mức nhiều món: một dòng lỗi (không thuộc thực đơn, thấp hơn số đã bán) thì không đổi dòng nào.
+     * Khóa các món trước khi đọc, như tạm dừng món: nếu không, bản đọc cũ (chưa tạm dừng) sẽ được ghi đè lên món bếp vừa
+     * tạm dừng, vì Hibernate cập nhật mọi cột của entity.
+     */
     @Override
     @Transactional
     public DailyMenuResponse updateDailyMenuQuotas(long dailyMenuId, List<QuotasRequest.Line> lines) {
         requireNotClosed(dailyMenuId);
+        Map<Long, DailyMenuItem> lockedById = dailyMenuItemRepository
+                .findAllByIdForUpdate(lines.stream().map(QuotasRequest.Line::dailyMenuItemId).toList()).stream()
+                .collect(java.util.stream.Collectors.toMap(DailyMenuItem::getId, item -> item));
         for (QuotasRequest.Line l : lines) {
-            DailyMenuItem item = dailyMenuItemRepository.findById(l.dailyMenuItemId())
+            DailyMenuItem item = java.util.Optional.ofNullable(lockedById.get(l.dailyMenuItemId()))
                     .filter(i -> i.getDailyMenu().getId() == dailyMenuId)
                     .orElseThrow(() -> ApiException.notFound("Món " + l.dailyMenuItemId() + " không thuộc thực đơn ngày " + dailyMenuId));
             changeQuotaNotBelowUsed(item, l.quotaTotal());
@@ -274,7 +281,7 @@ public class DailyMenuServiceImpl implements DailyMenuService {
                 .collect(java.util.stream.Collectors.toMap(i -> i.getMenuItem().getId(), DailyMenuItem::getId));
         Map<Long, Long> usedBySourceItem = quotaUsageCounter.countUsedPortions(sourceItemByMenuItem.values());
         int updated = 0;
-        for (DailyMenuItem target : dailyMenuItemRepository.findByDailyMenuId(targetMenuId)) {
+        for (DailyMenuItem target : dailyMenuItemRepository.findByDailyMenuIdForUpdate(targetMenuId)) {
             Long sourceItemId = sourceItemByMenuItem.get(target.getMenuItem().getId());
             if (sourceItemId != null) {
                 changeQuotaNotBelowUsed(target, usedBySourceItem.get(sourceItemId).intValue());

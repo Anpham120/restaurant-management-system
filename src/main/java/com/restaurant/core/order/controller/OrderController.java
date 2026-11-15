@@ -19,7 +19,7 @@ import com.restaurant.core.order.dto.response.SubmitBatchResponse;
 import com.restaurant.core.order.service.OrderService;
 import com.restaurant.core.security.CurrentUser;
 
-/** Đơn hàng (tạo cùng phiên bởi rc_open_session) và lượt gọi món. Owner: Phạm Duy An. */
+/** Đơn hàng (tạo cùng lúc mở phiên bàn) và lượt gọi món. Owner: Phạm Duy An. */
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
