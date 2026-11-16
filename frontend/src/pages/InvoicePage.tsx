@@ -66,6 +66,19 @@ export function InvoicePage() {
       refresh();
     },
   });
+  // Thông báo ngân hàng bị mất: quản lý đối chiếu rồi ghi nhận tay. Mã giao dịch chống ghi trùng nếu thông báo đến muộn.
+  const [txCode, setTxCode] = useState('');
+  const manual = useMutation({
+    mutationFn: () =>
+      api.post<{ result: string }>(`/api/payment-requests/${openQr!.id}/manual-transfer`, {
+        transactionCode: txCode.trim(), amount: openQr!.amountDue, note: 'Quản lý ghi nhận tay: đã thấy tiền về',
+      }),
+    onSuccess: (res) => {
+      toast(res.result === 'PROCESSED' ? 'Đã ghi nhận chuyển khoản' : 'Chưa ghi nhận được, xem mục Sự cố chuyển khoản');
+      setTxCode('');
+      refresh();
+    },
+  });
   const reasonAction = useMutation({
     mutationFn: ({ kind, reason }: { kind: 'reopen' | 'waive' | 'cancel-qr'; reason: string }) => {
       if (kind === 'reopen') return api.post(`/api/invoices/${invoice.data!.invoiceId}/reopen`, { reason });
@@ -284,6 +297,16 @@ export function InvoicePage() {
                 <button type="button" className="btn btn-danger" onClick={() => setDialog('cancel-qr')}>
                   Hủy mã QR
                 </button>
+                {hasRole('MANAGER') && (
+                  <form className="stack" style={{ borderTop: '1px dashed var(--line)', paddingTop: '0.75rem', textAlign: 'left' }}
+                        onSubmit={(e) => { e.preventDefault(); manual.mutate(); }}>
+                    <span className="muted">Khách đã chuyển đúng {vnd(openQr.amountDue)} (thấy trong app ngân hàng) mà màn hình vẫn chờ?</span>
+                    <input className="input" required maxLength={64} placeholder="Mã giao dịch ngân hàng" aria-label="Mã giao dịch ngân hàng"
+                           value={txCode} onChange={(e) => setTxCode(e.target.value)} />
+                    <ErrorNotice error={manual.error} />
+                    <button className="btn" disabled={manual.isPending || !txCode.trim()}>Tiền đã về, ghi nhận tay</button>
+                  </form>
+                )}
               </div>
             )}
 

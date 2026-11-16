@@ -30,6 +30,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** Danh mục, món, công thức (version), thực đơn ngày, hạn mức, tạm dừng — và hợp đồng "thực đơn hôm nay" với Order. */
 class MenuIT extends OrderApiTestBase {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    com.restaurant.core.menu.service.impl.DailyMenuServiceImpl dailyMenuService;
+
     private static String uniq(String p) {
         return p + " " + System.nanoTime() % 1_000_000_000L;
     }
@@ -327,5 +330,44 @@ class MenuIT extends OrderApiTestBase {
         }
         assertEquals("true", data.value("SELECT is_paused::text FROM daily_menu_items WHERE id = ?", dmi));
         assertEquals("50", data.value("SELECT quota_total::text FROM daily_menu_items WHERE id = ?", dmi));
+    }
+
+    /**
+     * Tự mở thực đơn theo ngày bán gần nhất: món cũ giữ hạn mức (0 = vẫn chưa mở bán), món mới vào danh mục bán không
+     * giới hạn, món đã ngừng kinh doanh bị bỏ; công bố luôn. Chạy trên một ngày xa trong tương lai để không đụng hôm nay.
+     */
+    @Test
+    void menuOpensItselfLikePreviousDay() throws Exception {
+        long cat = createCategory(uniq("Nhóm tự mở"));
+        String stoppedName = uniq("Món sẽ ngừng");
+        long kept = createItem(cat, uniq("Món giữ suất"), 30000);
+        long notOpened = createItem(cat, uniq("Món chưa mở"), 30000);
+        long stopped = createItem(cat, stoppedName, 30000);
+        for (long item : List.of(kept, notOpened, stopped)) {
+            postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[]}", item).andExpect(status().isCreated());
+        }
+        LocalDate previous = LocalDate.now().plusDays(300_000 + ThreadLocalRandom.current().nextInt(100_000) * 2L);
+        long previousMenu = readLong(postJson(manager, "/api/daily-menus", "{\"businessDate\":\"" + previous + "\"}").andExpect(status().isCreated()), "$.data.id");
+        postJson(manager, "/api/daily-menus/{id}/items", "{\"menuItemId\":" + kept + ",\"quotaTotal\":7}", previousMenu).andExpect(status().isCreated());
+        postJson(manager, "/api/daily-menus/{id}/items", "{\"menuItemId\":" + notOpened + ",\"quotaTotal\":0}", previousMenu).andExpect(status().isCreated());
+        postJson(manager, "/api/daily-menus/{id}/items", "{\"menuItemId\":" + stopped + ",\"quotaTotal\":5}", previousMenu).andExpect(status().isCreated());
+        // sau ngày đó: thêm món mới vào danh mục, ngừng kinh doanh một món
+        long added = createItem(cat, uniq("Món mới thêm"), 30000);
+        postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[]}", added).andExpect(status().isCreated());
+        putJson(manager, "/api/menu-items/{id}", "{\"categoryId\":" + cat + ",\"name\":\"" + stoppedName + "\",\"price\":30000,\"active\":false}", stopped)
+                .andExpect(status().isOk());
+
+        LocalDate next = previous.plusDays(1);
+        dailyMenuService.openDailyMenuLikePreviousDay(next);
+        dailyMenuService.openDailyMenuLikePreviousDay(next);          // gọi lại không tạo trùng
+        getAs(manager, "/api/daily-menus?date=" + next).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("PUBLISHED"))
+                .andExpect(jsonPath("$.data.items[?(@.menuItemId == " + kept + ")].quotaTotal").value(hasItem(7)))
+                .andExpect(jsonPath("$.data.items[?(@.menuItemId == " + notOpened + ")].quotaTotal").value(hasItem(0)))
+                .andExpect(jsonPath("$.data.items[?(@.menuItemId == " + added + ")].quotaTotal").value(hasItem(nullValue())))
+                .andExpect(jsonPath("$.data.items[?(@.menuItemId == " + added + ")]", hasSize(1)))
+                .andExpect(jsonPath("$.data.items[?(@.menuItemId == " + stopped + ")]").isEmpty());
+        // thực đơn hôm nay vẫn đang bán: tự mở ngày khác không đóng nhầm
+        getAs(waiter, "/api/daily-menus/today").andExpect(status().isOk());
     }
 }

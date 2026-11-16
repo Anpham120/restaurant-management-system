@@ -39,6 +39,18 @@ export function AttendancePage() {
     { success: () => (target?.att ? 'Đã điều chỉnh công' : 'Đã chấm công'), invalidate: keys, onSuccess: () => setTarget(null) },
   );
 
+  // Một chạm: có mặt đúng giờ của ca (công = thời gian ca trừ giờ nghỉ). Ca nào khác lịch thì mở form "Khác…".
+  const present = (a: ShiftAssignment) =>
+    api.post('/api/attendances', { shiftAssignmentId: a.id, status: 'PRESENT', actualStartAt: a.scheduledStartAt, actualEndAt: a.scheduledEndAt, workedMinutes: null, note: null });
+  const quick = useAction(present, { success: (_r, a) => `Đã chấm ${a.employeeName} có mặt đủ ca`, invalidate: keys });
+  const quickAll = useAction(
+    async (list: ShiftAssignment[]) => {
+      for (const a of list) await present(a);
+      return list.length;
+    },
+    { success: (n) => `Đã chấm ${n} ca có mặt đủ ca`, invalidate: keys },
+  );
+
   function open(a: ShiftAssignment, att?: Attendance) {
     setForm({
       status: att?.status ?? 'PRESENT',
@@ -54,6 +66,9 @@ export function AttendancePage() {
 
   const attByAssignment = new Map((attendances.data ?? []).map((x) => [x.shiftAssignmentId, x]));
   const rows = (assignments.data ?? []).filter((a) => a.status !== 'CANCELLED');
+  // Chỉ chấm nhanh ca đã bắt đầu: ca chưa tới giờ thì chưa biết có đi làm không
+  const started = (a: ShiftAssignment) => new Date(a.scheduledStartAt).getTime() <= Date.now();
+  const unmarked = rows.filter((a) => !attByAssignment.has(a.id) && started(a));
 
   return (
     <main className="main">
@@ -62,8 +77,13 @@ export function AttendancePage() {
                   <Stepper unit="Ngày" onPrev={() => setDate(addDays(date, -1))} onNext={() => setDate(addDays(date, 1))}>
                     <input className="input" type="date" aria-label="Ngày" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
                   </Stepper>
+                  {unmarked.length > 1 && (
+                    <button className="btn btn-primary" disabled={quickAll.isPending} onClick={() => quickAll.mutate(unmarked)}>
+                      Chấm {unmarked.length} ca có mặt đủ ca
+                    </button>
+                  )}
                 </>} />
-      <ErrorNotice error={assignments.error ?? attendances.error} />
+      <ErrorNotice error={assignments.error ?? attendances.error ?? quick.error ?? quickAll.error} />
       <DataTable rows={assignments.data ? rows : undefined} rowKey={(a) => a.id} empty="Không có ca nào được phân trong ngày này."
         columns={[
           { header: 'Nhân viên', render: (a) => <b>{a.employeeName}</b> },
@@ -82,7 +102,13 @@ export function AttendancePage() {
             header: '',
             render: (a) => {
               const att = attByAssignment.get(a.id);
-              return <button className={att ? 'btn btn-sm' : 'btn btn-sm btn-primary'} onClick={() => open(a, att)}>{att ? 'Điều chỉnh' : 'Chấm công'}</button>;
+              if (att) return <button className="btn btn-sm" onClick={() => open(a, att)}>Điều chỉnh</button>;
+              return (
+                <div className="toolbar">
+                  {started(a) && <button className="btn btn-sm btn-primary" disabled={quick.isPending || quickAll.isPending} onClick={() => quick.mutate(a)}>Có mặt đủ ca</button>}
+                  <button className="btn btn-sm" onClick={() => open(a)}>Khác…</button>
+                </div>
+              );
             },
           },
         ]} />

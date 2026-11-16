@@ -292,7 +292,8 @@ export function OrderPage() {
 
           <div className="ticket-total">
             <span>Tạm tính</span>
-            <span className="num">{vnd(session.invoiceTotal ?? total)}</span>
+            {/* Hóa đơn nháp giữ tổng của lần chốt trước: chỉ tin tổng hóa đơn khi đã chốt, còn lại tính từ món */}
+            <span className="num">{vnd(invoiceLocked ? session.invoiceTotal ?? total : total)}</span>
           </div>
 
           <div className="ticket-foot">

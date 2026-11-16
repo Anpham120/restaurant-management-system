@@ -10,8 +10,7 @@ import type {
   RevenueByItem,
   SessionResponse,
   TableResponse,
-  UnusableLotRow,
-} from '../api/types';
+  UnusableLotRow, PageResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { Icon, type IconName } from '../components/Icon';
@@ -54,6 +53,12 @@ export function DashboardPage() {
   const rawStock = useQuery({ queryKey: ['raw-stock'], queryFn: () => api.get<RawStockRow[]>('/api/inventory/raw-stock'), refetchInterval: 60_000 });
   const unusable = useQuery({ queryKey: ['unusable-lots'], queryFn: () => api.get<UnusableLotRow[]>('/api/inventory/unusable-lots'), refetchInterval: 60_000 });
 
+  const incidents = useQuery({
+    queryKey: ['payment-incidents', 'OPEN', 'count'],
+    queryFn: () => api.get<PageResponse<unknown>>('/api/payment-incidents?status=OPEN&size=1'),
+    refetchInterval: 60_000,
+  });
+
   const busyTables = (tables.data ?? []).filter((t) => t.currentSessionId != null);
   const sessions = useQueries({
     queries: busyTables.map((t) => ({
@@ -90,6 +95,10 @@ export function DashboardPage() {
   if (waitingPayment.length > 0) {
     tasks.push({ tone: 'violet', icon: 'finance', title: `${waitingPayment.length} bàn chờ thanh toán`,
       sub: waitingPayment.map((s) => `${s.tableCode} · ${vnd(s.invoiceTotal)}`).join(' · '), to: '/tables', action: 'Xem bàn' });
+  }
+  if ((incidents.data?.totalItems ?? 0) > 0) {
+    tasks.push({ tone: 'red', icon: 'finance', title: `${incidents.data!.totalItems} khoản chuyển khoản chưa ghi nhận được`,
+      sub: 'Khách chuyển lệch tiền, sai nội dung hoặc sau khi hủy mã QR', to: '/finance/incidents', action: 'Xử lý' });
   }
   if (belowMin.length > 0) {
     tasks.push({ tone: 'red', icon: 'stock', title: `${belowMin.length} nguyên liệu dưới mức tối thiểu`,

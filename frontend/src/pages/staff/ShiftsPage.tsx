@@ -45,6 +45,30 @@ export function ShiftsPage() {
 
   const cancellable = viewing?.status === 'SCHEDULED' && viewing.attendanceId == null;
 
+  // Lịch các tuần thường giống nhau: chép nguyên lịch tuần trước sang tuần đang xem, bỏ qua ca đã hủy, người đã nghỉ
+  // việc hoặc ca trùng giờ (server từ chối từng ca, các ca khác vẫn được chép).
+  const copyWeek = useAction(
+    async () => {
+      const prev = await api.get<ShiftAssignment[]>(`/api/shift-assignments?from=${addDays(monday, -7)}&to=${addDays(monday, -1)}`);
+      let ok = 0;
+      let skipped = 0;
+      for (const a of prev.filter((x) => x.status !== 'CANCELLED')) {
+        try {
+          await api.post('/api/shift-assignments', { employeeId: a.employeeId, shiftId: a.shiftId, workDate: addDays(a.workDate, 7), note: null });
+          ok += 1;
+        } catch {
+          skipped += 1;
+        }
+      }
+      return { ok, skipped, empty: prev.length === 0 };
+    },
+    {
+      success: (r) => (r.empty ? 'Tuần trước không có ca nào để chép' : `Đã chép ${r.ok} ca${r.skipped ? `, bỏ qua ${r.skipped} ca không phân được` : ''}`),
+      invalidate: [['shift-assignments']],
+    },
+  );
+  const weekEmpty = assignments.isSuccess && employeeId === '' && assignments.data.filter((a) => a.status !== 'CANCELLED').length === 0;
+
   function openShift(s: Shift | 'new') {
     setSf(s === 'new' ? { name: '', startTime: '08:00', endTime: '14:00', breakMinutes: '30', active: true }
       : { name: s.name, startTime: s.startTime.slice(0, 5), endTime: s.endTime.slice(0, 5), breakMinutes: String(s.breakMinutes), active: s.active });
@@ -90,7 +114,15 @@ export function ShiftsPage() {
               </select>
             </Field>
           </div>
-          <ErrorNotice error={assignments.error} />
+          <ErrorNotice error={assignments.error ?? copyWeek.error} />
+          {weekEmpty && monday >= weekStart(today) && (
+            <div className="notice row-between" style={{ marginBottom: '1rem' }}>
+              <span>Tuần này chưa phân ca.</span>
+              <button className="btn btn-primary" disabled={copyWeek.isPending} onClick={() => copyWeek.mutate(undefined)}>
+                {copyWeek.isPending ? 'Đang chép…' : 'Chép lịch tuần trước'}
+              </button>
+            </div>
+          )}
           <div className="week">
             {days.map((d) => (
               <section key={d} className="week-day" data-today={d === today} aria-label={weekdayLabel(d)}>
