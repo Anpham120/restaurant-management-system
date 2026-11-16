@@ -31,16 +31,21 @@ export function CountsPage() {
     ...(kitchen.data ?? []).map((l) => ({ value: `kitchen:${l.kitchenBatchId}`, label: `Bếp · ${l.typeName} · lô #${l.kitchenBatchId}`, book: l.quantityOnHand, unit: l.baseUnit })),
   ];
 
+  // Một bước: lưu phiếu và ghi chênh lệch vào sổ kho luôn.
   const create = useAction(
-    () => api.post<Count>('/api/stock-counts', {
-      requestKey, note: note.trim() || null,
-      items: lines.map((l) => {
-        const [kind, id] = l.source.split(':');
-        const key = kind === 'raw' ? 'rawBatchId' : kind === 'wip' ? 'wipIssueItemId' : 'kitchenBatchId';
-        return { [key]: Number(id), actualQuantity: num(l.actual), reason: l.reason.trim() || null };
-      }),
-    }),
-    { success: 'Đã lập phiếu kiểm kê', invalidate: keys, onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
+    async () => {
+      const r = await api.post<Count>('/api/stock-counts', {
+        requestKey, note: note.trim() || null,
+        items: lines.map((l) => {
+          const [kind, id] = l.source.split(':');
+          const key = kind === 'raw' ? 'rawBatchId' : kind === 'wip' ? 'wipIssueItemId' : 'kitchenBatchId';
+          return { [key]: Number(id), actualQuantity: num(l.actual), reason: l.reason.trim() || null };
+        }),
+      });
+      if (r.status === 'DRAFT') await api.post(`/api/stock-counts/${r.id}/confirm`);
+      return r;
+    },
+    { success: 'Đã ghi kết quả kiểm kê', invalidate: keys, onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
   );
   const confirm = useAction(() => api.post(`/api/stock-counts/${selectedId}/confirm`), { success: 'Đã ghi chênh lệch kiểm kê', invalidate: keys });
 
@@ -78,7 +83,7 @@ export function CountsPage() {
         </aside>
       </div>
 
-      <FormModal open={creating} wide title="Lập phiếu kiểm kê" submitLabel="Lưu nháp" busy={create.isPending} error={create.error}
+      <FormModal open={creating} wide title="Kiểm kê" submitLabel="Ghi kết quả kiểm kê" busy={create.isPending} error={create.error}
                  onSubmit={() => create.mutate(undefined)} onClose={() => setCreating(false)}>
         <Field label="Ghi chú"><input className="input" maxLength={255} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
         <div className="lines-editor">

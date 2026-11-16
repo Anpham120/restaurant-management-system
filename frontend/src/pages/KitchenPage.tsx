@@ -39,14 +39,21 @@ export function KitchenPage() {
   });
 
   const act = useMutation({
-    mutationFn: ({ item, action, reason }: { item: OrderItem; action: string; reason?: string }) =>
-      api.post<AcceptItemResponse | OrderItem>(`/api/order-items/${item.id}/${action}`, reason ? { reason } : undefined),
+    // "accept" = nhận và bắt đầu nấu luôn (một chạm). Nhận xong mà chưa nấu được (lô nguyên liệu vừa bị đánh dấu hỏng…)
+    // thì món nằm ở "Đang làm" với nút riêng, không mất gì.
+    mutationFn: async ({ item, action, reason }: { item: OrderItem; action: string; reason?: string }) => {
+      const res = await api.post<AcceptItemResponse | OrderItem>(`/api/order-items/${item.id}/${action}`, reason ? { reason } : undefined);
+      if (action === 'accept' && 'result' in res && res.result === 'ACCEPTED') {
+        await api.post(`/api/order-items/${item.id}/start-cooking`).catch(() => undefined);
+      }
+      return res;
+    },
     onSuccess: (res, v) => {
       if (v.action === 'accept' && 'result' in res && res.result === 'REJECTED') {
         toast(`Không nhận được ${v.item.itemName}: ${res.reason ?? 'thiếu suất hoặc nguyên liệu'}`);
       } else {
         const done: Record<string, string> = {
-          accept: 'Đã nhận món',
+          accept: 'Đã nhận, bắt đầu nấu',
           reject: 'Đã từ chối món',
           'start-cooking': 'Bắt đầu nấu',
           finish: 'Món đã xong',
@@ -127,7 +134,7 @@ export function KitchenPage() {
                           <>
                             <button type="button" className="btn btn-primary" disabled={act.isPending}
                                     onClick={() => act.mutate({ item: i, action: 'accept' })}>
-                              Nhận món
+                              Nhận, nấu
                             </button>
                             <button type="button" className="btn btn-danger" onClick={() => setRejecting(i)}>
                               Từ chối
@@ -168,6 +175,7 @@ export function KitchenPage() {
         description="Phục vụ sẽ thấy lý do để báo khách."
         confirmLabel="Từ chối món"
         danger
+        suggestions={['Hết nguyên liệu', 'Hết món', 'Bếp quá tải']}
         onConfirm={(reason) => rejecting && act.mutate({ item: rejecting, action: 'reject', reason })}
         onClose={() => setRejecting(null)}
       />

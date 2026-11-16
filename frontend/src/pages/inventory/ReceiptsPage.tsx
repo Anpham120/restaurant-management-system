@@ -10,7 +10,15 @@ import { amount, dateTime, day, fromLocalInput, vnd } from '../../lib/format';
 import { DocStatus, STOCK_KEYS, useIngredients } from './shared';
 
 type Line = { ingredientId: number | ''; inputQuantity: string; inputUnit: string; conversionFactor: string; unitPrice: string; lotCode: string; expiryDate: string };
-const blank = (): Line => ({ ingredientId: '', inputQuantity: '', inputUnit: 'kg', conversionFactor: '1000', unitPrice: '', lotCode: '', expiryDate: '' });
+const blank = (): Line => ({ ingredientId: '', inputQuantity: '', inputUnit: '', conversionFactor: '1', unitPrice: '', lotCode: '', expiryDate: '' });
+
+/** Đơn vị nhập gợi ý theo đơn vị gốc của nguyên liệu: g → kg (×1000), ml → lít (×1000), còn lại nhập đúng đơn vị gốc (×1). */
+function defaultUnit(baseUnit: string): { inputUnit: string; conversionFactor: string } {
+  const u = baseUnit.trim().toLowerCase();
+  if (u === 'g' || u === 'gram') return { inputUnit: 'kg', conversionFactor: '1000' };
+  if (u === 'ml') return { inputUnit: 'lít', conversionFactor: '1000' };
+  return { inputUnit: baseUnit, conversionFactor: '1' };
+}
 
 /** Phiếu nhập: lập nháp → xác nhận (tạo lô RAW, ghi sổ). Số lượng tồn = số nhập × hệ số quy đổi sang đơn vị gốc. */
 export function ReceiptsPage() {
@@ -27,15 +35,20 @@ export function ReceiptsPage() {
   const list = useQuery({ queryKey: ['receipts', status], queryFn: () => api.get<PageResponse<ReceiptHeader>>(`/api/stock-receipts?size=100${status ? `&status=${status}` : ''}`).then((p) => p.items) });
   const detail = useQuery({ queryKey: ['receipt', selectedId], queryFn: () => api.get<Receipt>(`/api/stock-receipts/${selectedId}`), enabled: selectedId != null });
 
+  // Một bước: lưu phiếu rồi nhập kho luôn. Bước sau lỗi thì phiếu còn ở dạng nháp; bấm lại (cùng khóa) sẽ nhập tiếp.
   const create = useAction(
-    () => api.post<Receipt>('/api/stock-receipts', {
+    async () => {
+      const r = await api.post<Receipt>('/api/stock-receipts', {
       requestKey: form.requestKey,
       supplierName: form.supplierName.trim() || null,
       note: form.note.trim() || null,
       items: lines.map((l) => ({ ingredientId: l.ingredientId, inputQuantity: num(l.inputQuantity), inputUnit: l.inputUnit.trim(),
         conversionFactor: num(l.conversionFactor), unitPricePerInputUnit: num(l.unitPrice) ?? 0, lotCode: l.lotCode.trim() || null, expiryDate: l.expiryDate || null })),
-    }),
-    { success: 'Đã lập phiếu nhập nháp', invalidate: [['receipts']], onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
+      });
+      if (r.status === 'DRAFT') await api.post(`/api/stock-receipts/${r.id}/confirm`, {});
+      return r;
+    },
+    { success: 'Đã nhập kho', invalidate: [['receipts'], ['receipt'], ...STOCK_KEYS], onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
   );
   const confirm = useAction(() => api.post(`/api/stock-receipts/${selectedId}/confirm`, { receivedAt: fromLocalInput(receivedAt) }), {
     success: 'Đã nhập kho', invalidate: [['receipts'], ['receipt'], ...STOCK_KEYS], onSuccess: () => setConfirming(false),
@@ -108,9 +121,9 @@ export function ReceiptsPage() {
         </aside>
       </div>
 
-      <FormModal open={creating} wide title="Lập phiếu nhập" submitLabel={`Lưu nháp · ${vnd(total)}`} busy={create.isPending} error={create.error}
+      <FormModal open={creating} wide title="Lập phiếu nhập" submitLabel={`Nhập kho · ${vnd(total)}`} busy={create.isPending} error={create.error}
                  onSubmit={() => create.mutate(undefined)} onClose={() => setCreating(false)}
-                 description="Ví dụ: nhập 10 kg thịt, đơn vị gốc là g → số lượng 10, đơn vị kg, hệ số 1000, giá theo kg.">
+                 description="Chọn nguyên liệu là đơn vị nhập và hệ số tự điền. Ví dụ đơn vị gốc g: nhập 10 kg, hệ số 1000, giá theo kg.">
         <div className="form-grid">
           <Field label="Nhà cung cấp"><input className="input" maxLength={100} value={form.supplierName} onChange={(e) => setForm({ ...form, supplierName: e.target.value })} /></Field>
           <Field label="Ghi chú"><input className="input" maxLength={255} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
@@ -121,7 +134,10 @@ export function ReceiptsPage() {
             return (
               <div className="le-row" key={i} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
                 <Field label="Nguyên liệu">
-                  <select className="input" required value={l.ingredientId} onChange={(e) => setLine(i, { ingredientId: e.target.value ? Number(e.target.value) : '' })}>
+                  <select className="input" required value={l.ingredientId} onChange={(e) => {
+                    const g = ings.data?.find((x) => x.id === Number(e.target.value));
+                    setLine(i, { ingredientId: g ? g.id : '', ...(g ? defaultUnit(g.baseUnit) : {}) });
+                  }}>
                     <option value="">Chọn…</option>
                     {ings.data?.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.baseUnit})</option>)}
                   </select>

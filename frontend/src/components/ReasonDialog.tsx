@@ -6,12 +6,14 @@ interface Props {
   description?: string;
   confirmLabel: string;
   danger?: boolean;
+  /** Lý do hay gặp: chạm một lần là xong, không phải gõ. */
+  suggestions?: string[];
   onConfirm: (reason: string) => void;
   onClose: () => void;
 }
 
 /** Thao tác bắt buộc có lý do (hủy món, từ chối, khách bỏ về…). DB cũng từ chối lý do trống. */
-export function ReasonDialog({ open, title, description, confirmLabel, danger, onConfirm, onClose }: Props) {
+export function ReasonDialog({ open, title, description, confirmLabel, danger, suggestions, onConfirm, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState('');
 
@@ -37,9 +39,18 @@ export function ReasonDialog({ open, title, description, confirmLabel, danger, o
       >
         <h2>{title}</h2>
         {description && <p className="muted">{description}</p>}
+        {suggestions && suggestions.length > 0 && (
+          <div className="quick" role="group" aria-label="Lý do hay gặp">
+            {suggestions.map((sg) => (
+              <button key={sg} type="button" className={danger ? 'btn btn-danger' : 'btn btn-primary'} onClick={() => onConfirm(sg)}>
+                {sg}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="field">
-          <label htmlFor="reason">Lý do</label>
-          <textarea id="reason" className="input" value={reason} maxLength={200} required autoFocus
+          <label htmlFor="reason">{suggestions?.length ? 'Lý do khác' : 'Lý do'}</label>
+          <textarea id="reason" className="input" value={reason} maxLength={200} required={!suggestions?.length} autoFocus={!suggestions?.length}
                     onChange={(e) => setReason(e.target.value)} />
         </div>
         <div className="sheet-actions">

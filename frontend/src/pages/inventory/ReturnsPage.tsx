@@ -41,10 +41,18 @@ export function ReturnsPage() {
     ...(tab === 'adjustments' ? (rawLots.data ?? []).map((l) => ({ value: `raw:${l.inventoryBatchId}`, label: `Kho · ${l.ingredientName} · lô #${l.inventoryBatchId} · còn ${amount(l.quantityOnHand, l.baseUnit)}`, unit: l.baseUnit, max: l.quantityOnHand })) : []),
   ];
 
+  // Quản lý lập thì xác nhận luôn (một bước); bếp lập thì phiếu chờ quản lý xác nhận.
   const create = useAction(
-    () => {
+    async () => {
+      const r = await saveDraft();
+      if (isManager && r.status === 'DRAFT') await api.post(`/api/${path}/${r.id}/confirm`);
+      return r;
+    },
+    { success: isManager ? 'Đã ghi phiếu vào sổ kho' : 'Đã lập phiếu, chờ quản lý xác nhận', invalidate: keys, onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
+  );
+  const saveDraft = () => {
       if (tab === 'returns') {
-        return api.post<{ id: number }>('/api/stock-returns', {
+        return api.post<{ id: number; status: string }>('/api/stock-returns', {
           requestKey, reason: reason.trim(),
           items: lines.map((l) => {
             const [kind, id] = l.source.split(':');
@@ -54,7 +62,7 @@ export function ReturnsPage() {
           }),
         });
       }
-      return api.post<{ id: number }>('/api/stock-adjustments', {
+      return api.post<{ id: number; status: string }>('/api/stock-adjustments', {
         requestKey, adjustmentType: adjType, reason: reason.trim(),
         items: lines.map((l) => {
           const [kind, id] = l.source.split(':');
@@ -62,9 +70,7 @@ export function ReturnsPage() {
           return { [key]: Number(id), quantity: num(l.quantity), note: l.note.trim() || null };
         }),
       });
-    },
-    { success: 'Đã lập phiếu nháp, chờ quản lý xác nhận', invalidate: keys, onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
-  );
+  };
   const confirm = useAction(() => api.post(`/api/${path}/${selectedId}/confirm`), { success: 'Đã xác nhận phiếu', invalidate: [...keys, [path, selectedId]] });
 
   function start() {
@@ -124,7 +130,7 @@ export function ReturnsPage() {
         </aside>
       </div>
 
-      <FormModal open={creating} wide title={tab === 'returns' ? 'Lập phiếu hoàn trả' : 'Lập phiếu hủy hàng'} submitLabel="Lưu nháp"
+      <FormModal open={creating} wide title={tab === 'returns' ? 'Lập phiếu hoàn trả' : 'Lập phiếu hủy hàng'} submitLabel={isManager ? 'Ghi vào sổ kho' : 'Gửi quản lý xác nhận'}
                  busy={create.isPending} error={create.error} onSubmit={() => create.mutate(undefined)} onClose={() => setCreating(false)}
                  description={tab === 'returns' ? 'Chỉ trả được hàng nhận từ phiếu xuất (dùng thẳng hoặc chờ sơ chế), không trả thành phẩm sơ chế.' : 'Phần đang giữ cho món không hủy được; số liệu kiểm lại khi xác nhận.'}>
         <div className="form-grid">

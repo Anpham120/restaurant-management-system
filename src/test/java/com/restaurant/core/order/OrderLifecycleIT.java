@@ -93,14 +93,22 @@ class OrderLifecycleIT extends OrderApiTestBase {
     }
 
     @Test
-    void callMoreIsBlockedWhilePaymentPendingUntilReopened() throws Exception {
+    void callMoreReopensPendingInvoiceUnlessQrIsWaiting() throws Exception {
         long[] s = servedAndCheckedOut(30000);
         long dmi = data.dish(20000, null, null).dailyMenuItemId();
+        // đang chờ khách chuyển khoản: không tự mở lại (khách có thể đang chuyển), thu ngân hủy mã QR trước
+        long qr = readLong(postJson(cashier, "/api/invoices/{id}/payments", "{\"method\":\"QR\"}", s[2]).andExpect(status().isCreated()), "$.data.invoiceId");
         submit(s[1], "more-1", dmi, 1).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
-        postJson(cashier, "/api/invoices/{id}/reopen", reason("Khách gọi thêm"), s[2])
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("DRAFT"));
+        long requestId = data.count("SELECT id FROM payment_requests WHERE invoice_id = ? AND status = 'WAITING_TRANSFER'", qr);
+        postJson(cashier, "/api/payment-requests/{id}/cancel", reason("Khách gọi thêm"), requestId).andExpect(status().isOk());
+        // hóa đơn chờ thu, không có yêu cầu đang mở: gọi thêm là được, hóa đơn tự về nháp
         submit(s[1], "more-2", dmi, 1).andExpect(status().isCreated());
+        assertThat(data.invoiceStatus(s[2])).isEqualTo("DRAFT");
         getAs(waiter, "/api/orders/{id}", s[1]).andExpect(jsonPath("$.data.items", hasSize(2)));
+        // phục vụ món mới rồi chốt lại: tổng gồm cả món gọi thêm
+        serveThrough(readLong(getAs(waiter, "/api/orders/{id}", s[1]), "$.data.items[1].id"));
+        postEmpty(cashier, "/api/orders/{id}/invoice", s[1]).andExpect(jsonPath("$.data.status").value("PAYMENT_PENDING"))
+                .andExpect(jsonPath("$.data.total").value(50000.0));
     }
 
     /** p_actor luôn từ token: field actorId/waiterId client tự gửi bị bỏ qua. */

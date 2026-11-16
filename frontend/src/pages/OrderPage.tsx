@@ -77,7 +77,7 @@ export function OrderPage() {
     mutationFn: ({ id, action, reason }: { id: number; action: string; reason?: string }) =>
       api.post(`/api/order-items/${id}/${action}`, reason ? { reason } : undefined),
     onSuccess: (_d, v) => {
-      toast(v.action === 'serve' ? 'Đã mang món ra' : 'Đã hủy món');
+      toast(v.action === 'serve' ? 'Đã mang món ra' : v.action === 'cancel-exception' ? 'Đã bỏ món khỏi phiếu' : 'Đã hủy món');
       setCancelling(null);
       refresh();
     },
@@ -127,13 +127,16 @@ export function OrderPage() {
   const { session, items } = order.data;
   const sessionOpen = session.status === 'OPEN';
   const invoiceLocked = session.invoiceStatus != null && session.invoiceStatus !== 'DRAFT';
-  const orderable = canOrder && sessionOpen && !invoiceLocked && menu.data?.status === 'PUBLISHED';
+  const orderable = canOrder && sessionOpen && menu.data?.status === 'PUBLISHED';
+  const isManager = hasRole('MANAGER');
   const live = items.filter((i) => LIVE.includes(i.status));
   const total = live.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const draftTotal = draft.reduce((s, d) => s + d.item.price * d.quantity, 0);
   const allEnded = items.every((i) => i.status === 'CANCELLED' || i.status === 'REJECTED');
   const hasServed = items.some((i) => i.status === 'SERVED');
   const unfinished = items.some((i) => ['PENDING', 'ACCEPTED', 'COOKING', 'READY'].includes(i.status));
+
+  const cooked = cancelling != null && ['COOKING', 'READY', 'SERVED'].includes(cancelling.status);
 
   function add(item: DailyMenuItem) {
     setDraft((d) => {
@@ -169,8 +172,8 @@ export function OrderPage() {
               Thực đơn hôm nay {menu.data.status === 'DRAFT' ? 'chưa được công bố' : 'đã đóng'}, chưa gọi món được.
             </div>
           )}
-          {canOrder && invoiceLocked && (
-            <div className="notice notice-warn">Bàn đã chốt hóa đơn. Muốn gọi thêm, thu ngân mở lại hóa đơn trước.</div>
+          {canOrder && sessionOpen && invoiceLocked && (
+            <div className="notice notice-info">Bàn đã tính tiền nhưng chưa thu. Vẫn gọi thêm được: hóa đơn tự cập nhật, thu ngân thu theo số mới.</div>
           )}
           {canOrder &&
             groups.map(([cat, list]) => (
@@ -270,9 +273,14 @@ export function OrderPage() {
                         Mang ra
                       </button>
                     )}
-                    {canOrder && (i.status === 'PENDING' || i.status === 'ACCEPTED') && (
+                    {canOrder && sessionOpen && (i.status === 'PENDING' || i.status === 'ACCEPTED') && (
                       <button type="button" className="btn btn-sm btn-danger" onClick={() => setCancelling(i)}>
                         Hủy
+                      </button>
+                    )}
+                    {isManager && sessionOpen && (i.status === 'COOKING' || i.status === 'READY' || i.status === 'SERVED') && (
+                      <button type="button" className="btn btn-sm btn-quiet" onClick={() => setCancelling(i)}>
+                        Bỏ món
                       </button>
                     )}
                   </div>
@@ -317,11 +325,12 @@ export function OrderPage() {
 
       <ReasonDialog
         open={cancelling != null}
-        title={`Hủy ${cancelling?.quantity ?? ''} × ${cancelling?.itemName ?? ''}?`}
-        description="Món chưa nấu được hủy cả dòng; suất và nguyên liệu được trả lại."
-        confirmLabel="Hủy món"
+        title={`${cooked ? 'Bỏ' : 'Hủy'} ${cancelling?.quantity ?? ''} × ${cancelling?.itemName ?? ''}?`}
+        description={cooked ? 'Món đã nấu: không tính tiền món này, nguyên liệu đã dùng không hoàn lại.' : 'Món chưa nấu được hủy cả dòng; suất và nguyên liệu được trả lại.'}
+        confirmLabel={cooked ? 'Bỏ món' : 'Hủy món'}
         danger
-        onConfirm={(reason) => cancelling && itemAction.mutate({ id: cancelling.id, action: 'cancel', reason })}
+        suggestions={cooked ? ['Món lỗi, khách trả lại', 'Lên món nhầm', 'Khách chờ lâu không lấy'] : ['Khách đổi món', 'Gọi nhầm', 'Khách chờ lâu']}
+        onConfirm={(reason) => cancelling && itemAction.mutate({ id: cancelling.id, action: cooked ? 'cancel-exception' : 'cancel', reason })}
         onClose={() => setCancelling(null)}
       />
       <ConfirmDialog
@@ -339,6 +348,7 @@ export function OrderPage() {
         description="Món chưa nấu bị hủy, hóa đơn ghi là không thu được tiền và bàn được trả."
         confirmLabel="Xác nhận khách bỏ về"
         danger
+        suggestions={['Khách bỏ về không trả tiền']}
         onConfirm={(reason) => abandon.mutate(reason)}
         onClose={() => setAbandoning(false)}
       />

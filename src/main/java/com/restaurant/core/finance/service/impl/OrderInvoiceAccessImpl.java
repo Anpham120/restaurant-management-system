@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.finance.entity.Invoice;
 import com.restaurant.core.finance.entity.PaymentRequest;
@@ -37,6 +38,22 @@ public class OrderInvoiceAccessImpl implements OrderInvoiceAccess {
     @Override
     public Optional<String> findInvoiceStatusForUpdate(long orderId) {
         return invoiceLocking.lockInvoiceOfLockedOrder(orderId).map(locked -> locked.invoice().getStatus().name());
+    }
+
+    @Override
+    public void reopenInvoiceForMoreOrdering(long orderId) {
+        LockedInvoice locked = invoiceLocking.lockInvoiceOfLockedOrder(orderId).orElse(null);
+        if (locked == null || locked.invoice().isDraft()) {
+            return;
+        }
+        if (!locked.invoice().isAwaitingPayment()) {
+            throw ApiException.invalidState("Đơn " + orderId + " đã kết thúc thanh toán: không gọi thêm món được");
+        }
+        if (locked.openRequests().stream().anyMatch(PaymentRequest::isOpen)) {
+            throw ApiException.invalidState("Bàn đang chờ khách chuyển khoản QR: thu ngân hủy mã QR trước khi gọi thêm món");
+        }
+        locked.invoice().reopen();
+        invoiceRepository.flush();
     }
 
     @Override

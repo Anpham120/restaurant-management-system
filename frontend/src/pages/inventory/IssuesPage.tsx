@@ -28,12 +28,18 @@ export function IssuesPage() {
   const detail = useQuery({ queryKey: ['issue', selectedId], queryFn: () => api.get<Issue>(`/api/stock-issues/${selectedId}`), enabled: selectedId != null });
   const keys = [['issues'], ['issue'], ...STOCK_KEYS];
 
+  // Một bước: lập phiếu, trừ kho và giao bếp luôn. Bước sau lỗi thì phiếu dừng ở trạng thái trước đó; bấm lại sẽ làm tiếp.
   const create = useAction(
-    () => api.post<Issue>('/api/stock-issues', {
-      requestKey, note: note.trim() || null,
-      items: lines.map((l) => ({ inventoryBatchId: l.batchId, quantity: num(l.quantity), fulfillmentMode: l.mode })),
-    }),
-    { success: 'Đã lập phiếu xuất nháp', invalidate: keys, onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
+    async () => {
+      const r = await api.post<Issue>('/api/stock-issues', {
+        requestKey, note: note.trim() || null,
+        items: lines.map((l) => ({ inventoryBatchId: l.batchId, quantity: num(l.quantity), fulfillmentMode: l.mode })),
+      });
+      if (r.status === 'DRAFT') await api.post(`/api/stock-issues/${r.id}/issue`);
+      if (r.status === 'DRAFT' || r.status === 'ISSUED') await api.post(`/api/stock-issues/${r.id}/receive`);
+      return r;
+    },
+    { success: 'Đã xuất kho cho bếp', invalidate: keys, onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
   );
   const act = useAction((a: 'issue' | 'receive') => api.post(`/api/stock-issues/${selectedId}/${a}`), {
     success: (_r, a) => (a === 'issue' ? 'Đã xuất kho, chờ bếp nhận' : 'Bếp đã nhận hàng'), invalidate: keys,
@@ -49,7 +55,7 @@ export function IssuesPage() {
   return (
     <main className="main">
       <PageHead title="Xuất cho bếp"
-                actions={isManager && <button className="btn btn-primary" onClick={() => { setNote(''); setRequestKey(newRequestKey()); setLines([{ batchId: '', quantity: '', mode: 'DIRECT' }]); create.reset(); setCreating(true); }}>Lập phiếu xuất</button>} />
+                actions={isManager && <button className="btn btn-primary" onClick={() => { setNote(''); setRequestKey(newRequestKey()); setLines([{ batchId: '', quantity: '', mode: 'DIRECT' }]); create.reset(); setCreating(true); }}>Xuất kho cho bếp</button>} />
       <div className="split">
         <div>
           <div className="filters">
@@ -99,7 +105,7 @@ export function IssuesPage() {
         </aside>
       </div>
 
-      <FormModal open={creating} wide title="Lập phiếu xuất" submitLabel="Lưu nháp" busy={create.isPending} error={create.error}
+      <FormModal open={creating} wide title="Xuất kho cho bếp" submitLabel="Xuất cho bếp" busy={create.isPending} error={create.error}
                  onSubmit={() => create.mutate(undefined)} onClose={() => setCreating(false)}
                  description="Danh sách lô xếp theo hạn dùng; hệ thống từ chối nếu bỏ qua lô hết hạn sớm hơn.">
         <Field label="Ghi chú"><input className="input" maxLength={255} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
