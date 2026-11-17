@@ -68,6 +68,11 @@ public class DailyMenuItem {
     }
 
     /** null = không giới hạn, 0 = chưa mở bán / hết suất. */
+    /** Đổi sang công thức mới của cùng món. Chỉ khi món chưa có ai gọi trong ngày (trigger DB cũng chặn). */
+    public void changeRecipe(Recipe recipe) {
+        this.recipe = recipe;
+    }
+
     public void changeQuota(Integer quotaTotal) {
         this.quotaTotal = quotaTotal;
     }

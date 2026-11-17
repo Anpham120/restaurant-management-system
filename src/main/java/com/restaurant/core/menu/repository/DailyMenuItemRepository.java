@@ -18,6 +18,8 @@ public interface DailyMenuItemRepository extends JpaRepository<DailyMenuItem, Lo
 
     boolean existsByDailyMenuId(Long dailyMenuId);
 
+    Optional<DailyMenuItem> findByDailyMenu_IdAndMenuItem_Id(Long dailyMenuId, Long menuItemId);
+
     @Query("SELECT d FROM DailyMenuItem d JOIN FETCH d.dailyMenu JOIN FETCH d.menuItem WHERE d.id = :id")
     Optional<DailyMenuItem> findWithMenuById(@Param("id") Long id);
 

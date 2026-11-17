@@ -134,7 +134,7 @@ export function IssuesPage() {
         </div>
       </FormModal>
       <ReasonDialog open={cancelling} title={`Hủy phiếu xuất #${selectedId}?`} description="Nếu đã xuất, hàng được hoàn lại đúng lô trong kho."
-                    confirmLabel="Hủy phiếu" danger onConfirm={(r) => cancel.mutate(r)} onClose={() => setCancelling(false)} />
+                    confirmLabel="Hủy phiếu" danger suggestions={['Lập nhầm', 'Bếp không cần nữa']} onConfirm={(r) => cancel.mutate(r)} onClose={() => setCancelling(false)} />
     </main>
   );
 }

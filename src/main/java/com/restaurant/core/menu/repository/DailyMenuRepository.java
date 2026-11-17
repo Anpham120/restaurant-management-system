@@ -15,6 +15,8 @@ import com.restaurant.core.menu.entity.DailyMenuStatus;
 
 public interface DailyMenuRepository extends JpaRepository<DailyMenu, Long> {
 
+    Optional<DailyMenu> findByBusinessDate(LocalDate businessDate);
+
     List<DailyMenu> findByStatusAndBusinessDateBefore(DailyMenuStatus status, LocalDate businessDate);
 
     /** Khóa theo ngày (pg_advisory_xact_lock): hai request cùng tự mở thực đơn hôm nay thì chạy lần lượt, không tạo trùng. */

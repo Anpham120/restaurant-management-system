@@ -74,8 +74,8 @@ export function CashPage() {
                  onSubmit={() => save.mutate(undefined)} onClose={() => setOpen(false)}
                  description={r ? `Thu tiền mặt ${vnd(r.cashSales)}, chi từ quầy ${vnd(r.cashExpenses)}.` : undefined}>
         <div className="form-grid">
-          <Field label="Quỹ đầu ngày"><input className="input" type="number" min={0} step="any" required value={form.openingCash} onChange={(e) => setForm({ ...form, openingCash: e.target.value })} autoFocus /></Field>
-          <Field label="Tiền đếm thực tế"><input className="input" type="number" min={0} step="any" required value={form.actualCash} onChange={(e) => setForm({ ...form, actualCash: e.target.value })} /></Field>
+          <Field label="Quỹ đầu ngày"><input className="input" type="number" min={0} step={1} required value={form.openingCash} onChange={(e) => setForm({ ...form, openingCash: e.target.value })} autoFocus /></Field>
+          <Field label="Tiền đếm thực tế"><input className="input" type="number" min={0} step={1} required value={form.actualCash} onChange={(e) => setForm({ ...form, actualCash: e.target.value })} /></Field>
         </div>
         {form.openingCash !== '' && form.actualCash !== '' && (
           <div className={diff === 0 ? 'notice notice-ok' : 'notice notice-warn'}>

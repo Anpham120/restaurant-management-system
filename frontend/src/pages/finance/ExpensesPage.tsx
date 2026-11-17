@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { api, newRequestKey } from '../../api/client';
-import type { Expense } from '../../api/types';
+import type { Expense, PageResponse, ReceiptHeader } from '../../api/types';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { ReasonDialog } from '../../components/ReasonDialog';
 import { DataTable, Field, FormModal, PageHead, StatusTag, num, useAction } from '../../components/ui';
@@ -25,6 +25,11 @@ export function ExpensesPage() {
   const list = useQuery({
     queryKey: ['expenses', from, to, category, status],
     queryFn: () => api.get<Expense[]>(`/api/expenses?from=${from}&to=${to}${category ? `&category=${category}` : ''}${status ? `&status=${status}` : ''}`),
+  });
+  const receipts = useQuery({
+    queryKey: ['receipts', 'CONFIRMED', 'for-expense'],
+    queryFn: () => api.get<PageResponse<ReceiptHeader>>('/api/stock-receipts?status=CONFIRMED&size=30').then((p) => p.items),
+    enabled: creating,
   });
   const keys = [['expenses'], ['cash-recon'], ['expense-report']];
   const create = useAction(
@@ -81,7 +86,7 @@ export function ExpensesPage() {
               {Object.entries(expenseCategoryLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </Field>
-          <Field label="Số tiền (đồng)"><input className="input" type="number" min={1} step="any" required value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></Field>
+          <Field label="Số tiền (đồng)"><input className="input" type="number" min={1} step={1} required value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></Field>
           <Field label="Nguồn tiền">
             <select className="input" value={form.fundSource} onChange={(e) => setForm({ ...form, fundSource: e.target.value, paymentMethod: e.target.value === 'CASH_DRAWER' ? 'CASH' : form.paymentMethod })}>
               {Object.entries(FUND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -93,11 +98,16 @@ export function ExpensesPage() {
             </select>
           </Field>
           <Field label="Thời điểm chi" hint="Để trống = bây giờ."><input className="input" type="datetime-local" value={form.paidAt} onChange={(e) => setForm({ ...form, paidAt: e.target.value })} /></Field>
-          <Field label="Phiếu nhập kho (nếu có)" hint="Mỗi phiếu nhập chỉ gắn một khoản chi."><input className="input" type="number" min={1} value={form.stockReceiptId} onChange={(e) => setForm({ ...form, stockReceiptId: e.target.value })} /></Field>
+          <Field label="Tiền hàng của phiếu nhập (nếu có)" hint="Mỗi phiếu nhập chỉ gắn một khoản chi.">
+            <select className="input" value={form.stockReceiptId} onChange={(e) => setForm({ ...form, stockReceiptId: e.target.value })}>
+              <option value="">Không gắn phiếu nhập</option>
+              {receipts.data?.map((r) => <option key={r.id} value={r.id}>#{r.id} · {r.supplierName ?? 'không ghi nhà cung cấp'} · {dateTime(r.createdAt)}</option>)}
+            </select>
+          </Field>
         </div>
       </FormModal>
       <ReasonDialog open={voiding != null} title={`Hủy khoản chi ${voiding ? vnd(voiding.amount) : ''}?`} description="Khoản chi bị hủy không tính vào báo cáo và đối soát. Không hoàn tác."
-                    confirmLabel="Hủy khoản chi" danger onConfirm={(r) => voidAction.mutate(r)} onClose={() => setVoiding(null)} />
+                    confirmLabel="Hủy khoản chi" danger suggestions={['Ghi nhầm số tiền', 'Ghi trùng', 'Ghi nhầm nhóm chi']} onConfirm={(r) => voidAction.mutate(r)} onClose={() => setVoiding(null)} />
       <ErrorNotice error={voidAction.error} />
     </main>
   );

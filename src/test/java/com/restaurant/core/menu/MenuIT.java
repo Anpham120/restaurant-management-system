@@ -47,6 +47,19 @@ class MenuIT extends OrderApiTestBase {
                 .andExpect(status().isCreated()), "$.data.id");
     }
 
+    /** Đặt hạn mức cho món đã có trong thực đơn ngày; trả id dòng thực đơn. */
+    private long setTodayQuota(long menuId, long menuItemId, int quota) throws Exception {
+        long dmi = dailyMenuItemOf(menuId, menuItemId);
+        putJson(manager, "/api/daily-menus/{id}/quotas", "{\"items\":[{\"dailyMenuItemId\":" + dmi + ",\"quotaTotal\":" + quota + "}]}", menuId)
+                .andExpect(status().isOk());
+        return dmi;
+    }
+
+    /** Món cũ không có công thức (dữ liệu trước khi món mới tự có công thức rỗng): tạo thẳng trong DB. */
+    private long createItemWithoutRecipe(long categoryId, String name) {
+        return Long.parseLong(data.value("INSERT INTO menu_items (menu_category_id, name, price) VALUES (?, ?, 10000) RETURNING id::text", categoryId, name));
+    }
+
     private ResultActions putJson(String token, String url, String body, Object... vars) throws Exception {
         return mvc.perform(put(url, vars).header("Authorization", token).contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body));
     }
@@ -64,7 +77,7 @@ class MenuIT extends OrderApiTestBase {
         getAs(waiter, "/api/menu-items/{id}", id).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.price").value(45000.0))
                 .andExpect(jsonPath("$.data.categoryName").value(name))
-                .andExpect(jsonPath("$.data.currentRecipeVersion").doesNotExist());
+                .andExpect(jsonPath("$.data.currentRecipeVersion").value(1));     // món mới có sẵn công thức rỗng: bán được ngay
         putJson(manager, "/api/menu-items/{id}", "{\"categoryId\":" + cat + ",\"name\":\"" + item + "\",\"price\":50000,\"active\":false}", id)
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.price").value(50000.0)).andExpect(jsonPath("$.data.active").value(false));
         getAs(waiter, "/api/menu-items?categoryId=" + cat).andExpect(jsonPath("$.data", hasSize(0)));
@@ -87,18 +100,18 @@ class MenuIT extends OrderApiTestBase {
         long type = data.dish(1000, null, 5).kitchenTypeId();
         long item = createItem(createCategory(uniq("Nhóm CT")), uniq("Bò lúc lắc"), 60000);
         postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[{\"kitchenIngredientTypeId\":" + type + ",\"quantityPerServing\":0.2}]}", item)
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.version").value(1))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.version").value(2))
                 .andExpect(jsonPath("$.data.ingredients[0].quantityPerServing").value(0.2));
         postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[{\"kitchenIngredientTypeId\":" + type + ",\"quantityPerServing\":0.25}]}", item)
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.version").value(2)).andExpect(jsonPath("$.data.current").value(true));
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.version").value(3)).andExpect(jsonPath("$.data.current").value(true));
         getAs(kitchen, "/api/menu-items/{id}/recipes", item).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(2)))
-                .andExpect(jsonPath("$.data[0].version").value(2)).andExpect(jsonPath("$.data[0].current").value(true))
+                .andExpect(jsonPath("$.data", hasSize(3)))
+                .andExpect(jsonPath("$.data[0].version").value(3)).andExpect(jsonPath("$.data[0].current").value(true))
                 .andExpect(jsonPath("$.data[1].current").value(false));
-        getAs(waiter, "/api/menu-items/{id}", item).andExpect(jsonPath("$.data.currentRecipeVersion").value(2));
+        getAs(waiter, "/api/menu-items/{id}", item).andExpect(jsonPath("$.data.currentRecipeVersion").value(3));
         postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[{\"kitchenIngredientTypeId\":999999999,\"quantityPerServing\":1}]}", item)
                 .andExpect(status().isUnprocessableContent());
-        getAs(manager, "/api/menu-items/{id}/recipes", item).andExpect(jsonPath("$.data", hasSize(2)));   // lần lỗi rollback trọn
+        getAs(manager, "/api/menu-items/{id}/recipes", item).andExpect(jsonPath("$.data", hasSize(3)));   // lần lỗi rollback trọn
         postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[]}", 999999999L).andExpect(status().isNotFound());
         getAs(waiter, "/api/menu-items/{id}/recipes", item).andExpect(status().isForbidden());
     }
@@ -107,7 +120,7 @@ class MenuIT extends OrderApiTestBase {
     void dailyMenuLifecycle() throws Exception {
         LocalDate date = LocalDate.now().plusDays(1000 + ThreadLocalRandom.current().nextInt(100_000));
         long cat = createCategory(uniq("Nhóm TĐ"));
-        long noRecipe = createItem(cat, uniq("Chưa công thức"), 10000);
+        long noRecipe = createItemWithoutRecipe(cat, uniq("Chưa công thức"));
         long ready = createItem(cat, uniq("Có công thức"), 20000);
         postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[]}", ready).andExpect(status().isCreated());
 
@@ -156,7 +169,7 @@ class MenuIT extends OrderApiTestBase {
         long cat = createCategory(uniq("Nhóm MĐ"));
         long ready = createItem(cat, uniq("Món sẵn"), 30000);
         postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[]}", ready).andExpect(status().isCreated());
-        long noRecipe = createItem(cat, uniq("Món chưa CT"), 10000);
+        long noRecipe = createItemWithoutRecipe(cat, uniq("Món chưa CT"));
         String stoppedName = uniq("Món ngừng");
         long stopped = createItem(cat, stoppedName, 10000);
         postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[]}", stopped).andExpect(status().isCreated());
@@ -170,7 +183,9 @@ class MenuIT extends OrderApiTestBase {
         ResultActions today = getAs(manager, "/api/daily-menus/today");
         long todayId = readLong(today, "$.data.id");
         String todayDate = read(today, "$.data.businessDate");
-        postJson(manager, "/api/daily-menus/{id}/items", "{\"menuItemId\":" + sold + ",\"quotaTotal\":5}", todayId).andExpect(status().isCreated());
+        setTodayQuota(todayId, sold, 5);                                // món mới đã tự vào thực đơn hôm nay
+        mvc.perform(delete("/api/daily-menu-items/{id}", dailyMenuItemOf(todayId, ready)).header("Authorization", manager))
+                .andExpect(status().is2xxSuccessful());                 // bỏ "ready" khỏi hôm nay: ca "món không có ở thực đơn nguồn"
         long[] t = openTable();
         postEmpty(kitchen, "/api/order-items/{id}/accept", submitOne(t[2], dailyMenuItemOf(todayId, sold), 2))
                 .andExpect(jsonPath("$.data.result").value("ACCEPTED"));
@@ -238,7 +253,7 @@ class MenuIT extends OrderApiTestBase {
         postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[{\"kitchenIngredientTypeId\":" + type + ",\"quantityPerServing\":2}]}", item)
                 .andExpect(status().isCreated());
         long todayId = readLong(getAs(manager, "/api/daily-menus/today"), "$.data.id");
-        postJson(manager, "/api/daily-menus/{id}/items", "{\"menuItemId\":" + item + ",\"quotaTotal\":3}", todayId).andExpect(status().isCreated());
+        setTodayQuota(todayId, item, 3);                                // món mới đã tự vào thực đơn hôm nay
 
         long[] t = openTable();
         long orderItem = submitOne(t[2], dailyMenuItemOf(todayId, item), 1);
@@ -271,9 +286,7 @@ class MenuIT extends OrderApiTestBase {
         postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[{\"kitchenIngredientTypeId\":" + type + ",\"quantityPerServing\":1}]}", item);
         long todayId = readLong(getAs(waiter, "/api/daily-menus/today").andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("PUBLISHED")), "$.data.id");
-        java.util.List<Number> ids = read(postJson(manager, "/api/daily-menus/{id}/items", "{\"menuItemId\":" + item + ",\"quotaTotal\":2}", todayId)
-                .andExpect(status().isCreated()), "$.data.items[?(@.menuItemId == " + item + ")].dailyMenuItemId");
-        long dmi = ids.get(0).longValue();
+        long dmi = setTodayQuota(todayId, item, 2);                     // món mới đã tự vào thực đơn hôm nay
         getAs(waiter, "/api/daily-menus/today")
                 .andExpect(jsonPath("$.data.items[?(@.dailyMenuItemId == " + dmi + ")].remaining").value(org.hamcrest.Matchers.hasItem(2)));
 
@@ -369,5 +382,31 @@ class MenuIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.items[?(@.menuItemId == " + stopped + ")]").isEmpty());
         // thực đơn hôm nay vẫn đang bán: tự mở ngày khác không đóng nhầm
         getAs(waiter, "/api/daily-menus/today").andExpect(status().isOk());
+    }
+
+    /** Thêm món là bán được ngay: có công thức rỗng, vào thực đơn hôm nay; khai nguyên liệu sau thì hôm nay dùng công thức mới. */
+    @Test
+    void newItemIsSellableTodayAndRecipeChangeApplies() throws Exception {
+        long type = data.dish(1000, null, 5).kitchenTypeId();           // bảo đảm thực đơn hôm nay đang bán
+        long todayId = readLong(getAs(manager, "/api/daily-menus/today"), "$.data.id");
+        long item = createItem(createCategory(uniq("Nhóm bán ngay")), uniq("Nước suối"), 10000);
+        long dmi = dailyMenuItemOf(todayId, item);
+        long[] t = openTable();
+        long first = submitOne(t[2], dmi, 1);                           // gọi được ngay, không cần tạo công thức hay thêm vào thực đơn
+        postEmpty(kitchen, "/api/order-items/{id}/accept", first).andExpect(jsonPath("$.data.result").value("ACCEPTED"));
+
+        // món khác chưa ai gọi: khai nguyên liệu → thực đơn hôm nay dùng công thức mới, nhận món là giữ nguyên liệu
+        long stocked = createItem(createCategory(uniq("Nhóm trừ kho")), uniq("Bò tái"), 60000);
+        postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[{\"kitchenIngredientTypeId\":" + type + ",\"quantityPerServing\":2}]}", stocked)
+                .andExpect(status().isCreated());
+        long item2 = submitOne(t[2], dailyMenuItemOf(todayId, stocked), 1);
+        postEmpty(kitchen, "/api/order-items/{id}/accept", item2).andExpect(jsonPath("$.data.result").value("ACCEPTED"));
+        assertThat(data.kitchenReserved(type)).isEqualByComparingTo("2");
+
+        // món đã có người gọi hôm nay: đổi công thức không đổi thực đơn hôm nay (giữ công thức cũ đến hết ngày)
+        String before = data.value("SELECT recipe_id::text FROM daily_menu_items WHERE id = ?", dmi);
+        postJson(manager, "/api/menu-items/{id}/recipes", "{\"ingredients\":[{\"kitchenIngredientTypeId\":" + type + ",\"quantityPerServing\":1}]}", item)
+                .andExpect(status().isCreated());
+        assertEquals(before, data.value("SELECT recipe_id::text FROM daily_menu_items WHERE id = ?", dmi));
     }
 }

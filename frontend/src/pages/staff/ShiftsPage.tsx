@@ -185,7 +185,7 @@ export function ShiftsPage() {
           </dl>
         )}
       </FormModal>
-      <ReasonDialog open={cancelling} title="Hủy phân ca?" description="Khung giờ này có thể phân lại cho nhân viên." confirmLabel="Hủy phân ca" danger
+      <ReasonDialog open={cancelling} title="Hủy phân ca?" description="Khung giờ này có thể phân lại cho nhân viên." confirmLabel="Hủy phân ca" danger suggestions={['Nhân viên xin nghỉ', 'Đổi ca', 'Phân nhầm']}
                     onConfirm={(r) => cancel.mutate(r)} onClose={() => setCancelling(false)} />
       <ErrorNotice error={cancel.error} />
     </main>
