@@ -163,6 +163,25 @@ export interface PaymentResponse {
   qrImageUrl: string | null;
 }
 
+export interface PaymentIncident {
+  id: number;
+  transactionCode: string;
+  paymentReference: string;
+  amount: number;
+  processingResult: 'MISMATCH' | 'AFTER_CANCEL';
+  receivedAt: string;
+  paymentRequestId: number | null;
+  invoiceId: number | null;
+  paymentRequestStatus: string | null;
+  amountDue: number | null;
+  resolutionStatus: 'OPEN' | 'RESOLVED';
+  resolvedById: number | null;
+  resolvedByName: string | null;
+  resolvedAt: string | null;
+  resolutionNote: string | null;
+  rawPayload: string | null;
+}
+
 export interface PageResponse<T> {
   items: T[];
   page: number;

@@ -42,8 +42,6 @@ import static com.restaurant.core.common.util.TextUtils.blankToNull;
 @Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
 
-    /** Hóa đơn ở các trạng thái này: không gọi thêm món được (phải mở lại hóa đơn trước). */
-    private static final Set<String> INVOICE_LOCKS_ORDERING = Set.of("PAYMENT_PENDING", "PAID", "UNCOLLECTED");
     private static final Set<OrderItemStatus> COOKED = EnumSet.of(OrderItemStatus.COOKING, OrderItemStatus.READY, OrderItemStatus.SERVED);
     private static final Set<OrderItemStatus> NOT_COOKED = EnumSet.of(OrderItemStatus.PENDING, OrderItemStatus.ACCEPTED);
 
@@ -101,9 +99,7 @@ public class OrderServiceImpl implements OrderService {
         if (alreadySubmitted != null) {
             return buildBatchResult(alreadySubmitted, true);
         }
-        invoiceAccess.findInvoiceStatus(orderId).filter(INVOICE_LOCKS_ORDERING::contains).ifPresent(status -> {
-            throw ApiException.invalidState("Đơn " + orderId + " đang thanh toán: mở lại hóa đơn trước khi gọi thêm");
-        });
+        invoiceAccess.reopenInvoiceForMoreOrdering(orderId);       // hóa đơn đang chờ thu → về nháp, thu ngân chốt lại sau
 
         OrderBatch batch = orderBatchRepository.save(new OrderBatch(order, actorId, requestKey, fingerprint, clock.now()));
         for (SubmitBatchRequest.Item line : request.items()) {
@@ -149,10 +145,8 @@ public class OrderServiceImpl implements OrderService {
         if (!order.isOpen()) {
             throw ApiException.invalidState("Đơn " + orderId + " đã " + order.getStatus() + ": không hủy món ngoại lệ");
         }
+        invoiceAccess.reopenInvoiceForMoreOrdering(orderId);       // hóa đơn đang chờ thu → về nháp để bỏ món, chốt lại sau
         String invoiceStatus = invoiceAccess.findInvoiceStatusForUpdate(orderId).orElse(null);
-        if ("PAYMENT_PENDING".equals(invoiceStatus)) {
-            throw ApiException.invalidState("Hóa đơn đang chờ thanh toán: mở lại hóa đơn trước khi hủy món");
-        }
         if (invoiceStatus != null && !"DRAFT".equals(invoiceStatus)) {
             throw ApiException.invalidState("Hóa đơn đã " + invoiceStatus + ": không hủy món ngoại lệ được");
         }

@@ -228,7 +228,7 @@ export function DailyMenuPage() {
 
       <FormModal open={adding} title="Thêm món vào thực đơn" submitLabel="Thêm món" busy={add.isPending} error={add.error}
                  onSubmit={() => add.mutate(undefined)} onClose={() => setAdding(false)}
-                 description="Món cần có công thức hiện hành. Món mới thêm vào danh mục sau khi tạo thực đơn thì thêm ở đây.">
+                 description="Món mới thêm vào danh mục tự vào thực đơn hôm nay. Ở đây dùng để thêm lại món đã bỏ, hoặc thêm món cho thực đơn ngày khác.">
         <div className="form-grid">
           <Field label="Món" span>
             <select className="input" required value={pick} onChange={(e) => setPick(e.target.value ? Number(e.target.value) : '')}>
@@ -247,7 +247,7 @@ export function DailyMenuPage() {
       </FormModal>
 
       <ReasonDialog open={pausing != null} title={`Tạm dừng ${pausing?.name ?? ''}?`}
-                    description="Phục vụ không gọi được món này; món đang chờ bếp nhận sẽ bị từ chối." confirmLabel="Tạm dừng" danger
+                    description="Phục vụ không gọi được món này; món đang chờ bếp nhận sẽ bị từ chối." confirmLabel="Tạm dừng" danger suggestions={['Hết nguyên liệu', 'Bếp quá tải', 'Món có vấn đề']}
                     onConfirm={(reason) => pausing && pause.mutate({ it: pausing, reason })} onClose={() => setPausing(null)} />
     </main>
   );

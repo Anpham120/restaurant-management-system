@@ -155,7 +155,7 @@ export function MenuItemsPage() {
                 <div className="row-between">
                   <h2>Công thức</h2>
                   <button className="btn btn-sm btn-primary" onClick={openRecipe} disabled={!recipes.isSuccess}>
-                    {recipes.data?.length ? 'Tạo phiên bản mới' : 'Tạo công thức'}
+                    {recipes.data?.length ? 'Sửa nguyên liệu' : 'Tạo công thức'}
                   </button>
                 </div>
                 <ErrorNotice error={recipes.error} />
@@ -166,7 +166,7 @@ export function MenuItemsPage() {
                       <b>Phiên bản {r.version}</b>
                       {r.current ? <StatusTag tone="go">Hiện hành</StatusTag> : <StatusTag>Cũ</StatusTag>}
                     </div>
-                    {r.ingredients.length === 0 && <span className="muted">Không dùng nguyên liệu kho.</span>}
+                    {r.ingredients.length === 0 && <span className="muted">Chưa khai nguyên liệu: bán món này không trừ kho.</span>}
                     {r.ingredients.map((g) => (
                       <div key={g.kitchenIngredientTypeId} className="row-between" style={{ fontSize: 'var(--step--1)' }}>
                         <span>{g.typeName}</span>
@@ -192,7 +192,7 @@ export function MenuItemsPage() {
 
       <FormModal open={itemEdit != null} title={itemEdit === 'new' ? 'Thêm món' : 'Sửa món'} submitLabel="Lưu món"
                  busy={saveItem.isPending} error={saveItem.error} onSubmit={() => saveItem.mutate(undefined)} onClose={() => setItemEdit(null)}
-                 description="Đổi giá chỉ áp dụng cho món gọi sau đó.">
+                 description={itemEdit === 'new' ? 'Món mới bán được ngay hôm nay. Món cần trừ kho thì khai nguyên liệu sau khi lưu.' : 'Đổi giá chỉ áp dụng cho món gọi sau đó.'}>
         <div className="form-grid">
           <Field label="Tên món" span><input className="input" required maxLength={100} value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} autoFocus /></Field>
           <Field label="Danh mục">
@@ -209,7 +209,7 @@ export function MenuItemsPage() {
 
       <FormModal open={recipeOpen} wide title={`Công thức mới: ${current?.name ?? ''}`} submitLabel="Lưu thành phiên bản mới"
                  busy={saveRecipe.isPending} error={saveRecipe.error} onSubmit={() => saveRecipe.mutate(undefined)} onClose={() => setRecipeOpen(false)}
-                 description="Phiên bản cũ được giữ nguyên cho các thực đơn đã dùng; thực đơn ngày thêm món sau đó dùng phiên bản mới.">
+                 description="Lưu thành phiên bản mới, phiên bản cũ được giữ lại. Hôm nay áp dụng ngay nếu món chưa có ai gọi; đã có người gọi thì áp dụng từ ngày mai.">
         <div className="lines-editor">
           {lines.map((l, idx) => {
             const t = types.data?.find((x) => x.id === l.typeId);

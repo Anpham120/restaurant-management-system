@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 
@@ -66,6 +66,19 @@ export function InvoicePage() {
       refresh();
     },
   });
+  // Thông báo ngân hàng bị mất: quản lý đối chiếu rồi ghi nhận tay. Mã giao dịch chống ghi trùng nếu thông báo đến muộn.
+  const [txCode, setTxCode] = useState('');
+  const manual = useMutation({
+    mutationFn: () =>
+      api.post<{ result: string }>(`/api/payment-requests/${openQr!.id}/manual-transfer`, {
+        transactionCode: txCode.trim(), amount: openQr!.amountDue, note: 'Quản lý ghi nhận tay: đã thấy tiền về',
+      }),
+    onSuccess: (res) => {
+      toast(res.result === 'PROCESSED' ? 'Đã ghi nhận chuyển khoản' : 'Chưa ghi nhận được, xem mục Sự cố chuyển khoản');
+      setTxCode('');
+      refresh();
+    },
+  });
   const reasonAction = useMutation({
     mutationFn: ({ kind, reason }: { kind: 'reopen' | 'waive' | 'cancel-qr'; reason: string }) => {
       if (kind === 'reopen') return api.post(`/api/invoices/${invoice.data!.invoiceId}/reopen`, { reason });
@@ -75,12 +88,28 @@ export function InvoicePage() {
     onSuccess: (_d, v) => {
       toast(v.kind === 'reopen' ? 'Đã mở lại hóa đơn' : v.kind === 'waive' ? 'Đã miễn thu hóa đơn' : 'Đã hủy mã QR');
       if (v.kind === 'cancel-qr') setQr(null);
+      if (v.kind === 'reopen') autoChecked.current = true;      // vừa chủ động mở lại để sửa: không tự chốt lại ngay
       setDialog(null);
       refresh();
     },
   });
 
   const noInvoice = order.isSuccess && !hasInvoice;
+  // Vào màn thanh toán khi mọi món đã xong: tự chốt hóa đơn, thu ngân không phải bấm thêm một bước.
+  // Còn món đang làm thì không tự chốt (hiện hướng dẫn); chốt lỗi thì hiện nút để thử lại.
+  const itemsNow = order.data?.items ?? [];
+  const stillCooking = itemsNow.some((i) => ['PENDING', 'ACCEPTED', 'COOKING', 'READY'].includes(i.status));
+  const anyServed = itemsNow.some((i) => i.status === 'SERVED');
+  const canBill = hasRole('CASHIER', 'MANAGER');
+  const autoChecked = useRef(false);
+  useEffect(() => {
+    const needsCheckout = noInvoice || invoice.data?.status === 'DRAFT';
+    if (needsCheckout && canBill && anyServed && !stillCooking && !autoChecked.current) {
+      autoChecked.current = true;
+      checkout.mutate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noInvoice, invoice.data?.status, canBill, anyServed, stillCooking]);
   const inv = invoice.data;
   const openQr = inv?.paymentRequests.find((r) => r.method === 'QR' && QR_OPEN.includes(r.status)) ?? null;
   const cashNumber = Number(cash.replace(/\D/g, '')) || 0;
@@ -104,14 +133,17 @@ export function InvoicePage() {
 
       {noInvoice && (
         <div className="panel stack" style={{ maxWidth: 560 }}>
-          <h2>Chưa chốt hóa đơn</h2>
-          <p className="muted">
-            Chốt khi mọi món đã phục vụ, bị hủy hoặc bị từ chối. Tổng tiền do hệ thống tính từ các món đã phục vụ.
-          </p>
+          <h2>{checkout.isPending ? 'Đang tính tiền…' : 'Chưa tính tiền được'}</h2>
+          {stillCooking ? (
+            <p className="muted">Còn món đang làm hoặc chưa bưng ra. Bưng hết món (hoặc hủy món khách không lấy nữa) rồi quay lại tính tiền.</p>
+          ) : !anyServed ? (
+            <p className="muted">Bàn chưa có món nào được phục vụ nên không có gì để tính tiền.</p>
+          ) : null}
           <ErrorNotice error={checkout.error} />
-          <button type="button" className="btn btn-primary" disabled={checkout.isPending} onClick={() => checkout.mutate()}>
-            Chốt hóa đơn
-          </button>
+          {canBill && !stillCooking && anyServed && !checkout.isPending && (
+            <button type="button" className="btn btn-primary" onClick={() => checkout.mutate()}>Tính tiền</button>
+          )}
+          <Link to={`/orders/${orderId}`} className="btn">Về phiếu gọi món</Link>
         </div>
       )}
 
@@ -148,11 +180,17 @@ export function InvoicePage() {
             </div>
             {inv.status === 'DRAFT' && (
               <div className="stack" style={{ marginTop: '1rem' }}>
-                <p className="muted">Hóa đơn đang mở lại để gọi thêm hoặc hủy món. Chốt lại khi xong.</p>
+                <p className="muted">Hóa đơn đang mở để gọi thêm hoặc bỏ món. Sửa xong thì tính tiền lại.</p>
                 <ErrorNotice error={checkout.error} />
                 <button type="button" className="btn btn-primary" disabled={checkout.isPending} onClick={() => checkout.mutate()}>
-                  Chốt lại hóa đơn
+                  Tính tiền lại
                 </button>
+                {/* Bỏ hết món đã phục vụ thì hóa đơn còn 0 đồng, không tính tiền được: quản lý đóng bàn bằng miễn thu */}
+                {hasRole('MANAGER') && !stillCooking && (
+                  <button type="button" className="btn btn-danger" onClick={() => setDialog('waive')}>
+                    Đóng bàn, không thu tiền
+                  </button>
+                )}
               </div>
             )}
           </section>
@@ -183,7 +221,7 @@ export function InvoicePage() {
               </div>
             )}
 
-            {inv.status === 'PAYMENT_PENDING' && !openQr && hasRole('CASHIER', 'MANAGER') && (
+            {inv.status === 'PAYMENT_PENDING' && !openQr && canBill && (
               <>
                 <div className="tabs" role="tablist">
                   <button type="button" role="tab" aria-selected={tab === 'CASH'} onClick={() => setTab('CASH')}>
@@ -259,6 +297,16 @@ export function InvoicePage() {
                 <button type="button" className="btn btn-danger" onClick={() => setDialog('cancel-qr')}>
                   Hủy mã QR
                 </button>
+                {hasRole('MANAGER') && (
+                  <form className="stack" style={{ borderTop: '1px dashed var(--line)', paddingTop: '0.75rem', textAlign: 'left' }}
+                        onSubmit={(e) => { e.preventDefault(); manual.mutate(); }}>
+                    <span className="muted">Khách đã chuyển đúng {vnd(openQr.amountDue)} (thấy trong app ngân hàng) mà màn hình vẫn chờ?</span>
+                    <input className="input" required maxLength={64} placeholder="Mã giao dịch ngân hàng" aria-label="Mã giao dịch ngân hàng"
+                           value={txCode} onChange={(e) => setTxCode(e.target.value)} />
+                    <ErrorNotice error={manual.error} />
+                    <button className="btn" disabled={manual.isPending || !txCode.trim()}>Tiền đã về, ghi nhận tay</button>
+                  </form>
+                )}
               </div>
             )}
 
@@ -266,7 +314,7 @@ export function InvoicePage() {
               <div className="stack" style={{ borderTop: '1px dashed var(--line)', paddingTop: '0.75rem' }}>
                 {hasRole('CASHIER', 'MANAGER') && (
                   <button type="button" className="btn" onClick={() => setDialog('reopen')}>
-                    Mở lại hóa đơn để sửa món
+                    Sửa món (mở lại hóa đơn)
                   </button>
                 )}
                 {hasRole('MANAGER') && (
@@ -294,6 +342,7 @@ export function InvoicePage() {
               : 'Nếu khách đã chuyển khoản, đừng hủy: chờ tiền về.'
         }
         confirmLabel={dialog === 'reopen' ? 'Mở lại' : dialog === 'waive' ? 'Miễn thu' : 'Hủy mã QR'}
+        suggestions={dialog === 'reopen' ? ['Khách gọi thêm món', 'Sửa món tính nhầm'] : dialog === 'cancel-qr' ? ['Khách trả tiền mặt', 'Tạo lại mã'] : dialog === 'waive' ? ['Nhà hàng mời', 'Đền bù sự cố'] : undefined}
         danger={dialog !== 'reopen'}
         onConfirm={(reason) => dialog && reasonAction.mutate({ kind: dialog, reason })}
         onClose={() => setDialog(null)}

@@ -64,8 +64,10 @@ export function TablesPage() {
   const stateOf = (t: TableResponse): State =>
     t.currentOrderId == null ? 'free' : orderByTable.get(t.id)?.session.invoiceStatus === 'PAYMENT_PENDING' ? 'bill' : 'busy';
   const live = (o?: OrderResponse) => (o?.items ?? []).filter((i) => !DEAD.has(i.status));
+  // Hóa đơn nháp giữ tổng của lần chốt trước: chỉ tin tổng hóa đơn khi đã chốt, còn lại tính từ món
   const subtotal = (o?: OrderResponse) =>
-    o?.session.invoiceTotal ?? live(o).reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+    (o?.session.invoiceStatus && o.session.invoiceStatus !== 'DRAFT' ? o.session.invoiceTotal : null)
+    ?? live(o).reduce((s, i) => s + i.unitPrice * i.quantity, 0);
 
   const open = useMutation({
     mutationFn: (t: TableResponse) => api.post<OpenSessionResponse>(`/api/tables/${t.id}/sessions`),

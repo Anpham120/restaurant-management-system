@@ -74,10 +74,15 @@ export function CashPage() {
                  onSubmit={() => save.mutate(undefined)} onClose={() => setOpen(false)}
                  description={r ? `Thu tiền mặt ${vnd(r.cashSales)}, chi từ quầy ${vnd(r.cashExpenses)}.` : undefined}>
         <div className="form-grid">
-          <Field label="Quỹ đầu ngày"><input className="input" type="number" min={0} step="any" required value={form.openingCash} onChange={(e) => setForm({ ...form, openingCash: e.target.value })} autoFocus /></Field>
-          <Field label="Tiền đếm thực tế"><input className="input" type="number" min={0} step="any" required value={form.actualCash} onChange={(e) => setForm({ ...form, actualCash: e.target.value })} /></Field>
+          <Field label="Quỹ đầu ngày"><input className="input" type="number" min={r ? Math.max(0, r.cashExpenses - r.cashSales) : 0} step={1} required value={form.openingCash} onChange={(e) => setForm({ ...form, openingCash: e.target.value })} autoFocus /></Field>
+          <Field label="Tiền đếm thực tế"><input className="input" type="number" min={0} step={1} required value={form.actualCash} onChange={(e) => setForm({ ...form, actualCash: e.target.value })} /></Field>
         </div>
-        {form.openingCash !== '' && form.actualCash !== '' && (
+        {form.openingCash !== '' && expected < 0 && (
+          <div className="notice notice-warn">
+            Chi từ quầy vượt quỹ đầu ngày cộng thu tiền mặt {vnd(-expected)}: nhập đúng quỹ đầu ngày, hoặc kiểm lại khoản chi ghi nhầm "chi từ quầy".
+          </div>
+        )}
+        {form.openingCash !== '' && form.actualCash !== '' && expected >= 0 && (
           <div className={diff === 0 ? 'notice notice-ok' : 'notice notice-warn'}>
             Tiền phải có {vnd(expected)} · {diff === 0 ? 'khớp' : `${diff > 0 ? 'thừa' : 'thiếu'} ${vnd(Math.abs(diff))}`}
           </div>

@@ -53,18 +53,61 @@ public class DailyMenuServiceImpl implements DailyMenuService {
         this.clock = clock;
     }
 
-    /** Thực đơn của ngày kinh doanh hiện tại (04:00 giờ Việt Nam). */
+    /** Thực đơn của ngày kinh doanh hiện tại (04:00 giờ Việt Nam). Chưa có thì tự mở (xem {@link #openDailyMenuLikePreviousDay}). */
     @Override
+    @Transactional
     public DailyMenuResponse getTodayDailyMenu() {
-        LocalDate date = clock.today();
-        return getDailyMenuByDate(date);
+        return getDailyMenuByDate(clock.today());
     }
 
     @Override
+    @Transactional
     public DailyMenuResponse getDailyMenuByDate(LocalDate date) {
-        DailyMenuResponse.Header h = repo.findHeaderByDate(date)
-                .orElseThrow(() -> ApiException.notFound("Chưa có thực đơn cho ngày " + date));
+        DailyMenuResponse.Header h = repo.findHeaderByDate(date).orElse(null);
+        if (h == null && date.equals(clock.today())) {
+            h = openDailyMenuLikePreviousDay(date);
+        }
+        if (h == null) {
+            throw ApiException.notFound("Chưa có thực đơn cho ngày " + date);
+        }
         return buildDailyMenuResponse(h);
+    }
+
+    /**
+     * Tự mở bán hôm nay khi chưa ai tạo thực đơn: quản lý không phải tạo, nhập số suất và công bố mỗi sáng, và nhà hàng
+     * không bị kẹt "chưa có thực đơn" khi quản lý quên. Thực đơn mới giống ngày bán gần nhất: món nào hôm đó có hạn mức
+     * bao nhiêu thì hôm nay như vậy (0 = vẫn chưa mở bán); món mới thêm vào danh mục sau hôm đó được bán không giới hạn;
+     * món đã ngừng kinh doanh hoặc mất công thức bị bỏ. Danh mục chưa có món nào bán được thì chưa mở (trả null). Công thức lấy bản hiện hành. Công bố luôn; quản lý sửa số suất,
+     * tạm dừng món ngay trên thực đơn đang bán. Muốn chuẩn bị trước thì tạo thực đơn nháp cho ngày đó như cũ.
+     */
+    @Transactional
+    public DailyMenuResponse.Header openDailyMenuLikePreviousDay(LocalDate today) {
+        dailyMenuRepository.lockBusinessDate(today);
+        DailyMenuResponse.Header raced = repo.findHeaderByDate(today).orElse(null);
+        if (raced != null) {
+            return raced;                                   // request song song vừa mở xong
+        }
+        List<Object[]> sellable = menuItemRepository.findSellableItemsWithCurrentRecipe();
+        if (sellable.isEmpty()) {
+            return null;                                    // chưa có món nào bán được: chưa mở gì (không tạo thực đơn rỗng)
+        }
+        Map<Long, Integer> previousQuotaByMenuItem = new java.util.HashMap<>();
+        java.util.Set<Long> onPreviousMenu = new java.util.HashSet<>();
+        repo.findPreviousHeader(today).ifPresent(previous -> dailyMenuItemRepository.findByDailyMenuId(previous.id()).forEach(i -> {
+            onPreviousMenu.add(i.getMenuItem().getId());
+            previousQuotaByMenuItem.put(i.getMenuItem().getId(), i.getQuotaTotal());
+        }));
+        dailyMenuRepository.findByStatusAndBusinessDateBefore(DailyMenuStatus.PUBLISHED, clock.today()).forEach(DailyMenu::close);
+        DailyMenu menu = dailyMenuRepository.saveAndFlush(new DailyMenu(today));
+        for (Object[] row : sellable) {
+            MenuItem menuItem = (MenuItem) row[0];
+            Integer quota = onPreviousMenu.contains(menuItem.getId()) ? previousQuotaByMenuItem.get(menuItem.getId()) : null;
+            dailyMenuItemRepository.save(new DailyMenuItem(menu, menuItem, (Recipe) row[1], quota));
+        }
+        dailyMenuItemRepository.flush();
+        menu.publish(clock.now());
+        dailyMenuRepository.flush();
+        return repo.findHeaderByDate(today).orElseThrow();
     }
 
     @Override

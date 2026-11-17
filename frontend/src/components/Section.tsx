@@ -51,6 +51,7 @@ export const SECTIONS: Record<string, { title: string; tabs: Tab[] }> = {
       { label: 'Báo cáo', to: '/finance/reports', roles: M },
       { label: 'Khoản chi', to: '/finance/expenses', roles: M },
       { label: 'Đối soát tiền mặt', to: '/finance/cash', roles: M },
+      { label: 'Sự cố chuyển khoản', to: '/finance/incidents', roles: M },
     ],
   },
   settings: {

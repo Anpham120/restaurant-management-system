@@ -32,12 +32,17 @@ export function PreparationsPage() {
   const outTotal = outs.reduce((s, o) => s + (num(o.qty) ?? 0), 0);
   const inQty = num(input) ?? 0;
 
+  // Một bước: lưu phiếu và ghi thành phẩm vào bếp luôn.
   const create = useAction(
-    () => api.post<Preparation>('/api/kitchen-preparations', {
-      requestKey, stockIssueItemId: wipLine, inputQuantity: inQty, lossReason: lossReason.trim() || null,
-      outputs: outs.map((o) => ({ kitchenIngredientTypeId: o.typeId, outputQuantity: num(o.qty), usableUntil: fromLocalInput(o.usableUntil) })),
-    }),
-    { success: 'Đã lập phiếu sơ chế', invalidate: keys, onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
+    async () => {
+      const r = await api.post<Preparation>('/api/kitchen-preparations', {
+        requestKey, stockIssueItemId: wipLine, inputQuantity: inQty, lossReason: lossReason.trim() || null,
+        outputs: outs.map((o) => ({ kitchenIngredientTypeId: o.typeId, outputQuantity: num(o.qty), usableUntil: fromLocalInput(o.usableUntil) })),
+      });
+      if (r.status === 'DRAFT') await api.post(`/api/kitchen-preparations/${r.id}/confirm`);
+      return r;
+    },
+    { success: 'Đã ghi sơ chế, thành phẩm vào bếp', invalidate: keys, onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
   );
   const confirm = useAction(() => api.post(`/api/kitchen-preparations/${selectedId}/confirm`), { success: 'Đã xác nhận sơ chế, thành phẩm vào bếp', invalidate: keys });
 
@@ -55,7 +60,7 @@ export function PreparationsPage() {
   return (
     <main className="main">
       <PageHead title="Sơ chế"
-                actions={<button className="btn btn-primary" onClick={start} disabled={wip.length === 0}>Lập phiếu sơ chế</button>} />
+                actions={<button className="btn btn-primary" onClick={start} disabled={wip.length === 0}>Ghi sơ chế</button>} />
       {handover.isSuccess && wip.length === 0 && <div className="notice notice-warn" style={{ marginBottom: '1rem' }}>Không có hàng chờ sơ chế. Kho cần xuất hàng ở chế độ "Chờ sơ chế" và bếp xác nhận đã nhận.</div>}
       <div className="split">
         <div>
@@ -92,7 +97,7 @@ export function PreparationsPage() {
         </aside>
       </div>
 
-      <FormModal open={creating} wide title="Lập phiếu sơ chế" submitLabel="Lưu nháp" busy={create.isPending} error={create.error}
+      <FormModal open={creating} wide title="Ghi sơ chế" submitLabel="Ghi sơ chế" busy={create.isPending} error={create.error}
                  onSubmit={() => create.mutate(undefined)} onClose={() => setCreating(false)}
                  description={inQty > 0 ? `Hao hụt dự kiến: ${amount(Math.max(0, inQty - outTotal), src?.baseUnit)} (${Math.round(Math.max(0, inQty - outTotal) / inQty * 100)}%)` : 'Hạn dùng thành phẩm để trống = tự tính theo loại bếp, không vượt hạn lô gốc.'}>
         <div className="form-grid">

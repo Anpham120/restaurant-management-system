@@ -17,6 +17,7 @@ import { LoginPage } from './pages/LoginPage';
 import { OrderPage } from './pages/OrderPage';
 import { TablesPage } from './pages/TablesPage';
 import { CashPage } from './pages/finance/CashPage';
+import { IncidentsPage } from './pages/finance/IncidentsPage';
 import { ExpensesPage } from './pages/finance/ExpensesPage';
 import { ReportsPage } from './pages/finance/ReportsPage';
 import { CountsPage } from './pages/inventory/CountsPage';
@@ -113,6 +114,7 @@ createRoot(document.getElementById('root')!).render(
                   {guarded('/finance/reports', M, <ReportsPage />)}
                   {guarded('/finance/expenses', M, <ExpensesPage />)}
                   {guarded('/finance/cash', M, <CashPage />)}
+                  {guarded('/finance/incidents', M, <IncidentsPage />)}
                 </Route>
                 <Route element={<SectionLayout section="settings" />}>
                   {guarded('/settings/tables', M, <TablesAdminPage />)}
