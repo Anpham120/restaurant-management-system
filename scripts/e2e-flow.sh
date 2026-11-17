@@ -95,8 +95,15 @@ step "tạo món" POST /api/menu-items "{\"categoryId\":$CAT,\"name\":\"E2E $RUN
 ITEM=$(d .id)
 step "tạo công thức" POST "/api/menu-items/$ITEM/recipes" \
   "{\"ingredients\":[{\"kitchenIngredientTypeId\":$TYPE,\"quantityPerServing\":1}]}"
-step "thêm món vào thực đơn" POST "/api/daily-menus/$MENU/items" "{\"menuItemId\":$ITEM,\"quotaTotal\":3}"
+# món mới tự vào thực đơn hôm nay (chưa đóng) với hạn mức trống: chỉ cần đặt hạn mức; chưa có thì thêm
+step "đọc thực đơn hôm nay" GET /api/daily-menus/today
 DMI=$(jq -r ".data.items[] | select(.menuItemId == $ITEM) | .dailyMenuItemId" <<<"$BODY")
+if [ -n "$DMI" ]; then
+  step "đặt hạn mức 3 suất" PUT "/api/daily-menu-items/$DMI" "{\"quotaTotal\":3}"
+else
+  step "thêm món vào thực đơn" POST "/api/daily-menus/$MENU/items" "{\"menuItemId\":$ITEM,\"quotaTotal\":3}"
+  DMI=$(jq -r ".data.items[] | select(.menuItemId == $ITEM) | .dailyMenuItemId" <<<"$BODY")
+fi
 if [ "$MENU_STATUS" = DRAFT ]; then
   step "công bố thực đơn" POST "/api/daily-menus/$MENU/publish"
 fi
