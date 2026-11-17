@@ -16,6 +16,23 @@ const emptyForm = {
   workStatus: 'ACTIVE', username: '', initialPassword: '', roles: [] as Role[],
 };
 
+/** Mật khẩu tạm dễ đọc cho quản lý báo nhân viên (bỏ ký tự dễ nhầm 0/O, 1/l/I); nhân viên phải đổi ở lần đăng nhập đầu. */
+function tempPassword(): string {
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('');
+}
+
+/** "Nguyễn Văn An" → "an.nv": tên + chữ đầu của họ và đệm, không dấu. */
+function suggestUsername(fullName: string): string {
+  const words = fullName.trim().toLowerCase().replace(/đ/g, 'd').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .split(/\s+/).map((w) => w.replace(/[^a-z0-9]/g, '')).filter(Boolean);
+  if (words.length === 0) return '';
+  const given = words[words.length - 1];
+  const initials = words.slice(0, -1).map((w) => w[0]).join('');
+  return initials ? `${given}.${initials}` : given;
+}
+
 /** Hồ sơ nhân viên, tài khoản đăng nhập, vai trò; phòng ban. */
 export function EmployeesPage() {
   const me = useAuth().user;
@@ -31,6 +48,8 @@ export function EmployeesPage() {
   const [endDate, setEndDate] = useState(businessToday());
   const [deptEdit, setDeptEdit] = useState<Department | 'new' | null>(null);
   const [deptName, setDeptName] = useState('');
+  // Tên đăng nhập tự gợi ý theo họ tên cho tới khi quản lý tự sửa ô đó
+  const [usernameTouched, setUsernameTouched] = useState(false);
 
   const size = 20;
   const list = useQuery({ queryKey: ['employees', status, page], queryFn: () => api.get<PageResponse<Employee>>(`/api/employees?page=${page}&size=${size}${status ? `&status=${status}` : ''}`) });
@@ -71,7 +90,9 @@ export function EmployeesPage() {
   );
 
   function openEdit(e: Employee | 'new') {
-    setForm(e === 'new' ? emptyForm : {
+    setUsernameTouched(false);
+    // Thêm mới: điền sẵn mã, mật khẩu tạm, ngày vào làm; quản lý chỉ cần họ tên, phòng ban, vai trò
+    setForm(e === 'new' ? { ...emptyForm, employeeCode: `NV${Date.now().toString().slice(-6)}`, initialPassword: tempPassword(), hireDate: businessToday() } : {
       ...emptyForm, employeeCode: e.employeeCode, fullName: e.fullName, departmentId: e.departmentId, gender: e.gender ?? '', dateOfBirth: e.dateOfBirth ?? '',
       phone: e.phone ?? '', email: e.email ?? '', address: e.address ?? '', hireDate: e.hireDate ?? '', workStatus: e.workStatus === 'LEFT' ? 'ACTIVE' : e.workStatus,
     });
@@ -80,7 +101,7 @@ export function EmployeesPage() {
   }
   function openDialog(d: 'roles' | 'reset' | 'leave') {
     setRoles(detail.data?.roles ?? []);
-    setPassword('');
+    setPassword(d === 'reset' ? tempPassword() : '');
     setEndDate(businessToday());
     acct.reset();
     setDialog(d);
@@ -166,33 +187,16 @@ export function EmployeesPage() {
       <FormModal open={edit != null} wide title={edit === 'new' ? 'Thêm nhân viên' : 'Sửa hồ sơ'} submitLabel="Lưu nhân viên"
                  busy={save.isPending} error={save.error} onSubmit={() => save.mutate(undefined)} onClose={() => setEdit(null)}>
         <div className="form-grid">
-          {edit === 'new' && <Field label="Mã nhân viên"><input className="input" required maxLength={20} value={form.employeeCode} onChange={(ev) => setForm({ ...form, employeeCode: ev.target.value })} /></Field>}
-          <Field label="Họ tên"><input className="input" required maxLength={100} value={form.fullName} onChange={(ev) => setForm({ ...form, fullName: ev.target.value })} /></Field>
+          <Field label="Họ tên"><input className="input" required maxLength={100} autoFocus value={form.fullName}
+            onChange={(ev) => setForm({ ...form, fullName: ev.target.value, ...(edit === 'new' && !usernameTouched ? { username: suggestUsername(ev.target.value) } : {}) })} /></Field>
           <Field label="Phòng ban">
             <select className="input" required value={form.departmentId} onChange={(ev) => setForm({ ...form, departmentId: ev.target.value ? Number(ev.target.value) : '' })}>
               <option value="">Chọn…</option>{depts.data?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </Field>
-          <Field label="Giới tính">
-            <select className="input" value={form.gender} onChange={(ev) => setForm({ ...form, gender: ev.target.value })}>
-              <option value="">—</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option><option value="Khác">Khác</option>
-            </select>
-          </Field>
-          <Field label="Ngày sinh"><input className="input" type="date" value={form.dateOfBirth} onChange={(ev) => setForm({ ...form, dateOfBirth: ev.target.value })} /></Field>
-          <Field label="Điện thoại"><input className="input" type="tel" maxLength={15} value={form.phone} onChange={(ev) => setForm({ ...form, phone: ev.target.value })} /></Field>
-          <Field label="Email"><input className="input" type="email" maxLength={100} value={form.email} onChange={(ev) => setForm({ ...form, email: ev.target.value })} /></Field>
-          <Field label="Ngày vào làm"><input className="input" type="date" value={form.hireDate} onChange={(ev) => setForm({ ...form, hireDate: ev.target.value })} /></Field>
-          {edit !== 'new' && (
-            <Field label="Tình trạng">
-              <select className="input" value={form.workStatus} onChange={(ev) => setForm({ ...form, workStatus: ev.target.value })}>
-                <option value="ACTIVE">Đang làm</option><option value="INACTIVE">Tạm nghỉ</option>
-              </select>
-            </Field>
-          )}
-          <Field label="Địa chỉ" span><input className="input" maxLength={255} value={form.address} onChange={(ev) => setForm({ ...form, address: ev.target.value })} /></Field>
           {edit === 'new' && (
             <>
-              <Field label="Tên đăng nhập" hint="Chữ, số, dấu chấm, gạch dưới."><input className="input" required minLength={3} maxLength={50} pattern="[A-Za-z0-9._\-]+" value={form.username} onChange={(ev) => setForm({ ...form, username: ev.target.value })} /></Field>
+              <Field label="Tên đăng nhập" hint="Chữ, số, dấu chấm, gạch dưới."><input className="input" required minLength={3} maxLength={50} pattern="[A-Za-z0-9._\-]+" value={form.username} onChange={(ev) => { setUsernameTouched(true); setForm({ ...form, username: ev.target.value }); }} /></Field>
               <Field label="Mật khẩu tạm" hint="Ít nhất 8 ký tự; nhân viên đổi ở lần đăng nhập đầu."><input className="input" required minLength={8} maxLength={72} value={form.initialPassword} onChange={(ev) => setForm({ ...form, initialPassword: ev.target.value })} /></Field>
               <div className="field span-2">
                 <span className="field-label">Vai trò</span>
@@ -204,6 +208,30 @@ export function EmployeesPage() {
               </div>
             </>
           )}
+          {edit !== 'new' && (
+            <Field label="Tình trạng">
+              <select className="input" value={form.workStatus} onChange={(ev) => setForm({ ...form, workStatus: ev.target.value })}>
+                <option value="ACTIVE">Đang làm</option><option value="INACTIVE">Tạm nghỉ</option>
+              </select>
+            </Field>
+          )}
+          {/* Thêm mới: phần không bắt buộc gom lại, mở ra khi cần. Sửa hồ sơ: luôn hiện. */}
+          <details className="span-2" open={edit !== 'new'}>
+            <summary>{edit === 'new' ? 'Thông tin thêm (không bắt buộc): mã nhân viên, ngày sinh, điện thoại…' : 'Thông tin cá nhân'}</summary>
+            <div className="form-grid" style={{ marginTop: '0.75rem' }}>
+              {edit === 'new' && <Field label="Mã nhân viên"><input className="input" required maxLength={20} value={form.employeeCode} onChange={(ev) => setForm({ ...form, employeeCode: ev.target.value })} /></Field>}
+              <Field label="Giới tính">
+                <select className="input" value={form.gender} onChange={(ev) => setForm({ ...form, gender: ev.target.value })}>
+                  <option value="">—</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option><option value="Khác">Khác</option>
+                </select>
+              </Field>
+              <Field label="Ngày sinh"><input className="input" type="date" value={form.dateOfBirth} onChange={(ev) => setForm({ ...form, dateOfBirth: ev.target.value })} /></Field>
+              <Field label="Điện thoại"><input className="input" type="tel" maxLength={15} value={form.phone} onChange={(ev) => setForm({ ...form, phone: ev.target.value })} /></Field>
+              <Field label="Email"><input className="input" type="email" maxLength={100} value={form.email} onChange={(ev) => setForm({ ...form, email: ev.target.value })} /></Field>
+              <Field label="Ngày vào làm"><input className="input" type="date" value={form.hireDate} onChange={(ev) => setForm({ ...form, hireDate: ev.target.value })} /></Field>
+              <Field label="Địa chỉ" span><input className="input" maxLength={255} value={form.address} onChange={(ev) => setForm({ ...form, address: ev.target.value })} /></Field>
+            </div>
+          </details>
         </div>
       </FormModal>
 
