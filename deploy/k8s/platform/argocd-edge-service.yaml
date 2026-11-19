@@ -1,0 +1,14 @@
+# Cửa vào cố định cho giao diện Argo CD (cụm máy 2). nginx máy chủ chuyển tiếp tới http://10.43.0.81.
+# Service của chart Helm có ClusterIP ngẫu nhiên, đổi mỗi lần cài lại; Service này giữ IP cố định.
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server-edge
+  namespace: argocd
+spec:
+  type: ClusterIP
+  clusterIP: 10.43.0.81
+  selector:
+    app.kubernetes.io/name: argocd-server
+  ports:
+    - {name: http, port: 80, targetPort: 8080}

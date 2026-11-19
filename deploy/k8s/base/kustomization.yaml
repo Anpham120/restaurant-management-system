@@ -8,6 +8,9 @@ resources:
   - analysis-template.yaml
   - web.yaml
   - network-policies.yaml
+# Cho Kustomize hiểu tham chiếu ConfigMap/Secret trong Rollout (xem file)
+configurations:
+  - kustomizeconfig/rollout.yaml
 labels:
   - pairs:
       app.kubernetes.io/part-of: rms
