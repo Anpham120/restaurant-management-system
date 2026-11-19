@@ -1,0 +1,9 @@
+# Argo Rollouts controller (cụm production, namespace argo-rollouts). Chart argo-rollouts 2.43.12 / app v1.10.2
+controller:
+  replicas: 1
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {memory: 256Mi}
+# Giao diện web của Rollouts: không cần, theo dõi bằng kubectl plugin và Argo CD
+dashboard:
+  enabled: false

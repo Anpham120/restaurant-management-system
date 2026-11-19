@@ -1,0 +1,31 @@
+# Production: cụm máy 1, namespace rms-prod. Argo CD đồng bộ thư mục này từ nhánh main.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: rms-prod
+resources:
+  - namespace.yaml
+  - ../../base
+  - ingress.yaml
+  - sealed-ghcr-pull.yaml
+  - sealed-app-secrets.yaml
+  - sealed-db-api.yaml
+  - sealed-db-sepay.yaml
+configMapGenerator:
+  - name: rms-app-config
+    behavior: merge
+    literals:
+      - CORS_ALLOWED_ORIGINS=https://rms.atlasplatform12.tech,https://k8s.rms.atlasplatform12.tech
+      - SEPAY_BANK_ACCOUNT=003120082006
+      - SEPAY_BANK_NAME=MBBank
+# Giai đoạn chạy song song (Phần 7): 1 bản app vì máy 1 còn chạy Jenkins và production cũ.
+# Nâng lên 2 sau khi chuyển hẳn (xóa patch này).
+patches:
+  - target: {kind: Rollout, name: rms-app}
+    patch: |-
+      - {op: replace, path: /spec/replicas, value: 1}
+# Pipeline (Jenkins) chỉ sửa 2 dòng newTag này: đúng commit đã qua staging
+images:
+  - name: ghcr.io/anpham120/rms-app
+    newTag: 1481d9d3f5024ca99e67ce6c4105b063c4b945ac
+  - name: ghcr.io/anpham120/rms-web
+    newTag: 1481d9d3f5024ca99e67ce6c4105b063c4b945ac

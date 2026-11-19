@@ -1,0 +1,34 @@
+# Staging: cụm máy 2 (in-cluster của Argo CD), namespace rms-staging. Đồng bộ từ nhánh develop.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: rms-staging
+resources:
+  - namespace.yaml
+  - ../../base
+  - sealed-ghcr-pull.yaml
+  - sealed-app-secrets.yaml
+  - sealed-db-api.yaml
+  - sealed-db-sepay.yaml
+configMapGenerator:
+  - name: rms-app-config
+    behavior: merge
+    literals:
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173
+      - SEPAY_BANK_ACCOUNT=003120082006
+      - SEPAY_BANK_NAME=MBBank
+images:
+  - name: ghcr.io/anpham120/rms-app
+    newTag: 1481d9d3f5024ca99e67ce6c4105b063c4b945ac
+  - name: ghcr.io/anpham120/rms-web
+    newTag: 1481d9d3f5024ca99e67ce6c4105b063c4b945ac
+# Staging nhỏ hơn: 1 bản app, 1 bản web, ổ DB 2 GiB
+patches:
+  - target: {kind: Rollout, name: rms-app}
+    patch: |-
+      - {op: replace, path: /spec/replicas, value: 1}
+  - target: {kind: Deployment, name: rms-web}
+    patch: |-
+      - {op: replace, path: /spec/replicas, value: 1}
+  - target: {kind: Cluster, name: rms-db}
+    patch: |-
+      - {op: replace, path: /spec/storage/size, value: 2Gi}

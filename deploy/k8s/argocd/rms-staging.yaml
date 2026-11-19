@@ -1,0 +1,22 @@
+# Staging: theo nhánh develop, chạy trên chính cụm máy 2.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rms-staging
+  namespace: argocd
+spec:
+  project: rms
+  source:
+    repoURL: https://github.com/Anpham120/restaurant-management-system.git
+    targetRevision: develop
+    path: deploy/k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rms-staging
+  syncPolicy:
+    automated:
+      prune: true      # xóa khỏi cụm thứ đã bị xóa khỏi Git (trừ đối tượng có Prune=false)
+      selfHeal: true   # ai sửa tay trong cụm sẽ bị đưa về đúng như Git
+    retry:
+      limit: 5
+      backoff: {duration: 10s, factor: 2, maxDuration: 3m}

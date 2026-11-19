@@ -1,0 +1,11 @@
+# Namespace bật Pod Security "restricted": pod chạy root, có quyền đặc biệt, thiếu seccomp... đều bị từ chối.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rms-prod
+  annotations:
+    # Xóa namespace = xóa mọi thứ bên trong (kể cả PVC dữ liệu), nên Argo CD không được tự xóa
+    argocd.argoproj.io/sync-options: Prune=false
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

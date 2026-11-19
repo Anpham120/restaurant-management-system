@@ -1,0 +1,63 @@
+# Mặc định chặn mọi kết nối đi VÀO pod trong namespace; chỉ mở đúng đường cần thiết.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+# App: nhận từ Traefik (namespace kube-system) và từ job kiểm tra rms-smoke
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: rms-app}
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: rms-smoke}
+      ports:
+        - {port: 8081, protocol: TCP}
+---
+# Web: chỉ nhận từ Traefik
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: rms-web}
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+      ports:
+        - {port: 8080, protocol: TCP}
+---
+# Database: nhận từ app (5432), từ operator CloudNativePG (5432 và cổng trạng thái 8000), và từ pod của chính cụm DB
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-db
+spec:
+  podSelector:
+    matchLabels: {cnpg.io/cluster: rms-db}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: rms-app}
+      ports:
+        - {port: 5432, protocol: TCP}
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: cnpg-system}
+        - podSelector:
+            matchLabels: {cnpg.io/cluster: rms-db}
+      ports:
+        - {port: 5432, protocol: TCP}
+        - {port: 8000, protocol: TCP}

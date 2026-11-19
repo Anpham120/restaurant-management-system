@@ -1,0 +1,18 @@
+# Dự án Argo CD "rms": giới hạn nguồn (đúng repo này) và đích (đúng 2 namespace của 2 cụm).
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: rms
+  namespace: argocd
+spec:
+  description: Atlas Restaurant (RMS)
+  sourceRepos:
+    - https://github.com/Anpham120/restaurant-management-system.git
+  destinations:
+    - {server: https://kubernetes.default.svc, namespace: rms-staging}   # cụm máy 2
+    - {server: https://10.10.0.1:6443, namespace: rms-prod}               # cụm máy 1
+  # Đối tượng cấp cụm duy nhất được tạo: Namespace
+  clusterResourceWhitelist:
+    - {group: "", kind: Namespace}
+  namespaceResourceWhitelist:
+    - {group: "*", kind: "*"}

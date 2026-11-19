@@ -1,0 +1,8 @@
+# CloudNativePG operator (cụm production, namespace cnpg-system). Chart cloudnative-pg 0.29.2 / app 1.30.2
+replicaCount: 1
+resources:
+  requests: {cpu: 20m, memory: 64Mi}
+  limits: {memory: 256Mi}
+# Cho Prometheus (máy 2) đọc số liệu của operator qua PodMonitor sau này
+monitoring:
+  podMonitorEnabled: false

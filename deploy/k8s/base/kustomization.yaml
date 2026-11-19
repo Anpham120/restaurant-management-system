@@ -1,0 +1,36 @@
+# Phần chung của RMS cho mọi môi trường. Overlay prod/staging thêm namespace, image, secret, số bản chạy.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - db-cluster.yaml
+  - app-rollout.yaml
+  - app-services.yaml
+  - analysis-template.yaml
+  - web.yaml
+  - network-policies.yaml
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: rms
+configMapGenerator:
+  # Schema gốc của database: dùng lại đúng 3 file SQL mà Docker Compose đang nạp (docs/ của repo).
+  # Đường dẫn ra ngoài thư mục base nên Argo CD phải bật --load-restrictor LoadRestrictionsNone.
+  - name: rms-db-schema
+    files:
+      - 10-schema.sql=../../../docs/04-schema-v4.1.sql
+      - 20-acl.sql=../../../docs/09-acl-v4.1.sql
+      - 30-bao-cao.sql=../../../docs/10-bao-cao-v4.1.sql
+    options:
+      # CloudNativePG tham chiếu ConfigMap theo tên cố định, nên không thêm đuôi băm vào tên
+      disableNameSuffixHash: true
+  # Cấu hình không bí mật của app (thay phần không bí mật của file .env). Overlay bổ sung theo môi trường.
+  - name: rms-app-config
+    literals:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_URL=jdbc:postgresql://rms-db-rw:5432/restaurant_core
+      - DB_APP_USER=rms_api
+      - DB_WEBHOOK_USER=rms_sepay
+      - FLYWAY_USER=postgres
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+      - SERVER_SHUTDOWN=graceful
+      - SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE=30s
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75

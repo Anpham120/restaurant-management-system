@@ -1,0 +1,46 @@
+# PostgreSQL do CloudNativePG quản lý. Operator tạo pod rms-db-1, PVC dữ liệu và các Service:
+#   rms-db-rw (ghi/đọc, app dùng), rms-db-ro, rms-db-r; và Secret rms-db-superuser (mật khẩu postgres).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: rms-db
+  annotations:
+    # Argo CD không bao giờ tự xóa database, kể cả khi Application bị xóa hoặc file này biến mất khỏi Git
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  instances: 1
+  # Cùng nhánh PostgreSQL 17 và nền Debian trixie với DB Docker hiện tại (17.11)
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.12-standard-trixie
+  # Flyway của app chạy migration bằng user postgres (giống Docker Compose: FLYWAY_USER=postgres)
+  enableSuperuserAccess: true
+  storage:
+    storageClass: local-path
+    size: 5Gi
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {memory: 768Mi}
+  bootstrap:
+    initdb:
+      database: restaurant_core
+      # Chủ sở hữu database do CNPG tạo; schema và quyền thật nằm trong 3 file SQL bên dưới
+      owner: rms_owner
+      # Chạy bằng superuser trong database restaurant_core, đúng thứ tự như /docker-entrypoint-initdb.d
+      postInitApplicationSQLRefs:
+        configMapRefs:
+          - {name: rms-db-schema, key: 10-schema.sql}
+          - {name: rms-db-schema, key: 20-acl.sql}
+          - {name: rms-db-schema, key: 30-bao-cao.sql}
+  # Tài khoản đăng nhập của app, thay script docker/db-init/40-app-logins.sh.
+  # rc_app, rc_webhook là role nhóm do 20-acl.sql tạo; mật khẩu lấy từ Secret (SealedSecret trong overlay).
+  managed:
+    roles:
+      - name: rms_api
+        ensure: present
+        login: true
+        inRoles: [rc_app]
+        passwordSecret: {name: rms-db-api}
+      - name: rms_sepay
+        ensure: present
+        login: true
+        inRoles: [rc_webhook]
+        passwordSecret: {name: rms-db-sepay}

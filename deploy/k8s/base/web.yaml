@@ -1,0 +1,55 @@
+# Frontend React build sẵn, phục vụ bằng nginx không chạy root (cổng 8080).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rms-web
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rms-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rms-web
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: web
+          image: ghcr.io/anpham120/rms-web
+          ports:
+            - {name: http, containerPort: 8080}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            # nginx-unprivileged ghi file tạm và pid vào /tmp
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rms-web
+spec:
+  selector:
+    app.kubernetes.io/name: rms-web
+  ports:
+    - {name: http, port: 8080, targetPort: http}
