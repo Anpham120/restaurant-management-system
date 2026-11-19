@@ -20,6 +20,9 @@ spec:
       terminationGracePeriodSeconds: 45
       securityContext:
         runAsNonRoot: true
+        # Image khai báo USER app (tên). Kubelet chỉ kiểm được "không phải root" khi biết UID dạng số,
+        # nên ghi rõ UID 10001 (Dockerfile: useradd --system --uid 10001 app)
+        runAsUser: 10001
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: app
