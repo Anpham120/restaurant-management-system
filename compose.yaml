@@ -32,7 +32,10 @@ services:
       retries: 20
 
   app: &app
-    build: .
+    build:
+      context: .
+      args:
+        PATCH_DATE: ${PATCH_DATE:-none}
     restart: unless-stopped
     depends_on:
       db:
@@ -66,7 +69,10 @@ services:
 
   # Frontend (React, file tĩnh). nginx máy chủ: "/" → 127.0.0.1:8083, "/api/" → app.
   web: &web
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        PATCH_DATE: ${PATCH_DATE:-none}
     restart: unless-stopped
     depends_on:
       - app
