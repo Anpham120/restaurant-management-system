@@ -1,0 +1,39 @@
+# Argo CD (cụm quản lý máy 2, namespace argocd). Chart argo-cd 10.18.1 / app v3.6.1
+global:
+  # Domain dùng cho giao diện web (nginx máy 2 sẽ chuyển tiếp vào ở Phần 6)
+  domain: argocd.atlasplatform12.tech
+configs:
+  params:
+    # HTTPS do nginx máy chủ đảm nhiệm; argocd-server chỉ chạy HTTP bên trong cụm
+    server.insecure: true
+  cm:
+    # Bao lâu Argo CD tự so cụm với Git một lần (mặc định 180s)
+    timeout.reconciliation: 180s
+    # Cho Kustomize đọc file ngoài thư mục overlay (3 file SQL ở docs/ của repo, xem base/kustomization.yaml)
+    kustomize.buildOptions: --load-restrictor LoadRestrictionsNone
+# Dex = đăng nhập qua SSO (GitHub, Google...). Chưa dùng: đăng nhập bằng tài khoản admin
+dex:
+  enabled: false
+# Thông báo Telegram sẽ do Alertmanager đảm nhiệm (Phần 6)
+notifications:
+  enabled: false
+controller:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {memory: 768Mi}
+repoServer:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 512Mi}
+server:
+  resources:
+    requests: {cpu: 50m, memory: 96Mi}
+    limits: {memory: 256Mi}
+applicationSet:
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {memory: 256Mi}
+redis:
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {memory: 192Mi}

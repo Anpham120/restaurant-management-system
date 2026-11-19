@@ -1,0 +1,20 @@
+# Argo Rollouts tự thêm selector rollouts-pod-template-hash để mỗi Service trỏ đúng bản (cũ hoặc mới).
+apiVersion: v1
+kind: Service
+metadata:
+  name: rms-app
+spec:
+  selector:
+    app.kubernetes.io/name: rms-app
+  ports:
+    - {name: http, port: 8081, targetPort: http}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rms-app-preview
+spec:
+  selector:
+    app.kubernetes.io/name: rms-app
+  ports:
+    - {name: http, port: 8081, targetPort: http}

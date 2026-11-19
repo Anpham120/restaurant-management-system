@@ -1,0 +1,85 @@
+# Backend Spring Boot, phát hành blue-green bằng Argo Rollouts (thay cho slot A/B + scripts/deploy.sh).
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: rms-app
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rms-app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rms-app
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      # Chờ tối đa 45s cho request đang dở xong rồi mới tắt hẳn
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: app
+          image: ghcr.io/anpham120/rms-app
+          ports:
+            - {name: http, containerPort: 8081}
+          envFrom:
+            - configMapRef: {name: rms-app-config}
+            - secretRef: {name: rms-app-secrets}
+          env:
+            - name: DB_APP_PASSWORD
+              valueFrom: {secretKeyRef: {name: rms-db-api, key: password}}
+            - name: DB_WEBHOOK_PASSWORD
+              valueFrom: {secretKeyRef: {name: rms-db-sepay, key: password}}
+            - name: FLYWAY_PASSWORD
+              valueFrom: {secretKeyRef: {name: rms-db-superuser, key: password}}
+          resources:
+            requests: {cpu: 250m, memory: 640Mi}
+            limits: {memory: 1Gi}
+          # Khởi động (kể cả Flyway) được tối đa 36 x 5s = 3 phút trước khi bị coi là hỏng
+          startupProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 5
+            failureThreshold: 36
+          # Chỉ nhận request khi app và DB sẵn sàng
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          # Treo 3 lần liên tiếp (60s) thì kubelet khởi động lại container
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 20
+            failureThreshold: 3
+          lifecycle:
+            # Chờ 10s để Service/Traefik ngừng gửi request mới tới pod sắp tắt
+            preStop:
+              exec: {command: ["sleep", "10"]}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+  strategy:
+    blueGreen:
+      # Service khách đang dùng
+      activeService: rms-app
+      # Service trỏ vào bản mới trong lúc kiểm tra
+      previewService: rms-app-preview
+      # Kiểm tra bản mới qua preview trước khi chuyển khách sang
+      prePromotionAnalysis:
+        templates:
+          - templateName: rms-smoke
+        args:
+          - name: service-name
+            value: rms-app-preview
+      autoPromotionEnabled: true
+      # Giữ bản cũ thêm 60s sau khi chuyển, để request đang dở xong và có thể quay lại nhanh
+      scaleDownDelaySeconds: 60

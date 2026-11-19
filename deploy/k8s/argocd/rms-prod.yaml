@@ -1,0 +1,22 @@
+# Production: theo nhánh main, chạy trên cụm máy 1 qua đường hầm WireGuard.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rms-prod
+  namespace: argocd
+spec:
+  project: rms
+  source:
+    repoURL: https://github.com/Anpham120/restaurant-management-system.git
+    targetRevision: main
+    path: deploy/k8s/overlays/prod
+  destination:
+    server: https://10.10.0.1:6443
+    namespace: rms-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff: {duration: 10s, factor: 2, maxDuration: 3m}
