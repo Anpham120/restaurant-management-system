@@ -24,6 +24,11 @@ spec:
       database: restaurant_core
       # Chủ sở hữu database do CNPG tạo; schema và quyền thật nằm trong 3 file SQL bên dưới
       owner: rms_owner
+      # Giống DB Docker hiện tại (UTF8, en_US.utf8). Locale "C" mặc định của CNPG không đổi được chữ hoa/thường
+      # tiếng Việt, và 04-schema-v4.1.sql tự kiểm tra lower('ẮÒÚĐ') rồi dừng nếu sai.
+      encoding: UTF8
+      localeCollate: en_US.UTF-8
+      localeCType: en_US.UTF-8
       # Chạy bằng superuser trong database restaurant_core, đúng thứ tự như /docker-entrypoint-initdb.d
       postInitApplicationSQLRefs:
         configMapRefs:

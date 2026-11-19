@@ -56,7 +56,8 @@ if [ -n "$LATEST" ]; then
 else
   echo "[staging] không có bản sao lưu, chạy trên database trống"
 fi
-docker compose up -d --build --wait
+# PATCH_DATE: ngày hôm nay, để lớp cài bản vá hệ điều hành trong Dockerfile được build lại mỗi ngày
+PATCH_DATE=$(date -u +%F) docker compose up -d --build --wait
 
 # Tài khoản MANAGER đầu tiên để thử đăng nhập
 docker compose exec -T db psql -U postgres -d restaurant_core -v ON_ERROR_STOP=1 \

@@ -9,9 +9,11 @@ COPY . .
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.30-alpine
-# Lấy bản vá Alpine mới hơn image gốc (Trivy kiểm ở pipeline). Cache build giữ lớp cũ thì: docker builder prune.
+# Lấy bản vá Alpine mới hơn image gốc (Trivy kiểm ở pipeline). PATCH_DATE đổi mỗi ngày (scripts/staging-test.sh)
+# nên lớp này được build lại hằng ngày, không bị cache giữ bản cũ (develop #60: nginx 1.30.6 còn CVE dù đã có 1.30.7).
+ARG PATCH_DATE=none
 USER root
-RUN apk upgrade --no-cache
+RUN echo "patch $PATCH_DATE" && apk upgrade --no-cache
 USER 101
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/dist /usr/share/nginx/html
