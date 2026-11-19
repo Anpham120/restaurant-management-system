@@ -16,6 +16,10 @@ configMapGenerator:
       - CORS_ALLOWED_ORIGINS=http://localhost:5173
       - SEPAY_BANK_ACCOUNT=003120082006
       - SEPAY_BANK_NAME=MBBank
+      # DB staging dựng mới từ 3 file SQL (chưa có bảng lịch sử Flyway): lập baseline version 1 rồi chạy V2+.
+      # Profile prod ghi cứng baseline-on-migrate=false; biến SPRING_* ghi đè được (giống compose.staging.yaml).
+      # Prod KHÔNG bật: DB production được nạp từ bản backup đã có lịch sử Flyway.
+      - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
 images:
   - name: ghcr.io/anpham120/rms-app
     newTag: 1481d9d3f5024ca99e67ce6c4105b063c4b945ac
