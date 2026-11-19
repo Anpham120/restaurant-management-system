@@ -1,0 +1,18 @@
+# Dạy Kustomize biết Rollout (CRD của Argo Rollouts) tham chiếu ConfigMap/Secret ở đâu, để khi Kustomize thêm
+# đuôi băm vào tên ConfigMap (rms-app-config-<băm>) thì tham chiếu trong Rollout cũng được sửa theo.
+# Kustomize chỉ tự biết các loại có sẵn (Deployment, StatefulSet...). Theo hướng dẫn của Argo Rollouts:
+# https://argo-rollouts.readthedocs.io/en/stable/features/kustomize/
+nameReference:
+  - kind: ConfigMap
+    version: v1
+    fieldSpecs:
+      - {path: spec/template/spec/volumes/configMap/name, kind: Rollout}
+      - {path: spec/template/spec/containers/env/valueFrom/configMapKeyRef/name, kind: Rollout}
+      - {path: spec/template/spec/containers/envFrom/configMapRef/name, kind: Rollout}
+  - kind: Secret
+    version: v1
+    fieldSpecs:
+      - {path: spec/template/spec/volumes/secret/secretName, kind: Rollout}
+      - {path: spec/template/spec/containers/env/valueFrom/secretKeyRef/name, kind: Rollout}
+      - {path: spec/template/spec/containers/envFrom/secretRef/name, kind: Rollout}
+      - {path: spec/template/spec/imagePullSecrets/name, kind: Rollout}
