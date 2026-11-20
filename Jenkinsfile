@@ -9,6 +9,9 @@
 //   commit chỉ đổi tài liệu (docs/*.md, *.docx, *.pptx, ảnh…; xem stage Phân loại commit): không test, không build image.
 //                        feature: merge thẳng vào develop. develop: chờ rms-staging Healthy rồi promote lên main.
 //                        main: Argo CD không có gì để triển khai, chỉ xác nhận production vẫn Healthy.
+//   quay lui           : git revert commit B trên nhánh feature → commit chỉ đổi tag về image cũ, được xử lý như B: không
+//                        test, không build (nhánh feature chỉ kiểm image còn trên GHCR), Argo CD đưa staging rồi production về
+//                        image cũ bằng blue-green. Commit code sau đó mới build bản mới.
 //   [a | b]            : chạy song song (các bước độc lập, không bỏ bước nào)
 // main không test lại: --ff-only nên commit trên main trùng SHA với commit develop vừa qua đủ test, staging và Trivy.
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
@@ -50,10 +53,18 @@ pipeline {
         stage('Phân loại commit') {
             steps {
                 script {
-                    // Commit "deploy: image ..." của bot (scripts/bump-image.sh) chỉ đổi tag image: không test lại, chỉ chờ Argo CD.
+                    // Commit chỉ đổi dòng newTag trong 2 overlay, mọi tag mới là commit có trong lịch sử repo: commit "deploy: image ..."
+                    // của bot (scripts/bump-image.sh), hoặc người revert commit đó để quay lui về image cũ. Không test, không build:
+                    // image đó đã qua đủ kiểm tra lúc phát hành; nhánh feature kiểm image còn trên GHCR (stage Kiểm image phát hành).
                     env.CHI_DOI_TAG = sh(returnStdout: true, script: '''
-                        if [ "$(git log -1 --format=%an)" = rms-ci ] && git log -1 --format=%s | grep -q '^deploy: ' \\
-                           && [ -z "$(git diff --name-only HEAD^ HEAD | grep -vxE 'deploy/k8s/overlays/(staging|prod)/kustomization.yaml')" ]
+                        ovl='deploy/k8s/overlays/(staging|prod)/kustomization.yaml'
+                        doi=$(git diff --name-only HEAD^ HEAD)
+                        tags=$(git diff HEAD^ HEAD -- deploy/k8s/overlays | sed -nE 's/^\\+ *newTag: ([0-9a-f]{40}).*/\\1/p' | sort -u)
+                        co_that=true
+                        for t in $tags; do git cat-file -e "$t^{commit}" 2>/dev/null || co_that=false; done
+                        if [ -n "$doi" ] && [ -n "$tags" ] && [ "$co_that" = true ] \\
+                           && [ -z "$(printf '%s\\n' "$doi" | grep -vxE "$ovl")" ] \\
+                           && [ -z "$(git diff HEAD^ HEAD -- deploy/k8s/overlays | grep -E '^[-+]' | grep -vE '^(---|\\+\\+\\+) ' | grep -v 'newTag: ')" ]
                         then echo true; else echo false; fi
                     ''').trim()
                     // Commit merge feature -> develop (của rms-ci) có nội dung (git tree) giống hệt đầu nhánh feature: nhánh đó vừa
@@ -65,13 +76,14 @@ pipeline {
                            && [ "$(git rev-parse 'HEAD^{tree}')" = "$(git rev-parse 'HEAD^2^{tree}')" ]
                         then echo true; else echo false; fi
                     ''').trim()
-                    // Chỉ đổi tài liệu kể từ commit đã build image đang chạy (newTag của overlay staging): so với commit đó chứ
-                    // không chỉ commit cuối, để code đã vào develop mà chưa build (bump-image bỏ qua vì develop có commit mới hơn)
-                    // không bị bỏ sót. Được miễn: file trong docs/ có đuôi tài liệu, file .md ngoài src/. Không miễn docs/*.sql
+                    // Chỉ đổi tài liệu kể từ lần quyết định deploy gần nhất (commit cuối sửa overlay staging: bot ghi tag, hoặc người
+                    // revert để quay lui). So với commit đó chứ không chỉ commit cuối, để code đã vào develop mà chưa build
+                    // (bump-image bỏ qua vì develop có commit mới hơn) không bị bỏ sót; sau khi quay lui, commit tài liệu không
+                    // build lại code mới nhất đè lên bản đã quay lui. Được miễn: file trong docs/ có đuôi tài liệu, file .md ngoài src/. Không miễn docs/*.sql
                     // (schema gốc mà Kustomize và Docker Compose nạp), docs/*.conf, script. Overlay chỉ được khác ở dòng newTag
                     // (commit của bot). Không xác định được commit gốc thì chạy đủ.
                     env.CHI_TAI_LIEU = env.CHI_DOI_TAG == 'true' ? 'false' : sh(returnStdout: true, script: '''
-                        goc=$(sed -nE 's/^ *newTag: ([0-9a-f]{7,40}).*/\\1/p' deploy/k8s/overlays/staging/kustomization.yaml | head -1)
+                        goc=$(git log -1 --format=%H -- deploy/k8s/overlays/staging/kustomization.yaml)
                         mien='docs/.*\\.(md|docx|pptx|pdf|png|jpe?g|svg|drawio|dbml|txt)|.*\\.md|deploy/k8s/overlays/(staging|prod)/kustomization.yaml'
                         if [ -n "$goc" ] && git cat-file -e "$goc^{commit}" 2>/dev/null \\
                            && doi=$(git diff --name-only "$goc" HEAD) \\
@@ -156,6 +168,18 @@ pipeline {
                     post { failure { script { ghiBuocLoi() } } }
                 }
             }
+        }
+
+        stage('Kiểm image phát hành') {
+            when { allOf { branch pattern: 'feature/.*', comparator: 'REGEXP'; environment name: 'CHI_DOI_TAG', value: 'true' } }
+            steps {
+                // Commit đổi tag (thường là revert để quay lui): image app, web của tag mới phải còn trên GHCR, nếu không
+                // Argo CD sẽ kéo image thất bại. Kiểm ngay ở đây thay vì đợi staging báo lỗi sau vài phút.
+                withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
+                    sh 'scripts/check-release-images.sh'
+                }
+            }
+            post { failure { script { ghiBuocLoi() } } }
         }
 
         stage('Merge feature vào develop') {
