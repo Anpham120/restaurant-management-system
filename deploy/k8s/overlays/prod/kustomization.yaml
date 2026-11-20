@@ -27,6 +27,6 @@ patches:
 # Pipeline (Jenkins) chỉ sửa 2 dòng newTag này: đúng commit đã qua staging
 images:
   - name: ghcr.io/anpham120/rms-app
-    newTag: a49970dab07afcb2f9f58222f1b4ba15d6338104
+    newTag: 8b4477610f5b017fcd5bed6b2def75bb45b508e8
   - name: ghcr.io/anpham120/rms-web
-    newTag: a49970dab07afcb2f9f58222f1b4ba15d6338104
+    newTag: 8b4477610f5b017fcd5bed6b2def75bb45b508e8
