@@ -1,5 +1,5 @@
-# Jenkins (máy 2, /opt/jenkins). Bản trong Git: deploy/jenkins/. Dữ liệu: volume jenkins_jenkins_home
-# = /var/lib/docker/volumes/jenkins_jenkins_home/_data. RAM: máy 2 chạy chung k3s + giám sát, nên heap 1,5 GB, tối đa 2 GB.
+# Jenkins (máy 2, /opt/jenkins). Bản trong Git: deploy/jenkins/. Chạy trên Docker rootless của user ci. Dữ liệu: volume
+# jenkins_jenkins_home = /home/ci/.local/share/docker/volumes/jenkins_jenkins_home/_data. RAM: máy 2 chạy chung k3s + giám sát, nên heap 1,5 GB, tối đa 2 GB.
 services:
   jenkins:
     image: jenkins/jenkins:2.580.1-lts-jdk21

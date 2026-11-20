@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.security.jwt.JwtTokenService;
-import com.restaurant.core.security.service.impl.LoginThrottle;
+import com.restaurant.core.security.service.LoginThrottleService;
 import com.restaurant.core.security.dto.request.ChangePasswordRequest;
 import com.restaurant.core.security.dto.request.LoginRequest;
 import com.restaurant.core.security.dto.response.LoginResponse;
@@ -30,12 +30,12 @@ public class AuthServiceImpl implements AuthService {
     private final UserCredentialRepository credentialRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService tokens;
-    private final LoginThrottle throttle;
+    private final LoginThrottleService throttle;
     /** Hash giả để thời gian kiểm tra không lộ việc username có tồn tại hay không. */
     private final String dummyHash;
 
     public AuthServiceImpl(CredentialQueryRepository accounts, UserCredentialRepository credentialRepository, PasswordEncoder passwordEncoder,
-                           JwtTokenService tokens, LoginThrottle throttle) {
+                           JwtTokenService tokens, LoginThrottleService throttle) {
         this.accounts = accounts;
         this.credentialRepository = credentialRepository;
         this.passwordEncoder = passwordEncoder;
@@ -44,7 +44,7 @@ public class AuthServiceImpl implements AuthService {
         this.dummyHash = passwordEncoder.encode("dummy-password-for-timing");
     }
 
-    /** Sai quá {@link LoginThrottle} cho phép thì từ chối (429) trước cả khi kiểm mật khẩu, kể cả mật khẩu đúng. */
+    /** Sai quá {@link LoginThrottleService} cho phép thì từ chối (429) trước cả khi kiểm mật khẩu, kể cả mật khẩu đúng. */
     @Override
     public LoginResponse login(LoginRequest request) {
         long wait = throttle.lockedSeconds(request.username());

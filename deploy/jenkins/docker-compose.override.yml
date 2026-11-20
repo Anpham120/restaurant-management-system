@@ -1,5 +1,9 @@
-# Bản trong Git của /opt/jenkins (máy 2). Áp dụng: sudo cp deploy/jenkins/{docker-compose.yml,docker-compose.override.yml,Dockerfile.jenkins} /opt/jenkins/
-#   sudo cp -r deploy/jenkins/casc /opt/jenkins/ && cd /opt/jenkins && docker compose up -d
+# Bản trong Git của /opt/jenkins (máy 2). Jenkins chạy trên Docker ROOTLESS của user ci (uid 1002), không dùng Docker
+# của root. Áp dụng (user coder, có sudo):
+#   sudo cp deploy/jenkins/{docker-compose.yml,docker-compose.override.yml,Dockerfile.jenkins} /opt/jenkins/
+#   sudo cp -r deploy/jenkins/casc /opt/jenkins/
+#   sudo -iu ci sh -c 'cd /opt/jenkins && docker compose up -d --build'
+# (user ci có sẵn DOCKER_HOST=unix:///run/user/1002/docker.sock trong ~/.bashrc). Cài đặt ban đầu: docs/devops/JENKINS-ROOTLESS.md
 services:
   jenkins:
     build:
@@ -8,17 +12,22 @@ services:
 
     image: jenkins-with-docker:local
 
-    group_add:
-      - "988"
+    # root TRONG container = user ci (uid 1002) trên máy: không có sudo, không thuộc nhóm docker. Cần root trong container
+    # vì socket Docker rootless thuộc ci, trong container hiện là root, user jenkins (uid 1000) không mở được.
+    user: "0:0"
 
     environment:
       # Configuration as Code: đọc cấu hình đăng nhập + phân quyền từ thư mục này mỗi lần khởi động
       CASC_JENKINS_CONFIG: /var/jenkins_conf
+      # Đường dẫn socket Docker rootless TRÊN MÁY (không phải trong container): Jenkinsfile dùng khi mount socket cho
+      # container con (staging, Trivy, Testcontainers/Ryuk), vì daemon hiểu đường dẫn mount theo máy.
+      DOCKER_SOCK_HOST: /run/user/1002/docker.sock
 
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      # Socket Docker rootless của user ci (máy 2) -> /var/run/docker.sock trong container
+      - /run/user/1002/docker.sock:/var/run/docker.sock
       # /opt/jenkins/casc/jenkins.yaml (máy 2) -> /var/jenkins_conf/jenkins.yaml
       - ./casc:/var/jenkins_conf:ro
-      # /opt/jenkins/secrets/ (máy 2, quyền 700, chủ uid 1000) -> /run/secrets/
+      # /opt/jenkins/secrets/ (máy 2, quyền 700, chủ user ci) -> /run/secrets/
       # JCasC thay ${github-oauth-client-id} bằng nội dung file /run/secrets/github-oauth-client-id
       - ./secrets:/run/secrets:ro

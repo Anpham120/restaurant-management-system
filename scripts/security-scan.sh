@@ -28,7 +28,7 @@ case "${1:-}" in
     rc=0
     for img in "$@"; do
       echo "[scan] $img"
-      docker run --rm -v rms-trivy-cache:/root/.cache/trivy -v /var/run/docker.sock:/var/run/docker.sock \
+      docker run --rm -v rms-trivy-cache:/root/.cache/trivy -v "${DOCKER_SOCK_HOST:-/var/run/docker.sock}:/var/run/docker.sock" \
         "$TRIVY" image "${OPTS[@]}" --scanners vuln "$img" || rc=1
     done
     exit $rc

@@ -6,6 +6,7 @@
 #                    docker = container restaurant-management-system-db-1 (production cũ, giữ để quay lại).
 # COPY_TO (tùy chọn, chỉ bản daily): chép bản mới nhất sang máy khác, ví dụ coder@10.10.0.2:/home/coder/rms-backups
 #   (máy 2: staging tạm thời của pipeline nạp bản này). Bên nhận chỉ giữ 1 bản. Lỗi chép không làm hỏng bản sao lưu.
+#   Bản chép được chmod 640: thư mục nhận có ACL cho user ci (Docker rootless của Jenkins) đọc, mask 640 mới có hiệu lực.
 # Giữ KEEP bản gần nhất cho mỗi loại. Khôi phục: xem docs/devops/PIPELINE.md mục "Sao lưu database".
 set -euo pipefail
 
@@ -48,7 +49,7 @@ ls -1t "$BACKUP_DIR/$KIND-"*.dump | tail -n +$((KEEP + 1)) | xargs -r rm -f
 # Chép bản daily mới nhất sang máy 2 cho staging (qua WireGuard, khóa SSH của coder), bên nhận chỉ giữ bản mới nhất
 if [ "$KIND" = daily ] && [ -n "${COPY_TO:-}" ]; then
   if scp -q -p "$FILE" "$COPY_TO/" \
-     && ssh "${COPY_TO%%:*}" "cd '${COPY_TO#*:}' && ls -1t daily-*.dump | tail -n +2 | xargs -r rm -f"; then
+     && ssh "${COPY_TO%%:*}" "cd '${COPY_TO#*:}' && chmod 640 '$(basename "$FILE")' && ls -1t daily-*.dump | tail -n +2 | xargs -r rm -f"; then
     echo "[backup] đã chép sang ${COPY_TO%%:*}"
   else
     echo "[backup] không chép được sang ${COPY_TO%%:*}"

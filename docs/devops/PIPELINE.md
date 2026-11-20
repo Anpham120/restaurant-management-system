@@ -232,9 +232,10 @@ File mẫu: `docs/devops/nginx/rms.atlasplatform12.tech.conf` (site) và `docs/d
   `nginx -t` lỗi thì chép lại file `.bak` và xóa file trong `conf.d`.
 
 Chống dò mật khẩu
-Hai lớp, không đổi schema database:
-- App (`LoginThrottle`): một tên đăng nhập sai 5 lần trong 15 phút thì bị khóa tạm 15 phút (trả `429 TOO_MANY_ATTEMPTS`, kể cả
-  khi lần sau nhập đúng). Áp dụng cả cho tên không tồn tại nên không lộ tài khoản nào có thật. Khởi động lại app thì xóa bộ đếm.
+Hai lớp:
+- App (`LoginThrottleService`): một tên đăng nhập sai 5 lần trong 15 phút thì bị khóa tạm 15 phút (trả `429 TOO_MANY_ATTEMPTS`,
+  kể cả khi lần sau nhập đúng). Áp dụng cả cho tên không tồn tại nên không lộ tài khoản nào có thật. Bộ đếm lưu ở bảng
+  `login_throttles` (migration V6) nên mọi bản app dùng chung và không mất khi khởi động lại.
 - Nginx: mỗi IP tối đa 5 lần gọi `/api/auth/login` mỗi phút (dồn thêm 5), vượt thì 429. Nằm trong file site ở trên.
 
 ## 4. Quay lui và giới hạn
