@@ -15,6 +15,9 @@
 //   [a | b]            : chạy song song (các bước độc lập, không bỏ bước nào)
 // main không test lại: --ff-only nên commit trên main trùng SHA với commit develop vừa qua đủ test, staging và Trivy.
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
+// Jenkins và mọi container của pipeline chạy trên Docker rootless của user ci (máy 2): root trong container chỉ là user
+// thường ci trên máy, không chiếm được máy dù lấy được docker.sock. DOCKER_SOCK_HOST (đặt trong
+// deploy/jenkins/docker-compose.override.yml) là đường dẫn socket đó trên máy, dùng khi mount socket cho container con.
 // Kích hoạt: webhook GitHub. Dự phòng là quét multibranch mỗi phút (cấu hình job). Không dùng pollSCM:
 // poll trùng lúc với webhook sẽ xếp thêm một build thứ hai cho cùng commit.
 
@@ -38,8 +41,8 @@ pipeline {
         KUBECONFIG = '/run/secrets/kubeconfig-ci'
         // Repo GitHub (dùng cho fetch/push bằng token trong các bước chạy ngoài workspace)
         REPO = 'github.com/Anpham120/restaurant-management-system.git'
-        // Thư mục staging tạm thời trên máy 2 (clone nhánh develop, tự tạo lần đầu). Không chứa secret thật.
-        STAGING_DIR = '/home/coder/rms-staging'
+        // Thư mục staging tạm thời trên máy 2 (clone nhánh develop, tự tạo lần đầu), thuộc user ci. Không chứa secret thật.
+        STAGING_DIR = '/home/ci/rms-staging'
         // Bản sao lưu database trên máy 2: máy 1 sao lưu hằng ngày rồi chép bản mới nhất sang (scripts/backup-db.sh).
         // Staging tạm thời nạp bản này để thử migration và API trên dữ liệu thật.
         BACKUP_DIR = '/home/coder/rms-backups'
@@ -127,6 +130,7 @@ pipeline {
                               --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE" \
                               --user "$(id -u):$(id -g)" --group-add "$(stat -c %g /var/run/docker.sock)" \
                               -e HOME=/tmp -v rms-m2-cache:/tmp/.m2 \
+                              -e TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$DOCKER_SOCK_HOST" \
                               maven:3.9-eclipse-temurin-25 \
                               mvn -B -ntp -Dmaven.repo.local=/tmp/.m2/repository verify
                         '''
@@ -199,14 +203,15 @@ pipeline {
                     // Dựng bản develop ở môi trường tách biệt trên bản sao lưu production mới nhất (chỉ đọc), thử các
                     // chức năng chính và quét đọc mọi module rồi hủy. Lỗi thì không promote.
                     // Container docker:27-cli (có sẵn docker compose, git) mount thư mục staging đúng đường dẫn trên host; lệnh
-                    // trong '...' do shell của container chạy. trap: luôn trả quyền thư mục về user coder, kể cả khi lỗi.
+                    // trong '...' do shell của container chạy. trap: luôn trả quyền thư mục về root của container = user ci
+                    // trên máy, kể cả khi lỗi.
                     sh '''
                         docker run --rm --network host \
-                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          -v "$DOCKER_SOCK_HOST:/var/run/docker.sock" \
                           -v "$STAGING_DIR:$STAGING_DIR" -w "$STAGING_DIR" -v "$BACKUP_DIR:$BACKUP_DIR:ro" \
                           -e GH_TOKEN -e BACKUP_DIR -e GIT_COMMIT -e REPO \
                           docker:27-cli sh -euc '
-                            trap "chown -R 1000:1000 ." EXIT
+                            trap "chown -R 0:0 ." EXIT
                             apk add -q --no-cache bash curl jq
                             git config --global --add safe.directory "$PWD"
                             [ -d .git ] || git init -q
