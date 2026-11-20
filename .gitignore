@@ -17,3 +17,6 @@ node_modules/
 # Frontend build
 frontend/dist/
 *.tsbuildinfo
+
+# File khóa của Office
+~$*
