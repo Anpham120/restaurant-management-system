@@ -1,0 +1,23 @@
+# Production chạy 2 bản app và 2 bản web (replicas trong base). PodDisruptionBudget: khi chủ động dừng pod
+# (kubectl drain để bảo trì, nâng cấp k3s) luôn giữ ít nhất 1 bản chạy. Không chặn pod tự lỗi, chỉ chặn việc dừng có chủ đích.
+# Ghi chú: LoginThrottle (khóa tạm sau 5 lần đăng nhập sai) lưu trong bộ nhớ từng bản, nên với 2 bản tối đa 10 lần/15 phút;
+# nginx máy 1 vẫn giới hạn đăng nhập theo IP (limit_req zone=rms_login).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rms-app
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rms-app
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rms-web
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rms-web
