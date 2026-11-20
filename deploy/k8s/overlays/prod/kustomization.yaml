@@ -6,6 +6,7 @@ resources:
   - namespace.yaml
   - ../../base
   - ingress.yaml
+  - middlewares.yaml
   - ingress-metrics.yaml
   - pdb.yaml
   - sealed-ghcr-pull.yaml
@@ -19,7 +20,7 @@ configMapGenerator:
   - name: rms-app-config
     behavior: merge
     literals:
-      - CORS_ALLOWED_ORIGINS=https://rms.atlasplatform12.tech,https://k8s.rms.atlasplatform12.tech
+      - CORS_ALLOWED_ORIGINS=https://rms.atlasplatform12.tech
       - SEPAY_BANK_ACCOUNT=003120082006
       - SEPAY_BANK_NAME=MBBank
 patches:

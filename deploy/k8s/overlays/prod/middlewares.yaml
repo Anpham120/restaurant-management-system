@@ -1,0 +1,32 @@
+# Middleware Traefik của production: việc gắn với ứng dụng nên khai báo trong Git (GitOps), Argo CD áp dụng.
+# nginx máy 1 chỉ lo HTTPS, HTTP/2, HSTS, giới hạn đăng nhập theo IP (docs/devops/nginx/rms.atlasplatform12.tech.conf).
+# Gắn vào Ingress rms bằng annotation traefik.ingress.kubernetes.io/router.middlewares (ingress.yaml).
+
+# Header bảo mật cho mọi response (trang web và API)
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+spec:
+  headers:
+    contentTypeNosniff: true          # X-Content-Type-Options: nosniff
+    frameDeny: true                   # X-Frame-Options: DENY (không cho nhúng trang vào iframe)
+    referrerPolicy: strict-origin-when-cross-origin
+    permissionsPolicy: "camera=(), microphone=(), geolocation=(), payment=()"
+    # Chỉ tải script, CSS, ảnh, API từ chính domain; ngoại lệ duy nhất là Google Fonts (frontend/index.html).
+    # 'unsafe-inline' cho style vì React dùng thuộc tính style; script vẫn chặn inline.
+    contentSecurityPolicy: >-
+      default-src 'self'; script-src 'self';
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: blob:; connect-src 'self'; object-src 'none';
+      base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+---
+# Nén response của API (JSON). File tĩnh đã được nginx trong pod web nén sẵn; Traefik bỏ qua response đã có
+# Content-Encoding nên không nén hai lần. Response dưới 1 KB không nén (lợi không đáng).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: compress
+spec:
+  compress:
+    minResponseBodyBytes: 1024

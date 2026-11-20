@@ -1,0 +1,16 @@
+# Dự án Argo CD "platform": cấu hình nền tảng của cụm máy 1 mà trước đây sửa tay trên máy.
+# Quyền hẹp: chỉ đúng repo này, chỉ namespace kube-system của cụm máy 1, chỉ loại HelmChartConfig (cấu hình Traefik).
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Cấu hình nền tảng cụm máy 1 (Traefik)
+  sourceRepos:
+    - https://github.com/Anpham120/restaurant-management-system.git
+  destinations:
+    - {server: https://10.10.0.1:6443, namespace: kube-system}
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - {group: helm.cattle.io, kind: HelmChartConfig}

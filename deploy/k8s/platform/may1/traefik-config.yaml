@@ -1,0 +1,57 @@
+# Cấu hình Traefik có sẵn trong k3s (cụm máy 1). k3s cài Traefik bằng Helm (HelmChart traefik); đối tượng
+# HelmChartConfig này ghi đè giá trị Helm, k3s tự chạy helm upgrade khi nó đổi.
+# Quản lý bằng GitOps: Argo CD (Application may1-traefik, project platform) áp dụng file này. Trước đây file nằm ở
+# /var/lib/rancher/k3s/server/manifests/traefik-config.yaml (sửa tay trên máy); đã gỡ khỏi thư mục đó.
+#
+# Vai trò: Traefik là router ứng dụng trong cụm. nginx máy 1 nhận HTTPS rồi chuyển MỌI request vào 10.43.0.80:80;
+# định tuyến /api, / và middleware (header bảo mật, nén) khai báo ở deploy/k8s/overlays/prod.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    # Chỉ nhận trong máy (không LoadBalancer, không chiếm cổng 80/443 của nginx). IP cố định để nginx trỏ tới.
+    service:
+      spec:
+        type: ClusterIP
+        clusterIP: 10.43.0.80
+    # TLS kết thúc ở nginx: không mở cổng websecure (443) trên Service
+    ports:
+      websecure:
+        expose:
+          default: false
+      web:
+        # Tin X-Forwarded-For từ nginx máy 1 để app thấy IP thật của người dùng
+        forwardedHeaders:
+          trustedIPs:
+            - 10.42.0.0/16
+            - 127.0.0.1/32
+            - 163.61.182.201/32
+    # Không có LoadBalancer nên ghi địa chỉ Ingress là ClusterIP (Argo CD cần status này để báo Ingress Healthy)
+    providers:
+      kubernetesIngress:
+        publishedService:
+          enabled: false
+    additionalArguments:
+      - "--providers.kubernetesingress.ingressendpoint.ip=10.43.0.80"
+    # 2 bản: khởi động lại hoặc nâng cấp Traefik không làm gián đoạn; PDB giữ tối thiểu 1 bản
+    deployment:
+      replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {memory: 256Mi}
+    # Access log dạng JSON ra stdout: Alloy gom sang Loki (máy 2). Không ghi header (có thể chứa token) và query
+    # parameter (có thể chứa dữ liệu người dùng): chỉ giữ đường dẫn, mã trạng thái, thời gian xử lý, router, service.
+    accessLog:
+      enabled: true
+      format: json
+      fields:
+        headers:
+          defaultMode: drop
+        queryParameters:
+          defaultMode: drop
