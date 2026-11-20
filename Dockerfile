@@ -16,9 +16,12 @@ FROM eclipse-temurin:25-jre
 ARG PATCH_DATE=none
 # Cài bản vá bảo mật Ubuntu đã phát hành mà image nền chưa kịp build lại (ví dụ CVE-2026-109518 của apt: image nền
 # 29/10 còn apt 3.2.0, bản sửa 3.2.1ubuntu0.1). Không có bước này Trivy chặn pipeline đến khi image nền được build lại.
+# Xóa /usr/bin/pebble: trình quản lý dịch vụ có sẵn trong image Ubuntu 26.04 (không thuộc gói apt nào nên upgrade không vá),
+# app không dùng (ENTRYPOINT là java). Bản build bằng Go 1.27.3 dính CVE-2026-97054 (HIGH), Trivy chặn pipeline ngày 20/11/2026.
 RUN echo "patch $PATCH_DATE" && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends upgrade \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && rm -f /usr/bin/pebble
 RUN useradd --system --uid 10001 app
 WORKDIR /app
 # Thứ tự từ ít đổi đến hay đổi: lớp thư viện được Docker cache và dùng chung giữa các bản phát hành
