@@ -1,0 +1,44 @@
+# Sao lưu liên tục cho DB production (CloudNativePG + plugin barman-cloud), lưu ở SeaweedFS máy 2 (S3, qua WireGuard).
+#   - WAL (nhật ký ghi của PostgreSQL) được đẩy lên liên tục: khôi phục được về bất kỳ thời điểm nào (PITR) trong 14 ngày.
+#   - Bản sao lưu nền (base backup) mỗi ngày 19:00 UTC (02:00 giờ Việt Nam): mốc để phát lại WAL khi khôi phục.
+# Bản pg_dump hằng ngày (scripts/backup-db.sh) và bản offsite Telegram vẫn giữ: hai cách sao lưu độc lập.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: rms-backup-store
+spec:
+  # Xóa bản sao lưu nền và WAL cũ hơn 14 ngày (plugin tự dọn)
+  retentionPolicy: "14d"
+  configuration:
+    destinationPath: s3://rms-pg-backups/
+    # nginx máy 2 cổng 9000 (chỉ cho 10.10.0.1) -> SeaweedFS 127.0.0.1:8333
+    endpointURL: http://10.10.0.2:9000
+    s3Credentials:
+      accessKeyId: {name: rms-backup-s3, key: ACCESS_KEY_ID}
+      secretAccessKey: {name: rms-backup-s3, key: ACCESS_SECRET_KEY}
+    wal:
+      compression: gzip
+      maxParallel: 2
+    data:
+      compression: gzip
+  # boto3 mới gửi checksum CRC kiểu mới mà nhiều S3 không phải AWS chưa hỗ trợ: chỉ gửi khi bắt buộc
+  instanceSidecarConfiguration:
+    env:
+      - {name: AWS_REQUEST_CHECKSUM_CALCULATION, value: when_required}
+      - {name: AWS_RESPONSE_CHECKSUM_VALIDATION, value: when_required}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: rms-db-daily
+spec:
+  # 6 trường (giây phút giờ ngày tháng thứ): 19:00:00 UTC mỗi ngày
+  schedule: "0 0 19 * * *"
+  # Chạy một bản ngay khi tạo, để có mốc khôi phục từ hôm nay
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: rms-db
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
