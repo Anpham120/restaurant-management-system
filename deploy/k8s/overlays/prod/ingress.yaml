@@ -1,14 +1,18 @@
 # Quy tắc định tuyến cho Traefik. nginx máy 1 giải mã HTTPS rồi chuyển vào Traefik (10.43.0.80) kèm Host gốc.
-# Giống hệt nginx hiện tại: /api và /actuator/health vào app, còn lại vào web.
+# Định tuyến ứng dụng chỉ nằm ở đây (nginx chuyển mọi request vào Traefik): /api và /actuator/health vào app,
+# còn lại vào web.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: rms
+  annotations:
+    # Header bảo mật + nén API (middlewares.yaml), tên dạng <namespace>-<tên>@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: rms-prod-security-headers@kubernetescrd,rms-prod-compress@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
     - host: rms.atlasplatform12.tech
-      http: &paths
+      http:
         paths:
           - path: /api
             pathType: Prefix
@@ -19,6 +23,3 @@ spec:
           - path: /
             pathType: Prefix
             backend: {service: {name: rms-web, port: {name: http}}}
-    # Tên miền phụ cho giai đoạn chạy song song (Phần 7)
-    - host: k8s.rms.atlasplatform12.tech
-      http: *paths

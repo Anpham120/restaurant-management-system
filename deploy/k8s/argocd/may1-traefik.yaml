@@ -1,0 +1,23 @@
+# Cấu hình Traefik của cụm máy 1 (deploy/k8s/platform/may1/) theo nhánh main. Không prune: Argo CD không bao giờ xóa
+# HelmChartConfig (xóa đi Traefik sẽ về mặc định LoadBalancer và tranh cổng 80/443 với nginx).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: may1-traefik
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/Anpham120/restaurant-management-system.git
+    targetRevision: main
+    path: deploy/k8s/platform/may1
+  destination:
+    server: https://10.10.0.1:6443
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff: {duration: 10s, factor: 2, maxDuration: 3m}
