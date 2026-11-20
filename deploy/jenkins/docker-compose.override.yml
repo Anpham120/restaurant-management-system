@@ -1,0 +1,24 @@
+# Bản trong Git của /opt/jenkins (máy 2). Áp dụng: sudo cp deploy/jenkins/{docker-compose.yml,docker-compose.override.yml,Dockerfile.jenkins} /opt/jenkins/
+#   sudo cp -r deploy/jenkins/casc /opt/jenkins/ && cd /opt/jenkins && docker compose up -d
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+
+    image: jenkins-with-docker:local
+
+    group_add:
+      - "988"
+
+    environment:
+      # Configuration as Code: đọc cấu hình đăng nhập + phân quyền từ thư mục này mỗi lần khởi động
+      CASC_JENKINS_CONFIG: /var/jenkins_conf
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # /opt/jenkins/casc/jenkins.yaml (máy 2) -> /var/jenkins_conf/jenkins.yaml
+      - ./casc:/var/jenkins_conf:ro
+      # /opt/jenkins/secrets/ (máy 2, quyền 700, chủ uid 1000) -> /run/secrets/
+      # JCasC thay ${github-oauth-client-id} bằng nội dung file /run/secrets/github-oauth-client-id
+      - ./secrets:/run/secrets:ro

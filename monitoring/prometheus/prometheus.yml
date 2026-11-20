@@ -13,11 +13,10 @@ scrape_configs:
   - job_name: rms-app
     metrics_path: /actuator/prometheus
     static_configs:
-      # Slot A và slot B (blue-green, scripts/deploy.sh): bình thường chỉ một slot chạy, slot kia up = 0.
+      # Từ 20/11/2026 app chạy Kubernetes (rms-prod, máy 1). nginx máy 1 cổng 9181 (chỉ cho 10.10.0.2, qua WireGuard)
+      # chuyển vào Traefik với Host rms-metrics.internal -> Service rms-app = bản đang phục vụ (docs/devops/nginx/metrics-wireguard.conf).
       # Nhãn application: dashboard JVM (Micrometer) lọc theo nhãn này.
-      # Prometheus chạy ở máy 2: app trên máy 1 chỉ nghe 127.0.0.1, nên nginx máy 1 mở cổng 9181 (slot A, 8081) và
-      # 9186 (slot B, 8086), chỉ cho 10.10.0.2 (máy 2) qua WireGuard (docs/devops/nginx/metrics-wireguard.conf).
-      - targets: ['10.10.0.1:9181', '10.10.0.1:9186']
+      - targets: ['10.10.0.1:9181']
         labels: {application: restaurant-core}
 
   # Số liệu máy chủ của cả 2 máy. Nhãn instance đặt bằng tên máy để cảnh báo ghi rõ máy nào.

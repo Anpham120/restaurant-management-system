@@ -1,0 +1,34 @@
+# Jenkins Configuration as Code (plugin configuration-as-code). Chỉ quản lý đăng nhập và phân quyền;
+# phần còn lại của Jenkins giữ nguyên. Sửa trên giao diện mục Security sẽ bị ghi đè khi khởi động lại.
+jenkins:
+  # Đăng nhập bằng GitHub (plugin github-oauth). Callback: https://jenkins.atlasplatform12.tech/securityRealm/finishLogin
+  securityRealm:
+    github:
+      githubWebUri: "https://github.com"
+      githubApiUri: "https://api.github.com"
+      clientID: "${github-oauth-client-id}"
+      clientSecret: "${github-oauth-client-secret}"
+      oauthScopes: "read:org,user:email"
+  # Phân quyền theo team của org atlas-platform12 (tên nhóm dạng org*team). Không thuộc team nào: không có quyền gì.
+  # Webhook GitHub (/github-webhook/) không cần đăng nhập nên vẫn kích hoạt build được.
+  authorizationStrategy:
+    globalMatrix:
+      entries:
+        - group:
+            name: "atlas-platform12*rms-admins"
+            permissions:
+              - "Overall/Administer"
+        - group:
+            name: "atlas-platform12*rms-developers"
+            permissions:
+              - "Overall/Read"
+              - "Job/Read"
+              - "Job/Build"
+              - "Job/Cancel"
+              - "View/Read"
+        - group:
+            name: "atlas-platform12*rms-viewers"
+            permissions:
+              - "Overall/Read"
+              - "Job/Read"
+              - "View/Read"

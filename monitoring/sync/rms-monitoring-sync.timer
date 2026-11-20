@@ -1,4 +1,4 @@
-# Máy 2: /etc/systemd/system/rms-monitoring-sync.timer
+# Cả 2 máy: /etc/systemd/system/rms-monitoring-sync.timer
 [Unit]
 Description=Đồng bộ cấu hình giám sát RMS mỗi 5 phút
 

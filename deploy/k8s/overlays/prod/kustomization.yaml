@@ -6,6 +6,7 @@ resources:
   - namespace.yaml
   - ../../base
   - ingress.yaml
+  - ingress-metrics.yaml
   - sealed-ghcr-pull.yaml
   - sealed-app-secrets.yaml
   - sealed-db-api.yaml
@@ -26,6 +27,6 @@ patches:
 # Pipeline (Jenkins) chỉ sửa 2 dòng newTag này: đúng commit đã qua staging
 images:
   - name: ghcr.io/anpham120/rms-app
-    newTag: 1481d9d3f5024ca99e67ce6c4105b063c4b945ac
+    newTag: a49970dab07afcb2f9f58222f1b4ba15d6338104
   - name: ghcr.io/anpham120/rms-web
-    newTag: 1481d9d3f5024ca99e67ce6c4105b063c4b945ac
+    newTag: a49970dab07afcb2f9f58222f1b4ba15d6338104

@@ -1,0 +1,31 @@
+# Jenkins (máy 2, /opt/jenkins). Bản trong Git: deploy/jenkins/. Dữ liệu: volume jenkins_jenkins_home
+# = /var/lib/docker/volumes/jenkins_jenkins_home/_data. RAM: máy 2 chạy chung k3s + giám sát, nên heap 1,5 GB, tối đa 2 GB.
+services:
+  jenkins:
+    image: jenkins/jenkins:2.580.1-lts-jdk21
+    container_name: jenkins
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      JAVA_OPTS: "-Xms512m -Xmx1536m"
+
+    volumes:
+      - jenkins_home:/var/jenkins_home
+
+    mem_limit: 2g
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://127.0.0.1:8080/login >/dev/null || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+volumes:
+  jenkins_home:

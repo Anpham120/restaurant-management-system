@@ -13,6 +13,8 @@ configs:
     kustomize.buildOptions: --load-restrictor LoadRestrictionsNone
     # Địa chỉ công khai: Dex dùng để tạo link quay lại sau khi đăng nhập GitHub
     url: https://argocd.atlasplatform12.tech
+    # Quét Git mỗi 60 giây (mặc định 180): pipeline chờ Argo CD triển khai nhanh hơn
+    timeout.reconciliation: 60s
     # Tắt tài khoản admin cục bộ: chỉ đăng nhập qua GitHub (SSO)
     admin.enabled: "false"
     # Dex nói chuyện với GitHub. Chỉ thành viên org atlas-platform12 thuộc 1 trong 3 team mới đăng nhập được.

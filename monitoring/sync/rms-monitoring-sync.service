@@ -1,4 +1,5 @@
-# Máy 2: /etc/systemd/system/rms-monitoring-sync.service
+# Cả 2 máy: /etc/systemd/system/rms-monitoring-sync.service
+# Máy 1 thêm vào [Service] (sudo systemctl edit rms-monitoring-sync): Environment=SERVICES=node-exporter
 [Unit]
 Description=Đồng bộ cấu hình giám sát RMS từ nhánh main
 After=network-online.target docker.service

@@ -1,9 +1,12 @@
-// CI/CD tự động, không có bước duyệt tay.
-//   feature/*  : kiểm migration → [test backend | test frontend | quét bảo mật mã nguồn] → tự merge vào develop
-//   develop    : như trên → staging tạm thời (smoke test đọc + E2E ghi) → quét image, gắn tag phát hành
-//                → [đẩy GHCR (nếu có token) | tự promote lên main (fast-forward)]
-//   main       : deploy production đúng image develop đã kiểm (blue-green khi nginx có 2 slot), kiểm qua domain thật
-//   [a | b]    : chạy song song (các bước độc lập, không bỏ bước nào)
+// CI/CD tự động kiểu GitOps, không có bước duyệt tay. Jenkins chạy ở máy 2; production chạy Kubernetes ở máy 1, do Argo CD
+// triển khai theo Git. Jenkins không deploy trực tiếp: chỉ ghi tag image vào Git rồi chờ Argo CD báo kết quả.
+//   feature/*          : kiểm migration → [test backend | test frontend | quét bảo mật mã nguồn] → tự merge vào develop
+//   develop (commit M) : như trên → staging tạm thời (smoke test đọc + E2E ghi) → quét image, gắn tag → đẩy GHCR
+//                        → bot commit B "deploy: image M" sửa newTag trong deploy/k8s/overlays/{staging,prod}
+//   develop (commit B) : không test lại (B chỉ đổi tag) → chờ Argo CD đưa rms-staging lên B, Healthy → promote B lên main
+//   main (commit B)    : chờ Argo CD đưa rms-prod lên B (Argo Rollouts blue-green, AnalysisTemplate kiểm trước khi chuyển
+//                        traffic) → kiểm domain thật → báo Telegram
+//   [a | b]            : chạy song song (các bước độc lập, không bỏ bước nào)
 // main không test lại: --ff-only nên commit trên main trùng SHA với commit develop vừa qua đủ test, staging và Trivy.
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
 // Kích hoạt: webhook GitHub. Dự phòng là quét multibranch mỗi phút (cấu hình job). Không dùng pollSCM:
@@ -24,13 +27,15 @@ pipeline {
 
     environment {
         JENKINS_CONTAINER = 'jenkins'
+        // kubeconfig của ServiceAccount argocd/jenkins-ci (chỉ đọc Application): file /opt/jenkins/secrets/kubeconfig-ci
+        // trên máy 2, mount vào /run/secrets. Dùng để chờ Argo CD triển khai xong (scripts/argocd-wait.sh).
+        KUBECONFIG = '/run/secrets/kubeconfig-ci'
         // Repo GitHub (dùng cho fetch/push bằng token trong các bước chạy ngoài workspace)
         REPO = 'github.com/Anpham120/restaurant-management-system.git'
-        // Thư mục triển khai trên máy chủ (clone nhánh main, có .env thật). Xem docs/devops/PIPELINE.md
-        DEPLOY_DIR = '/home/coder/rms-deploy'
-        // Thư mục staging tạm thời (clone nhánh develop, tự tạo lần đầu). Không chứa secret thật.
+        // Thư mục staging tạm thời trên máy 2 (clone nhánh develop, tự tạo lần đầu). Không chứa secret thật.
         STAGING_DIR = '/home/coder/rms-staging'
-        // Bản sao lưu database (scripts/backup-db.sh), deploy tạo một bản trước khi build
+        // Bản sao lưu database trên máy 2: máy 1 sao lưu hằng ngày rồi chép bản mới nhất sang (scripts/backup-db.sh).
+        // Staging tạm thời nạp bản này để thử migration và API trên dữ liệu thật.
         BACKUP_DIR = '/home/coder/rms-backups'
         // Địa chỉ công khai (qua nginx + HTTPS) để kiểm production sau deploy
         PUBLIC_URL = 'https://rms.atlasplatform12.tech'
@@ -39,8 +44,22 @@ pipeline {
     }
 
     stages {
+        stage('Phân loại commit') {
+            steps {
+                script {
+                    // Commit "deploy: image ..." của bot (scripts/bump-image.sh) chỉ đổi tag image: không test lại, chỉ chờ Argo CD.
+                    env.CHI_DOI_TAG = sh(returnStdout: true, script: '''
+                        if [ "$(git log -1 --format=%an)" = rms-ci ] && git log -1 --format=%s | grep -q '^deploy: ' \\
+                           && [ -z "$(git diff --name-only HEAD^ HEAD | grep -vxE 'deploy/k8s/overlays/(staging|prod)/kustomization.yaml')" ]
+                        then echo true; else echo false; fi
+                    ''').trim()
+                    echo(env.CHI_DOI_TAG == 'true' ? 'Commit đổi tag image: bỏ qua test, chỉ chờ Argo CD' : 'Commit mã nguồn: chạy đủ kiểm tra')
+                }
+            }
+        }
+
         stage('Kiểm migration') {
-            when { not { branch 'main' } }
+            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false' } }
             steps {
                 // Migration phải tương thích ngược (expand/contract) để quay lui image không cần khôi phục database
                 sh 'scripts/check-migrations.sh'
@@ -49,7 +68,7 @@ pipeline {
         }
 
         stage('Kiểm tra song song') {
-            when { not { branch 'main' } }
+            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false' } }
             // Ba việc độc lập chạy cùng lúc: tổng thời gian = việc lâu nhất (test backend) thay vì cộng dồn. Không bỏ bước nào;
             // một nhánh lỗi thì cả stage lỗi như trước, các nhánh còn lại vẫn chạy hết để log đủ thông tin. Kiểm migration vẫn chạy
             // trước (vài giây, lỗi thì dừng sớm không tốn thời gian test). RAM: Maven tối đa 3 GB + Node 2 GB, máy còn trống ~4 GB.
@@ -59,9 +78,9 @@ pipeline {
                         sh '''
                             # Volume cache Maven mới tạo thuộc root, đổi quyền để user Jenkins ghi được
                             docker run --rm -v rms-m2-cache:/m2 alpine:3.20 chown "$(id -u):$(id -g)" /m2
-                            # Giới hạn tài nguyên: CI chạy chung máy với production (4 CPU, 7 GB). Tối đa 2 CPU, 3 GB;
-                            # cpu-shares 512 (production mặc định 1024): khi tranh CPU, production được ưu tiên gấp đôi.
-                            docker run --rm --network host --cpus=2 --cpu-shares=512 --memory=3g \
+                            # Giới hạn tài nguyên: máy 2 (4 CPU, 8 GB) chạy chung k3s (Argo CD, staging) và giám sát. Tối đa 2 CPU,
+                            # 2,5 GB; cpu-shares 512: khi tranh CPU, các dịch vụ đang chạy được ưu tiên gấp đôi.
+                            docker run --rm --network host --cpus=2 --cpu-shares=512 --memory=2560m \
                               --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE" \
                               --user "$(id -u):$(id -g)" --group-add "$(stat -c %g /var/run/docker.sock)" \
                               -e HOME=/tmp -v rms-m2-cache:/tmp/.m2 \
@@ -89,7 +108,7 @@ pipeline {
                 stage('Test frontend') {
                     steps {
                         sh '''
-                            docker run --rm --cpus=2 --cpu-shares=512 --memory=2g --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE/frontend" \
+                            docker run --rm --cpus=2 --cpu-shares=512 --memory=1536m --volumes-from "$JENKINS_CONTAINER" -w "$WORKSPACE/frontend" \
                               --user "$(id -u):$(id -g)" -e HOME=/tmp \
                               node:22-alpine \
                               sh -c "npm ci --no-audit --no-fund && npm run typecheck && npm run build"
@@ -119,7 +138,7 @@ pipeline {
         }
 
         stage('Staging smoke test') {
-            when { branch 'develop' }
+            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false' } }
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     // Dựng bản develop ở môi trường tách biệt trên bản sao lưu production mới nhất (chỉ đọc), thử các
@@ -147,7 +166,7 @@ pipeline {
         }
 
         stage('Quét bảo mật image') {
-            when { branch 'develop' }
+            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false' } }
             steps {
                 // Image vừa build ở staging. Qua quét thì gắn tag phát hành theo commit: production chạy đúng image này.
                 sh 'scripts/security-scan.sh image rms-staging-app rms-staging-web'
@@ -157,63 +176,55 @@ pipeline {
         }
 
         stage('Phát hành') {
-            when { branch 'develop' }
-            // Chỉ chạy khi image đã qua Trivy và được gắn tag (stage trước). Đẩy GHCR là bản lưu, không chặn và không liên quan
-            // đến promote, nên chạy song song: main bắt đầu deploy sớm hơn ~10 giây.
-            parallel {
-                stage('Đẩy image lên GHCR') {
-                    steps {
-                        // Bản lưu image ngoài máy chủ. Không chặn pipeline: thiếu credential ghcr-token hoặc registry lỗi thì chỉ ghi log,
-                        // deploy vẫn dùng image phát hành trên máy.
-                        script {
-                            try {
-                                withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
-                                    sh 'scripts/push-release.sh "$GIT_COMMIT"'
-                                }
-                            } catch (err) {
-                                echo "Bỏ qua đẩy GHCR: ${err.message}"
-                            }
-                        }
-                    }
+            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false' } }
+            steps {
+                // Kubernetes kéo image từ GHCR nên bước này bắt buộc: thiếu credential ghcr-token hoặc registry lỗi thì dừng.
+                withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
+                    sh 'scripts/push-release.sh "$GIT_COMMIT"'
                 }
-
-                stage('Promote develop lên main') {
-                    steps {
-                        withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
-                            sh 'scripts/auto-merge.sh main'
-                        }
-                    }
-                    post { failure { script { ghiBuocLoi() } } }
+                // Ghi tag vào Git (commit "deploy: image ..."). Commit đó chạy lại pipeline ở nhánh này, nhưng chỉ chờ Argo CD.
+                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                    sh 'scripts/bump-image.sh "$GIT_COMMIT"'
                 }
             }
+            post { failure { script { ghiBuocLoi() } } }
         }
 
-        stage('Deploy production') {
+        stage('Chờ Argo CD: staging') {
+            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'true' } }
+            steps {
+                // rms-staging (máy 2) theo nhánh develop: blue-green + AnalysisTemplate, lỗi thì không promote
+                sh 'scripts/argocd-wait.sh rms-staging "$GIT_COMMIT" 900'
+            }
+            post { failure { script { ghiBuocLoi() } } }
+        }
+
+        stage('Promote develop lên main') {
+            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'true' } }
+            steps {
+                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                    sh 'scripts/auto-merge.sh main'
+                }
+            }
+            post { failure { script { ghiBuocLoi() } } }
+        }
+
+        stage('Chờ Argo CD: production') {
             when { branch 'main' }
             steps {
-                // rms-prod-env: nội dung .env production mã hóa base64 một dòng (Secret text). Chỉ ghi ra đĩa trong lúc deploy.
-                withCredentials([
-                    string(credentialsId: 'github-token', variable: 'GH_TOKEN'),
-                    string(credentialsId: 'rms-prod-env', variable: 'ENV_B64')
-                ]) {
-                    // Như staging: container docker:27-cli, mount thư mục triển khai đúng đường dẫn trên host, checkout đúng
-                    // commit của build. trap: luôn xóa .env (kể cả khi deploy lỗi) và trả quyền về user coder (uid 1000).
-                    sh '''
-                        docker run --rm --network host \
-                          -v /var/run/docker.sock:/var/run/docker.sock \
-                          -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$DEPLOY_DIR" -v "$BACKUP_DIR:$BACKUP_DIR" -v /etc/nginx:/etc/nginx:ro \
-                          -e GH_TOKEN -e ENV_B64 -e BACKUP_DIR -e GIT_COMMIT -e PUBLIC_URL -e REPO \
-                          docker:27-cli sh -euc '
-                            trap "rm -f .env; chown -R 1000:1000 . $BACKUP_DIR" EXIT
-                            apk add -q --no-cache bash curl
-                            git config --global --add safe.directory "$PWD"
-                            git fetch -q "https://x-access-token:$GH_TOKEN@$REPO" main
-                            git reset -q --hard "$GIT_COMMIT"
-                            (umask 077; printf "%s" "$ENV_B64" | base64 -d > .env)
-                            scripts/deploy.sh
-                          '
-                    '''
-                }
+                // rms-prod (máy 1) theo nhánh main. Argo Rollouts dựng bản mới cạnh bản cũ, AnalysisTemplate gọi thử qua
+                // Service preview, đạt mới chuyển traffic; không đạt thì giữ bản cũ và báo Degraded.
+                sh 'scripts/argocd-wait.sh rms-prod "$GIT_COMMIT" 1200'
+                // Kiểm như người dùng: domain thật qua nginx + HTTPS
+                sh '''
+                    for i in $(seq 1 12); do
+                      if curl -fsS --max-time 10 "$PUBLIC_URL/actuator/health" | grep -q '"UP"'; then
+                        echo "[prod] $PUBLIC_URL health UP"; exit 0
+                      fi
+                      sleep 5
+                    done
+                    echo "[prod] $PUBLIC_URL không trả UP"; exit 1
+                '''
             }
             post { failure { script { ghiBuocLoi() } } }
         }
@@ -253,24 +264,25 @@ def ghiBuocLoi() {
 def notifyTelegram(boolean ok) {
     try {
         def info = sh(returnStdout: true, script: '''
-            if git rev-parse -q --verify HEAD^2 >/dev/null; then
-              nhanh=$(git log -1 --format=%s | sed -nE 's/^Merge (.+) vào .*/\\1/p')
-              thaydoi=$(git log -1 --format=%s HEAD^2 | sed -E 's/^ +//')
-              tacgia=$(git log -1 --format=%an HEAD^2)
-              them=$(( $(git rev-list --count HEAD^1..HEAD^2) - 1 ))
+            # Commit "deploy: image ..." của bot: nội dung thay đổi nằm ở commit cha (commit merge của nhánh tính năng)
+            R=HEAD
+            case "$(git log -1 --format=%s)" in "deploy: "*) R=HEAD^ ;; esac
+            if git rev-parse -q --verify "$R^2" >/dev/null; then
+              nhanh=$(git log -1 --format=%s "$R" | sed -nE 's/^Merge (.+) vào .*/\\1/p')
+              thaydoi=$(git log -1 --format=%s "$R^2" | sed -E 's/^ +//')
+              tacgia=$(git log -1 --format=%an "$R^2")
+              them=$(( $(git rev-list --count "$R^1..$R^2") - 1 ))
               if [ "$them" -gt 0 ]; then thaydoi="$thaydoi (+$them commit khác)"; fi
             else
               nhanh=$BRANCH_NAME
-              thaydoi=$(git log -1 --format=%s | sed -E 's/^ +//')
-              tacgia=$(git log -1 --format=%an)
+              thaydoi=$(git log -1 --format=%s "$R" | sed -E 's/^ +//')
+              tacgia=$(git log -1 --format=%an "$R")
             fi
-            slot=$(docker ps --format '{{.Names}}' \
-              | sed -nE 's/^restaurant-management-system-app-1$/A (8081)/p; s/^restaurant-management-system-app-b-1$/B (8086)/p' \
-              | sort | paste -sd '+' | sed 's/+/ và /')
+            image=$(sed -nE 's/^ *newTag: ([0-9a-f]{7}).*/\\1/p' deploy/k8s/overlays/prod/kustomization.yaml | head -1)
             echo "Thay đổi: $thaydoi"
             echo "Nhánh: ${nhanh:-$BRANCH_NAME} · $tacgia"
             echo "Commit: $(git rev-parse --short HEAD)"
-            echo "Đang phục vụ: slot ${slot:-không rõ}"
+            echo "Đang phục vụ: Kubernetes rms-prod, image ${image:-không rõ}"
         ''').trim()
         long giay = (System.currentTimeMillis() - currentBuild.startTimeInMillis).intdiv(1000)
         def thoiGian = giay >= 60 ? "${giay.intdiv(60)} phút ${giay % 60} giây" : "${giay} giây"
@@ -279,7 +291,7 @@ def notifyTelegram(boolean ok) {
         if (ok) {
             text = "✅ ĐÃ LÊN PRODUCTION\n${info}\nBuild: ${build}\nWeb: ${env.PUBLIC_URL}"
         } else {
-            def hauQua = env.BRANCH_NAME == 'main' ? 'Deploy lỗi: deploy.sh giữ hoặc bật lại slot cũ, xem log để chắc chắn.'
+            def hauQua = env.BRANCH_NAME == 'main' ? 'Argo Rollouts giữ bản cũ nếu bản mới không qua kiểm tra. Xem Argo CD và log.'
                        : env.BRANCH_NAME == 'develop' ? 'Không promote lên main. Production không đổi.'
                        : env.BRANCH_NAME.startsWith('feature/') ? 'Chưa merge vào develop. Production không đổi.'
                        : 'Production không đổi.'
