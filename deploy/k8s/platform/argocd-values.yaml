@@ -11,9 +11,47 @@ configs:
     timeout.reconciliation: 180s
     # Cho Kustomize đọc file ngoài thư mục overlay (3 file SQL ở docs/ của repo, xem base/kustomization.yaml)
     kustomize.buildOptions: --load-restrictor LoadRestrictionsNone
-# Dex = đăng nhập qua SSO (GitHub, Google...). Chưa dùng: đăng nhập bằng tài khoản admin
+    # Địa chỉ công khai: Dex dùng để tạo link quay lại sau khi đăng nhập GitHub
+    url: https://argocd.atlasplatform12.tech
+    # Tắt tài khoản admin cục bộ: chỉ đăng nhập qua GitHub (SSO)
+    admin.enabled: "false"
+    # Dex nói chuyện với GitHub. Chỉ thành viên org atlas-platform12 thuộc 1 trong 3 team mới đăng nhập được.
+    # $argocd-github-oauth:clientID = khóa clientID trong Secret argocd-github-oauth (không nằm trong Git)
+    dex.config: |
+      connectors:
+        - type: github
+          id: github
+          name: GitHub
+          config:
+            clientID: $argocd-github-oauth:clientID
+            clientSecret: $argocd-github-oauth:clientSecret
+            orgs:
+              - name: atlas-platform12
+                teams: [rms-admins, rms-developers, rms-viewers]
+            # Nhóm trả về dạng atlas-platform12:rms-admins (dùng tên rút gọn của team)
+            teamNameField: slug
+            useLoginAsID: true
+  # Phân quyền theo team GitHub (RBAC). Không thuộc team nào = không có quyền gì.
+  rbac:
+    policy.default: ""
+    scopes: "[groups]"
+    policy.csv: |
+      # rms-developers: xem mọi thứ trong dự án rms, chỉ được Sync / chạy thao tác trên staging
+      p, role:staging-deployer, applications, get, rms/*, allow
+      p, role:staging-deployer, applications, sync, rms/rms-staging, allow
+      p, role:staging-deployer, applications, action/*, rms/rms-staging, allow
+      p, role:staging-deployer, logs, get, rms/*, allow
+      p, role:staging-deployer, projects, get, rms, allow
+      p, role:staging-deployer, clusters, get, *, allow
+      g, atlas-platform12:rms-admins, role:admin
+      g, atlas-platform12:rms-developers, role:staging-deployer
+      g, atlas-platform12:rms-viewers, role:readonly
+# Dex = máy chủ đăng nhập (OIDC) nằm giữa Argo CD và GitHub
 dex:
-  enabled: false
+  enabled: true
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {memory: 128Mi}
 # Thông báo Telegram sẽ do Alertmanager đảm nhiệm (Phần 6)
 notifications:
   enabled: false
