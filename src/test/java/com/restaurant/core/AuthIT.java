@@ -1,8 +1,11 @@
 package com.restaurant.core;
 
+import java.util.Locale;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -66,6 +69,27 @@ class AuthIT extends IntegrationTestBase {
                 .andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.error.code").value("TOO_MANY_ATTEMPTS"));
         login("{\"username\":\"" + other.username() + "\",\"password\":\"" + TestData.PASSWORD + "\"}")
                 .andExpect(status().isOk());
+    }
+
+    /**
+     * Bộ đếm nằm trong database nên mọi bản app thấy cùng một trạng thái khóa: bản khác (hoặc bản vừa khởi động lại) đọc
+     * đúng dòng này. Đăng nhập đúng thì xóa bộ đếm.
+     */
+    @Test
+    void failureCounterIsStoredInDatabaseAndClearedOnSuccess() throws Exception {
+        TestData.Staff cashier = data.staff("CASHIER");
+        String key = cashier.username().trim().toLowerCase(Locale.ROOT);
+        for (int i = 0; i < 2; i++) {
+            login("{\"username\":\" " + cashier.username().toUpperCase(Locale.ROOT) + " \",\"password\":\"sai\"}")
+                    .andExpect(status().isUnauthorized());
+        }
+        Integer failures = admin().sql("SELECT failures FROM login_throttles WHERE username_key = ?").param(key)
+                .query(Integer.class).single();
+        assertThat(failures).isEqualTo(2);
+        login("{\"username\":\"" + cashier.username() + "\",\"password\":\"" + TestData.PASSWORD + "\"}")
+                .andExpect(status().isOk());
+        assertThat(admin().sql("SELECT count(*) FROM login_throttles WHERE username_key = ?")
+                .param(key).query(Long.class).single()).isZero();
     }
 
     @Test
