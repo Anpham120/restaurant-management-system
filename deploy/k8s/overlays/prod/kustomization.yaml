@@ -29,6 +29,12 @@ patches:
   # Thêm plugin vào Cluster làm pod DB khởi động lại một lần (thêm sidecar barman-cloud).
   - target: {kind: Cluster, name: rms-db}
     patch: |-
+      # 2 bản PostgreSQL (primary + replica nhận WAL liên tục, cùng máy 1). Khi cần khởi động lại (đổi cấu hình, nâng cấp
+      # phiên bản), CloudNativePG cập nhật replica trước rồi chuyển nó lên làm primary (switchover): gián đoạn vài giây
+      # thay vì vài phút. Thêm replica không khởi động lại primary (replica sao chép bằng pg_basebackup).
+      - {op: replace, path: /spec/instances, value: 2}
+      - {op: add, path: /spec/primaryUpdateStrategy, value: unsupervised}
+      - {op: add, path: /spec/primaryUpdateMethod, value: switchover}
       - op: add
         path: /spec/plugins
         value:
