@@ -6,6 +6,9 @@
 //   develop (commit B) : không test lại (B chỉ đổi tag) → chờ Argo CD đưa rms-staging lên B, Healthy → promote B lên main
 //   main (commit B)    : chờ Argo CD đưa rms-prod lên B (Argo Rollouts blue-green, AnalysisTemplate kiểm trước khi chuyển
 //                        traffic) → kiểm domain thật → báo Telegram
+//   commit chỉ đổi tài liệu (docs/*.md, *.docx, *.pptx, ảnh…; xem stage Phân loại commit): không test, không build image.
+//                        feature: merge thẳng vào develop. develop: chờ rms-staging Healthy rồi promote lên main.
+//                        main: Argo CD không có gì để triển khai, chỉ xác nhận production vẫn Healthy.
 //   [a | b]            : chạy song song (các bước độc lập, không bỏ bước nào)
 // main không test lại: --ff-only nên commit trên main trùng SHA với commit develop vừa qua đủ test, staging và Trivy.
 // Maven và Node chạy trong container tạm, dùng chung volume với Jenkins để đường dẫn workspace khớp.
@@ -62,7 +65,24 @@ pipeline {
                            && [ "$(git rev-parse 'HEAD^{tree}')" = "$(git rev-parse 'HEAD^2^{tree}')" ]
                         then echo true; else echo false; fi
                     ''').trim()
+                    // Chỉ đổi tài liệu kể từ commit đã build image đang chạy (newTag của overlay staging): so với commit đó chứ
+                    // không chỉ commit cuối, để code đã vào develop mà chưa build (bump-image bỏ qua vì develop có commit mới hơn)
+                    // không bị bỏ sót. Được miễn: file trong docs/ có đuôi tài liệu, file .md ngoài src/. Không miễn docs/*.sql
+                    // (schema gốc mà Kustomize và Docker Compose nạp), docs/*.conf, script. Overlay chỉ được khác ở dòng newTag
+                    // (commit của bot). Không xác định được commit gốc thì chạy đủ.
+                    env.CHI_TAI_LIEU = env.CHI_DOI_TAG == 'true' ? 'false' : sh(returnStdout: true, script: '''
+                        goc=$(sed -nE 's/^ *newTag: ([0-9a-f]{7,40}).*/\\1/p' deploy/k8s/overlays/staging/kustomization.yaml | head -1)
+                        mien='docs/.*\\.(md|docx|pptx|pdf|png|jpe?g|svg|drawio|dbml|txt)|.*\\.md|deploy/k8s/overlays/(staging|prod)/kustomization.yaml'
+                        if [ -n "$goc" ] && git cat-file -e "$goc^{commit}" 2>/dev/null \\
+                           && doi=$(git diff --name-only "$goc" HEAD) \\
+                           && printf '%s\\n' "$doi" | grep -qE '^docs/|\\.md$' \\
+                           && [ -z "$(printf '%s\\n' "$doi" | grep -vxE "$mien")" ] \\
+                           && [ -z "$(printf '%s\\n' "$doi" | grep -E '^src/')" ] \\
+                           && [ -z "$(git diff "$goc" HEAD -- deploy/k8s/overlays | grep -E '^[-+]' | grep -vE '^(---|\\+\\+\\+) ' | grep -v 'newTag: ')" ]
+                        then echo true; else echo false; fi
+                    ''').trim()
                     echo(env.CHI_DOI_TAG == 'true' ? 'Commit đổi tag image: bỏ qua test, chỉ chờ Argo CD'
+                         : env.CHI_TAI_LIEU == 'true' ? 'Chỉ đổi tài liệu: bỏ qua test và build image'
                          : env.DA_TEST == 'true' ? 'Nội dung giống hệt nhánh feature đã qua test: bỏ qua test lặp, vẫn chạy staging'
                          : 'Commit mã nguồn: chạy đủ kiểm tra')
                 }
@@ -70,7 +90,7 @@ pipeline {
         }
 
         stage('Kiểm migration') {
-            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'DA_TEST', value: 'false' } }
+            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'DA_TEST', value: 'false'; environment name: 'CHI_TAI_LIEU', value: 'false' } }
             steps {
                 // Migration phải tương thích ngược (expand/contract) để quay lui image không cần khôi phục database
                 sh 'scripts/check-migrations.sh'
@@ -79,7 +99,7 @@ pipeline {
         }
 
         stage('Kiểm tra song song') {
-            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'DA_TEST', value: 'false' } }
+            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'DA_TEST', value: 'false'; environment name: 'CHI_TAI_LIEU', value: 'false' } }
             // Ba việc độc lập chạy cùng lúc: tổng thời gian = việc lâu nhất (test backend) thay vì cộng dồn. Không bỏ bước nào;
             // một nhánh lỗi thì cả stage lỗi như trước, các nhánh còn lại vẫn chạy hết để log đủ thông tin. Kiểm migration vẫn chạy
             // trước (vài giây, lỗi thì dừng sớm không tốn thời gian test). RAM: Maven tối đa 3 GB + Node 2 GB, máy còn trống ~4 GB.
@@ -149,7 +169,7 @@ pipeline {
         }
 
         stage('Staging smoke test') {
-            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false' } }
+            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'CHI_TAI_LIEU', value: 'false' } }
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     // Dựng bản develop ở môi trường tách biệt trên bản sao lưu production mới nhất (chỉ đọc), thử các
@@ -177,7 +197,7 @@ pipeline {
         }
 
         stage('Quét bảo mật image') {
-            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false' } }
+            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'CHI_TAI_LIEU', value: 'false' } }
             steps {
                 // Image vừa build ở staging. Qua quét thì gắn tag phát hành theo commit: production chạy đúng image này.
                 sh 'scripts/security-scan.sh image rms-staging-app rms-staging-web'
@@ -187,7 +207,7 @@ pipeline {
         }
 
         stage('Phát hành') {
-            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false' } }
+            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'CHI_TAI_LIEU', value: 'false' } }
             steps {
                 // Kubernetes kéo image từ GHCR nên bước này bắt buộc: thiếu credential ghcr-token hoặc registry lỗi thì dừng.
                 withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
@@ -202,16 +222,17 @@ pipeline {
         }
 
         stage('Chờ Argo CD: staging') {
-            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'true' } }
+            when { allOf { branch 'develop'; anyOf { environment name: 'CHI_DOI_TAG', value: 'true'; environment name: 'CHI_TAI_LIEU', value: 'true' } } }
             steps {
-                // rms-staging (máy 2) theo nhánh develop: blue-green + AnalysisTemplate, lỗi thì không promote
+                // rms-staging (máy 2) theo nhánh develop: blue-green + AnalysisTemplate, lỗi thì không promote.
+                // Commit chỉ đổi tài liệu: Argo CD không có gì mới để triển khai, bước này xác nhận staging vẫn Healthy.
                 sh 'scripts/argocd-wait.sh rms-staging "$GIT_COMMIT" 900'
             }
             post { failure { script { ghiBuocLoi() } } }
         }
 
         stage('Promote develop lên main') {
-            when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'true' } }
+            when { allOf { branch 'develop'; anyOf { environment name: 'CHI_DOI_TAG', value: 'true'; environment name: 'CHI_TAI_LIEU', value: 'true' } } }
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     sh 'scripts/auto-merge.sh main'
@@ -300,7 +321,8 @@ def notifyTelegram(boolean ok) {
         def build = "${env.BRANCH_NAME} #${env.BUILD_NUMBER} · ${thoiGian}"
         def text
         if (ok) {
-            text = "✅ ĐÃ LÊN PRODUCTION\n${info}\nBuild: ${build}\nWeb: ${env.PUBLIC_URL}"
+            def tieuDe = env.CHI_TAI_LIEU == 'true' ? '✅ TÀI LIỆU ĐÃ LÊN MAIN (production không đổi image)' : '✅ ĐÃ LÊN PRODUCTION'
+            text = "${tieuDe}\n${info}\nBuild: ${build}\nWeb: ${env.PUBLIC_URL}"
         } else {
             def hauQua = env.BRANCH_NAME == 'main' ? 'Argo Rollouts giữ bản cũ nếu bản mới không qua kiểm tra. Xem Argo CD và log.'
                        : env.BRANCH_NAME == 'develop' ? 'Không promote lên main. Production không đổi.'
