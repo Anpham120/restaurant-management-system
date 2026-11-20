@@ -1,7 +1,10 @@
 # Giám sát: Prometheus (thu thập số liệu + luật cảnh báo), Alertmanager (gửi Telegram), Grafana (hiển thị),
 # node-exporter (CPU/RAM/đĩa máy chủ, thời điểm sao lưu), blackbox-exporter (gọi domain thật như người dùng).
-# Chạy bằng network_mode: host vì app chỉ lắng nghe 127.0.0.1:8081, container bridge không tới được.
-# Mọi cổng chỉ mở trên 127.0.0.1. Chạy từ bản clone main: cd /home/coder/rms-deploy/monitoring && docker compose up -d
+# Vị trí (từ 20/11/2026): máy 2 chạy tất cả: cd /home/coder/rms-deploy/monitoring && docker compose up -d
+#   máy 1 chỉ chạy node-exporter:            cd /home/coder/rms-deploy/monitoring && docker compose up -d node-exporter
+# Máy 2 lấy số liệu app và node-exporter của máy 1 qua WireGuard (nginx máy 1, docs/devops/nginx/metrics-wireguard.conf).
+# Bản clone trên máy 2 tự theo nhánh main bằng monitoring/sync/ (systemd timer, nạp lại Prometheus/Alertmanager).
+# Chạy bằng network_mode: host, mọi cổng chỉ mở trên 127.0.0.1; Grafana ra ngoài qua nginx của máy 2.
 # Cấu hình mount cả thư mục, không mount từng file: deploy cập nhật mã bằng git reset --hard (file mới, inode mới), bind mount
 # một file sẽ vẫn trỏ bản cũ. scripts/deploy.sh gửi SIGHUP cho Prometheus và Alertmanager để nạp lại sau mỗi lần deploy.
 services:
@@ -20,8 +23,9 @@ services:
   alertmanager:
     image: prom/alertmanager:v0.28.1
     network_mode: host
-    # Chạy bằng uid của chủ file token (coder) để file giữ quyền 600; trạng thái chỉ cần trong /tmp
-    user: "1000:1000"
+    # Chạy bằng uid của chủ file token (coder) để file giữ quyền 600; trạng thái chỉ cần trong /tmp.
+    # uid của coder khác nhau giữa các máy (máy 1: 1000, máy 2: 1001): đặt SECRETS_UID/SECRETS_GID trong monitoring/.env
+    user: "${SECRETS_UID:-1000}:${SECRETS_GID:-1000}"
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
       - --web.listen-address=127.0.0.1:9093

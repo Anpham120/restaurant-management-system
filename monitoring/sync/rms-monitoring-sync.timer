@@ -1,0 +1,10 @@
+# Máy 2: /etc/systemd/system/rms-monitoring-sync.timer
+[Unit]
+Description=Đồng bộ cấu hình giám sát RMS mỗi 5 phút
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

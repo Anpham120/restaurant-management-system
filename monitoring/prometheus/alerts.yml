@@ -114,7 +114,7 @@ groups:
         for: 2m
         labels: {severity: warning}
         annotations:
-          summary: "Mất số liệu máy chủ"
+          summary: "Mất số liệu máy chủ {{ $labels.instance }}"
           description: "node-exporter không phản hồi, không theo dõi được CPU, RAM, ổ đĩa."
 
       - alert: DiskAlmostFull
@@ -122,7 +122,7 @@ groups:
         for: 5m
         labels: {severity: critical}
         annotations:
-          summary: "Ổ đĩa còn dưới 15%"
+          summary: "Ổ đĩa {{ $labels.instance }} còn dưới 15%"
           description: "Phân vùng gốc sắp đầy, pipeline và database có thể lỗi."
 
       - alert: HighMemory
@@ -130,13 +130,13 @@ groups:
         for: 10m
         labels: {severity: warning}
         annotations:
-          summary: "RAM máy chủ trên 90%"
+          summary: "RAM {{ $labels.instance }} trên 90%"
           description: "RAM khả dụng thấp liên tục trong 10 phút."
 
       - alert: HighCpu
-        expr: 100 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100 > 90
+        expr: 100 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100 > 90
         for: 10m
         labels: {severity: warning}
         annotations:
-          summary: "CPU máy chủ trên 90%"
+          summary: "CPU {{ $labels.instance }} trên 90%"
           description: "CPU quá tải liên tục trong 10 phút."

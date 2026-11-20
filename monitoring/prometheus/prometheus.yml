@@ -15,12 +15,20 @@ scrape_configs:
     static_configs:
       # Slot A và slot B (blue-green, scripts/deploy.sh): bình thường chỉ một slot chạy, slot kia up = 0.
       # Nhãn application: dashboard JVM (Micrometer) lọc theo nhãn này.
-      - targets: ['127.0.0.1:8081', '127.0.0.1:8086']
+      # Prometheus chạy ở máy 2: app trên máy 1 chỉ nghe 127.0.0.1, nên nginx máy 1 mở cổng 9181 (slot A, 8081) và
+      # 9186 (slot B, 8086), chỉ cho 10.10.0.2 (máy 2) qua WireGuard (docs/devops/nginx/metrics-wireguard.conf).
+      - targets: ['10.10.0.1:9181', '10.10.0.1:9186']
         labels: {application: restaurant-core}
 
+  # Số liệu máy chủ của cả 2 máy. Nhãn instance đặt bằng tên máy để cảnh báo ghi rõ máy nào.
   - job_name: node
     static_configs:
+      # máy 1: nginx 10.10.0.1:9200 -> node-exporter 127.0.0.1:9100
+      - targets: ['10.10.0.1:9200']
+        labels: {instance: may1-prod}
+      # máy 2: node-exporter cùng máy
       - targets: ['127.0.0.1:9100']
+        labels: {instance: may2-mgmt}
 
   # Kiểm từ phía người dùng qua blackbox-exporter (monitoring/blackbox/blackbox.yml): domain thật, nginx, HTTPS
   - job_name: site

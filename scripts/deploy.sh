@@ -139,11 +139,6 @@ else
 fi
 docker image prune -f >/dev/null
 
-# Giám sát chạy từ thư mục này (monitoring/compose.yaml): nạp lại cấu hình vừa cập nhật (luật cảnh báo, target).
-# Chạy từ nơi khác (thư mục dev) thì không đụng, tránh nạp cấu hình của một nhánh đang sửa dở.
-for c in monitoring-prometheus-1 monitoring-alertmanager-1; do
-  if [ "$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "$c" 2>/dev/null)" = "$PWD/monitoring" ]; then
-    docker kill -s HUP "$c" >/dev/null && echo "[deploy] nạp lại cấu hình $c"
-  fi
-done
+# Giám sát (Prometheus, Alertmanager) chạy ở máy 2 từ 20/11/2026: máy 2 tự kéo nhánh main và nạp lại cấu hình
+# (monitoring/sync/rms-monitoring-sync.timer), deploy ở máy 1 không cần làm gì.
 echo "[deploy] xong: ${SHA:0:7}"
