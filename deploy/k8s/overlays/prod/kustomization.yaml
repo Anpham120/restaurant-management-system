@@ -43,6 +43,6 @@ patches:
             parameters: {barmanObjectName: rms-backup-store}
 images:
   - name: ghcr.io/anpham120/rms-app
-    newTag: f1ee69a366a46bc6c2bed6e0e1025da2567e30fc
+    newTag: 36d2ec4d3a30f1993764d42a4f6d639f0621971d
   - name: ghcr.io/anpham120/rms-web
-    newTag: f1ee69a366a46bc6c2bed6e0e1025da2567e30fc
+    newTag: 36d2ec4d3a30f1993764d42a4f6d639f0621971d
