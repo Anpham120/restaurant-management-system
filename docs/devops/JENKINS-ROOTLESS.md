@@ -18,7 +18,6 @@ Các dịch vụ khác của máy 2 (giám sát, SeaweedFS, k3s) vẫn chạy nh
 | Cấu hình Jenkins | `/opt/jenkins/` (bản trong Git: `deploy/jenkins/`), secret ở `/opt/jenkins/secrets/` (700, chủ ci) |
 | Staging tạm thời | `/home/ci/rms-staging` |
 | Bản sao lưu để staging nạp | `/home/coder/rms-backups` (ACL cho ci chỉ đọc) |
-| Jenkins cũ (Docker root, đã dừng, giữ để quay lại) | container `jenkins`, volume `/var/lib/docker/volumes/jenkins_jenkins_home/_data` |
 
 ## Cài đặt (đã làm ngày 20/11/2026, user coder có sudo)
 
@@ -78,13 +77,8 @@ sudo -iu ci docker run --rm -v /var/run/docker.sock:/s docker:29-cli docker -H u
 curl -s -o /dev/null -w '%{http_code}\n' https://jenkins.atlasplatform12.tech/login              # 200
 ```
 
-## Quay lại Jenkins cũ (khi cần)
+## Dọn Jenkins cũ
 
-```bash
-sudo -iu ci sh -c 'cd /opt/jenkins && docker compose stop'
-sudo cp /opt/jenkins/docker-compose.override.yml.root-bak /opt/jenkins/docker-compose.override.yml
-sudo chown -R 1000:1000 /opt/jenkins/secrets
-cd /opt/jenkins && docker compose start
-```
-Jenkinsfile cũ dùng `/home/coder/rms-staging` và socket `/var/run/docker.sock`: quay lại thì phải dùng commit Jenkinsfile
-trước khi chuyển rootless.
+Sau khi pipeline chạy đủ trên bản rootless (main #70, 20/11/2026), Jenkins cũ chạy bằng Docker root đã bị xóa: container
+`jenkins`, volume `jenkins_jenkins_home` (`/var/lib/docker/volumes/jenkins_jenkins_home/_data`, khoảng 1,4 GB), image
+`jenkins-with-docker:local`, network `jenkins_default` của Docker root. Dữ liệu Jenkins hiện chỉ còn ở bản rootless.
