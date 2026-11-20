@@ -53,13 +53,24 @@ pipeline {
                            && [ -z "$(git diff --name-only HEAD^ HEAD | grep -vxE 'deploy/k8s/overlays/(staging|prod)/kustomization.yaml')" ]
                         then echo true; else echo false; fi
                     ''').trim()
-                    echo(env.CHI_DOI_TAG == 'true' ? 'Commit đổi tag image: bỏ qua test, chỉ chờ Argo CD' : 'Commit mã nguồn: chạy đủ kiểm tra')
+                    // Commit merge feature -> develop (của rms-ci) có nội dung (git tree) giống hệt đầu nhánh feature: nhánh đó vừa
+                    // qua đủ kiểm migration + test + quét mã thì mới được merge, test lại cùng nội dung là thừa (~2 phút).
+                    // develop có thay đổi khác xen vào (tree khác) thì vẫn test đủ.
+                    env.DA_TEST = sh(returnStdout: true, script: '''
+                        if [ "$BRANCH_NAME" = develop ] && [ "$(git log -1 --format=%an)" = rms-ci ] \\
+                           && git rev-parse -q --verify HEAD^2 >/dev/null \\
+                           && [ "$(git rev-parse 'HEAD^{tree}')" = "$(git rev-parse 'HEAD^2^{tree}')" ]
+                        then echo true; else echo false; fi
+                    ''').trim()
+                    echo(env.CHI_DOI_TAG == 'true' ? 'Commit đổi tag image: bỏ qua test, chỉ chờ Argo CD'
+                         : env.DA_TEST == 'true' ? 'Nội dung giống hệt nhánh feature đã qua test: bỏ qua test lặp, vẫn chạy staging'
+                         : 'Commit mã nguồn: chạy đủ kiểm tra')
                 }
             }
         }
 
         stage('Kiểm migration') {
-            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false' } }
+            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'DA_TEST', value: 'false' } }
             steps {
                 // Migration phải tương thích ngược (expand/contract) để quay lui image không cần khôi phục database
                 sh 'scripts/check-migrations.sh'
@@ -68,7 +79,7 @@ pipeline {
         }
 
         stage('Kiểm tra song song') {
-            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false' } }
+            when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'DA_TEST', value: 'false' } }
             // Ba việc độc lập chạy cùng lúc: tổng thời gian = việc lâu nhất (test backend) thay vì cộng dồn. Không bỏ bước nào;
             // một nhánh lỗi thì cả stage lỗi như trước, các nhánh còn lại vẫn chạy hết để log đủ thông tin. Kiểm migration vẫn chạy
             // trước (vài giây, lỗi thì dừng sớm không tốn thời gian test). RAM: Maven tối đa 3 GB + Node 2 GB, máy còn trống ~4 GB.
