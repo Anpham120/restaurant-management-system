@@ -22,8 +22,6 @@ configMapGenerator:
       - CORS_ALLOWED_ORIGINS=https://rms.atlasplatform12.tech,https://k8s.rms.atlasplatform12.tech
       - SEPAY_BANK_ACCOUNT=003120082006
       - SEPAY_BANK_NAME=MBBank
-# Giai đoạn chạy song song (Phần 7): 1 bản app vì máy 1 còn chạy Jenkins và production cũ.
-# Nâng lên 2 sau khi chuyển hẳn (xóa patch này).
 patches:
   # Sao lưu liên tục (chỉ production): plugin barman-cloud đẩy WAL lên SeaweedFS máy 2 (backup.yaml).
   # Thêm plugin vào Cluster làm pod DB khởi động lại một lần (thêm sidecar barman-cloud).
@@ -41,6 +39,13 @@ patches:
           - name: barman-cloud.cloudnative-pg.io
             isWALArchiver: true
             parameters: {barmanObjectName: rms-backup-store}
+      # Đẩy WAL lên SeaweedFS chậm nhất mỗi 60 giây (mặc định CloudNativePG 5 phút): máy 1 hỏng hẳn thì mất tối đa
+      # khoảng 1 phút dữ liệu cuối. Chỉ đổi file WAL khi có ghi mới, lúc nhàn rỗi không sinh thêm file. Đổi tham số này
+      # chỉ cần nạp lại cấu hình (SIGHUP), PostgreSQL không khởi động lại.
+      - op: add
+        path: /spec/postgresql
+        value:
+          parameters: {archive_timeout: "60s"}
 images:
   - name: ghcr.io/anpham120/rms-app
     newTag: 3f06844606a1cf5ced7a5dec198e3c1cd2b87c62
