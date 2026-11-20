@@ -1,0 +1,43 @@
+# Cụm máy 2 (mgmt). Jenkins chỉ cần ĐỌC trạng thái Application của Argo CD để biết staging/prod đã triển khai xong.
+# Không cấp quyền sửa: Jenkins không deploy trực tiếp, mọi thay đổi đi qua Git.
+# Áp dụng: kubectl apply -f deploy/k8s/platform/jenkins-ci-rbac.yaml
+# Tạo kubeconfig cho Jenkins: xem tài liệu Phần 7 (file /opt/jenkins/secrets/kubeconfig-ci trên máy 2).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins-ci
+  namespace: argocd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jenkins-ci-read-applications
+  namespace: argocd
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins-ci-read-applications
+  namespace: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jenkins-ci-read-applications
+subjects:
+  - kind: ServiceAccount
+    name: jenkins-ci
+    namespace: argocd
+---
+# Token không hết hạn gắn với ServiceAccount (xóa Secret này là thu hồi token)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jenkins-ci-token
+  namespace: argocd
+  annotations:
+    kubernetes.io/service-account.name: jenkins-ci
+type: kubernetes.io/service-account-token

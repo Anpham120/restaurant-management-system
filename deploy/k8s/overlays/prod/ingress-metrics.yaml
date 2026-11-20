@@ -1,0 +1,16 @@
+# Số liệu app cho Prometheus (máy 2). Tên host nội bộ: nginx máy 1 không bao giờ gửi Host này từ internet
+# (site công khai chỉ gửi rms.atlasplatform12.tech). Đường đi: Prometheus máy 2 -> WireGuard -> nginx máy 1 cổng 9181
+# (chỉ cho 10.10.0.2) -> Traefik 10.43.0.80 với Host rms-metrics.internal -> Service rms-app (bản đang phục vụ).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rms-metrics
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: rms-metrics.internal
+      http:
+        paths:
+          - path: /actuator/prometheus
+            pathType: Exact
+            backend: {service: {name: rms-app, port: {name: http}}}
