@@ -93,6 +93,17 @@ services:
       - grafana-data:/var/lib/grafana
     restart: unless-stopped
 
+  loki:
+    image: grafana/loki:3.6.20
+    network_mode: host
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki:/etc/loki:ro
+      - loki-data:/loki
+    mem_limit: 512m
+    restart: unless-stopped
+
 volumes:
+  loki-data:
   prometheus-data:
   grafana-data:

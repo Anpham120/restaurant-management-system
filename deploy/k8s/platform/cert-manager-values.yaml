@@ -1,0 +1,16 @@
+# Cụm máy 1 (prod). cert-manager cấp chứng chỉ TLS nội bộ cho plugin barman-cloud (operator CloudNativePG nói chuyện
+# với plugin qua gRPC có TLS hai chiều). Không dùng để cấp chứng chỉ HTTPS công khai (việc đó do certbot trên nginx).
+# helm upgrade --install cert-manager jetstack/cert-manager --version v1.21.3 -n cert-manager --create-namespace -f deploy/k8s/platform/cert-manager-values.yaml
+crds:
+  enabled: true
+resources:
+  requests: {cpu: 10m, memory: 48Mi}
+  limits: {memory: 128Mi}
+webhook:
+  resources:
+    requests: {cpu: 10m, memory: 24Mi}
+    limits: {memory: 64Mi}
+cainjector:
+  resources:
+    requests: {cpu: 10m, memory: 48Mi}
+    limits: {memory: 128Mi}

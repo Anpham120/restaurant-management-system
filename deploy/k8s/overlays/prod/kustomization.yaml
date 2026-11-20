@@ -7,10 +7,14 @@ resources:
   - ../../base
   - ingress.yaml
   - ingress-metrics.yaml
+  - pdb.yaml
   - sealed-ghcr-pull.yaml
   - sealed-app-secrets.yaml
   - sealed-db-api.yaml
   - sealed-db-sepay.yaml
+  - sealed-backup-s3.yaml
+  - backup.yaml
+  - db-metrics.yaml
 configMapGenerator:
   - name: rms-app-config
     behavior: merge
@@ -21,10 +25,16 @@ configMapGenerator:
 # Giai đoạn chạy song song (Phần 7): 1 bản app vì máy 1 còn chạy Jenkins và production cũ.
 # Nâng lên 2 sau khi chuyển hẳn (xóa patch này).
 patches:
-  - target: {kind: Rollout, name: rms-app}
+  # Sao lưu liên tục (chỉ production): plugin barman-cloud đẩy WAL lên SeaweedFS máy 2 (backup.yaml).
+  # Thêm plugin vào Cluster làm pod DB khởi động lại một lần (thêm sidecar barman-cloud).
+  - target: {kind: Cluster, name: rms-db}
     patch: |-
-      - {op: replace, path: /spec/replicas, value: 1}
-# Pipeline (Jenkins) chỉ sửa 2 dòng newTag này: đúng commit đã qua staging
+      - op: add
+        path: /spec/plugins
+        value:
+          - name: barman-cloud.cloudnative-pg.io
+            isWALArchiver: true
+            parameters: {barmanObjectName: rms-backup-store}
 images:
   - name: ghcr.io/anpham120/rms-app
     newTag: 8b4477610f5b017fcd5bed6b2def75bb45b508e8

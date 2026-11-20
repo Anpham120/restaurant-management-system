@@ -1,0 +1,72 @@
+# Cụm máy 1 (prod). Grafana Alloy gom log của mọi pod (đọc qua API Kubernetes, không cần mount thư mục máy chủ)
+# rồi đẩy sang Loki ở máy 2 qua WireGuard (nginx máy 2 cổng 3101, chỉ cho 10.10.0.1).
+# helm upgrade --install alloy grafana/alloy --version 1.15.0 -n observability --create-namespace -f deploy/k8s/platform/alloy-values.yaml
+controller:
+  # Đọc log qua API nên chỉ cần 1 bản (không cần DaemonSet trên mỗi node)
+  type: deployment
+  replicas: 1
+alloy:
+  # Chạy không cần quyền root, hợp chuẩn PodSecurity "restricted"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 473
+    runAsGroup: 473
+    allowPrivilegeEscalation: false
+    capabilities: {drop: [ALL]}
+    seccompProfile: {type: RuntimeDefault}
+  resources:
+    requests: {cpu: 20m, memory: 96Mi}
+    limits: {memory: 256Mi}
+  mounts:
+    varlog: false
+    dockercontainers: false
+  configMap:
+    content: |
+      // Tìm mọi pod trong cụm
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // Gắn nhãn dễ lọc: namespace, pod, container, app (nhãn app.kubernetes.io/name)
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+      }
+
+      // Đọc log qua API Kubernetes (như kubectl logs -f)
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.write.may2.receiver]
+      }
+
+      loki.write "may2" {
+        endpoint {
+          url = "http://10.10.0.2:3101/loki/api/v1/push"
+        }
+        external_labels = {cluster = "may1-prod"}
+      }
+configReloader:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 473
+    allowPrivilegeEscalation: false
+    capabilities: {drop: [ALL]}
+    seccompProfile: {type: RuntimeDefault}
+  resources:
+    requests: {cpu: 5m, memory: 16Mi}
+    limits: {memory: 64Mi}

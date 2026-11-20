@@ -1,0 +1,15 @@
+# Khóa S3 (SeaweedFS máy 2) cho plugin barman-cloud. Mã hóa bằng chứng chỉ Sealed Secrets của cụm máy 1 (certs/prod.pem): chỉ cụm đó giải mã được.
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: rms-backup-s3
+  namespace: rms-prod
+spec:
+  encryptedData:
+    ACCESS_KEY_ID: AgASzDFUV+vMWiliqEIHwubA3mfItqSoD7jKnKqxD5nRKmHKKBmZ3HYWn6KEIArwRhgnTyt9pafIxQLVPps72haDAw+gw+SWaKGsXc/A9c2nu6HOCpibohdM3oeIn1nIJEB6IxsEjssEGjrY4DQaBa4avpiHuiswp4hHk1gAQPgwNFD5X/wp/5qLiGooEXDMhFmHydhzbwNMmYUepFdFz6edxrqjBThB+oh3wRqD7SOZR+JbWXETeFJJbzwRvmOtWkBXV9cLQj9SoPSh7Yis33Iz/IJm6Ph/HNaAOxgakT4Swhbs+Q2xq+7aaFJ3dgkCIDnj1Q4ZHq9n5ixVxgETJKxQQjsZKPRCsRnqs9z8HJ3N2+oUjvaMhUElmovaVY7PjiK3nZckhoWgxPwdn0BVbtU2QjX1BcR7RIq8YtJWbID76OPuQVOsWmx9/Nq5yyrR0x3yofYJP/gD5ae5j4eX73Qx60kmM/FCLjTL0mjvmmEbR9oQjXP0/dabLCylhh/N/UHDFtF3kN8+UAXztGI44oxjEOow5ppnc92NqBIbunin/EIvrHDVZ/MdX3na21n8PffbmlZpxGMiEz3vmpI7/fD54HuCRrtDwPrPTRFJ9g3yE3xzpu+O7v1a4TqTIL9++Zr6mIZCdNq3zZcAdFkvnWk7oVGs73zFGDQO7n+K2a23wH3dUz89AStIu2TjwXG6kseu8tfJLfeCVwE2hW2WYfec0fVR9A==
+    ACCESS_SECRET_KEY: AgB0H/xrsDuVjC4hEO3fN4kb+1qXFdMLmb/pI5eW65IJ62qeu6BMl4OBylXV2hXWk4+6Xp13RdWXHWJ4BUvmKlEs6k1bsy/XHMJrl7DsHtHl2q9x9ewN9zlauQXlsy+8g5Y85C4idTOipk6RGIWvnT/SgqkSmwqCJF1Rd25AZa1s8i/zQjudpGk8JCgVpV0o/kTPxBb8lakYNxntqBbDQRD0+ZT2x2HWVur+FQfkETCWrIxeBdm/Que8PBBLoFBuEjkCw6yfkc1o+e26hrPTnNKYCxmWz/UOCBGfpBfz3Na7OKXZ2TZD6ngp8TlnOIVei0wBCvGcE1IqZ27qrAPbwLr8/4ad/w6PQLCaMXAoKiLpEQsCAuqiGm8d+/iHJnbwQ96SVY1t7SRiqMo3YanWxXSJ8p0qTA+H1RF1SnVZnDVyXbjGGXV8vJU0bzZaLeyd3pAHxrAxmBS/uuTMgidGQGbXPsa7ySj7APJoXYpbomzaGyl0HKiMVFnlFXdVErtLMOmbZnRAO5Syf1xy/D2Im071lE+5tLXJawO+vxQ+Ql70+gtn0kY6zctpao47ufPOsEKZ9ILSO3fsW9eU8eeW+Ux/2hi8w7GQ835xfFRaOznHpKf+OPPQU7NeHaDG5ocKI8qGlanTlkwm+6ve/xtJrxDoo73Fkft/1QKvXNmPkJNM3sq45UfShw/nWU0p0TWC78hgGAMcteQS7zHU0SG3j7CIhZt5E2DnbgaDPoH/qozBZ8XJZ9t3R//X
+  template:
+    metadata:
+      name: rms-backup-s3
+      namespace: rms-prod

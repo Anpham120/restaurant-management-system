@@ -107,6 +107,24 @@ groups:
           summary: "Quá 26 giờ chưa gửi bản sao lưu ra ngoài máy chủ"
           description: "Cron offsite-backup.sh (02:35 giờ VN) lỗi: thiếu khóa, token Telegram hoặc mạng. Xem /home/coder/rms-backups/backup.log"
 
+      # Sao lưu liên tục (CloudNativePG + barman-cloud lên SeaweedFS máy 2). Không dùng "thời gian từ lần đẩy WAL cuối":
+      # DB rảnh thì không có WAL mới để đẩy, số đó tăng mà không phải lỗi.
+      - alert: WalArchivingFailing
+        expr: increase(cnpg_pg_stat_archiver_failed_count[15m]) > 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Đẩy WAL lên kho sao lưu bị lỗi"
+          description: "PostgreSQL không đẩy được WAL lên SeaweedFS (máy 2): không khôi phục được tới thời điểm gần nhất. Xem kubectl -n rms-prod logs rms-db-1 -c plugin-barman-cloud."
+
+      - alert: PostgresExporterDown
+        expr: up{job="cnpg"} == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Mất số liệu PostgreSQL"
+          description: "Không đọc được số liệu CloudNativePG (cổng 9182 máy 1), không theo dõi được sao lưu WAL."
+
   - name: host
     rules:
       - alert: NodeExporterDown

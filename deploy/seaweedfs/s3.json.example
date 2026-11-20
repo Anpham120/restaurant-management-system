@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "cnpg-rms-prod",
+      "credentials": [{"accessKey": "<tạo ngẫu nhiên>", "secretKey": "<tạo ngẫu nhiên>"}],
+      "actions": ["Read:rms-pg-backups", "Write:rms-pg-backups", "List:rms-pg-backups", "Tagging:rms-pg-backups"]
+    }
+  ]
+}
