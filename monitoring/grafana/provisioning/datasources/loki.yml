@@ -1,0 +1,10 @@
+# Nguồn log cho Grafana: Loki cùng máy 2. Xem log ở Explore, chọn Loki, ví dụ {namespace="rms-prod", app="rms-app"}.
+apiVersion: 1
+datasources:
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://127.0.0.1:3100
+    jsonData:
+      maxLines: 1000

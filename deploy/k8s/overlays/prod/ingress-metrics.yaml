@@ -14,3 +14,7 @@ spec:
           - path: /actuator/prometheus
             pathType: Exact
             backend: {service: {name: rms-app, port: {name: http}}}
+          # Số liệu PostgreSQL / sao lưu WAL (CloudNativePG), qua nginx máy 1 cổng 9182
+          - path: /metrics
+            pathType: Exact
+            backend: {service: {name: rms-db-metrics, port: {name: metrics}}}

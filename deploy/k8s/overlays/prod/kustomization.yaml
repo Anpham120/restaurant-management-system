@@ -14,6 +14,7 @@ resources:
   - sealed-db-sepay.yaml
   - sealed-backup-s3.yaml
   - backup.yaml
+  - db-metrics.yaml
 configMapGenerator:
   - name: rms-app-config
     behavior: merge

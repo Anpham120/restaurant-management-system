@@ -1,0 +1,47 @@
+# Loki (máy 2): kho log tập trung. Alloy trên cụm máy 1 đẩy log của mọi pod vào đây; xem bằng Grafana (Explore).
+# Một tiến trình, lưu trên đĩa (volume monitoring_loki-data = /var/lib/docker/volumes/monitoring_loki-data/_data),
+# giữ 7 ngày. Chỉ nghe 127.0.0.1; nginx máy 2 cổng 3101 nhận log từ 10.10.0.1 (docs/devops/nginx/loki-wireguard.conf).
+auth_enabled: false
+
+server:
+  http_listen_address: 127.0.0.1
+  http_listen_port: 3100
+  grpc_listen_address: 127.0.0.1
+  grpc_listen_port: 9096
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2026-11-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # Xóa log cũ hơn 7 ngày (compactor thực hiện)
+  retention_period: 168h
+  ingestion_rate_mb: 4
+  ingestion_burst_size_mb: 8
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+analytics:
+  reporting_enabled: false
