@@ -1,0 +1,10 @@
+# Máy 2: /etc/systemd/system/rms-monitoring-sync.service
+[Unit]
+Description=Đồng bộ cấu hình giám sát RMS từ nhánh main
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=coder
+ExecStart=/home/coder/rms-deploy/monitoring/sync/rms-monitoring-sync.sh
