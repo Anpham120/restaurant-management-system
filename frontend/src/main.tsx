@@ -15,6 +15,7 @@ import { InvoicePage } from './pages/InvoicePage';
 import { KitchenPage } from './pages/KitchenPage';
 import { LoginPage } from './pages/LoginPage';
 import { OrderPage } from './pages/OrderPage';
+import { ReadyOrdersPage } from './pages/ReadyOrdersPage';
 import { TablesPage } from './pages/TablesPage';
 import { CashPage } from './pages/finance/CashPage';
 import { IncidentsPage } from './pages/finance/IncidentsPage';
@@ -87,6 +88,7 @@ createRoot(document.getElementById('root')!).render(
                 }
               >
                 <Route path="/tables" element={<RequireAuth roles={['WAITER', 'CASHIER', 'MANAGER']}><TablesPage /></RequireAuth>} />
+                {guarded('/ready-orders', ['WAITER'], <ReadyOrdersPage />)}
                 <Route path="/orders/:orderId" element={<RequireAuth roles={['WAITER', 'CASHIER', 'MANAGER']}><OrderPage /></RequireAuth>} />
                 <Route path="/orders/:orderId/invoice" element={<RequireAuth roles={['CASHIER', 'MANAGER']}><InvoicePage /></RequireAuth>} />
                 <Route path="/kitchen" element={<RequireAuth roles={['KITCHEN', 'MANAGER']}><KitchenPage /></RequireAuth>} />

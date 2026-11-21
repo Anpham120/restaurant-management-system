@@ -79,6 +79,11 @@ public class OrderServiceImpl implements OrderService {
         return orderQueryRepository.findOrderItemEvents(itemId);
     }
 
+    @Override
+    public List<OrderItemResponse> getReadyOrderItems() {
+        return orderQueryRepository.findKitchenQueue(List.of(OrderItemStatus.READY.name()));
+    }
+
     // ---------- gọi món
 
     @Override

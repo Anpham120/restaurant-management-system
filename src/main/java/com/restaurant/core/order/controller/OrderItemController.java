@@ -39,6 +39,12 @@ public class OrderItemController {
         this.currentUser = currentUser;
     }
 
+    @GetMapping("/ready")
+    @PreAuthorize("hasRole('WAITER')")
+    public ApiResponse<List<OrderItemResponse>> getReadyOrderItems() {
+        return ApiResponse.ok(orderService.getReadyOrderItems());
+    }
+
     @GetMapping("/{itemId}/events")
     @PreAuthorize("hasAnyRole('MANAGER', 'WAITER', 'CASHIER', 'KITCHEN')")
     public ApiResponse<List<ItemEventResponse>> getOrderItemHistory(@PathVariable @Positive long itemId) {

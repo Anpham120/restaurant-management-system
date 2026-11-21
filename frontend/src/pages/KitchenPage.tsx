@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../api/client';
+import { readyOrdersQuery } from '../api/readyOrders';
 import type { AcceptItemResponse, ItemStatus, OrderItem } from '../api/types';
 import { ErrorNotice } from '../components/ErrorNotice';
+import { Icon } from '../components/Icon';
 import { ReasonDialog } from '../components/ReasonDialog';
 import { useToast } from '../components/Toast';
 import { clock, minutesSince } from '../lib/format';
@@ -63,6 +65,10 @@ export function KitchenPage() {
       }
       setRejecting(null);
       queryClient.invalidateQueries({ queryKey: ['kitchen-queue'] });
+      if (v.action === 'finish') {
+        queryClient.invalidateQueries({ queryKey: readyOrdersQuery.queryKey });
+        queryClient.invalidateQueries({ queryKey: ['order', v.item.orderId] });
+      }
     },
   });
 
@@ -104,7 +110,7 @@ export function KitchenPage() {
           return (
             <section className="pass-col" key={col.key} data-col={col.key} aria-label={col.title}>
               <h2>
-                <span>{col.title}</span>
+                <span>{col.key === 'ready' && <Icon name="bell" size={16} />} {col.title}</span>
                 <span className="num">{list.length}</span>
               </h2>
               <div className="stack">

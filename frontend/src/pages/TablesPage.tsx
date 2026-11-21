@@ -3,6 +3,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { Link, useNavigate } from 'react-router';
 
 import { api } from '../api/client';
+import { readyOrdersQuery } from '../api/readyOrders';
 import type { OpenSessionResponse, OrderItem, OrderResponse, TableResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorNotice } from '../components/ErrorNotice';
@@ -41,12 +42,14 @@ export function TablesPage() {
   const canOpen = hasRole('WAITER', 'MANAGER');
   const canServe = hasRole('WAITER', 'MANAGER');
   const canPay = hasRole('CASHIER', 'MANAGER');
+  const showsReadyNotices = hasRole('WAITER');
 
   const tables = useQuery({
     queryKey: ['tables'],
     queryFn: () => api.get<TableResponse[]>('/api/tables'),
     refetchInterval: 10_000,
   });
+  const ready = useQuery({ ...readyOrdersQuery, enabled: showsReadyNotices });
   const list = tables.data ?? [];
 
   // Phiếu của mỗi bàn đang có khách: tiến độ món, món xong chờ bưng, tạm tính
@@ -82,23 +85,29 @@ export function TablesPage() {
       for (const i of items) await api.post(`/api/order-items/${i.id}/serve`);
       return items.length;
     },
-    onSuccess: (n, items) => {
-      toast(`Đã bưng ${n} món`);
+    onSuccess: (n) => toast(`Đã bưng ${n} món`),
+    onSettled: (_n, _error, items) => {
       queryClient.invalidateQueries({ queryKey: ['order', items[0]?.orderId] });
       queryClient.invalidateQueries({ queryKey: ['kitchen-queue'] });
+      queryClient.invalidateQueries({ queryKey: readyOrdersQuery.queryKey });
     },
   });
 
   const counts = { all: list.length, free: 0, busy: 0, bill: 0 };
   list.forEach((t) => (counts[stateOf(t)] += 1));
   const shown = list.filter((t) => filter === 'all' || stateOf(t) === filter);
-  const readyAll = busy.flatMap((t) => (orderByTable.get(t.id)?.items ?? []).filter((i) => i.status === 'READY'));
-  const readyTables = [...new Set(readyAll.map((i) => i.tableCode))];
+  const readyAll = showsReadyNotices ? ready.data ?? [] : [];
+  const readyCounts = new Map<number, number>();
+  for (const item of readyAll) {
+    readyCounts.set(item.orderId, (readyCounts.get(item.orderId) ?? 0) + 1);
+  }
 
   const selected = list.find((t) => t.id === selectedId) ?? null;
   const selOrder = selected ? orderByTable.get(selected.id) : undefined;
   const selState = selected ? stateOf(selected) : 'free';
-  const selReady = (selOrder?.items ?? []).filter((i) => i.status === 'READY');
+  const selReady = showsReadyNotices && ready.data
+    ? readyAll.filter((i) => i.orderId === selected?.currentOrderId)
+    : (selOrder?.items ?? []).filter((i) => i.status === 'READY');
   const now = Date.now();
 
   return (
@@ -142,10 +151,7 @@ export function TablesPage() {
       {readyAll.length > 0 && (
         <div className="notice notice-info banner">
           <Icon name="bell" />
-          <span>
-            <b>{readyAll.length} món đã xong, chờ bưng:</b>{' '}
-            {readyTables.map((c) => `${c} (${readyAll.filter((i) => i.tableCode === c).length})`).join(' · ')}
-          </span>
+          <Link to="/ready-orders"><b>{readyAll.length} món chờ mang ra ở {readyCounts.size} bàn</b></Link>
         </div>
       )}
 
@@ -160,10 +166,11 @@ export function TablesPage() {
             const o = orderByTable.get(t.id);
             const items = live(o);
             const done = items.filter((i) => i.status === 'SERVED' || i.status === 'READY').length;
-            const ready = items.filter((i) => i.status === 'READY').length;
+            const readyCount = t.currentOrderId == null ? 0 : readyCounts.get(t.currentOrderId) ?? 0;
             return (
               <button key={t.id} type="button" className="table-tile" data-state={st} aria-pressed={t.id === selectedId}
-                      aria-label={`Bàn ${t.code}, ${STATE_LABEL[st]}, ${t.capacity} chỗ`} onClick={() => setSelectedId(t.id)}>
+                      aria-label={`Bàn ${t.code}, ${STATE_LABEL[st]}, ${t.capacity} chỗ${readyCount ? `, ${readyCount} món chờ mang ra` : ''}`}
+                      onClick={() => setSelectedId(t.id)}>
                 <span className="tile-top">
                   <span className="code">{t.code}</span>
                   <span className={STATE_CHIP[st]}>{STATE_LABEL[st]}</span>
@@ -175,7 +182,7 @@ export function TablesPage() {
                     <span>{o ? `${elapsed(o.session.openedAt, now)} · ${done}/${items.length} món` : 'Đang tải…'}</span>
                     <span className="tile-foot">
                       <span className="num total">{vnd(subtotal(o))}</span>
-                      {ready > 0 && <span className="ready-badge">{ready} xong</span>}
+                      {readyCount > 0 && <span className="ready-badge">{readyCount} món xong</span>}
                     </span>
                   </span>
                 )}
