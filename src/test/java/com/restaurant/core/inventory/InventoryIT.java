@@ -8,13 +8,16 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.ResultActions;
 
+import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.order.OrderApiTestBase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,6 +25,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** Danh mục nguyên liệu, nhập → xuất → bếp nhận → sơ chế → hủy/hoàn trả/kiểm kê, lô hỏng, báo cáo kho. */
 class InventoryIT extends OrderApiTestBase {
+
+    @MockitoSpyBean
+    private BusinessDateProvider businessClock;
 
     private static String uniq(String p) {
         return p + " " + System.nanoTime() % 1_000_000_000L;
@@ -47,14 +53,23 @@ class InventoryIT extends OrderApiTestBase {
     }
 
     private String receiptBody(String requestKey, long ingredientId, int kg) {
+        return receiptBody(requestKey, ingredientId, kg, LocalDate.now().plusDays(30));
+    }
+
+    private String receiptBody(String requestKey, long ingredientId, int kg, LocalDate expiryDate) {
         return "{\"requestKey\":\"" + requestKey + "\",\"supplierName\":\"NCC Test\",\"items\":[{\"ingredientId\":" + ingredientId
                 + ",\"inputQuantity\":" + kg + ",\"inputUnit\":\"kg\",\"conversionFactor\":1000,\"unitPricePerInputUnit\":120000,"
-                + "\"lotCode\":\"L1\",\"expiryDate\":\"" + LocalDate.now().plusDays(30) + "\"}]}";
+                + "\"lotCode\":\"L1\",\"expiryDate\":" + (expiryDate == null ? "null" : "\"" + expiryDate + "\"") + "}]}";
     }
 
     /** Nhập + xác nhận một lô RAW; trả id lô. */
     private long receive(long ingredientId, int kg) throws Exception {
-        long receipt = readLong(postJson(manager, "/api/stock-receipts", receiptBody(key(), ingredientId, kg)).andExpect(status().isCreated()), "$.data.id");
+        return receive(ingredientId, kg, LocalDate.now().plusDays(30));
+    }
+
+    private long receive(long ingredientId, int kg, LocalDate expiryDate) throws Exception {
+        long receipt = readLong(postJson(manager, "/api/stock-receipts", receiptBody(key(), ingredientId, kg, expiryDate))
+                .andExpect(status().isCreated()), "$.data.id");
         return readLong(postJson(manager, "/api/stock-receipts/{id}/confirm", "{}", receipt).andExpect(status().isOk()), "$.data.lines[0].inventoryBatchId");
     }
 
@@ -220,6 +235,86 @@ class InventoryIT extends OrderApiTestBase {
         // khoảng quá 93 ngày bị từ chối: không kéo cả sổ kho nhiều năm vào bộ nhớ
         getAs(manager, "/api/inventory/history?from=" + now.minus(100, ChronoUnit.DAYS) + "&to=" + now)
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void warnsAboutExpiringLotsAndKeepsExpiredQuantitiesUntilManagerDisposal() throws Exception {
+        Instant now = Instant.now();
+        LocalDate today = BusinessDateProvider.businessDateOf(now);
+        doReturn(now).when(businessClock).now();
+        long ingredient = readLong(postJson(manager, "/api/ingredients", """
+                {"name":"%s","baseUnit":"g","expiryTracked":false}
+                """.formatted(uniq("Bột"))).andExpect(status().isCreated()), "$.data.id");
+        long direct = type(ingredient, uniq("Bột tại bếp"), "DIRECT");
+        long older = receive(ingredient, 2, today.plusDays(7));
+        long earlierExpiry = receive(ingredient, 2, today.plusDays(1));
+        long later = receive(ingredient, 2, today.plusDays(8));
+        long noExpiry = receive(ingredient, 2, null);
+        String rawLots = "/api/inventory/raw-lots?ingredientId=" + ingredient;
+        String kitchenLots = "/api/inventory/kitchen-lots?typeId=" + direct;
+
+        getAs(kitchen, rawLots).andExpect(status().isForbidden());
+        getAs(manager, rawLots).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].inventoryBatchId").value((int) earlierExpiry))
+                .andExpect(jsonPath("$.data[0].expiryStatus").value("EXPIRING_SOON"))
+                .andExpect(jsonPath("$.data[1].inventoryBatchId").value((int) older))
+                .andExpect(jsonPath("$.data[1].expiryStatus").value("EXPIRING_SOON"))
+                .andExpect(jsonPath("$.data[2].inventoryBatchId").value((int) later))
+                .andExpect(jsonPath("$.data[2].expiryStatus").value("NONE"))
+                .andExpect(jsonPath("$.data[3].inventoryBatchId").value((int) noExpiry))
+                .andExpect(jsonPath("$.data[3].expiryStatus").value("NONE"));
+
+        long issue = readLong(postJson(manager, "/api/stock-issues", """
+                {"requestKey":"%s","items":[{"inventoryBatchId":%d,"quantity":500,"fulfillmentMode":"DIRECT"}]}
+                """.formatted(key(), earlierExpiry)).andExpect(status().isCreated()), "$.data.id");
+        postEmpty(manager, "/api/stock-issues/{id}/issue", issue).andExpect(status().isOk());
+        long kitchenBatch = readLong(postEmpty(kitchen, "/api/stock-issues/{id}/receive", issue).andExpect(status().isOk()),
+                "$.data.lines[0].kitchenBatchId");
+        getAs(kitchen, kitchenLots).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].expiryStatus").value("EXPIRING_SOON"))
+                .andExpect(jsonPath("$.data[0].createdAt", notNullValue()));
+        long dish = data.dish(30000, null, null).dailyMenuItemId();
+        long menuItem = data.count("SELECT menu_item_id FROM daily_menu_items WHERE id = ?", dish);
+        postJson(manager, "/api/menu-items/{id}/recipes", """
+                {"ingredients":[{"kitchenIngredientTypeId":%d,"quantityPerServing":200}]}
+                """.formatted(direct), menuItem).andExpect(status().isCreated());
+        long orderItem = submitOne(openTable()[2], dish, 1);
+        postEmpty(kitchen, "/api/order-items/{id}/accept", orderItem).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result").value("ACCEPTED"));
+
+        doReturn(BusinessDateProvider.startOf(today.plusDays(2))).when(businessClock).now();
+        postEmpty(kitchen, "/api/order-items/{id}/start-cooking", orderItem).andExpect(status().isConflict());
+
+        long expiredIssue = readLong(postJson(manager, "/api/stock-issues", """
+                {"requestKey":"%s","items":[{"inventoryBatchId":%d,"quantity":1,"fulfillmentMode":"DIRECT"}]}
+                """.formatted(key(), earlierExpiry)).andExpect(status().isCreated()), "$.data.id");
+        postEmpty(manager, "/api/stock-issues/{id}/issue", expiredIssue).andExpect(status().isConflict());
+        long adjustment = readLong(postJson(manager, "/api/stock-adjustments", """
+                {"requestKey":"%s","adjustmentType":"EXPIRED","reason":"Hết hạn sử dụng",
+                 "items":[{"rawBatchId":%d,"quantity":1500},{"kitchenBatchId":%d,"quantity":500}]}
+                """.formatted(key(), earlierExpiry, kitchenBatch)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status").value("DRAFT")), "$.data.id");
+        postEmpty(kitchen, "/api/stock-adjustments/{id}/confirm", adjustment).andExpect(status().isForbidden());
+        getAs(manager, rawLots).andExpect(jsonPath("$.data[0].usable").value(false))
+                .andExpect(jsonPath("$.data[0].expiryStatus").value("EXPIRED"))
+                .andExpect(jsonPath("$.data[0].quantityOnHand").value(1500.0));
+        getAs(kitchen, kitchenLots).andExpect(jsonPath("$.data[0].usable").value(false))
+                .andExpect(jsonPath("$.data[0].expiryStatus").value("EXPIRED"))
+                .andExpect(jsonPath("$.data[0].quantityOnHand").value(500.0))
+                .andExpect(jsonPath("$.data[0].reservedQuantity").value(200.0));
+
+        postEmpty(manager, "/api/stock-adjustments/{id}/confirm", adjustment).andExpect(status().isConflict());
+        assertThat(rawOnHand(earlierExpiry).intValue()).isEqualTo(1500);
+        postJson(waiter, "/api/order-items/{id}/cancel", reason("Khách đổi món"), orderItem).andExpect(status().isOk());
+        postEmpty(manager, "/api/stock-adjustments/{id}/confirm", adjustment).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+        getAs(manager, rawLots).andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[0].inventoryBatchId").value((int) older));
+        getAs(kitchen, kitchenLots).andExpect(jsonPath("$.data.length()").value(0));
+        assertThat(data.count("""
+                SELECT count(*) FROM stock_movements m JOIN stock_adjustment_items i ON i.id = m.stock_adjustment_item_id
+                 WHERE i.stock_adjustment_id = ? AND m.movement_type = 'WASTE'
+                """, adjustment)).isEqualTo(2);
     }
 
     @Test

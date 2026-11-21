@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router';
 
 import { api } from '../../api/client';
-import type { KitchenStockRow, RawStockRow, UnusableLotRow } from '../../api/types';
+import type { KitchenStockRow, LotExpiryStatus, RawStockRow, UnusableLotRow } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { ReasonDialog } from '../../components/ReasonDialog';
@@ -11,6 +12,17 @@ import { amount, dateTime, day } from '../../lib/format';
 import { STOCK_KEYS, useHandover, useKitchenLots, useRawLots } from './shared';
 
 type TabKey = 'raw' | 'kitchen' | 'handover' | 'unusable';
+type ExpiryAlert = {
+  kind: 'raw' | 'kitchen';
+  id: number;
+  name: string;
+  expiry: string;
+  receivedAt: string;
+  onHand: number;
+  reserved: number;
+  unit: string;
+  status: LotExpiryStatus;
+};
 
 /** Tồn kho RAW, tồn bếp, hàng đang bàn giao/chờ sơ chế, lô không dùng được; đánh dấu lô hỏng. */
 export function StockPage() {
@@ -19,7 +31,7 @@ export function StockPage() {
   const [marking, setMarking] = useState<{ kind: 'RAW' | 'KITCHEN'; id: number; label: string } | null>(null);
 
   const raw = useQuery({ queryKey: ['raw-stock'], queryFn: () => api.get<RawStockRow[]>('/api/inventory/raw-stock'), enabled: isManager && tab === 'raw' });
-  const rawLots = useRawLots(isManager && tab === 'raw');
+  const rawLots = useRawLots(isManager);
   const kitchen = useQuery({ queryKey: ['kitchen-stock'], queryFn: () => api.get<KitchenStockRow[]>('/api/inventory/kitchen-stock'), enabled: tab === 'kitchen' });
   const kitchenLots = useKitchenLots();
   const handover = useHandover();
@@ -36,11 +48,40 @@ export function StockPage() {
     ? [['raw', 'Kho nguyên liệu'], ['kitchen', 'Tồn bếp'], ['handover', 'Đang bàn giao, chờ sơ chế'], ['unusable', 'Lô không dùng được']]
     : [['kitchen', 'Tồn bếp'], ['handover', 'Đang bàn giao, chờ sơ chế'], ['unusable', 'Lô không dùng được']];
 
+  const alerts: ExpiryAlert[] = [
+    ...(isManager ? rawLots.data ?? [] : []).map((lot): ExpiryAlert => ({
+      kind: 'raw', id: lot.inventoryBatchId, name: lot.ingredientName, expiry: day(lot.expiryDate),
+      receivedAt: lot.receivedAt, onHand: lot.quantityOnHand, reserved: 0, unit: lot.baseUnit, status: lot.expiryStatus,
+    })),
+    ...(kitchenLots.data ?? []).map((lot): ExpiryAlert => ({
+      kind: 'kitchen', id: lot.kitchenBatchId, name: lot.typeName, expiry: dateTime(lot.usableUntil),
+      receivedAt: lot.createdAt, onHand: lot.quantityOnHand, reserved: lot.reservedQuantity, unit: lot.baseUnit, status: lot.expiryStatus,
+    })),
+  ].filter((lot) => lot.status === 'EXPIRED' || lot.status === 'EXPIRING_SOON')
+    .sort((a, b) => Date.parse(a.receivedAt) - Date.parse(b.receivedAt) || a.id - b.id);
+
   return (
     <main className="main">
       <PageHead title="Tồn kho" />
+      <ErrorNotice error={raw.error ?? rawLots.error ?? kitchen.error ?? kitchenLots.error ?? handover.error ?? unusable.error ?? mark.error} />
+      {alerts.length > 0 && (
+        <section className="panel stack" aria-labelledby="lot-expiry-heading">
+          <h2 id="lot-expiry-heading">Cảnh báo hạn dùng</h2>
+          <p className="muted">Lô sắp hết hạn trong 7 ngày và lô đã hết hạn còn trong sổ. Lô nhập trước hiển thị trước. Quản lý xác nhận phiếu hủy để trừ số lượng.</p>
+          <DataTable rows={alerts} rowKey={(lot) => `${lot.kind}-${lot.id}`} empty="Không có lô sắp hết hạn hoặc đã hết hạn."
+            columns={[
+              { header: 'Lô', render: (lot) => <>{lot.kind === 'raw' ? 'Kho' : 'Bếp'} · <b>{lot.name}</b> · #{lot.id}</> },
+              { header: 'Vào kho / bếp', render: (lot) => dateTime(lot.receivedAt) },
+              { header: 'Hạn dùng', render: (lot) => lot.expiry },
+              { header: 'Còn trong sổ', render: (lot) => <>{amount(lot.onHand, lot.unit)}{lot.reserved > 0 && <div className="muted">Đang giữ {amount(lot.reserved, lot.unit)}</div>}</>, align: 'right' },
+              { header: 'Trạng thái', render: (lot) => lot.status === 'EXPIRED' ? <StatusTag tone="stop">Đã hết hạn</StatusTag> : <StatusTag tone="wait">Sắp hết hạn</StatusTag> },
+              { header: '', render: (lot) => lot.status === 'EXPIRED' && (lot.onHand > lot.reserved
+                ? <Link className="btn btn-sm" to={`/inventory/returns?expired=${lot.kind}:${lot.id}`}>Lập phiếu hủy</Link>
+                : <small className="muted">Bếp cần cấp lại nguyên liệu</small>) },
+            ]} />
+        </section>
+      )}
       <Tabs value={tab} onChange={setTab} options={tabs} />
-      <ErrorNotice error={raw.error ?? kitchen.error ?? handover.error ?? unusable.error ?? mark.error} />
 
       {tab === 'raw' && (
         <div className="stack">
