@@ -38,12 +38,12 @@ public final class InventoryReportRows {
     }
 
     public record RawLotRow(long inventoryBatchId, long ingredientId, String ingredientName, String lotCode, LocalDate expiryDate,
-                            Instant receivedAt, BigDecimal quantityOnHand, boolean usable, String baseUnit) {
+                            Instant receivedAt, BigDecimal quantityOnHand, boolean usable, String baseUnit, String expiryStatus) {
     }
 
     /** directIssueItemId: dòng xuất DIRECT sinh ra lô (null nếu lô từ sơ chế) — cần khi hoàn trả về kho. */
     public record KitchenLotRow(long kitchenBatchId, long kitchenIngredientTypeId, String typeName, BigDecimal quantityOnHand,
                                 BigDecimal reservedQuantity, Instant usableUntil, boolean usable, Long directIssueItemId,
-                                String baseUnit) {
+                                String baseUnit, Instant createdAt, String expiryStatus) {
     }
 }

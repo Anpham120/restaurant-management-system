@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router';
 
 import { api, newRequestKey } from '../../api/client';
 import type { Adjustment, AdjustmentHeader, ReturnHeader, StockReturn, PageResponse } from '../../api/types';
@@ -16,13 +17,16 @@ type Line = { source: Source; quantity: string; note: string };
 /** Hoàn trả hàng bếp chưa dùng về kho; hủy hàng hư hỏng/hết hạn. Bếp lập phiếu, quản lý xác nhận. */
 export function ReturnsPage() {
   const isManager = useAuth().hasRole('MANAGER');
-  const [tab, setTab] = useState<'returns' | 'adjustments'>('returns');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const expired = searchParams.get('expired') ?? '';
+  const expirySource = /^(raw|kitchen):[1-9][0-9]*$/.test(expired) && (isManager || expired.startsWith('kitchen:')) ? expired : '';
+  const [tab, setTab] = useState<'returns' | 'adjustments'>(expirySource ? 'adjustments' : 'returns');
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [requestKey, setRequestKey] = useState(newRequestKey());
-  const [reason, setReason] = useState('');
-  const [adjType, setAdjType] = useState('DAMAGE');
-  const [lines, setLines] = useState<Line[]>([{ source: '', quantity: '', note: '' }]);
+  const [creating, setCreating] = useState(Boolean(expirySource));
+  const [requestKey, setRequestKey] = useState(newRequestKey);
+  const [reason, setReason] = useState(expirySource ? 'Hết hạn sử dụng' : '');
+  const [adjType, setAdjType] = useState(expirySource ? 'EXPIRED' : 'DAMAGE');
+  const [lines, setLines] = useState<Line[]>([{ source: expirySource, quantity: '', note: '' }]);
 
   const handover = useHandover();
   const kitchenLots = useKitchenLots();
@@ -48,7 +52,7 @@ export function ReturnsPage() {
       if (isManager && r.status === 'DRAFT') await api.post(`/api/${path}/${r.id}/confirm`);
       return r;
     },
-    { success: isManager ? 'Đã ghi phiếu vào sổ kho' : 'Đã lập phiếu, chờ quản lý xác nhận', invalidate: keys, onSuccess: (r) => { setCreating(false); setSelectedId(r.id); } },
+    { success: isManager ? 'Đã ghi phiếu vào sổ kho' : 'Đã lập phiếu, chờ quản lý xác nhận', invalidate: keys, onSuccess: (r) => { closeCreate(); setSelectedId(r.id); } },
   );
   const saveDraft = () => {
       if (tab === 'returns') {
@@ -72,6 +76,15 @@ export function ReturnsPage() {
       });
   };
   const confirm = useAction(() => api.post(`/api/${path}/${selectedId}/confirm`), { success: 'Đã xác nhận phiếu', invalidate: [...keys, [path, selectedId]] });
+
+  function closeCreate() {
+    setCreating(false);
+    if (searchParams.has('expired')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('expired');
+      setSearchParams(next, { replace: true });
+    }
+  }
 
   function start() {
     setRequestKey(newRequestKey());
@@ -130,9 +143,10 @@ export function ReturnsPage() {
         </aside>
       </div>
 
-      <FormModal open={creating} wide title={tab === 'returns' ? 'Lập phiếu hoàn trả' : 'Lập phiếu hủy hàng'} submitLabel={isManager ? 'Ghi vào sổ kho' : 'Gửi quản lý xác nhận'}
-                 busy={create.isPending} error={create.error} onSubmit={() => create.mutate(undefined)} onClose={() => setCreating(false)}
-                 description={tab === 'returns' ? 'Chỉ trả được hàng nhận từ phiếu xuất (dùng thẳng hoặc chờ sơ chế), không trả thành phẩm sơ chế.' : 'Phần đang giữ cho món không hủy được; số liệu kiểm lại khi xác nhận.'}>
+      <FormModal open={creating} wide title={tab === 'returns' ? 'Lập phiếu hoàn trả' : 'Lập phiếu hủy hàng'}
+                 submitLabel={isManager ? (tab === 'adjustments' ? 'Xác nhận hủy và ghi sổ' : 'Ghi vào sổ kho') : 'Gửi quản lý xác nhận'}
+                 busy={create.isPending} error={create.error} onSubmit={() => create.mutate(undefined)} onClose={closeCreate}
+                 description={tab === 'returns' ? 'Chỉ trả được hàng nhận từ phiếu xuất (dùng thẳng hoặc chờ sơ chế), không trả thành phẩm sơ chế.' : 'Sổ kho chỉ trừ số lượng khi quản lý xác nhận. Phần đang giữ cho món cần được giải phóng trước khi hủy.'}>
         <div className="form-grid">
           {tab === 'adjustments' && (
             <Field label="Loại">

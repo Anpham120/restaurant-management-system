@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +28,8 @@ import com.restaurant.core.inventory.service.InventoryReportService;
 
 @Service
 public class InventoryReportServiceImpl implements InventoryReportService {
+
+    private static final int EXPIRY_WARNING_DAYS = 7;
 
     private final InventoryReportRepository repo;
     private final BusinessDateProvider clock;
@@ -99,12 +102,14 @@ public class InventoryReportServiceImpl implements InventoryReportService {
 
     @Override
     public List<RawLotRow> getRawLots(Long ingredientId) {
-        return repo.findRawLots(ingredientId, clock.today());
+        LocalDate today = clock.today();
+        return repo.findRawLots(ingredientId, today, today.plusDays(EXPIRY_WARNING_DAYS));
     }
 
     @Override
     public List<KitchenLotRow> getKitchenLots(Long typeId) {
-        return repo.findKitchenLots(typeId);
+        Instant now = clock.now();
+        return repo.findKitchenLots(typeId, now, now.plus(EXPIRY_WARNING_DAYS, ChronoUnit.DAYS));
     }
 
     private static ApiException invalidDateRangeError() {

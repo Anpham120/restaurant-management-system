@@ -16,7 +16,6 @@ import com.restaurant.core.inventory.dto.response.InventoryReportRows.Preparatio
 import com.restaurant.core.inventory.dto.response.InventoryReportRows.RawLotRow;
 import com.restaurant.core.inventory.dto.response.InventoryReportRows.RawStockRow;
 import com.restaurant.core.inventory.dto.response.InventoryReportRows.StockHistoryRow;
-import com.restaurant.core.inventory.dto.response.InventoryReportRows.UnusableLotRow;
 
 /**
  * Truy vấn CHỈ ĐỌC cho báo cáo kho và danh sách lô để chọn khi lập chứng từ. Mốc "hôm nay" / "bây giờ" do Service
@@ -180,29 +179,36 @@ public class InventoryReportRepository {
     }
 
     /** Lô RAW còn hàng, xếp FEFO (hạn sớm trước, cùng hạn thì nhận trước) — đúng thứ tự xuất kho FEFO đòi hỏi. */
-    public List<RawLotRow> findRawLots(Long ingredientId, LocalDate today) {
+    public List<RawLotRow> findRawLots(Long ingredientId, LocalDate today, LocalDate warningEnd) {
         return jdbc.sql("""
                         SELECT b.id AS inventory_batch_id, s.ingredient_id, g.name AS ingredient_name, s.lot_code, s.expiry_date,
                                b.received_at, b.quantity_on_hand, g.base_unit,
-                               b.is_usable AND (s.expiry_date IS NULL OR s.expiry_date >= :today) AS usable
+                               b.is_usable AND (s.expiry_date IS NULL OR s.expiry_date >= :today) AS usable,
+                               CASE WHEN s.expiry_date < :today THEN 'EXPIRED'
+                                    WHEN b.is_usable AND s.expiry_date <= :warning_end THEN 'EXPIRING_SOON'
+                                    ELSE 'NONE' END AS expiry_status
                           FROM inventory_batches b
                           JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id
                           JOIN ingredients g ON g.id = s.ingredient_id
                          WHERE b.quantity_on_hand > 0 AND (CAST(:g AS bigint) IS NULL OR s.ingredient_id = :g)
                          ORDER BY g.name, s.expiry_date NULLS LAST, b.received_at, b.id""")
-                .param("g", ingredientId).param("today", today).query(RawLotRow.class).list();
+                .param("g", ingredientId).param("today", today).param("warning_end", warningEnd).query(RawLotRow.class).list();
     }
 
-    public List<KitchenLotRow> findKitchenLots(Long typeId) {
+    public List<KitchenLotRow> findKitchenLots(Long typeId, Instant now, Instant warningEnd) {
         return jdbc.sql("""
                         SELECT k.id AS kitchen_batch_id, k.kitchen_ingredient_type_id, t.name AS type_name, k.quantity_on_hand,
                                k.reserved_quantity, k.usable_until,
-                               k.is_usable AND (k.usable_until IS NULL OR k.usable_until > now()) AS usable,
-                               k.direct_issue_item_id, g.base_unit
+                               k.is_usable AND (k.usable_until IS NULL OR k.usable_until > :now) AS usable,
+                               k.direct_issue_item_id, g.base_unit, k.created_at,
+                               CASE WHEN k.usable_until <= :now THEN 'EXPIRED'
+                                    WHEN k.is_usable AND k.usable_until <= :warning_end THEN 'EXPIRING_SOON'
+                                    ELSE 'NONE' END AS expiry_status
                           FROM kitchen_batches k JOIN kitchen_ingredient_types t ON t.id = k.kitchen_ingredient_type_id
                           JOIN ingredients g ON g.id = t.raw_ingredient_id
                          WHERE k.quantity_on_hand > 0 AND (CAST(:t AS bigint) IS NULL OR k.kitchen_ingredient_type_id = :t)
                          ORDER BY t.name, k.usable_until NULLS LAST, k.id""")
-                .param("t", typeId).query(KitchenLotRow.class).list();
+                .param("t", typeId).param("now", Timestamp.from(now)).param("warning_end", Timestamp.from(warningEnd))
+                .query(KitchenLotRow.class).list();
     }
 }

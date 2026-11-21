@@ -449,6 +449,8 @@ export interface PreparationYieldRow {
   baseUnit: string;
 }
 
+export type LotExpiryStatus = 'NONE' | 'EXPIRING_SOON' | 'EXPIRED';
+
 export interface RawLot {
   inventoryBatchId: number;
   ingredientId: number;
@@ -459,6 +461,7 @@ export interface RawLot {
   quantityOnHand: number;
   usable: boolean;
   baseUnit: string;
+  expiryStatus: LotExpiryStatus;
 }
 
 export interface KitchenLot {
@@ -471,6 +474,8 @@ export interface KitchenLot {
   usable: boolean;
   directIssueItemId: number | null;
   baseUnit: string;
+  createdAt: string;
+  expiryStatus: LotExpiryStatus;
 }
 
 // ---------- nhân sự

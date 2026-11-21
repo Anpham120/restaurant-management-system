@@ -133,6 +133,8 @@ Package `inventory` (`IngredientController/Service/Repository`, `StockDocumentCo
 | ✅ | `GET /api/inventory/raw-stock`, `/history?from&to&ingredientId&page&size` (Instant ISO; → `PageResponse`, khoảng tối đa 93 ngày, size ≤ 500, quá → 400), `/preparation-yield?from&to`, `/raw-lots?ingredientId` | M | — → bảng | `rpt_raw_stock`, `rpt_stock_history`, `rpt_preparation_yield`; lô RAW theo FEFO | — | 400 khoảng sai |
 | ✅ | `GET /api/inventory/handover`, `/kitchen-stock`, `/unusable-lots`, `/kitchen-lots?typeId` | K M | — → bảng | `rpt_handover_and_wip`, `rpt_kitchen_stock`, `rpt_unusable_lots`; lô bếp (kèm `directIssueItemId` để lập phiếu hoàn trả) | — | — |
 
+`raw-lots` và `kitchen-lots` trả thêm `expiryStatus` (`NONE`, `EXPIRING_SOON` trong 7 ngày tới hoặc `EXPIRED`). Lô bếp có `createdAt` để màn Tồn kho xếp cảnh báo theo thời điểm lô vào kho hoặc bếp. Lô hết hạn còn số dư vẫn hiện trong báo cáo. Phiếu hủy chỉ ghi giảm lượng hủy vào sổ kho khi quản lý xác nhận.
+
 ## 5. Quản lý tài chính — Bùi Đào Đức Anh
 
 Package `finance` (lớp `Expense*`, `CashReconciliation*`, `FinanceReport*`). **Chỉ đọc** dữ liệu thanh toán do phần của Phạm Duy An tạo; không tạo/sửa payment, hóa đơn, webhook. Test: `FinanceIT`.
