@@ -14,6 +14,8 @@ import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.common.idempotency.RequestKeys;
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.inventory.KitchenStockAllocator;
+import com.restaurant.core.inventory.KitchenStockAvailability;
+import com.restaurant.core.inventory.KitchenStockAvailability.DishPortions;
 import com.restaurant.core.menu.DailyMenuLookup.OrderableDish;
 import com.restaurant.core.menu.DailyMenuLookup;
 import com.restaurant.core.menu.QuotaUsageCounter;
@@ -54,6 +56,7 @@ public class OrderServiceImpl implements OrderService {
     private final DailyMenuLookup dailyMenuLookup;
     private final QuotaUsageCounter quotaUsageCounter;
     private final KitchenStockAllocator kitchenStockAllocator;
+    private final KitchenStockAvailability stockAvailability;
     private final OrderInvoiceAccess invoiceAccess;
     private final RequestKeys requestKeys;
     private final BusinessDateProvider clock;
@@ -106,9 +109,18 @@ public class OrderServiceImpl implements OrderService {
         }
         invoiceAccess.reopenInvoiceForMoreOrdering(orderId);       // hóa đơn đang chờ thu → về nháp, thu ngân chốt lại sau
 
+        List<Long> dishIds = request.items().stream().map(SubmitBatchRequest.Item::dailyMenuItemId).distinct().toList();
+        Map<Long, OrderableDish> dishes = dailyMenuLookup.findOrderableDishesForUpdate(dishIds);
+        for (long dishId : dishIds) {
+            requireDishOnSaleToday(dishId, dishes.get(dishId));
+        }
+        stockAvailability.requireAvailableForBatch(request.items().stream()
+                .map(line -> new DishPortions(line.dailyMenuItemId(), dishes.get(line.dailyMenuItemId()).name(), line.quantity()))
+                .toList());
+
         OrderBatch batch = orderBatchRepository.save(new OrderBatch(order, actorId, requestKey, fingerprint, clock.now()));
         for (SubmitBatchRequest.Item line : request.items()) {
-            OrderableDish dish = findDishOnSaleToday(line.dailyMenuItemId());
+            OrderableDish dish = dishes.get(line.dailyMenuItemId());
             OrderItem item = orderItemRepository.save(new OrderItem(batch, dish.dailyMenuItemId(), line.quantity(), dish.name(),
                     dish.price(), blankToNull(line.note())));
             statusChanger.recordItemCreated(item, actorId);
@@ -182,17 +194,16 @@ public class OrderServiceImpl implements OrderService {
         }).orElse(null);
     }
 
-    private OrderableDish findDishOnSaleToday(long dailyMenuItemId) {
-        OrderableDish dish = dailyMenuLookup.findOrderableDish(dailyMenuItemId)
-                .filter(OrderableDish::onSaleToday)
-                .orElseThrow(() -> ApiException.invalidState("Món " + dailyMenuItemId + " không có trong thực đơn đang bán hôm nay"));
+    private static void requireDishOnSaleToday(long dailyMenuItemId, OrderableDish dish) {
+        if (dish == null || !dish.onSaleToday()) {
+            throw ApiException.invalidState("Món " + dailyMenuItemId + " không có trong thực đơn đang bán hôm nay");
+        }
         if (!dish.menuItemActive()) {
             throw ApiException.invalidState("Món " + dish.name() + " đã ngừng kinh doanh");
         }
         if (dish.paused()) {
             throw ApiException.invalidState("Món " + dish.name() + " đang tạm dừng");
         }
-        return dish;
     }
 
     /** Kết quả lượt món + cảnh báo các món đang chờ bếp mà số lượng vượt số suất còn lại. */

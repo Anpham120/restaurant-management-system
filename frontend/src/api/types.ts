@@ -97,6 +97,7 @@ export interface DailyMenuItem {
   quotaTotal: number | null;
   quotaUsed: number;
   remaining: number | null;
+  stockRemaining: number | null;
   paused: boolean;
   pauseReason: string | null;
   menuItemActive: boolean;

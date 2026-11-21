@@ -73,6 +73,11 @@ export function OrderPage() {
       toast(res.replayed ? 'Đợt này đã được gửi trước đó' : res.warnings?.length ? 'Đã gửi bếp, có món vượt số suất' : 'Đã gửi bếp');
       refresh();
     },
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === 'INSUFFICIENT_STOCK') {
+        queryClient.invalidateQueries({ queryKey: ['daily-menu-today'] });
+      }
+    },
   });
 
   const itemAction = useMutation({
@@ -113,8 +118,7 @@ export function OrderPage() {
     }
     return [...m.entries()];
   }, [menu.data]);
-  // Suất còn lại mới nhất (thực đơn tự làm mới), để cảnh báo ngay trong phiếu trước khi gửi bếp
-  const remainingNow = useMemo(() => new Map((menu.data?.items ?? []).map((i) => [i.dailyMenuItemId, i.remaining])), [menu.data]);
+  const menuById = useMemo(() => new Map((menu.data?.items ?? []).map((i) => [i.dailyMenuItemId, i])), [menu.data]);
 
   if (order.isLoading) return <main className="main center-screen">Đang tải phiếu…</main>;
   if (order.error || !order.data) {
@@ -136,6 +140,12 @@ export function OrderPage() {
   const live = items.filter((i) => LIVE.includes(i.status));
   const total = live.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const draftTotal = draft.reduce((s, d) => s + d.item.price * d.quantity, 0);
+  const draftHasStockShortage = draft.some((d) => {
+    const stock = menuById.get(d.item.dailyMenuItemId)?.stockRemaining;
+    return stock != null && d.quantity > stock;
+  });
+  // Một lỗi mạng có thể xảy ra sau khi lượt đã được ghi. Cho thử lại cùng requestKey để lấy kết quả cũ.
+  const canReplaySubmit = submit.isError && (!(submit.error instanceof ApiError) || submit.error.status === 0 || submit.error.status >= 500);
   const allEnded = items.every((i) => i.status === 'CANCELLED' || i.status === 'REJECTED');
   const hasServed = items.some((i) => i.status === 'SERVED');
   const readyCount = hasRole('WAITER') ? items.filter((i) => i.status === 'READY').length : 0;
@@ -146,6 +156,7 @@ export function OrderPage() {
   function add(item: DailyMenuItem) {
     setDraft((d) => {
       const found = d.find((x) => x.item.dailyMenuItemId === item.dailyMenuItemId);
+      if (item.stockRemaining != null && (found?.quantity ?? 0) >= item.stockRemaining) return d;
       if (found) return d.map((x) => (x === found ? { ...x, quantity: x.quantity + 1 } : x));
       return [...d, { item, quantity: 1, note: '' }];
     });
@@ -194,16 +205,22 @@ export function OrderPage() {
                 <div className="menu-list">
                   {list.map((it) => {
                     const soldOut = it.remaining != null && it.remaining <= 0;
+                    const selected = draft.find((d) => d.item.dailyMenuItemId === it.dailyMenuItemId)?.quantity ?? 0;
+                    const atStockLimit = it.stockRemaining != null && selected >= it.stockRemaining;
                     return (
-                      <button key={it.dailyMenuItemId} type="button" className="dish" disabled={!orderable || it.paused || soldOut}
+                      <button key={it.dailyMenuItemId} type="button" className="dish" disabled={!orderable || it.paused || soldOut || atStockLimit}
                               onClick={() => add(it)}>
                         <span className="name">{it.name}</span>
                         <span className="row">
                           <span className="num">{vnd(it.price)}</span>
                           {it.paused ? (
                             <span className="chip chip-stop">Tạm dừng</span>
+                          ) : it.stockRemaining === 0 ? (
+                            <span className="chip chip-stop">Hết nguyên liệu</span>
                           ) : soldOut ? (
                             <span className="chip chip-stop">Hết suất</span>
+                          ) : atStockLimit ? (
+                            <span className="chip chip-wait">Đã chọn tối đa</span>
                           ) : it.remaining != null ? (
                             <span className={`chip ${it.remaining <= 3 ? 'chip-wait' : ''}`}>Còn {it.remaining}</span>
                           ) : null}
@@ -227,16 +244,21 @@ export function OrderPage() {
               <h3>Món sắp gửi bếp</h3>
               {draft.map((d) => {
                 const id = d.item.dailyMenuItemId;
-                const left = remainingNow.has(id) ? remainingNow.get(id) : d.item.remaining;   // null = không giới hạn
+                const current = menuById.get(id) ?? d.item;
+                const left = current.remaining;
+                const stock = current.stockRemaining;
                 return (
                 <div className="line" key={d.item.dailyMenuItemId}>
                   <div className="stepper" aria-label={`Số lượng ${d.item.name}`}>
                     <button type="button" onClick={() => setQty(d.item.dailyMenuItemId, d.quantity - 1)} aria-label="Bớt">−</button>
                     <span className="num">{d.quantity}</span>
-                    <button type="button" onClick={() => setQty(d.item.dailyMenuItemId, d.quantity + 1)} aria-label="Thêm">+</button>
+                    <button type="button" onClick={() => add(current)} disabled={stock != null && d.quantity >= stock} aria-label="Thêm">+</button>
                   </div>
                   <div className="what">
                     <span>{d.item.name}</span>
+                    {stock != null && d.quantity > stock && (
+                      <span className="chip chip-stop">{stock === 0 ? 'Hết nguyên liệu' : `Chỉ đủ nguyên liệu cho ${stock} suất`}</span>
+                    )}
                     {left != null && d.quantity > left && (
                       <span className="chip chip-wait">Chỉ còn {left} suất, bếp có thể từ chối phần vượt</span>
                     )}
@@ -248,7 +270,8 @@ export function OrderPage() {
                 );
               })}
               <ErrorNotice error={submit.error} />
-              <button type="button" className="btn btn-primary btn-block" disabled={submit.isPending} onClick={() => submit.mutate()}>
+              <button type="button" className="btn btn-primary btn-block" disabled={submit.isPending || (draftHasStockShortage && !canReplaySubmit)}
+                      onClick={() => submit.mutate()}>
                 {submit.isPending ? 'Đang gửi…' : `Gửi bếp · ${vnd(draftTotal)}`}
               </button>
             </div>

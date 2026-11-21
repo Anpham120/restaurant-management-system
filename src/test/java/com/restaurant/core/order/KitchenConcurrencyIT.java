@@ -13,6 +13,7 @@ import com.restaurant.core.TestData;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Bất biến của bếp và kho khi nhiều thao tác đến cùng lúc qua REST thật (mỗi request một kết nối PostgreSQL):
@@ -69,9 +70,15 @@ class KitchenConcurrencyIT extends OrderApiTestBase {
     @Test
     void lastIngredientGoesToExactlyOneItem() throws Exception {
         for (int round = 0; round < ROUNDS; round++) {
-            TestData.Dish dish = data.dish(30000, null, 1);                    // tồn bếp đúng 1 phần
+            TestData.Dish dish = data.dish(30000, null, 2);
             long a = submitOne(openTable()[2], dish.dailyMenuItemId(), 1);
             long b = submitOne(openTable()[2], dish.dailyMenuItemId(), 1);
+            long batch = data.count("SELECT id FROM kitchen_batches WHERE kitchen_ingredient_type_id = ?", dish.kitchenTypeId());
+            long adjustment = readLong(postJson(kitchen, "/api/stock-adjustments", """
+                    {"requestKey":"race-damage-%d","adjustmentType":"DAMAGE","reason":"Hỏng sau khi gọi món",
+                    "items":[{"kitchenBatchId":%d,"quantity":1}]}
+                    """.formatted(batch, batch)).andExpect(status().isCreated()), "$.data.id");
+            postEmpty(manager, "/api/stock-adjustments/{id}/confirm", adjustment).andExpect(status().isOk());
             List<Call> calls = concurrently(List.of(accept(a), accept(b)));
             assertThat(calls).extracting(Call::result).containsExactlyInAnyOrder("ACCEPTED", "REJECTED");
             assertThat(data.kitchenReserved(dish.kitchenTypeId())).isEqualByComparingTo("1");

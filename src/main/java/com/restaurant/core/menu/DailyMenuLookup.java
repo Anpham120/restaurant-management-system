@@ -1,7 +1,9 @@
 package com.restaurant.core.menu;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -23,6 +25,9 @@ public interface DailyMenuLookup {
 
     /** Như {@link #findOrderableDish} nhưng khóa dòng món (SELECT … FOR UPDATE) để kiểm hạn mức an toàn khi nhận món đồng thời. */
     Optional<OrderableDish> findOrderableDishForUpdate(long dailyMenuItemId);
+
+    /** Khóa các dòng món theo ID tăng dần để giữ nguyên công thức tới khi lưu lượt gọi món. */
+    Map<Long, OrderableDish> findOrderableDishesForUpdate(Collection<Long> dailyMenuItemIds);
 
     /** Công thức áp dụng cho món trong thực đơn ngày, xếp theo loại nguyên liệu. */
     List<RecipeLine> getRecipeLines(long dailyMenuItemId);

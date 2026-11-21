@@ -18,7 +18,7 @@ public class DailyMenuQueryRepository {
     private static final String ITEM_SELECT = """
             SELECT d.id AS daily_menu_item_id, d.daily_menu_id, d.menu_item_id, m.name, c.name AS category_name, m.price,
                    d.recipe_id, r.version AS recipe_version, d.quota_total, 0 AS quota_used, CAST(NULL AS bigint) AS remaining,
-                   d.is_paused AS paused, d.pause_reason, m.is_active AS menu_item_active
+                   CAST(NULL AS integer) AS stock_remaining, d.is_paused AS paused, d.pause_reason, m.is_active AS menu_item_active
               FROM daily_menu_items d
               JOIN menu_items m ON m.id = d.menu_item_id
               JOIN menu_categories c ON c.id = m.menu_category_id

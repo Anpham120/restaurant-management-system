@@ -40,9 +40,11 @@ class KitchenAndCancelIT extends OrderApiTestBase {
     }
 
     @Test
-    void insufficientStockIsRejectedAndNothingReserved() throws Exception {
-        TestData.Dish dish = data.dish(30000, null, 1);
+    void stockLostAfterPlacementIsRejectedAndNothingReserved() throws Exception {
+        TestData.Dish dish = data.dish(30000, null, 2);
         long item = submitOne(openTable()[2], dish.dailyMenuItemId(), 2);
+        long batch = data.count("SELECT id FROM kitchen_batches WHERE kitchen_ingredient_type_id = ?", dish.kitchenTypeId());
+        postJson(manager, "/api/stock-batches/KITCHEN/{id}/mark-unusable", reason("Ôi thiu"), batch).andExpect(status().isOk());
         postEmpty(kitchen, "/api/order-items/{id}/accept", item)
                 .andExpect(jsonPath("$.data.result").value("REJECTED"))
                 .andExpect(jsonPath("$.data.reason").value(startsWith("Thiếu nguyên liệu")));
