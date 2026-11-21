@@ -241,6 +241,14 @@ pipeline {
                 // Kubernetes kéo image từ GHCR nên bước này bắt buộc: thiếu credential ghcr-token hoặc registry lỗi thì dừng.
                 withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
                     sh 'scripts/push-release.sh "$GIT_COMMIT"'
+                    // Dọn image cũ trên GHCR: giữ 20 bản mới nhất (đủ để quay lui bằng git revert) và các tag đang chạy ở
+                    // staging/production. Token đi qua biến môi trường (-e GHCR_TOKEN), không nằm trên dòng lệnh.
+                    // Lỗi dọn không làm hỏng phát hành.
+                    sh '''
+                        PROTECT="$GIT_COMMIT $(sed -nE 's/^ *newTag: ([0-9a-f]{7,40}).*/\\1/p' deploy/k8s/overlays/*/kustomization.yaml | sort -u | tr '\\n' ' ')"
+                        docker run --rm -i -e GHCR_TOKEN -e KEEP=20 -e PROTECT="$PROTECT" python:3.12-alpine \
+                          python - < scripts/ghcr-cleanup.py || echo "[ghcr-cleanup] lỗi, bỏ qua"
+                    '''
                 }
                 // Ghi tag vào Git (commit "deploy: image ..."). Commit đó chạy lại pipeline ở nhánh này, nhưng chỉ chờ Argo CD.
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {

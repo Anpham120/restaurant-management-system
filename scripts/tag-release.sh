@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # "Build một lần, deploy nhiều nơi": đánh dấu image staging (đã qua smoke test và Trivy) là bản phát hành của commit
-# đang build. Production (scripts/deploy.sh) chỉ chạy đúng image có tag này, không build lại.
+# đang build. scripts/push-release.sh đẩy đúng image có tag này lên GHCR; staging K8s và production kéo về, không build lại.
 #   scripts/tag-release.sh <commit sha đầy đủ>
 # Dọn tag cũ theo lịch sử git (không theo ngày tạo image: image lấy từ cache mang ngày tạo cũ):
 #   - chỉ bỏ tag của commit là tổ tiên của commit này VÀ nằm ngoài 5 commit develop gần nhất;

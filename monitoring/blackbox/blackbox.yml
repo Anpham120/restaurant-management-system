@@ -11,6 +11,14 @@ modules:
       fail_if_not_ssl: true
       fail_if_body_not_matches_regexp: ['"status":"UP"']
   # Trang web (frontend qua nginx)
+  # Công cụ ở máy 2 (Argo CD, Grafana, Jenkins): trang trả 200 qua HTTPS; đo luôn hạn chứng chỉ (CertExpiringSoon)
+  tool:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200]
+      fail_if_not_ssl: true
   web:
     prober: http
     timeout: 10s

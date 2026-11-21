@@ -5,7 +5,7 @@
 # Ghi file tạm rồi đổi tên: node-exporter không bao giờ đọc phải file ghi dở.
 set -euo pipefail
 
-KIND=${1:?Dùng: backup-metric.sh <daily|pre-deploy|offsite>}
+KIND=${1:?Dùng: backup-metric.sh <daily|pre-deploy|offsite|sealed-key>}
 DIR=${METRICS_DIR:-${BACKUP_DIR:-/home/coder/rms-backups}/metrics}
 FILE="$DIR/rms_backup_$KIND.prom"
 

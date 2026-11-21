@@ -1,0 +1,16 @@
+# Cửa cố định để Prometheus (máy 2, Docker network_mode host) lấy số liệu của Argo CD application controller (cổng 8082):
+# trạng thái đồng bộ/sức khỏe từng Application (argocd_app_info), số lần đồng bộ lỗi (argocd_app_sync_total).
+# Service của chart có ClusterIP ngẫu nhiên; Service này giữ IP cố định 10.43.0.82 (cùng cách với argocd-edge-service.yaml).
+# Áp dụng trên máy 2: kubectl apply -f deploy/k8s/platform/argocd-metrics-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-controller-metrics-fixed
+  namespace: argocd
+spec:
+  type: ClusterIP
+  clusterIP: 10.43.0.82
+  selector:
+    app.kubernetes.io/name: argocd-application-controller
+  ports:
+    - {name: metrics, port: 8082, targetPort: 8082}

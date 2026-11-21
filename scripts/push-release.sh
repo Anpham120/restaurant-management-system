@@ -2,7 +2,7 @@
 # Đẩy image phát hành lên GitHub Container Registry: bản lưu ngoài máy chủ, máy khác (hoặc máy chủ mới) kéo về được.
 #   scripts/push-release.sh <commit sha đầy đủ>   → ghcr.io/anpham120/rms-{app,web}:<commit>
 # Cần GHCR_TOKEN (token GitHub classic, scope write:packages; credential Jenkins "ghcr-token"). Không có thì bỏ qua:
-# deploy vẫn dùng image phát hành có sẵn trên máy (scripts/tag-release.sh).
+# Kubernetes kéo image từ GHCR nên Jenkinsfile coi bước này là bắt buộc.
 set -euo pipefail
 
 SHA=${1:?Dùng: push-release.sh <commit sha>}
