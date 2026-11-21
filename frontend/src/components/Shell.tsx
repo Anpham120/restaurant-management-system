@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '../api/client';
+import { readyOrdersQuery } from '../api/readyOrders';
 import type { OrderItem, Role, TableResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { roleLabel } from '../lib/format';
@@ -12,10 +13,11 @@ import { Icon, type IconName } from './Icon';
 const M: Role[] = ['MANAGER'];
 const MK: Role[] = ['MANAGER', 'KITCHEN'];
 
-/** 8 mục chính (bản thiết kế: 26 mục → 8, trang con thành tab). Mỗi vai trò chỉ thấy mục của mình. */
-export const NAV: { to: string; label: string; icon: IconName; roles: Role[]; match: string[]; badge?: 'tables' | 'kitchen' }[] = [
+/** Mỗi vai trò chỉ thấy các mục mình có quyền sử dụng. */
+export const NAV: { to: string; label: string; icon: IconName; roles: Role[]; match: string[]; badge?: 'tables' | 'kitchen' | 'ready' }[] = [
   { to: '/dashboard', label: 'Tổng quan', icon: 'home', roles: M, match: ['/dashboard'] },
   { to: '/tables', label: 'Bàn & gọi món', icon: 'tables', roles: ['WAITER', 'CASHIER', 'MANAGER'], match: ['/tables', '/orders'], badge: 'tables' },
+  { to: '/ready-orders', label: 'Món chờ mang ra', icon: 'bell', roles: ['WAITER'], match: ['/ready-orders'], badge: 'ready' },
   { to: '/kitchen', label: 'Bếp', icon: 'kitchen', roles: MK, match: ['/kitchen'], badge: 'kitchen' },
   { to: '/menu/daily', label: 'Thực đơn', icon: 'menu', roles: MK, match: ['/menu'] },
   { to: '/inventory/stock', label: 'Kho', icon: 'stock', roles: MK, match: ['/inventory'] },
@@ -50,9 +52,15 @@ export function Shell() {
     enabled: seesKitchen,
     refetchInterval: 15_000,
   });
+  const ready = useQuery({
+    ...readyOrdersQuery,
+    enabled: hasRole('WAITER'),
+    refetchInterval: 4_000,
+  });
   const badges = {
     tables: (tables.data ?? []).filter((t) => t.currentSessionId != null).length,
     kitchen: (queue.data ?? []).filter((i) => i.status !== 'READY').length,
+    ready: ready.data?.length ?? 0,
   };
 
   const name = user?.fullName ?? user?.username ?? '';

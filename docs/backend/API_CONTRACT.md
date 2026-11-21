@@ -39,6 +39,7 @@ Service/Repository: `order.service.TableService`, `OrderService`, `KitchenServic
 | ✅ | `POST /api/order-items/{id}/reject` | K M | `ReasonRequest` → `OrderItemResponse` | `rc_reject_item` | PENDING → REJECTED (không chiếm suất) | 409 · 422 lý do trống | — | KitchenAndCancelIT |
 | ✅ | `POST /api/order-items/{id}/start-cooking` | K M | — → `OrderItemResponse` | `rc_start_cooking` | ACCEPTED → COOKING; tiêu hao phần đã giữ, ghi sổ COOK một lần | 409 chưa ACCEPTED / lô giữ hỏng (cấp lại) | gọi lại → 409, không trừ lần hai | KitchenAndCancelIT |
 | ✅ | `POST /api/order-items/{id}/finish` | K M | — → `OrderItemResponse` | `rc_finish_dish` | COOKING → READY | 409 | — | OrderLifecycleIT |
+| ✅ | `GET /api/order-items/ready` | W | — → `OrderItemResponse[]` (món READY của đơn OPEN, có mã bàn) | — | — | — | — | ReadyOrdersIT |
 | ✅ | `POST /api/order-items/{id}/reallocate` | K M | — → `OrderItemResponse` | `rc_reallocate_item` | ACCEPTED có lô hỏng → giữ lại từ lô khác | 409 · RC001 vẫn thiếu | — | (luồng lô hỏng do Đỗ Tuấn Anh đánh dấu; test tích hợp chung) |
 | ✅ | `POST /api/order-items/{id}/serve` | W M | — → `OrderItemResponse` | `rc_serve_item` | READY → SERVED | 409 | — | OrderLifecycleIT |
 | ✅ | `POST /api/order-items/{id}/cancel` | W K M | `ReasonRequest` → `OrderItemResponse` | `rc_cancel_item` | PENDING/ACCEPTED → CANCELLED; trả phần giữ và suất đúng một lần | 409 đã COOKING ("chỉ Manager…") / đã hủy | gọi lại → 409 | KitchenAndCancelIT, SessionEndIT |

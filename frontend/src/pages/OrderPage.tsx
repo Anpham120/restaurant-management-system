@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { ApiError, api, newRequestKey } from '../api/client';
+import { readyOrdersQuery } from '../api/readyOrders';
 import type { DailyMenuItem, DailyMenuResponse, OrderItem, OrderResponse, SubmitBatchResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorNotice } from '../components/ErrorNotice';
+import { Icon } from '../components/Icon';
 import { ReasonDialog } from '../components/ReasonDialog';
 import { InvoiceStatusChip, ItemStatusChip } from '../components/StatusChip';
 import { useToast } from '../components/Toast';
@@ -80,6 +82,8 @@ export function OrderPage() {
       toast(v.action === 'serve' ? 'Đã mang món ra' : v.action === 'cancel-exception' ? 'Đã bỏ món khỏi phiếu' : 'Đã hủy món');
       setCancelling(null);
       refresh();
+      queryClient.invalidateQueries({ queryKey: readyOrdersQuery.queryKey });
+      queryClient.invalidateQueries({ queryKey: ['kitchen-queue'] });
     },
   });
 
@@ -134,6 +138,7 @@ export function OrderPage() {
   const draftTotal = draft.reduce((s, d) => s + d.item.price * d.quantity, 0);
   const allEnded = items.every((i) => i.status === 'CANCELLED' || i.status === 'REJECTED');
   const hasServed = items.some((i) => i.status === 'SERVED');
+  const readyCount = hasRole('WAITER') ? items.filter((i) => i.status === 'READY').length : 0;
   const unfinished = items.some((i) => ['PENDING', 'ACCEPTED', 'COOKING', 'READY'].includes(i.status));
 
   const cooked = cancelling != null && ['COOKING', 'READY', 'SERVED'].includes(cancelling.status);
@@ -161,6 +166,13 @@ export function OrderPage() {
         </div>
         <Link to="/tables" className="btn">Về sơ đồ bàn</Link>
       </div>
+
+      {readyCount > 0 && (
+        <div className="notice notice-info banner">
+          <Icon name="bell" />
+          <Link to="/ready-orders"><b>Bàn {session.tableCode} có {readyCount} món chờ mang ra</b></Link>
+        </div>
+      )}
 
       <div className="order-layout">
         <section aria-label="Thực đơn hôm nay">

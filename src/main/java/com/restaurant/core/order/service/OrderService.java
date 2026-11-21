@@ -17,6 +17,8 @@ public interface OrderService {
 
     List<ItemEventResponse> getOrderItemHistory(long itemId);
 
+    List<OrderItemResponse> getReadyOrderItems();
+
     /**
      * Gửi một lượt món xuống bếp. Gửi lặp cùng requestKey → trả lượt cũ (replayed), không tạo món trùng.
      * Món vượt hạn mức chỉ bị CẢNH BÁO, bếp kiểm cứng khi nhận món.
