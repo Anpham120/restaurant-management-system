@@ -53,3 +53,27 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: 127.0.0.1:9115
+
+  # Công cụ ở máy 2 (qua nginx máy 2 + HTTPS): còn sống và chứng chỉ còn hạn. Đường dẫn không cần đăng nhập.
+  - job_name: tool
+    metrics_path: /probe
+    scrape_interval: 60s
+    params: {module: [tool]}
+    static_configs:
+      - targets:
+          - https://argocd.atlasplatform12.tech/healthz
+          - https://grafana.atlasplatform12.tech/api/health
+          - https://jenkins.atlasplatform12.tech/login
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+  # Argo CD (cụm k3s máy 2): trạng thái đồng bộ và sức khỏe từng Application. Service cố định 10.43.0.82
+  # (deploy/k8s/platform/argocd-metrics-service.yaml) trỏ vào application controller cổng 8082.
+  - job_name: argocd
+    static_configs:
+      - targets: ['10.43.0.82:8082']

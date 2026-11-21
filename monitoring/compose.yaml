@@ -6,7 +6,7 @@
 # Bản clone trên máy 2 tự theo nhánh main bằng monitoring/sync/ (systemd timer, nạp lại Prometheus/Alertmanager).
 # Chạy bằng network_mode: host, mọi cổng chỉ mở trên 127.0.0.1; Grafana ra ngoài qua nginx của máy 2.
 # Cấu hình mount cả thư mục, không mount từng file: deploy cập nhật mã bằng git reset --hard (file mới, inode mới), bind mount
-# một file sẽ vẫn trỏ bản cũ. scripts/deploy.sh gửi SIGHUP cho Prometheus và Alertmanager để nạp lại sau mỗi lần deploy.
+# một file sẽ vẫn trỏ bản cũ. monitoring/sync/ gửi SIGHUP cho Prometheus và Alertmanager để nạp lại sau mỗi lần deploy.
 services:
   prometheus:
     image: prom/prometheus:v3.5.0

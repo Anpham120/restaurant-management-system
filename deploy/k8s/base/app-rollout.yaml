@@ -1,4 +1,4 @@
-# Backend Spring Boot, phát hành blue-green bằng Argo Rollouts (thay cho slot A/B + scripts/deploy.sh).
+# Backend Spring Boot, phát hành blue-green bằng Argo Rollouts (thay cho 2 slot Docker A/B của giai đoạn đầu).
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:

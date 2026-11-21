@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
 # Sao lưu database production bằng pg_dump (định dạng custom, đã nén). Chỉ đọc, không sửa dữ liệu.
-#   scripts/backup-db.sh daily       : cron mỗi ngày
-#   scripts/backup-db.sh pre-deploy  : deploy.sh gọi trước khi build bản mới (chỉ còn dùng khi chạy lại production Docker)
-# Nguồn (DB_SOURCE): k8s (mặc định, từ 20/11/2026) = pod primary của CloudNativePG trong namespace rms-prod (máy 1),
-#                    docker = container restaurant-management-system-db-1 (production cũ, giữ để quay lại).
+#   scripts/backup-db.sh daily        : cron mỗi ngày
+#   scripts/backup-db.sh pre-restore  : restore-db.sh gọi trước khi thay dữ liệu
+# Nguồn: pod primary của CloudNativePG trong namespace rms-prod (máy 1).
 # COPY_TO (tùy chọn, chỉ bản daily): chép bản mới nhất sang máy khác, ví dụ coder@10.10.0.2:/home/coder/rms-backups
 #   (máy 2: staging tạm thời của pipeline nạp bản này). Bên nhận chỉ giữ 1 bản. Lỗi chép không làm hỏng bản sao lưu.
 #   Bản chép được chmod 640: thư mục nhận có ACL cho user ci (Docker rootless của Jenkins) đọc, mask 640 mới có hiệu lực.
-# Giữ KEEP bản gần nhất cho mỗi loại. Khôi phục: xem docs/devops/PIPELINE.md mục "Sao lưu database".
+# Giữ KEEP bản gần nhất cho mỗi loại. Khôi phục: scripts/restore-db.sh, hoặc về thời điểm bất kỳ từ WAL (docs/devops/PIPELINE.md).
 set -euo pipefail
 
-KIND=${1:?Dùng: backup-db.sh <daily|pre-deploy>}
-DB_SOURCE=${DB_SOURCE:-k8s}
-DB_CONTAINER=restaurant-management-system-db-1
+KIND=${1:?Dùng: backup-db.sh <daily|pre-restore>}
 # cron không đọc .bashrc: chỉ rõ kubeconfig của user chạy cron
 export KUBECONFIG=${KUBECONFIG:-$HOME/.kube/config}
+NAMESPACE=${NAMESPACE:-rms-prod}   # rms-staging (cụm máy 2) để chạy thử
 BACKUP_DIR=${BACKUP_DIR:-/home/coder/rms-backups}
 KEEP=${KEEP:-7}
 
@@ -23,17 +21,12 @@ mkdir -p "$BACKUP_DIR"
 FILE="$BACKUP_DIR/$KIND-$(date -u +%Y%m%d-%H%M%S).dump"
 
 dump() {
-  if [ "$DB_SOURCE" = docker ]; then
-    # Dùng user và tên DB có sẵn trong container db, không cần đọc .env
-    docker exec "$DB_CONTAINER" sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc'
-  else
-    # Pod primary hiện tại (sau failover tên pod có thể đổi): nhãn cnpg.io/instanceRole=primary do CloudNativePG gắn.
-    # pg_dump chạy trong container postgres của pod, kết nối socket nội bộ bằng user postgres; không cần mật khẩu.
-    local pod
-    pod=$(kubectl -n rms-prod get pod -l cnpg.io/cluster=rms-db,cnpg.io/instanceRole=primary -o jsonpath='{.items[0].metadata.name}')
-    [ -n "$pod" ] || { echo "[backup] không tìm thấy pod primary" >&2; return 1; }
-    kubectl -n rms-prod exec "$pod" -c postgres -- pg_dump -U postgres -d restaurant_core -Fc
-  fi
+  # Pod primary hiện tại (sau failover tên pod có thể đổi): nhãn cnpg.io/instanceRole=primary do CloudNativePG gắn.
+  # pg_dump chạy trong container postgres của pod, kết nối socket nội bộ bằng user postgres; không cần mật khẩu.
+  local pod
+  pod=$(kubectl -n "$NAMESPACE" get pod -l cnpg.io/cluster=rms-db,cnpg.io/instanceRole=primary -o jsonpath='{.items[0].metadata.name}')
+  [ -n "$pod" ] || { echo "[backup] không tìm thấy pod primary" >&2; return 1; }
+  kubectl -n "$NAMESPACE" exec "$pod" -c postgres -- pg_dump -U postgres -d restaurant_core -Fc
 }
 if ! dump > "$FILE.tmp" || [ ! -s "$FILE.tmp" ]; then
   rm -f "$FILE.tmp"
