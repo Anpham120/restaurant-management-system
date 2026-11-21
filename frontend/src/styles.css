@@ -1092,6 +1092,11 @@ textarea.input {
   cursor: pointer;
 }
 
+.ticket .stepper button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 .stepper span {
   min-width: 2ch;
   text-align: center;

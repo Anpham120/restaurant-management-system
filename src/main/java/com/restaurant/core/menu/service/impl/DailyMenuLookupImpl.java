@@ -1,7 +1,10 @@
 package com.restaurant.core.menu.service.impl;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,13 @@ public class DailyMenuLookupImpl implements DailyMenuLookup {
     @Transactional
     public Optional<OrderableDish> findOrderableDishForUpdate(long dailyMenuItemId) {
         return dailyMenuItemRepository.findByIdForUpdate(dailyMenuItemId).map(this::toOrderableDish);
+    }
+
+    @Override
+    @Transactional
+    public Map<Long, OrderableDish> findOrderableDishesForUpdate(Collection<Long> dailyMenuItemIds) {
+        return dailyMenuItemRepository.findAllByIdForUpdate(dailyMenuItemIds).stream().map(this::toOrderableDish)
+                .collect(Collectors.toMap(OrderableDish::dailyMenuItemId, dish -> dish));
     }
 
     @Override

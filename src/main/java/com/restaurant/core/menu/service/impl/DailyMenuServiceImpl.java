@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.common.time.BusinessDateProvider;
 import com.restaurant.core.menu.QuotaUsageCounter;
+import com.restaurant.core.menu.StockPortionCounter;
 import com.restaurant.core.menu.dto.request.DailyMenuItemRequest;
 import com.restaurant.core.menu.dto.response.DailyMenuItemResponse;
 import com.restaurant.core.menu.dto.response.DailyMenuResponse;
@@ -39,17 +40,20 @@ public class DailyMenuServiceImpl implements DailyMenuService {
     private final MenuItemRepository menuItemRepository;
     private final RecipeRepository recipeRepository;
     private final QuotaUsageCounter quotaUsageCounter;
+    private final StockPortionCounter stockPortionCounter;
     private final BusinessDateProvider clock;
 
     public DailyMenuServiceImpl(DailyMenuQueryRepository repo, DailyMenuRepository dailyMenuRepository,
                                 DailyMenuItemRepository dailyMenuItemRepository, MenuItemRepository menuItemRepository,
-                                RecipeRepository recipeRepository, QuotaUsageCounter quotaUsageCounter, BusinessDateProvider clock) {
+                                RecipeRepository recipeRepository, QuotaUsageCounter quotaUsageCounter, StockPortionCounter stockPortionCounter,
+                                BusinessDateProvider clock) {
         this.repo = repo;
         this.dailyMenuRepository = dailyMenuRepository;
         this.dailyMenuItemRepository = dailyMenuItemRepository;
         this.menuItemRepository = menuItemRepository;
         this.recipeRepository = recipeRepository;
         this.quotaUsageCounter = quotaUsageCounter;
+        this.stockPortionCounter = stockPortionCounter;
         this.clock = clock;
     }
 
@@ -303,7 +307,7 @@ public class DailyMenuServiceImpl implements DailyMenuService {
     }
 
     private DailyMenuItemResponse getDailyMenuItemResponse(long id) {
-        return repo.findDailyMenuItem(id).map(item -> withQuotaUsage(List.of(item)).getFirst()).orElseThrow(() -> ApiException.notFound("Không tìm thấy món trong thực đơn ngày " + id));
+        return repo.findDailyMenuItem(id).map(item -> withAvailability(List.of(item)).getFirst()).orElseThrow(() -> ApiException.notFound("Không tìm thấy món trong thực đơn ngày " + id));
     }
 
     private DailyMenuResponse.Header getDailyMenuHeader(long id) {
@@ -311,7 +315,7 @@ public class DailyMenuServiceImpl implements DailyMenuService {
     }
 
     private DailyMenuResponse buildDailyMenuResponse(DailyMenuResponse.Header h) {
-        return new DailyMenuResponse(h.id(), h.businessDate(), h.status(), h.publishedAt(), withQuotaUsage(repo.findDailyMenuItems(h.id())));
+        return new DailyMenuResponse(h.id(), h.businessDate(), h.status(), h.publishedAt(), withAvailability(repo.findDailyMenuItems(h.id())));
     }
 
     private static ApiException conflictError(String code, String message) {
@@ -335,14 +339,17 @@ public class DailyMenuServiceImpl implements DailyMenuService {
         return updated;
     }
 
-    /** Gắn số suất đã dùng và số suất còn lại (null = không giới hạn) vào từng món. */
-    private List<DailyMenuItemResponse> withQuotaUsage(List<DailyMenuItemResponse> items) {
-        Map<Long, Long> used = quotaUsageCounter.countUsedPortions(items.stream().map(DailyMenuItemResponse::dailyMenuItemId).toList());
+    /** Gắn số suất còn lại theo hạn mức và theo tồn bếp vào từng món. */
+    private List<DailyMenuItemResponse> withAvailability(List<DailyMenuItemResponse> items) {
+        List<Long> dishIds = items.stream().map(DailyMenuItemResponse::dailyMenuItemId).toList();
+        Map<Long, Long> used = quotaUsageCounter.countUsedPortions(dishIds);
+        Map<Long, Integer> stockRemaining = stockPortionCounter.countAvailablePortions(dishIds);
         return items.stream().map(i -> {
             long usedPortions = used.get(i.dailyMenuItemId());
             Long remaining = i.quotaTotal() == null ? null : Math.max(i.quotaTotal() - usedPortions, 0);
             return new DailyMenuItemResponse(i.dailyMenuItemId(), i.dailyMenuId(), i.menuItemId(), i.name(), i.categoryName(), i.price(),
-                    i.recipeId(), i.recipeVersion(), i.quotaTotal(), usedPortions, remaining, i.paused(), i.pauseReason(), i.menuItemActive());
+                    i.recipeId(), i.recipeVersion(), i.quotaTotal(), usedPortions, remaining, stockRemaining.get(i.dailyMenuItemId()),
+                    i.paused(), i.pauseReason(), i.menuItemActive());
         }).toList();
     }
 }

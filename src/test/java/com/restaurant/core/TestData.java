@@ -85,8 +85,12 @@ public class TestData {
      * xuất kho → bếp nhận, như nghiệp vụ kho thật).
      */
     public Dish dish(long price, Integer quota, Integer stock) {
+        Long type = stock == null ? null : kitchenStock("Nguyên liệu " + SEQ.incrementAndGet(), stock);
+        return dishWithKitchenType(price, quota, type);
+    }
+
+    public Dish dishWithKitchenType(long price, Integer quota, Long type) {
         int n = SEQ.incrementAndGet();
-        Long type = stock == null ? null : kitchenStock("Nguyên liệu " + n, stock);
         long cat = admin.sql("INSERT INTO menu_categories (name) VALUES (:n) RETURNING id")
                 .param("n", "Nhóm " + n).query(Long.class).single();
         long item = admin.sql("INSERT INTO menu_items (menu_category_id, name, price) VALUES (:c, :n, :p) RETURNING id")
