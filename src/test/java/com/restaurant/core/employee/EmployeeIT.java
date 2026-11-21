@@ -12,6 +12,7 @@ import com.restaurant.core.order.OrderApiTestBase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
@@ -163,6 +164,75 @@ class EmployeeIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data[?(@.id == " + kept + ")].status", contains("SCHEDULED")))
                 .andExpect(jsonPath("$.data[?(@.id == " + dropped + ")].status", contains("CANCELLED")))
                 .andExpect(jsonPath("$.data[?(@.id == " + dropped + ")].cancelReason", contains("Nhân viên nghỉ việc từ sau ngày " + end)));
+    }
+
+    @Test
+    void bulkAssignmentAppliesShiftToEverySelectedEmployee() throws Exception {
+        long first = data.staff("WAITER").employeeId();
+        long second = data.staff("KITCHEN").employeeId();
+        long shift = createTestShift("22:00", "02:00", true);
+        LocalDate date = LocalDate.of(2027, 4, 10);
+
+        bulkAssign(manager, List.of(second, first).toString(), shift, date).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data[*].employeeId", contains((int) first, (int) second)))
+                .andExpect(jsonPath("$.data[*].shiftId", everyItem(is((int) shift))))
+                .andExpect(jsonPath("$.data[*].scheduledEndAt", everyItem(is(date + "T19:00:00Z"))))
+                .andExpect(jsonPath("$.data[*].note", everyItem(is("Hỗ trợ"))));
+        assertThat(data.count("SELECT count(*) FROM shift_assignments WHERE shift_id = ? AND work_date = ?", shift, date)).isEqualTo(2);
+    }
+
+    @Test
+    void bulkAssignmentIsAtomicWhenEmployeeAlreadyWorksAnOvernightShift() throws Exception {
+        long available = data.staff("WAITER").employeeId();
+        long booked = data.staff("KITCHEN").employeeId();
+        String bookedName = read(getAs(manager, "/api/employees/{id}", booked), "$.data.fullName");
+        long night = createTestShift("22:00", "02:00", true);
+        long early = createTestShift("01:00", "04:00", true);
+        LocalDate date = LocalDate.of(2027, 4, 11);
+        postJson(manager, "/api/shift-assignments", """
+                {"employeeId":%d,"shiftId":%d,"workDate":"%s"}
+                """.formatted(booked, night, date.minusDays(1))).andExpect(status().isCreated());
+
+        bulkAssign(manager, List.of(available, booked).toString(), early, date).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("OVERLAP"))
+                .andExpect(jsonPath("$.error.message", containsString(bookedName)));
+        assertThat(data.count("SELECT count(*) FROM shift_assignments WHERE shift_id = ?", early)).isZero();
+    }
+
+    @Test
+    void bulkAssignmentRequiresManagerAndValidEmployeesAndShift() throws Exception {
+        long active = data.staff("WAITER").employeeId();
+        long leaver = data.staff("KITCHEN").employeeId();
+        long shift = createTestShift("08:00", "12:00", true);
+        long disabled = createTestShift("14:00", "18:00", false);
+        LocalDate date = LocalDate.of(2027, 4, 12);
+        postJson(manager, "/api/employees/{id}/leave", "{\"endDate\":\"" + date.minusDays(1) + "\"}", leaver)
+                .andExpect(status().isOk());
+
+        String onlyActive = List.of(active).toString();
+        bulkAssign(waiter, onlyActive, shift, date).andExpect(status().isForbidden());
+        bulkAssign(manager, "[]", shift, date).andExpect(status().isBadRequest());
+        bulkAssign(manager, "[0, null]", shift, date).andExpect(status().isBadRequest());
+        bulkAssign(manager, List.of(active, active).toString(), shift, date).andExpect(status().isBadRequest());
+        bulkAssign(manager, List.of(active, 999_999_999L).toString(), shift, date).andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.error.code").value("INVALID_ASSIGNMENT"));
+        bulkAssign(manager, List.of(active, leaver).toString(), shift, date).andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.error.code").value("INVALID_ASSIGNMENT"));
+        bulkAssign(manager, onlyActive, disabled, date).andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.error.code").value("INVALID_ASSIGNMENT"));
+        assertThat(data.count("SELECT count(*) FROM shift_assignments WHERE shift_id IN (?, ?)", shift, disabled)).isZero();
+    }
+
+    private ResultActions bulkAssign(String token, String employeeIds, long shift, LocalDate date) throws Exception {
+        return postJson(token, "/api/shift-assignments/bulk", """
+                {"employeeIds":%s,"shiftId":%d,"workDate":"%s","note":"  Hỗ trợ  "}
+                """.formatted(employeeIds, shift, date));
+    }
+
+    private long createTestShift(String start, String end, boolean active) throws Exception {
+        return readLong(postJson(manager, "/api/shifts", """
+                {"name":"%s","startTime":"%s","endTime":"%s","active":%b}
+                """.formatted(uniq("Ca nhóm "), start, end, active)).andExpect(status().isCreated()), "$.data.id");
     }
 
     @Test

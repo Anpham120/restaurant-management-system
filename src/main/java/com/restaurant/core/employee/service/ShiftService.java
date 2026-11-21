@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.restaurant.core.employee.dto.request.ShiftRequests.AdjustAttendanceRequest;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AssignShiftRequest;
+import com.restaurant.core.employee.dto.request.ShiftRequests.BulkAssignShiftRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceAdjustmentView;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AttendanceRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceResponse;
@@ -22,6 +23,7 @@ public interface ShiftService {
     ShiftResponse updateShift(long id, ShiftRequest r);
 
     ShiftAssignmentResponse assignShift(AssignShiftRequest r);
+    List<ShiftAssignmentResponse> assignShifts(BulkAssignShiftRequest r);
 
     ShiftAssignmentResponse getShiftAssignmentById(long id);
 

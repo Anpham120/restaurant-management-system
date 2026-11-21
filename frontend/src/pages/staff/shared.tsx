@@ -14,7 +14,19 @@ export const useAttendances = (from: string, to: string) =>
   useQuery({ queryKey: ['attendances', from, to], queryFn: () => api.get<Attendance[]>(`/api/attendances?from=${from}&to=${to}`) });
 
 export const useActiveEmployees = () =>
-  useQuery({ queryKey: ['employees', 'ACTIVE', 'all'], queryFn: () => api.get<PageResponse<Employee>>('/api/employees?status=ACTIVE&size=100') });
+  useQuery({
+    queryKey: ['employees', 'ACTIVE', 'all'],
+    queryFn: async () => {
+      const url = '/api/employees?status=ACTIVE&size=100';
+      const first = await api.get<PageResponse<Employee>>(url);
+      const employees = [...first.items];
+      for (let page = 1; page * first.size < first.totalItems; page += 1) {
+        const next = await api.get<PageResponse<Employee>>(`${url}&page=${page}`);
+        employees.push(...next.items);
+      }
+      return employees;
+    },
+  });
 
 export const span = (a: ShiftAssignment) => `${clock(a.scheduledStartAt)}–${clock(a.scheduledEndAt)}`;
 
