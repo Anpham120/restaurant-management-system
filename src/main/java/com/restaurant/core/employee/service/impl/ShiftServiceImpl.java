@@ -3,6 +3,7 @@ package com.restaurant.core.employee.service.impl;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AdjustAttendanceRequest;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AssignShiftRequest;
+import com.restaurant.core.employee.dto.request.ShiftRequests.BulkAssignShiftRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceAdjustmentView;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AttendanceRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceResponse;
@@ -41,6 +43,7 @@ public class ShiftServiceImpl implements ShiftService {
 
     /** Khoảng truy vấn tối đa cho danh sách phân ca / chấm công. */
     private static final int MAX_RANGE_DAYS = 62;
+    private static final String INVALID_SINGLE_ASSIGNMENT = "Ca không tồn tại/ngừng dùng hoặc nhân viên không còn làm việc";
 
     private final ShiftQueryRepository repo;
     private final ShiftRepository shiftRepository;
@@ -88,19 +91,48 @@ public class ShiftServiceImpl implements ShiftService {
     @Override
     @Transactional
     public ShiftAssignmentResponse assignShift(AssignShiftRequest r) {
-        Shift shift = shiftRepository.findById(r.shiftId()).filter(Shift::isActive).orElse(null);
-        Employee employee = employeeRepository.findByIdForUpdate(r.employeeId())
-                .filter(e -> e.getWorkStatus() == WorkStatus.ACTIVE).orElse(null);
-        if (shift == null || employee == null) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "INVALID_ASSIGNMENT",
-                    "Ca không tồn tại/ngừng dùng hoặc nhân viên không còn làm việc");
+        return saveAssignments(List.of(r.employeeId()), r.shiftId(), r.workDate(), r.note(), false).getFirst();
+    }
+
+    @Override
+    @Transactional
+    public List<ShiftAssignmentResponse> assignShifts(BulkAssignShiftRequest r) {
+        // Cùng thứ tự khóa nhân viên cho mọi lần phân ca để tránh chờ khóa vòng tròn.
+        List<Long> employeeIds = r.employeeIds().stream().distinct().sorted().toList();
+        if (employeeIds.size() != r.employeeIds().size()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Danh sách nhân viên bị trùng");
         }
-        ShiftAssignment assignment = ShiftAssignment.schedule(employee, shift, r.workDate(), blankToNull(r.note()),
-                BusinessDateProvider.RESTAURANT_ZONE);
-        if (assignmentRepository.existsOverlapping(employee.getId(), assignment.getScheduledStartAt(), assignment.getScheduledEndAt())) {
-            throw new ApiException(HttpStatus.CONFLICT, "OVERLAP", "Nhân viên đã có ca trùng khoảng thời gian này");
+        return saveAssignments(employeeIds, r.shiftId(), r.workDate(), r.note(), true);
+    }
+
+    private List<ShiftAssignmentResponse> saveAssignments(List<Long> employeeIds, long shiftId, LocalDate workDate, String note,
+                                                          boolean bulk) {
+        Shift shift = shiftRepository.findById(shiftId).filter(Shift::isActive)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "INVALID_ASSIGNMENT",
+                        bulk ? "Ca không tồn tại hoặc đã ngừng dùng" : INVALID_SINGLE_ASSIGNMENT));
+        List<ShiftAssignment> assignments = new ArrayList<>(employeeIds.size());
+        String cleanedNote = blankToNull(note);
+        for (long employeeId : employeeIds) {
+            Employee employee = employeeRepository.findByIdForUpdate(employeeId).orElse(null);
+            if (employee == null || employee.getWorkStatus() != WorkStatus.ACTIVE) {
+                String message = bulk ? employeeLabel(employee, employeeId) + " không tồn tại hoặc không còn làm việc"
+                        : INVALID_SINGLE_ASSIGNMENT;
+                throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "INVALID_ASSIGNMENT", message);
+            }
+            ShiftAssignment assignment = ShiftAssignment.schedule(employee, shift, workDate, cleanedNote,
+                    BusinessDateProvider.RESTAURANT_ZONE);
+            if (assignmentRepository.existsOverlapping(employeeId, assignment.getScheduledStartAt(), assignment.getScheduledEndAt())) {
+                String subject = bulk ? employeeLabel(employee, employeeId) : "Nhân viên";
+                throw new ApiException(HttpStatus.CONFLICT, "OVERLAP", subject + " đã có ca trùng khoảng thời gian này");
+            }
+            assignments.add(assignment);
         }
-        return getShiftAssignmentById(assignmentRepository.saveAndFlush(assignment).getId());
+        return assignmentRepository.saveAllAndFlush(assignments).stream()
+                .map(assignment -> getShiftAssignmentById(assignment.getId())).toList();
+    }
+
+    private static String employeeLabel(Employee employee, long id) {
+        return employee == null ? "Nhân viên #" + id : employee.getFullName() + " (" + employee.getEmployeeCode() + ")";
     }
 
     @Override

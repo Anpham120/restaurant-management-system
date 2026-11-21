@@ -3,9 +3,11 @@ package com.restaurant.core.employee.dto.request;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -24,6 +26,10 @@ public final class ShiftRequests {
 
     public record AssignShiftRequest(@NotNull @Positive Long employeeId, @NotNull @Positive Long shiftId, @NotNull LocalDate workDate,
                                      @Size(max = 255) String note) {
+    }
+
+    public record BulkAssignShiftRequest(@NotEmpty List<@NotNull @Positive Long> employeeIds, @NotNull @Positive Long shiftId,
+                                         @NotNull LocalDate workDate, @Size(max = 255) String note) {
     }
 
     public record ReasonRequest(@NotBlank @Size(max = 255) String reason) {

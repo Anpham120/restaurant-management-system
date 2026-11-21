@@ -1,4 +1,4 @@
-import { useEffect, useRef, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type FormEvent, type ReactNode } from 'react';
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
 
 import { ErrorNotice } from './ErrorNotice';
@@ -22,6 +22,7 @@ export function FormModal({
   title,
   description,
   submitLabel,
+  submitDisabled,
   busy,
   error,
   wide,
@@ -34,6 +35,7 @@ export function FormModal({
   title: string;
   description?: ReactNode;
   submitLabel: string;
+  submitDisabled?: boolean;
   busy?: boolean;
   error?: unknown;
   wide?: boolean;
@@ -43,6 +45,7 @@ export function FormModal({
   children?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -51,16 +54,16 @@ export function FormModal({
   }, [open]);
 
   return (
-    <dialog ref={ref} className={wide ? 'sheet sheet-wide' : 'sheet'} onClose={onClose}>
+    <dialog ref={ref} className={wide ? 'sheet sheet-wide' : 'sheet'} aria-labelledby={titleId} onClose={onClose}>
       {open && (
         <form
           method="dialog"
           onSubmit={(e: FormEvent) => {
             e.preventDefault();
-            onSubmit();
+            if (!busy && !submitDisabled) onSubmit();
           }}
         >
-          <h2>{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           {description && <p className="muted">{description}</p>}
           {children}
           <ErrorNotice error={error} />
@@ -68,7 +71,7 @@ export function FormModal({
             <button type="button" className="btn btn-quiet" onClick={onClose}>
               Quay lại
             </button>
-            <button type="submit" className={danger ? 'btn btn-danger' : 'btn btn-primary'} disabled={busy}>
+            <button type="submit" className={danger ? 'btn btn-danger' : 'btn btn-primary'} disabled={busy || submitDisabled}>
               {busy ? 'Đang lưu…' : submitLabel}
             </button>
           </div>

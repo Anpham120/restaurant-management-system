@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.restaurant.core.common.response.ApiResponse;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AdjustAttendanceRequest;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AssignShiftRequest;
+import com.restaurant.core.employee.dto.request.ShiftRequests.BulkAssignShiftRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceAdjustmentView;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AttendanceRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceResponse;
@@ -68,6 +69,13 @@ public class ShiftController {
     @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<ShiftAssignmentResponse> assignShift(@Valid @RequestBody AssignShiftRequest request) {
         return ApiResponse.ok(service.assignShift(request));
+    }
+
+    @PostMapping("/shift-assignments/bulk")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<List<ShiftAssignmentResponse>> assignShifts(@Valid @RequestBody BulkAssignShiftRequest request) {
+        return ApiResponse.ok(service.assignShifts(request));
     }
 
     /** Manager xem mọi người (lọc employeeId tùy chọn); vai trò khác luôn chỉ thấy ca của mình. */
