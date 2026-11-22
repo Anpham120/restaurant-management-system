@@ -9,7 +9,7 @@ rectangle "Nhân sự và bảo mật" {
   usecase "Đăng nhập" as A1
   usecase "Đổi mật khẩu lần đầu" as A2
   usecase "Đăng xuất mọi thiết bị" as A3
-  usecase "Xem lịch làm của mình" as S5
+  usecase "Xem lịch làm, chấm công\ncủa mình" as S5
   usecase "Quản lý phòng ban" as H1
   usecase "Thêm nhân viên, tài khoản" as H2
   usecase "Cho tạm nghỉ, nghỉ việc" as H3

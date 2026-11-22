@@ -57,7 +57,6 @@ package "entity" {
     - quantity : int
     - itemNameSnapshot : String
     - unitPrice : BigDecimal
-    - status : OrderItemStatus
   }
   enum OrderItemStatus <<enumeration>> {
     PENDING
@@ -89,7 +88,7 @@ KitchenServiceImpl ..> KitchenStockAllocator
 CustomerOrderRepository ..> CustomerOrder
 OrderBatchRepository ..> OrderBatch
 OrderItemRepository ..> OrderItem
-CustomerOrder "1" *-- "n" OrderBatch
-OrderBatch "1" *-- "n" OrderItem
-OrderItem --> OrderItemStatus
+OrderBatch "1..*" --> "1" CustomerOrder : order
+OrderItem "1..*" --> "1" OrderBatch : batch
+OrderItem --> "1" OrderItemStatus : status
 @enduml

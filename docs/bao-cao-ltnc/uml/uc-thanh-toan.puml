@@ -10,6 +10,8 @@ rectangle "Hóa đơn và thanh toán" {
   usecase "Thanh toán QR" as P3
   usecase "Tạo mã QR" as P3a
   usecase "Mở lại hóa đơn" as P5
+  usecase "Hủy mã QR" as P3b
+  usecase "Ghi nhận chuyển khoản\nthủ công" as P8
   usecase "Miễn thu,\nghi khách bỏ về" as P6
   usecase "Nhận thông báo\nchuyển khoản" as P4
   usecase "Ghi sự cố\nchuyển khoản" as P4a
@@ -19,6 +21,8 @@ C -- P1
 C -- P2
 C -- P3
 C -- P5
+C -- P3b
+M -- P8
 M -- P6
 P3 ..> P3a : <<include>>
 P4 -- S

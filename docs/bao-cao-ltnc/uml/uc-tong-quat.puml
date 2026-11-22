@@ -20,12 +20,13 @@ rectangle "Hệ thống quản lý nhà hàng Atlas Restaurant" {
   usecase "Quản lý nhân sự, ca làm" as UC1
   usecase "Quản lý thực đơn" as UC2
   usecase "Quản lý kho" as UC3
+  usecase "Nhận hàng, sơ chế,\nhoàn trả, báo hủy" as UC3b
   usecase "Quản lý tài chính, báo cáo" as UC7
 }
 NV -- UC0
 W -- UC4
 K -- UC5
-K -- UC3
+K -- UC3b
 C -- UC6
 M -- UC1
 M -- UC2

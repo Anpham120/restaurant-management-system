@@ -12,6 +12,9 @@ rectangle "Phục vụ và bếp" {
   usecase "Cảnh báo vượt hạn mức" as O2b
   usecase "Bưng món" as O4
   usecase "Hủy món chưa nấu" as O3
+  usecase "Trả bàn khi khách\nkhông gọi món" as O5
+  usecase "Cấp lại nguyên liệu\n(lô đang giữ bị hỏng)" as K4
+  usecase "Quản lý bàn" as M1
   usecase "Nhận món" as K1
   usecase "Giữ nguyên liệu (FEFO)" as K1a
   usecase "Từ chối món" as K2
@@ -22,6 +25,10 @@ W -- O1
 W -- O2
 W -- O4
 W -- O3
+W -- O5
+K -- O3
+K -- K4
+M -- M1
 O2 ..> O2a : <<include>>
 O2b ..> O2 : <<extend>>
 K -- K1

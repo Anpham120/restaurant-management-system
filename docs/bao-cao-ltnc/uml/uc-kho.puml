@@ -16,6 +16,8 @@ rectangle "Kho và bếp" {
   usecase "Chọn lô theo FEFO" as I3a
   usecase "Kiểm kê" as I8
   usecase "Đánh dấu lô hỏng" as I9
+  usecase "Xác nhận hoàn trả,\nhủy hàng" as I11
+  usecase "Hủy phiếu xuất" as I12
 }
 K -- I4
 K -- I5
@@ -28,5 +30,7 @@ M -- I2
 M -- I3
 M -- I8
 M -- I9
+M -- I11
+M -- I12
 I3 ..> I3a : <<include>>
 @enduml

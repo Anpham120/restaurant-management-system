@@ -8,6 +8,7 @@ actor "Quản lý" as M
 rectangle "Thực đơn" {
   usecase "Xem thực đơn hôm nay" as T8
   usecase "Tạm dừng, mở bán lại món" as T7
+  usecase "Xem công thức món" as T9
   usecase "Quản lý nhóm món" as T1
   usecase "Quản lý món, giá bán" as T2
   usecase "Khai báo công thức\n(theo phiên bản)" as T3
@@ -18,6 +19,7 @@ rectangle "Thực đơn" {
 W -- T8
 K -- T8
 K -- T7
+K -- T9
 M -- T7
 M -- T1
 M -- T2

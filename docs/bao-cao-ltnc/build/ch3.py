@@ -242,7 +242,7 @@ def chapter3():
             L('Repository (Spring Data JPA): đọc ghi bảng; các truy vấn khóa dòng có hậu tố ForUpdate. Truy vấn chỉ đọc ghép nhiều bảng nằm ở QueryRepository.'),
             L('Entity: lớp ánh xạ bảng; DTO dạng record tách dữ liệu vào ra API khỏi Entity.'),
             fig(f'{U}/class-ban-hang-xoay.png', 'Biểu đồ lớp các tầng trong module order (gọi món, bếp)', maxw=5760000, maxh=7800000),
-            B('Quan hệ hợp thành CustomerOrder 1 - n OrderBatch 1 - n OrderItem khớp với bảng orders, order_batches, order_items. OrderItemStatusChanger gom việc đổi trạng thái món và ghi nhật ký order_item_events vào một chỗ, để mọi lần đổi trạng thái đều đi đúng máy trạng thái.'),
+            B('Liên kết giữa các Entity vẽ đúng chiều ánh xạ JPA: OrderBatch giữ tham chiếu @ManyToOne tới CustomerOrder, OrderItem giữ tham chiếu tới OrderBatch (bội số 1..* - 1), khớp khóa ngoại của bảng order_batches, order_items. OrderItemStatusChanger gom việc đổi trạng thái món và ghi nhật ký order_item_events vào một chỗ, để mọi lần đổi trạng thái đều đi đúng máy trạng thái.'),
             B('Phần thanh toán dùng mẫu Strategy [13]: PaymentServiceImpl giữ một Map<PaymentMethod, PaymentStrategy>; Spring tiêm mọi lớp cài PaymentStrategy (CashPaymentStrategy, QrPaymentStrategy), nên thêm phương thức thanh toán mới chỉ cần thêm một lớp, không sửa PaymentServiceImpl. Tiền chuyển khoản đi đường riêng: SePay gọi webhook, SepayWebhookService kiểm khóa API rồi chuyển QrTransferProcessor ghi nhận; cả hai đường thu đều kết thúc ở InvoiceSettlement, nơi đóng hóa đơn và gọi OrderBillingApi để đóng đơn, trả bàn.'),
             fig(f'{U}/class-thanh-toan.png', 'Biểu đồ lớp thanh toán (mẫu Strategy)', maxw=5760000),
             H3('3.2.6. Biểu đồ triển khai'),

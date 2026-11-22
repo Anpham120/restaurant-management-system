@@ -17,10 +17,10 @@ endif
 |Thu ngân|
 :Nhập tiền khách đưa;
 |Hệ thống|
-if (Tiền đưa >= số phải thu?) then ([đủ])
+if (Không có QR đang chờ và\ntiền đưa >= số phải thu?) then ([đúng])
   :Khóa hóa đơn, ghi payment CASH,\ntiền thối lại;
   :Hóa đơn PAID, đơn và phiên CLOSED,\nbàn AVAILABLE;
-else ([thiếu])
+else ([sai])
   :Trả 422, không ghi gì;
   stop
 endif
