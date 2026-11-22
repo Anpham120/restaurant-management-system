@@ -93,7 +93,7 @@ def chapter4():
                ['5', 'Nguyễn Quang Hiếu', 'BIT240091', 'Nhân sự và bảo mật: nhân viên, tài khoản, Spring Security, JWT, phân quyền, ca làm, chấm công', '…%', '…']]),
            B('Mức đánh giá dùng thang Khá, Tốt theo mức độ hoàn thành nhiệm vụ.'),
            H2('4.2. Cài đặt chương trình'),
-           B(f'Mã nguồn đặt tại {REPO} [11]. Backend chia package theo phân hệ (order, menu, inventory, employee, finance, security), mỗi package có controller, service (interface và impl), repository, entity, dto; ranh giới giữa các phân hệ được kiểm tự động bằng Spring Modulith. Frontend chia theo màn hình trong frontend/src/pages, dùng chung lớp gọi API frontend/src/api.'),
+           B(f'Mã nguồn đặt tại {REPO} [10]. Backend chia package theo phân hệ (order, menu, inventory, employee, finance, security), mỗi package có controller, service (interface và impl), repository, entity, dto; ranh giới giữa các phân hệ được kiểm tự động bằng Spring Modulith. Frontend chia theo màn hình trong frontend/src/pages, dùng chung lớp gọi API frontend/src/api.'),
            B('Mỗi thành viên chọn một đoạn code tiêu biểu nhất trong phần việc của mình. Ảnh chụp trực tiếp từ mã nguồn, có số dòng để đối chiếu.')]
     for k, (key, who, title, why, notes) in enumerate(CODE, 1):
         out += [H3(f'4.2.{k}. {who}: {title.split(":")[0]}'), B(why)]
@@ -129,7 +129,7 @@ def chapter4():
                 ['Kho', 'Lập phiếu nhập (và gửi lặp); xác nhận; xác nhận lặp; sai vai trò', '4 (TC33–TC36)'],
                 ['Tài chính', 'Sai nguồn tiền; hủy khoản chi; hủy lặp; đối soát ngày tương lai', '4 (TC37–TC40)']]),
             H3('4.3.2. Test case'),
-            B('Bảng dưới trích 8 ca tiêu biểu. Đủ 40 ca với các cột mã, mục đích, input (giá trị cụ thể), output mong muốn, output thực tế, trạng thái, người phụ trách, ngày test, kết quả lần 1, lần 2 nằm ở Google Sheet [12]. Cả 40 ca đạt ngay lần chạy đầu nên cột kết quả lần 2 để trống.'),
+            B('Bảng dưới trích 8 ca tiêu biểu. Đủ 40 ca với các cột mã, mục đích, input (giá trị cụ thể), output mong muốn, output thực tế, trạng thái, người phụ trách, ngày test, kết quả lần 1, lần 2 nằm ở Google Sheet [11]. Cả 40 ca đạt ngay lần chạy đầu nên cột kết quả lần 2 để trống.'),
             L(f'Google Sheet test case: {SHEET}'),
             L(f'Mã nguồn trên GitHub: {REPO}')]
     rows = [['Mã', 'Mục đích', 'Input', 'Output mong muốn', 'Output thực tế', 'Trạng thái'],
@@ -159,7 +159,7 @@ def chapter5():
     A = f'{R}/giao-dien/anh'
     out = [H1('5. Kết quả và hướng phát triển'),
            H2('5.1. Kết quả'),
-           B('Các màn hình dưới chụp từ hệ thống đang chạy với dữ liệu sinh ở mục 3.1.6, đăng nhập bằng tài khoản quản lý.')]
+           B('Các màn hình dưới chụp từ hệ thống đang chạy với dữ liệu sinh ở mục 3.1.5, đăng nhập bằng tài khoản quản lý.')]
     for key, title, text in UI:
         out += [fig4(f'{A}/{key}.png', title, ch=5, maxw=5760000), B(text)]
     out += [H3('5.1.1. Đã làm được'),
@@ -174,7 +174,7 @@ def chapter5():
             L('Chưa in hóa đơn ra máy in nhiệt và chưa xuất báo cáo ra Excel.'),
             H2('5.2. Kết luận'),
             H3('5.2.1. Kiến thức đạt được'),
-            L('Thiết kế cơ sở dữ liệu chuẩn hóa 3NF, dùng ràng buộc, khóa, trigger để bảo vệ dữ liệu; sinh ERD và dữ liệu mẫu bằng code.'),
+            L('Thiết kế cơ sở dữ liệu chuẩn hóa 3NF, dùng ràng buộc, khóa, trigger để bảo vệ dữ liệu; sinh dữ liệu mẫu bằng code qua API của hệ thống.'),
             L('Xây dựng ứng dụng Modular Monolith chia tầng Controller, Service, Repository với Spring Boot, Spring Modulith, Spring Data JPA, Spring Security; áp dụng mẫu Strategy, Repository.'),
             L('Xử lý đồng thời: giao dịch, khóa bi quan, idempotency; xác thực JWT có thu hồi token.'),
             L('Viết kiểm thử tự động và kiểm thử chức năng có ghi kết quả; làm việc nhóm qua Git với nhánh feature.'),
@@ -221,14 +221,12 @@ REFS_LIST = [
     (6, 'https://react.dev/', 'Meta, "React Documentation".'),
     (7, 'https://tanstack.com/query/latest', 'TanStack, "TanStack Query Documentation".'),
     (8, 'https://java.testcontainers.org/', 'Testcontainers, "Testcontainers for Java".'),
-    (9, 'https://plantuml.com/', 'PlantUML, "PlantUML Language Reference Guide".'),
-    (10, 'https://docs.sepay.vn/tich-hop-webhooks.html', 'SePay, "Tích hợp Webhooks".'),
-    (11, 'https://github.com/Anpham120/restaurant-management-system', 'Nhóm thực hiện, mã nguồn hệ thống Atlas Restaurant (repo restaurant-management-system).'),
-    (12, 'https://docs.google.com/spreadsheets/d/1VI1XD4DCVjGwWdVOkKhn3D6lPUqS4fjdb_ct4YBF5H8/edit', 'Nhóm thực hiện, bảng test case (Google Sheet).'),
-    (13, 'https://www.oreilly.com/library/view/design-patterns-elements/0201633612/', 'E. Gamma, R. Helm, R. Johnson, J. Vlissides, Design Patterns: Elements of Reusable Object-Oriented Software. Addison-Wesley, 1994.'),
-    (14, 'https://dl.acm.org/doi/10.1145/362384.362685', 'E. F. Codd, "A Relational Model of Data for Large Shared Data Banks", Communications of the ACM, 1970.'),
-    (15, 'https://docs.spring.io/spring-modulith/reference/', 'Spring, "Spring Modulith Reference Documentation".'),
-    (16, 'https://dbml.dbdiagram.io/docs/', 'Holistics, "DBML: Database Markup Language" và công cụ dbdiagram.io.'),
+    (9, 'https://docs.sepay.vn/tich-hop-webhooks.html', 'SePay, "Tích hợp Webhooks".'),
+    (10, 'https://github.com/Anpham120/restaurant-management-system', 'Nhóm thực hiện, mã nguồn hệ thống Atlas Restaurant (repo restaurant-management-system).'),
+    (11, 'https://docs.google.com/spreadsheets/d/1VI1XD4DCVjGwWdVOkKhn3D6lPUqS4fjdb_ct4YBF5H8/edit', 'Nhóm thực hiện, bảng test case (Google Sheet).'),
+    (12, 'https://www.oreilly.com/library/view/design-patterns-elements/0201633612/', 'E. Gamma, R. Helm, R. Johnson, J. Vlissides, Design Patterns: Elements of Reusable Object-Oriented Software. Addison-Wesley, 1994.'),
+    (13, 'https://dl.acm.org/doi/10.1145/362384.362685', 'E. F. Codd, "A Relational Model of Data for Large Shared Data Banks", Communications of the ACM, 1970.'),
+    (14, 'https://docs.spring.io/spring-modulith/reference/', 'Spring, "Spring Modulith Reference Documentation".'),
 ]
 
 

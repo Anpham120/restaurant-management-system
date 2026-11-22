@@ -89,7 +89,7 @@ def brk(name):
 def sample_tables():
     out = []
     for mod, tables in MODULES:
-        out.append(H3(f'3.1.{7 + MODULES.index((mod, tables))}. Dữ liệu mẫu phân hệ {mod}'))
+        out.append(H3(f'3.1.{6 + MODULES.index((mod, tables))}. Dữ liệu mẫu phân hệ {mod}'))
         for t in tables:
             m = MAU[t]
             if not m['rows']:
@@ -166,7 +166,7 @@ def chapter3():
     C = f'{R}/code-anh'
     out = [H1('3. Phân tích và thiết kế'),
            H2('3.1. Thiết kế cơ sở dữ liệu'),
-           B(f'Cơ sở dữ liệu PostgreSQL gồm {len(CAT)} bảng, chia theo 5 phân hệ. Các mục dưới đây không viết tay mà sinh từ catalog của chính database đang chạy, nên luôn khớp với schema thật.'),
+           B(f'Cơ sở dữ liệu PostgreSQL gồm {len(CAT)} bảng, chia theo 5 phân hệ. Thực thể, thuộc tính và quan hệ dưới đây lấy đúng theo schema của database đang chạy'),
            H3('3.1.1. Thực thể, thuộc tính và khóa chính'),
            B('Mỗi bảng là một thực thể; khóa chính là cột id (số tự tăng), riêng các bảng nối như account_roles dùng khóa ghép. Bảng dưới liệt kê thực thể của từng phân hệ, ý nghĩa, khóa chính và các bảng được tham chiếu.')]
     out += entity_tables()
@@ -176,7 +176,7 @@ def chapter3():
             B('Quan hệ được thể hiện bằng khóa ngoại. Phần lớn là quan hệ nhiều - một (nhiều dòng bảng con thuộc một dòng bảng cha), ví dụ nhiều order_items thuộc một order_batches. Quan hệ một - một khi khóa ngoại có ràng buộc UNIQUE, ví dụ mỗi table_sessions có đúng một orders. Quan hệ nhiều - nhiều được tách bằng bảng nối, ví dụ accounts và roles qua account_roles. Cột "Bắt buộc" cho biết khóa ngoại có cho phép NULL hay không.')]
     out += relation_table()
     out += [H3('3.1.3. Chuẩn hóa dạng 3NF'),
-            B('Thiết kế được kiểm theo ba dạng chuẩn của mô hình quan hệ [14]:'),
+            B('Thiết kế được kiểm theo ba dạng chuẩn của mô hình quan hệ [13]:'),
             L('1NF: mọi cột chứa giá trị nguyên tố, không có nhóm lặp. Ví dụ một đợt gọi nhiều món không lưu danh sách món trong một cột mà tách thành nhiều dòng order_items.'),
             L('2NF: mọi bảng có khóa chính một cột id, nên không có phụ thuộc vào một phần khóa. Các bảng nối khóa ghép (account_roles) chỉ chứa hai cột khóa.'),
             L('3NF: không có thuộc tính phụ thuộc bắc cầu vào khóa qua một thuộc tính không khóa. Ví dụ tên phòng ban không lưu trong employees mà ở departments, employees chỉ giữ department_id; tên vai trò ở roles, không lặp ở accounts.'),
@@ -184,22 +184,13 @@ def chapter3():
             L('order_items.item_name_snapshot, unit_price: tên và giá món lúc khách gọi. Quản lý đổi giá sau đó không làm sai hóa đơn cũ.'),
             L('invoice_items và invoices.total: số tiền chốt lúc lập hóa đơn, là chứng từ kế toán không được đổi.'),
             L('shift_assignments lưu giờ bắt đầu, kết thúc thực tế của ca tại ngày làm, để đổi giờ ca mẫu không làm sai lịch đã phân.'),
-            H3('3.1.4. Sinh mã sơ đồ cơ sở dữ liệu bằng code'),
-            B('Sơ đồ cơ sở dữ liệu không vẽ tay mà viết bằng DBML, ngôn ngữ mô tả schema của dbdiagram.io [16], và mã DBML cũng được sinh bằng code từ database thật qua ba bước:'),
-            numbered(['Câu truy vấn catalog.sql đọc bảng, cột, kiểu dữ liệu, khóa chính, khóa ngoại (theo đúng thứ tự cột) từ pg_catalog của PostgreSQL và xuất JSON.',
-                      'Script gen_dbml.py đọc JSON, viết mỗi cụm nghiệp vụ một file .dbml: khai báo Table với cột, kiểu, pk, not null, unique; mỗi khóa ngoại một dòng Ref với ký hiệu quan hệ của DBML: ">" nhiều - một, "-" một - một, thêm "?" khi cột khóa ngoại cho phép NULL (quan hệ tùy chọn).',
-                      'Script render_dbdiagram.py dùng Playwright mở dbdiagram.io, dán mã DBML, kiểm tra không có lỗi cú pháp, chọn thuật toán tự sắp xếp Pipeline của dbdiagram rồi chụp sơ đồ. Đổi schema chỉ cần chạy lại ba bước là sơ đồ khớp.']),
-            fig(f'{C}/gen-01-catalog-sql.png', 'Câu truy vấn catalog.sql đọc cấu trúc database', maxw=5760000),
-            fig(f'{C}/gen-02-gen-dbml.png', 'gen_dbml.py: sinh dòng Ref theo loại quan hệ', maxw=5760000),
-            fig(f'{C}/gen-02b-dbml-mau.png', 'Mã DBML sinh ra cho phân hệ Thực đơn', maxw=5760000, maxh=8000000),
-            fig(f'{C}/gen-02c-render-dbdiagram.png', 'render_dbdiagram.py: dán DBML vào dbdiagram.io và chụp sơ đồ', maxw=5760000),
-            H3('3.1.5. Sơ đồ thực thể liên kết (ERD) và database diagram'),
-            B('Sơ đồ do dbdiagram.io vẽ từ mã DBML ở mục 3.1.4, dùng ký hiệu chân chim: đầu một gạch là phía "một", đầu chạc ba là phía "nhiều", vòng tròn là quan hệ tùy chọn (cột khóa ngoại cho phép NULL). Mỗi bảng ghi đủ cột và kiểu dữ liệu PostgreSQL; biểu tượng chìa khóa là khóa chính, biểu tượng mắt xích là khóa ngoại, NN là bắt buộc (NOT NULL).'),
-            B('Để sơ đồ đọc được, 49 bảng được chia thành 9 cụm nghiệp vụ, mỗi cụm 2 đến 8 bảng. Bảng của cụm khác mà cụm đang xét trỏ tới được vẽ thêm, chỉ có khóa chính. Các cột ghi người thao tác (created_by_id, confirmed_by_id...) tới employees có ở hầu hết bảng nên chỉ vẽ đường nối trong cụm Nhân sự; đầy đủ mọi quan hệ ở bảng quan hệ của mục 3.1.2.')]
+            H3('3.1.4. Sơ đồ thực thể liên kết (ERD) và database diagram'),
+            B('Sơ đồ dùng ký hiệu chân chim: đầu một gạch là phía "một", đầu chạc ba là phía "nhiều", vòng tròn là quan hệ tùy chọn (cột khóa ngoại cho phép NULL). Mỗi bảng ghi đủ cột và kiểu dữ liệu PostgreSQL; biểu tượng chìa khóa là khóa chính, biểu tượng mắt xích là khóa ngoại, NN là bắt buộc (NOT NULL).'),
+            B('49 bảng được chia thành 9 cụm nghiệp vụ, mỗi cụm 2 đến 8 bảng. Bảng của cụm khác mà cụm đang xét trỏ tới được vẽ thêm, chỉ có khóa chính. Các cột ghi người thao tác (created_by_id, confirmed_by_id...) tới employees có ở hầu hết bảng nên chỉ vẽ đường nối trong cụm Nhân sự; đầy đủ mọi quan hệ ở bảng quan hệ của mục 3.1.2.')]
     for key, name in DBD:
         xoay = f'{E}/dbml-{key}-xoay.png'      # sơ đồ dàn ngang: xoay dọc trang cho chữ to hơn
         out.append(fig(xoay if os.path.exists(xoay) else f'{E}/dbml-{key}.png', f'ERD {name}', maxw=5760000, maxh=7800000))
-    out += [H3('3.1.6. Sinh dữ liệu bằng code'),
+    out += [H3('3.1.5. Sinh dữ liệu bằng code'),
             B('Dữ liệu không chèn bằng câu INSERT tay. Script seed_baocao.py gọi REST API của chính hệ thống như người dùng thật: đăng nhập theo vai trò, tạo nhân viên, ca làm, nguyên liệu, phiếu nhập, xuất, thực đơn, rồi mô phỏng 105 lượt khách với đủ kịch bản: thu tiền mặt, QR thành công, QR đang chờ, lệch tiền, khách bỏ về, miễn thu, hủy món, bếp từ chối. Vì đi qua tầng Service, mọi dòng dữ liệu đều đã qua kiểm tra nghiệp vụ, trigger và máy trạng thái; dữ liệu không hợp lệ không thể lọt vào.'),
             fig(f'{C}/gen-03-seed-goi-api.png', 'Hàm call() và soft() của seed_baocao.py', maxw=5760000),
             fig(f'{C}/gen-04-seed-ban-hang.png', 'Đoạn sinh dữ liệu bán hàng nhiều kịch bản', maxw=5760000, maxh=8000000),
@@ -239,7 +230,7 @@ def chapter3():
     out += [H3('3.2.7. Biểu đồ lớp theo kiến trúc dự án'),
             B('Hệ thống không dùng MVC kiểu máy chủ tự sinh giao diện. Kiến trúc gồm hai phần tách biệt giao tiếp qua REST/JSON:'),
             L('Frontend là ứng dụng một trang (SPA) React: các trang trong frontend/src/pages chỉ hiển thị và gọi API qua api/client.ts, không chứa nghiệp vụ.'),
-            L('Backend là Modular Monolith: một ứng dụng Spring Boot chia thành các module theo nghiệp vụ, ranh giới module do Spring Modulith kiểm tra [15]:'),
+            L('Backend là Modular Monolith: một ứng dụng Spring Boot chia thành các module theo nghiệp vụ, ranh giới module do Spring Modulith kiểm tra [14]:'),
             L2('common (phản hồi chung, xử lý lỗi, khóa chống gửi trùng, đo thời gian bằng AOP) và security (JWT, người dùng hiện tại) dùng chung.'),
             L2('Năm module nghiệp vụ employee, menu, order, inventory, finance; mỗi module sở hữu một nhóm bảng, chỉ module chủ được ghi bảng đó.'),
             L2('Module khác chỉ được gọi interface ở package gốc của module chủ, không được dùng package con (controller, service, repository, entity, dto).'),
@@ -252,7 +243,7 @@ def chapter3():
             L('Entity: lớp ánh xạ bảng; DTO dạng record tách dữ liệu vào ra API khỏi Entity.'),
             fig(f'{U}/class-ban-hang-xoay.png', 'Biểu đồ lớp các tầng trong module order (gọi món, bếp)', maxw=5760000, maxh=7800000),
             B('Liên kết giữa các Entity vẽ đúng chiều ánh xạ JPA: OrderBatch giữ tham chiếu @ManyToOne tới CustomerOrder, OrderItem giữ tham chiếu tới OrderBatch (bội số 1..* - 1), khớp khóa ngoại của bảng order_batches, order_items. OrderItemStatusChanger gom việc đổi trạng thái món và ghi nhật ký order_item_events vào một chỗ, để mọi lần đổi trạng thái đều đi đúng máy trạng thái.'),
-            B('Phần thanh toán dùng mẫu Strategy [13]: PaymentServiceImpl giữ một Map<PaymentMethod, PaymentStrategy>; Spring tiêm mọi lớp cài PaymentStrategy (CashPaymentStrategy, QrPaymentStrategy), nên thêm phương thức thanh toán mới chỉ cần thêm một lớp, không sửa PaymentServiceImpl. Tiền chuyển khoản đi đường riêng: SePay gọi webhook, SepayWebhookService kiểm khóa API rồi chuyển QrTransferProcessor ghi nhận; cả hai đường thu đều kết thúc ở InvoiceSettlement, nơi đóng hóa đơn và gọi OrderBillingApi để đóng đơn, trả bàn.'),
+            B('Phần thanh toán dùng mẫu Strategy [12]: PaymentServiceImpl giữ một Map<PaymentMethod, PaymentStrategy>; Spring tiêm mọi lớp cài PaymentStrategy (CashPaymentStrategy, QrPaymentStrategy), nên thêm phương thức thanh toán mới chỉ cần thêm một lớp, không sửa PaymentServiceImpl. Tiền chuyển khoản đi đường riêng: SePay gọi webhook, SepayWebhookService kiểm khóa API rồi chuyển QrTransferProcessor ghi nhận; cả hai đường thu đều kết thúc ở InvoiceSettlement, nơi đóng hóa đơn và gọi OrderBillingApi để đóng đơn, trả bàn.'),
             fig(f'{U}/class-thanh-toan.png', 'Biểu đồ lớp thanh toán (mẫu Strategy)', maxw=5760000),
             H3('3.2.8. Biểu đồ triển khai'),
             B('Trình duyệt kết nối HTTPS tới nginx ở máy 1; nginx chuyển vào Traefik trong cụm Kubernetes (k3s); Traefik đưa / tới pod giao diện và /api tới pod backend; backend kết nối PostgreSQL. Máy 2 chứa công cụ: Jenkins kiểm thử và đóng gói, Argo CD triển khai theo Git, bộ giám sát, kho sao lưu. Chi tiết ở mục 4.4.'),
