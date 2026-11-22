@@ -6,7 +6,7 @@ Cần: JDK 25, Docker (Compose v2). Maven không cần cài — dùng `./mvnw`.
 
 ```bash
 cp .env.example .env                   # điền DB_ADMIN_PASSWORD, DB_APP_PASSWORD, JWT_SECRET (openssl rand -base64 48)
-docker compose up -d db                # PostgreSQL 17 ở localhost:5433, tự nạp docs/04 → 09 → 10 lần đầu
+docker compose up -d db                # PostgreSQL 17 ở localhost:5433, tự nạp docs/database/04 → 09 → 10 lần đầu
 
 # chạy app trên máy (đọc biến từ .env của shell, hoặc export tay)
 set -a; source .env; set +a
@@ -55,7 +55,7 @@ public SubmitBatchResponse submitOrderBatch(long orderId, long actorId, SubmitBa
 // order/controller/OrderController.java
 @PostMapping("/{orderId}/batches")
 @ResponseStatus(HttpStatus.CREATED)
-@PreAuthorize("hasAnyRole('WAITER', 'MANAGER')")          // khớp ma trận docs/07 §10
+@PreAuthorize("hasAnyRole('WAITER', 'MANAGER')")          // khớp ma trận docs/dac-ta/07 §10
 public ApiResponse<SubmitBatchResponse> submitOrderBatch(@PathVariable @Positive long orderId, @Valid @RequestBody SubmitBatchRequest request) {
     return ApiResponse.ok(orderService.submitOrderBatch(orderId, currentUser.employeeId(), request));
 }
@@ -123,7 +123,7 @@ Tên hàm nói rõ **làm gì với cái gì**: động từ + đối tượng, 
 
 ## 4. Kiểm tra quyền
 
-- `@PreAuthorize("hasAnyRole('…')")` trên **mọi** endpoint ngoài `/api/auth/login` và `/actuator/health`; vai trò lấy theo ma trận [07 §10](../07-kiem-toan-ham-rc.md). Không có annotation = mọi người đã đăng nhập đều gọi được.
+- `@PreAuthorize("hasAnyRole('…')")` trên **mọi** endpoint ngoài `/api/auth/login` và `/actuator/health`; vai trò lấy theo ma trận [07 §10](../dac-ta/07-kiem-toan-ham-rc.md). Không có annotation = mọi người đã đăng nhập đều gọi được.
 - `@PreAuthorize` là lớp kiểm vai trò duy nhất ở API — bắt buộc trên mọi endpoint ghi.
 - Không tự giải mã JWT; dùng `CurrentUser`.
 
@@ -151,16 +151,16 @@ Tên hàm nói rõ **làm gì với cái gì**: động từ + đối tượng, 
 | Tình huống | Cách làm |
 | --- | --- |
 | Database **mới** dựng bằng compose/Testcontainers | Schema đã đúng v4.1 → để `FLYWAY_BASELINE_ON_MIGRATE=true` (mặc định trong `.env.example`): lần chạy app đầu ghi baseline version 1, sau đó chạy V2+ |
-| Database **đã có dữ liệu** dựng từ docs/04 + 09 + 10 | Giữ `FLYWAY_BASELINE_ON_MIGRATE=false` (mặc định, bắt buộc ở profile `prod`). App sẽ dừng với lỗi "non-empty schema without schema history table" → quản trị viên xác nhận schema đúng v4.1 rồi chạy app **một lần** với biến này = `true`, sau đó tắt lại |
-| Thay đổi schema mới | File `src/main/resources/db/migration/V2__mo_ta.sql`, được nhóm duyệt; không sửa file đã chạy. Đối tượng mới phải `ALTER … OWNER TO rc_owner` và cấp quyền theo `docs/09-acl-v4.1.sql` (có thể chạy lại 09 — script idempotent) |
-| Đổi ACL / role | Sửa `docs/09-acl-v4.1.sql` (cần quyền quản trị cụm), không đặt trong Flyway |
+| Database **đã có dữ liệu** dựng từ docs/database/04 + 09 + 10 | Giữ `FLYWAY_BASELINE_ON_MIGRATE=false` (mặc định, bắt buộc ở profile `prod`). App sẽ dừng với lỗi "non-empty schema without schema history table" → quản trị viên xác nhận schema đúng v4.1 rồi chạy app **một lần** với biến này = `true`, sau đó tắt lại |
+| Thay đổi schema mới | File `src/main/resources/db/migration/V2__mo_ta.sql`, được nhóm duyệt; không sửa file đã chạy. Đối tượng mới phải `ALTER … OWNER TO rc_owner` và cấp quyền theo `docs/database/09-acl-v4.1.sql` (có thể chạy lại 09 — script idempotent) |
+| Đổi ACL / role | Sửa `docs/database/09-acl-v4.1.sql` (cần quyền quản trị cụm), không đặt trong Flyway |
 
 **Tương thích ngược (expand/contract).** Deploy lỗi chỉ quay lui image, không quay lui database, nên bản app đang chạy phải chạy được trên schema mới.
 Không xóa/đổi tên/đổi kiểu cột trong cùng lần phát hành với code mới. Làm 2 bước: (1) expand — thêm cột mới cho phép NULL hoặc có DEFAULT, code
-mới dùng cột mới; (2) contract — ở lần phát hành sau mới xóa cột cũ, file ghi `-- contract: <lý do>`. Pipeline chạy `scripts/check-migrations.sh`
+mới dùng cột mới; (2) contract — ở lần phát hành sau mới xóa cột cũ, file ghi `-- contract: <lý do>`. Pipeline chạy `scripts/ci/check-migrations.sh`
 và chặn nếu vi phạm.
 
-Flyway luôn chạy bằng `FLYWAY_USER` (quản trị), app chạy bằng `DB_APP_USER` (`rc_app`). Không bao giờ chạy lại docs/04 trên database có dữ liệu.
+Flyway luôn chạy bằng `FLYWAY_USER` (quản trị), app chạy bằng `DB_APP_USER` (`rc_app`). Không bao giờ chạy lại docs/database/04 trên database có dữ liệu.
 
 ## 7. Không tự ý sửa (hỏi Leader)
 

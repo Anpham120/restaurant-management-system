@@ -2,7 +2,7 @@
 #   cp .env.example .env   # rồi đặt mật khẩu và JWT_SECRET
 #   docker compose up -d db          # chỉ database (chạy app bằng ./mvnw spring-boot:run)
 #   docker compose up -d --build     # database + app
-# Lần đầu (volume trống) PostgreSQL tự nạp docs/04 → 09 → 10 và tạo login ứng dụng. Volume đã có dữ liệu thì
+# Lần đầu (volume trống) PostgreSQL tự nạp docs/database/04 → 09 → 10 và tạo login ứng dụng. Volume đã có dữ liệu thì
 # các script này KHÔNG chạy lại (cơ chế initdb của image postgres) — không bao giờ chạy lại DDL trên dữ liệu thật.
 services:
   db:
@@ -19,9 +19,9 @@ services:
       DB_WEBHOOK_PASSWORD: ${DB_WEBHOOK_PASSWORD:-}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docs/04-schema-v4.1.sql:/docker-entrypoint-initdb.d/10-schema-v4.1.sql:ro
-      - ./docs/09-acl-v4.1.sql:/docker-entrypoint-initdb.d/20-acl-v4.1.sql:ro
-      - ./docs/10-bao-cao-v4.1.sql:/docker-entrypoint-initdb.d/30-bao-cao-v4.1.sql:ro
+      - ./docs/database/04-schema-v4.1.sql:/docker-entrypoint-initdb.d/10-schema-v4.1.sql:ro
+      - ./docs/database/09-acl-v4.1.sql:/docker-entrypoint-initdb.d/20-acl-v4.1.sql:ro
+      - ./docs/database/10-bao-cao-v4.1.sql:/docker-entrypoint-initdb.d/30-bao-cao-v4.1.sql:ro
       - ./docker/db-init/40-app-logins.sh:/docker-entrypoint-initdb.d/40-app-logins.sh:ro
     ports:
       - "127.0.0.1:${DB_PORT:-5433}:5432"

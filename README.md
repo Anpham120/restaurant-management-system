@@ -40,20 +40,37 @@ Chạy app ngoài Docker, test, Flyway và cách thêm API: [DEVELOPMENT_GUIDE](
 
 Chi tiết: [TEAM_ASSIGNMENT](docs/backend/TEAM_ASSIGNMENT.md) · hợp đồng API: [API_CONTRACT](docs/backend/API_CONTRACT.md).
 
-## Cấu trúc
+## Cấu trúc thư mục
 
 ```text
-src/main/java/com/restaurant/core/
-├── common/      config (CORS) · aspect (PerformanceLoggingAspect) · exception · response
-├── security/    JWT, SecurityConfig, CurrentUser, đăng nhập, đổi mật khẩu  (Nguyễn Quang Hiếu)
-├── employee/    nhân viên/tài khoản, ca, chấm công                         (Nguyễn Quang Hiếu)
-├── menu/        danh mục, món, công thức, thực đơn ngày, hạn mức            (Lê Anh)
-├── order/       bàn, phiên, đơn, gọi món, bếp, phục vụ, hủy, bỏ về         (Phạm Duy An)
-├── inventory/   nguyên liệu, nhập/xuất/kiểm kê, sơ chế, hoàn trả, báo cáo  (Đỗ Tuấn Anh)
-├── finance/     Invoice*, Payment*, strategy/ (CASH/QR), sepay/ (webhook)  (Phạm Duy An)
-│                Expense*, CashReconciliation*, FinanceReport*              (Bùi Đào Đức Anh)
-frontend/            React + Vite: vận hành ca và các màn quản lý (frontend/README.md)
-src/main/resources/  application.yml, application-dev.yml, application-prod.yml, db/migration/
-docker/              script khởi tạo login DB, tạo Manager đầu tiên
-compose.yaml, Dockerfile, .env.example
+src/main/java/com/restaurant/core/      Backend: mỗi package con là một module (Spring Modulith)
+├── common/      dùng chung: config, aspect, exception, response, idempotency, time, validation
+├── security/    JWT, SecurityConfig, CurrentUser, đăng nhập, đổi mật khẩu   (Nguyễn Quang Hiếu)
+├── employee/    nhân viên, tài khoản, ca làm, chấm công                     (Nguyễn Quang Hiếu)
+├── menu/        nhóm món, món, công thức, thực đơn ngày, hạn mức             (Lê Anh)
+├── order/       bàn, phiên, đơn, gọi món, bếp, phục vụ, hủy, khách bỏ về    (Phạm Duy An)
+├── inventory/   nguyên liệu, nhập/xuất/kiểm kê, sơ chế, hoàn trả, báo cáo   (Đỗ Tuấn Anh)
+└── finance/     hóa đơn, thanh toán (strategy/, sepay/)                    (Phạm Duy An)
+                 khoản chi, đối soát tiền mặt, báo cáo doanh thu            (Bùi Đào Đức Anh)
+   Mỗi module: controller/ · service/ (interface) + service/impl/ · repository/ · entity/ · dto/request|response/
+   Interface ở package gốc của module là API cho module khác (OrderBillingApi, DailyMenuLookup, ...).
+src/main/resources/     application*.yml, db/migration/ (Flyway, sau baseline docs/database/04)
+src/test/java/...       test theo đúng module: <module>/<Tên>IT.java (integration, Testcontainers),
+                        IntegrationTestBase, TestData, ModularityTest ở package gốc
+frontend/               React + Vite; src/pages/<module>/ theo cùng module với backend (frontend/README.md)
+docs/
+├── dac-ta/             đặc tả nghiệp vụ: luồng chính, đánh giá database, luồng dữ liệu, kiểm toán hàm (01, 02, 03, 07)
+├── database/           schema v4.1 (04), test, ACL, báo cáo SQL (05, 06, 08–12): baseline mà Kustomize, compose, test nạp
+├── backend/            kiến trúc, ranh giới module, hướng dẫn, phân công, hợp đồng API
+├── devops/             quy trình triển khai, Jenkins rootless, cấu hình nginx
+├── erd/                ERD theo phân hệ (draw.io, DBML)
+└── bao-cao/, bao-cao-ltnc/   báo cáo Triển khai phần mềm, báo cáo Lập trình nâng cao
+deploy/
+├── k8s/                Kustomize + Argo CD (base, overlays staging/prod, platform)
+├── monitoring/         Prometheus, Alertmanager, Grafana, Loki, blackbox; máy 1, 2 tự đồng bộ (sync/)
+├── jenkins/            Jenkins rootless (casc, Dockerfile)
+└── seaweedfs/          kho S3 nhận WAL sao lưu
+scripts/                ci/, release/, backup/, ops/ (scripts/README.md)
+docker/                 khởi tạo login DB, tạo Manager đầu tiên
+compose.yaml, compose.staging.yaml, Dockerfile, Jenkinsfile, .env.example
 ```

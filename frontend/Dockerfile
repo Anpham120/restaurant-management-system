@@ -9,7 +9,7 @@ COPY . .
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.30-alpine
-# Lấy bản vá Alpine mới hơn image gốc (Trivy kiểm ở pipeline). PATCH_DATE đổi mỗi ngày (scripts/staging-test.sh)
+# Lấy bản vá Alpine mới hơn image gốc (Trivy kiểm ở pipeline). PATCH_DATE đổi mỗi ngày (scripts/ci/staging-test.sh)
 # nên lớp này được build lại hằng ngày, không bị cache giữ bản cũ (develop #60: nginx 1.30.6 còn CVE dù đã có 1.30.7).
 ARG PATCH_DATE=none
 USER root

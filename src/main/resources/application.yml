@@ -5,14 +5,14 @@ spring:
   profiles:
     default: dev
   datasource:
-    # Ứng dụng đăng nhập bằng tài khoản thuộc role rc_app (docs/09-acl-v4.1.sql), KHÔNG dùng superuser.
+    # Ứng dụng đăng nhập bằng tài khoản thuộc role rc_app (docs/database/09-acl-v4.1.sql), KHÔNG dùng superuser.
     url: ${DB_URL:jdbc:postgresql://localhost:5433/restaurant_core}
     username: ${DB_APP_USER:rms_api}
     password: ${DB_APP_PASSWORD}
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
   flyway:
-    # Baseline = database dựng từ docs/04 + 09 + 10 (version 1). Migration mới đặt ở db/migration, bắt đầu từ V2__.
+    # Baseline = database dựng từ docs/database/04 + 09 + 10 (version 1). Migration mới đặt ở db/migration, bắt đầu từ V2__.
     # Flyway chạy bằng tài khoản quản trị riêng (FLYWAY_USER), vì rc_app không có quyền DDL.
     enabled: ${FLYWAY_ENABLED:true}
     url: ${DB_URL:jdbc:postgresql://localhost:5433/restaurant_core}
@@ -23,7 +23,7 @@ spring:
     baseline-description: "v4.1 baseline (docs/04 + 09 + 10)"
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
   jpa:
-    # Schema do docs/04 + Flyway quản lý: Hibernate chỉ kiểm entity khớp bảng, không bao giờ tự sửa bảng.
+    # Schema do docs/database/04 + Flyway quản lý: Hibernate chỉ kiểm entity khớp bảng, không bao giờ tự sửa bảng.
     hibernate:
       ddl-auto: validate
     open-in-view: false

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Chạy MỘT LẦN khi volume PostgreSQL còn trống (cơ chế /docker-entrypoint-initdb.d), sau 04 → 09 → 10.
-# Tạo tài khoản đăng nhập cho ứng dụng trong role nhóm đã chốt ở docs/09-acl-v4.1.sql; không cấp thêm quyền nào.
+# Tạo tài khoản đăng nhập cho ứng dụng trong role nhóm đã chốt ở docs/database/09-acl-v4.1.sql; không cấp thêm quyền nào.
 set -euo pipefail
 
 : "${DB_APP_USER:?thiếu DB_APP_USER}"

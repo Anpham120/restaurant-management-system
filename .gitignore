@@ -11,7 +11,7 @@ target/
 .vscode/
 .DS_Store
 
-# Node (frontend/, docs/06-test-concurrency)
+# Node (frontend/, docs/database/06-test-concurrency)
 node_modules/
 
 # Frontend build

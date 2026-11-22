@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 /**
- * Chuyển lỗi PostgreSQL (SQLSTATE) thành lỗi API. Mã RC* do hàm rc_raise (trigger bảo vệ dữ liệu, docs/04-schema-v4.1.sql) phát ra:
+ * Chuyển lỗi PostgreSQL (SQLSTATE) thành lỗi API. Mã RC* do hàm rc_raise (trigger bảo vệ dữ liệu, docs/database/04-schema-v4.1.sql) phát ra:
  * RC001 thiếu nguyên liệu · RC403 không đủ vai trò · RC409 xung đột trạng thái · RC422 dữ liệu không hợp lệ ·
  * RC500 bất biến bị phá (kiểm lúc COMMIT).
  * Từ khi nghiệp vụ chuyển lên Service, các mã RC* chỉ còn do trigger bảo vệ dữ liệu ném ra (lưới an toàn). Thông điệp RC4xx/RC001 của DB viết cho người dùng nên được trả nguyên văn;

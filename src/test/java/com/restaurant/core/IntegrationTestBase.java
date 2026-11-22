@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 /**
  * Nền cho integration test: một container PostgreSQL 17 dùng chung cho mọi test, khởi tạo ĐÚNG như docker compose
- * (docs/04 → 09 → 10 + docker/db-init/40-app-logins.sh). Ứng dụng kết nối bằng tài khoản thuộc rc_app;
+ * (docs/database/04 → 09 → 10 + docker/db-init/40-app-logins.sh). Ứng dụng kết nối bằng tài khoản thuộc rc_app;
  * dữ liệu mẫu được tạo bằng tài khoản quản trị qua {@link #admin()}.
  */
 @SpringBootTest
@@ -35,9 +35,9 @@ public abstract class IntegrationTestBase {
             .withDatabaseName("restaurant_core")
             .withEnv("DB_APP_USER", APP_USER)
             .withEnv("DB_APP_PASSWORD", APP_PASSWORD)
-            .withCopyFileToContainer(MountableFile.forHostPath("docs/04-schema-v4.1.sql"), "/docker-entrypoint-initdb.d/10-schema-v4.1.sql")
-            .withCopyFileToContainer(MountableFile.forHostPath("docs/09-acl-v4.1.sql"), "/docker-entrypoint-initdb.d/20-acl-v4.1.sql")
-            .withCopyFileToContainer(MountableFile.forHostPath("docs/10-bao-cao-v4.1.sql"), "/docker-entrypoint-initdb.d/30-bao-cao-v4.1.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath("docs/database/04-schema-v4.1.sql"), "/docker-entrypoint-initdb.d/10-schema-v4.1.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath("docs/database/09-acl-v4.1.sql"), "/docker-entrypoint-initdb.d/20-acl-v4.1.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath("docs/database/10-bao-cao-v4.1.sql"), "/docker-entrypoint-initdb.d/30-bao-cao-v4.1.sql")
             .withCopyFileToContainer(MountableFile.forHostPath("docker/db-init/40-app-logins.sh", 0755), "/docker-entrypoint-initdb.d/40-app-logins.sh");
 
     static {

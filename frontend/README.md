@@ -21,8 +21,10 @@ src/
 ├── auth/       AuthContext: đăng nhập, /me, bắt buộc đổi mật khẩu, trang đầu theo vai trò
 ├── components/ Shell (8 mục điều hướng có icon, số đang chờ), Section (tab trong một mục), Icon, ui.tsx (bảng, form trong hộp thoại, useAction), toast
 ├── lib/        định dạng tiền, giờ (luôn giờ Việt Nam), nhãn trạng thái
-└── pages/      Login, ChangePassword, Dashboard, Tables, Order, Kitchen, Invoice
-                menu/ inventory/ staff/ finance/ settings/ me/  (màn quản lý theo phân hệ)
+└── pages/      mỗi thư mục một phân hệ, cùng tên module backend:
+                auth/ (đăng nhập, đổi mật khẩu) · dashboard/ · order/ (sơ đồ bàn, gọi món, món chờ bưng)
+                kitchen/ · finance/ (hóa đơn, khoản chi, đối soát, báo cáo, sự cố) · menu/ · inventory/
+                staff/ · settings/ · me/
 ```
 
 ## Giao diện

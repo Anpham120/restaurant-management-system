@@ -1,6 +1,6 @@
 # REST API Contract
 
-Hợp đồng chốt cho 5 phân hệ. Quy ước chung (định dạng `ApiResponse`, mã lỗi, phân trang, idempotency): [API_CONVENTIONS](API_CONVENTIONS.md). Vai trò khớp ma trận [docs/07 §10](../07-kiem-toan-ham-rc.md), kiểm bằng `@PreAuthorize` trên controller (`SecurityRulesIT` kiểm mọi endpoint).
+Hợp đồng chốt cho 5 phân hệ. Quy ước chung (định dạng `ApiResponse`, mã lỗi, phân trang, idempotency): [API_CONVENTIONS](API_CONVENTIONS.md). Vai trò khớp ma trận [docs/dac-ta/07 §10](../dac-ta/07-kiem-toan-ham-rc.md), kiểm bằng `@PreAuthorize` trên controller (`SecurityRulesIT` kiểm mọi endpoint).
 
 - **✅** đã cài và có integration test chạy trên PostgreSQL thật.
 - Actor: **M** MANAGER · **W** WAITER · **K** KITCHEN · **C** CASHIER. Mọi endpoint trừ `login` và webhook cần JWT (401 nếu thiếu, 403 nếu sai vai trò).

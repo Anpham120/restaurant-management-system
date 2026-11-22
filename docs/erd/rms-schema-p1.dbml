@@ -1,10 +1,10 @@
 // Phân hệ 1: Nhân viên • tài khoản • ca • chấm công — 11 bảng, kèm 0 bảng liên kết ngoài.
-// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
-// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
+// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/database/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,
+// nhóm bảng theo 5 phân hệ của docs/dac-ta/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).
 
 Project restaurant_core {
   database_type: 'PostgreSQL'
-  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'
+  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/database/04).'
 }
 
 Table departments {
