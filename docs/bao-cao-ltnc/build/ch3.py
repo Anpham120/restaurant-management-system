@@ -227,7 +227,16 @@ def chapter3():
             B('Mỗi use case chính có một biểu đồ hoạt động, chia làn (swimlane) theo người hoặc hệ thống thực hiện bước đó.')]
     for key, name, text in ACTIVITY:
         out += [B(f'Activity {name}: {text}'), fig(f'{U}/{key}.png', f'Activity: {name}', maxh=7600000)]
-    out += [H3('3.2.5. Biểu đồ lớp theo kiến trúc dự án'),
+    out += [H3('3.2.5. Biểu đồ trạng thái'),
+            B('Hai đối tượng có vòng đời phức tạp nhất được mô tả bằng biểu đồ trạng thái UML: mỗi mũi tên ghi sự kiện gây chuyển trạng thái, điều kiện canh trong ngoặc vuông và hành động sau dấu gạch chéo. Các chuyển trạng thái lấy đúng theo code: mỗi lần đổi trạng thái dòng món đều đi qua OrderItemStatusChanger với tập trạng thái nguồn hợp lệ; trigger trong database chặn mọi chuyển trạng thái không có trên sơ đồ.'),
+            fig(f'{U}/state-mon.png', 'Biểu đồ trạng thái dòng món', maxw=5760000, maxh=7600000),
+            B('Dòng món chỉ chiếm suất và nguyên liệu từ lúc bếp nhận (ACCEPTED); hủy trước khi nấu thì trả lại phần nguyên liệu đã giữ. Món đã nấu chỉ Quản lý được hủy (hủy ngoại lệ), món đã phục vụ chỉ hủy được khi hóa đơn còn nháp.'),
+            fig(f'{U}/state-hoa-don.png', 'Biểu đồ trạng thái hóa đơn', maxw=5000000, maxh=6000000),
+            B('Hóa đơn sinh ra ở trạng thái chờ thu khi thu ngân chốt; khách gọi thêm thì hóa đơn về nháp và được chốt lại với tổng mới. PAID, WAIVED, UNCOLLECTED là trạng thái kết thúc, không đổi được nữa.'),
+            H3('3.2.6. Biểu đồ tuần tự'),
+            B('Biểu đồ tuần tự mô tả luồng thanh toán chuyển khoản QR qua các lớp thật của hệ thống, theo thứ tự thời gian. Phần đầu là thu ngân tạo mã QR (gọi qua Controller, Service, Strategy); phần giữa là màn hình hỏi lại hóa đơn mỗi 3 giây; phần cuối là SePay gọi webhook, QrTransferProcessor chống ghi trùng bằng khóa theo mã giao dịch, đối chiếu rồi ghi tiền và đóng hóa đơn. Khung alt và opt thể hiện các nhánh: webhook gửi lặp thì trả kết quả cũ, chỉ kết quả PROCESSED mới ghi tiền.'),
+            fig(f'{U}/seq-thanh-toan-qr-xoay.png', 'Biểu đồ tuần tự thanh toán chuyển khoản QR', maxw=5760000, maxh=8200000)]
+    out += [H3('3.2.7. Biểu đồ lớp theo kiến trúc dự án'),
             B('Hệ thống không dùng MVC kiểu máy chủ tự sinh giao diện. Kiến trúc gồm hai phần tách biệt giao tiếp qua REST/JSON:'),
             L('Frontend là ứng dụng một trang (SPA) React: các trang trong frontend/src/pages chỉ hiển thị và gọi API qua api/client.ts, không chứa nghiệp vụ.'),
             L('Backend là Modular Monolith: một ứng dụng Spring Boot chia thành các module theo nghiệp vụ, ranh giới module do Spring Modulith kiểm tra [15]:'),
@@ -245,7 +254,7 @@ def chapter3():
             B('Liên kết giữa các Entity vẽ đúng chiều ánh xạ JPA: OrderBatch giữ tham chiếu @ManyToOne tới CustomerOrder, OrderItem giữ tham chiếu tới OrderBatch (bội số 1..* - 1), khớp khóa ngoại của bảng order_batches, order_items. OrderItemStatusChanger gom việc đổi trạng thái món và ghi nhật ký order_item_events vào một chỗ, để mọi lần đổi trạng thái đều đi đúng máy trạng thái.'),
             B('Phần thanh toán dùng mẫu Strategy [13]: PaymentServiceImpl giữ một Map<PaymentMethod, PaymentStrategy>; Spring tiêm mọi lớp cài PaymentStrategy (CashPaymentStrategy, QrPaymentStrategy), nên thêm phương thức thanh toán mới chỉ cần thêm một lớp, không sửa PaymentServiceImpl. Tiền chuyển khoản đi đường riêng: SePay gọi webhook, SepayWebhookService kiểm khóa API rồi chuyển QrTransferProcessor ghi nhận; cả hai đường thu đều kết thúc ở InvoiceSettlement, nơi đóng hóa đơn và gọi OrderBillingApi để đóng đơn, trả bàn.'),
             fig(f'{U}/class-thanh-toan.png', 'Biểu đồ lớp thanh toán (mẫu Strategy)', maxw=5760000),
-            H3('3.2.6. Biểu đồ triển khai'),
+            H3('3.2.8. Biểu đồ triển khai'),
             B('Trình duyệt kết nối HTTPS tới nginx ở máy 1; nginx chuyển vào Traefik trong cụm Kubernetes (k3s); Traefik đưa / tới pod giao diện và /api tới pod backend; backend kết nối PostgreSQL. Máy 2 chứa công cụ: Jenkins kiểm thử và đóng gói, Argo CD triển khai theo Git, bộ giám sát, kho sao lưu. Chi tiết ở mục 4.4.'),
             fig(f'{U}/deploy-xoay.png', 'Biểu đồ triển khai', maxw=5760000, maxh=7800000)]
     return out

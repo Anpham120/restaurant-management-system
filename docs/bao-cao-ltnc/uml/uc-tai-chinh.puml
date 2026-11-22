@@ -18,5 +18,5 @@ M -- F3
 M -- F5
 M -- F6
 M -- F7
-F4 ..> F3 : <<extend>>
+F4 .up.> F3 : <<extend>>
 @enduml

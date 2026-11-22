@@ -26,5 +26,5 @@ M -- P8
 M -- P6
 P3 ..> P3a : <<include>>
 P4 -- S
-P4a ..> P4 : <<extend>>
+P4a .up.> P4 : <<extend>>
 @enduml

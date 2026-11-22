@@ -7,7 +7,7 @@ import sys
 from playwright.sync_api import sync_playwright
 
 # Thuật toán sắp xếp của dbdiagram cho từng phân hệ (chọn cái cho ít đường cắt nhau nhất)
-LAYOUT = {'p1a-tai-khoan': 'Pipeline', 'p1b-ca-lam': 'Pipeline', 'p2-thuc-don': 'Snowflake', 'p3a-goi-mon': 'Snowflake', 'p3b-thanh-toan': 'Snowflake', 'p4a-nhap-xuat': 'Pipeline', 'p4b-bep': 'Snowflake', 'p4c-kiem-ke': 'Pipeline', 'p5-tai-chinh': 'Pipeline'}   # thuật toán cho ít đường cắt nhất, chọn sau khi so 4 thuật toán
+LAYOUT = {'p1a-tai-khoan': 'Pipeline', 'p1b-ca-lam': 'Pipeline', 'p2-thuc-don': 'Pipeline', 'p3a-goi-mon': 'Snowflake', 'p3b-thanh-toan': 'Snowflake', 'p4a-nhap-xuat': 'Pipeline', 'p4b-bep': 'Snowflake', 'p4c-kiem-ke': 'Pipeline', 'p5-tai-chinh': 'Pipeline'}   # thuật toán cho ít đường cắt nhất, chọn sau khi so 4 thuật toán
 HIDE = """header, .controller-btn, [class*=controller], .minimap, .right-sidebar-toggle-btn, .panel-close-button,
           [class*=ad-], [class*=promo], [class*=Promo], [class*=banner], .monaco-editor, button { visibility: hidden !important; }"""
 
@@ -54,7 +54,14 @@ def cat_le(path, nen=(250, 250, 250), le=30):
     bbox = ImageChops.difference(vung, Image.new('RGB', vung.size, nen)).convert('L').point(lambda v: 255 if v > 12 else 0).getbbox()
     if bbox:
         x0, y0, x1, y1 = bbox
-        im.crop((max(0, x0 + 40 - le), max(0, y0 + 40 - le), min(w, x1 + 40 + le), min(h, y1 + 40 + le))).save(path)
+        im = im.crop((max(0, x0 + 40 - le), max(0, y0 + 40 - le), min(w, x1 + 40 + le), min(h, y1 + 40 + le)))
+    dam_net(im).save(path)
+
+
+def dam_net(im):
+    """dbdiagram vẽ chữ xám nhạt: kéo các điểm không phải nền về đậm hơn để in giấy vẫn rõ."""
+    from PIL import ImageEnhance
+    return ImageEnhance.Contrast(im.convert('RGB').point(lambda v: v if v > 225 else int(v * 0.6))).enhance(1.15)
 
 
 import os

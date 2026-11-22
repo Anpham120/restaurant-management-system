@@ -98,7 +98,7 @@ def chapter4():
     for k, (key, who, title, why, notes) in enumerate(CODE, 1):
         out += [H3(f'4.2.{k}. {who}: {title.split(":")[0]}'), B(why)]
         if key in AN_FLOW:
-            out += [B('Luồng thanh toán chuyển khoản đi qua cả frontend và backend:'), numbered(AN_FLOW[key]),
+            out += [B('Luồng thanh toán chuyển khoản đi qua cả frontend và backend (biểu đồ tuần tự ở mục 3.2.6):'), numbered(AN_FLOW[key]),
                     B('Backend: phương thức ghi nhận tiền khi SePay báo về.')]
         out += [fig4(f'{C}/{key}.png', title, maxw=5760000, maxh=8200000)]
         out += [L(n) for n in notes]

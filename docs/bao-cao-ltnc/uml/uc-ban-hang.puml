@@ -30,7 +30,7 @@ K -- O3
 K -- K4
 M -- M1
 O2 ..> O2a : <<include>>
-O2b ..> O2 : <<extend>>
+O2b .up.> O2 : <<extend>>
 K -- K1
 K -- K2
 K -- K3

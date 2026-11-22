@@ -91,4 +91,13 @@ OrderItemRepository ..> OrderItem
 OrderBatch "1..*" --> "1" CustomerOrder : order
 OrderItem "1..*" --> "1" OrderBatch : batch
 OrderItem --> "1" OrderItemStatus : status
+note bottom of OrderItemRepository
+  findByIdForUpdate: @Lock(PESSIMISTIC_WRITE)
+  sinh SELECT ... FOR UPDATE, khóa dòng món
+  trong giao dịch trước khi đổi trạng thái.
+end note
+note right of OrderBatch
+  requestKey UNIQUE: gửi lặp cùng khóa
+  trả lại đợt cũ (chống gửi trùng).
+end note
 @enduml

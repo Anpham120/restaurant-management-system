@@ -26,5 +26,5 @@ M -- T2
 M -- T3
 M -- T4
 M -- T6
-T5 ..> T4 : <<extend>>
+T5 .up.> T4 : <<extend>>
 @enduml
