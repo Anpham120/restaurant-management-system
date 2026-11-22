@@ -86,7 +86,7 @@ def chapter4():
            B('Nhóm phân công theo vòng đời nghiệp vụ: mỗi người chịu trách nhiệm chính một phân hệ, gồm cả code backend, giao diện và kiểm thử của phân hệ đó. Nhóm trưởng điều phối kiểm thử tích hợp và duyệt các thay đổi dùng chung.'),
            tc4('Phân công và đánh giá thành viên'),
            T([600, 2000, 1450, 3122, 950, 950], [['TT', 'Họ tên', 'MSSV', 'Nhiệm vụ', 'Hoàn thành', 'Đánh giá'],
-               ['1', 'Phạm Duy An', 'BIT240002', 'Nhóm trưởng. Vòng đời đơn hàng: bàn, phiên, gọi món, bếp, hóa đơn, thanh toán tiền mặt, QR SePay, webhook; điều phối kiểm thử tích hợp', '…%', '…'],
+               ['1', 'Phạm Duy An', 'BIT240002', 'Nhóm trưởng. Vòng đời đơn hàng: bàn, phiên, gọi món, bếp, hóa đơn, thanh toán tiền mặt, QR SePay, webhook; điều phối kiểm thử tích hợp. Toàn bộ quy trình triển khai: máy chủ, CI/CD Jenkins, GitOps Argo CD trên Kubernetes k3s, reverse proxy nginx và Traefik, giám sát, cảnh báo, sao lưu và khôi phục', '…%', '…'],
                ['2', 'Bùi Đào Đức Anh', 'BIT240025', 'Tài chính: khoản chi, đối soát tiền mặt, báo cáo doanh thu', '…%', '…'],
                ['3', 'Đỗ Tuấn Anh', 'BIT240015', 'Kho: nguyên liệu, nhập theo lô, xuất FEFO, bếp nhận, sơ chế, hoàn trả, hủy hàng, kiểm kê, báo cáo kho', '…%', '…'],
                ['4', 'Lê Anh', 'BIT240017', 'Thực đơn: nhóm món, món, công thức theo phiên bản, thực đơn ngày, hạn mức, tạm dừng món', '…%', '…'],
@@ -145,6 +145,7 @@ def chapter4():
             fig4(f'{R}/test/ket-qua-test.png', 'Kết quả chạy 40 test case', maxw=5760000, maxh=8400000),
             fig4(f'{R}/giao-dien/anh/21-dang-nhap-sai.png', 'Kiểm thử trên giao diện: đăng nhập sai báo lỗi chung', maxw=5200000)]
     out += [H2('4.4. Triển khai lên máy chủ'),
+            B('Toàn bộ quy trình triển khai do Phạm Duy An xây dựng và vận hành: chuẩn bị hai máy chủ và mạng riêng WireGuard, pipeline CI/CD trên Jenkins, triển khai GitOps bằng Argo CD lên cụm Kubernetes k3s, reverse proxy nginx và Traefik, giám sát và cảnh báo (Prometheus, Grafana, Loki, Alertmanager qua Telegram), sao lưu và khôi phục database.'),
             B('Hệ thống chạy tại https://rms.atlasplatform12.tech trên hai máy chủ Ubuntu 24.04. Mã nguồn trên GitHub; mỗi lần đẩy code, quy trình tự động thực hiện:'),
             numbered(['Lập trình viên đẩy nhánh feature lên GitHub; GitHub báo Jenkins (máy 2).',
                       'Jenkins kiểm tra migration, chạy test backend, test frontend, quét bảo mật mã nguồn; đạt thì tự gộp vào nhánh develop.',

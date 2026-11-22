@@ -38,7 +38,7 @@ def retext(blk, old, new):
 cover = blocks[:19]
 cover[8] = retext(cover[8], 'MÔN: TRIỂN KHAI PHẦN MỀM', 'MÔN: LẬP TRÌNH NÂNG CAO')
 cover[9] = re.sub(r'<w:br/>', '<w:t xml:space="preserve"> </w:t>', re.sub(r'Phát triển và triển khai', 'Xây dựng', cover[9], count=1))
-cover[10] = cover[10].replace('Đặng Quốc Hữu', '………………………')
+cover[10] = cover[10].replace('Đặng Quốc Hữu', 'Nguyễn Đức Giang')
 cover[18] = retext(cover[18], 'Hà Nội, ngày 4 tháng 11 năm 2026', 'Hà Nội, tháng 11 năm 2026')
 FRONT = lambda t, br=True: (f'<w:p><w:pPr><w:pStyle w:val="RMSFrontTitle"/>{"<w:pageBreakBefore/>" if br else ""}</w:pPr>'
                             f'<w:r><w:t>{esc(t)}</w:t></w:r></w:p>')
