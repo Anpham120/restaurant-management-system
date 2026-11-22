@@ -2,7 +2,7 @@
 
 Phân công theo **vòng đời nghiệp vụ**, không máy móc theo package. Mỗi tính năng có **một** người chịu trách nhiệm chính (viết code + test của tính năng đó). Kiểm thử tích hợp liên phân hệ do nhóm trưởng điều phối. Hợp đồng API từng endpoint: [API_CONTRACT](API_CONTRACT.md); bảng/lớp thuộc ai: [MODULE_BOUNDARIES](MODULE_BOUNDARIES.md).
 
-| Thành viên | Vai trò | Phạm vi nghiệp vụ (docs/03) | Package / lớp sở hữu |
+| Thành viên | Vai trò | Phạm vi nghiệp vụ (docs/dac-ta/03) | Package / lớp sở hữu |
 | --- | --- | --- | --- |
 | **Phạm Duy An** | Nhóm trưởng · Quản lý đơn hàng | Toàn bộ **vòng đời đơn hàng** từ khách vào bàn tới kết thúc phiên: quản lý bàn (thêm/sửa/ngừng sử dụng), phiên, đơn, gọi món/gọi thêm, bếp nhận/từ chối/nấu/xong, phục vụ, hủy món và hủy ngoại lệ, **chốt hóa đơn, thanh toán CASH, QR SePay, webhook**, WAIVED/UNCOLLECTED, đóng phiên, trả bàn (3.1–3.7) | `order/**`; trong `finance`: `InvoiceController/Service/Repository`, `PaymentController/Service/Repository`, `strategy/**`, `sepay/**`, DTO `InvoiceResponse`, `PaymentRequest/Response`, `ReasonRequest` |
 | **Bùi Đào Đức Anh** | Quản lý tài chính | Khoản chi hoạt động, theo dõi thu chi, đối soát tiền mặt, thống kê doanh thu, báo cáo tài chính, tổng hợp bán hàng/thanh toán (5.1–5.5) | Trong `finance`: `ExpenseController/Service/Repository`, `CashReconciliationController/Service/Repository`, `FinanceReportController/Service/Repository` và DTO đi kèm (lớp mới, tên riêng) |
@@ -24,10 +24,10 @@ Phân công theo **vòng đời nghiệp vụ**, không máy móc theo package. 
 | Thành viên | Đã chạy (có integration test) | Tiếp theo |
 | --- | --- | --- |
 | Phạm Duy An | Toàn bộ API vòng đời đơn hàng + quản lý bàn + thanh toán + webhook SePay ([API_CONTRACT §1](API_CONTRACT.md#1-quản-lý-đơn-hàng--phạm-duy-an)) — `OrderLifecycleIT`, `KitchenAndCancelIT`, `SessionEndIT`, `TableIT`, `PaymentIT`, `SepayWebhookIT` | Review PR, kiểm thử E2E với frontend |
-| Nguyễn Quang Hiếu | Đăng nhập, đổi mật khẩu, phòng ban, nhân viên/tài khoản/vai trò, khóa/mở, đặt lại mật khẩu, ca, phân ca, chấm công + điều chỉnh ([§2](API_CONTRACT.md#2-quản-lý-nhân-viên--nguyễn-quang-hiếu)) — `security/AuthIT`, `employee/EmployeeIT` | Kiểm chéo `@PreAuthorize` các module với ma trận docs/07 §10 |
+| Nguyễn Quang Hiếu | Đăng nhập, đổi mật khẩu, phòng ban, nhân viên/tài khoản/vai trò, khóa/mở, đặt lại mật khẩu, ca, phân ca, chấm công + điều chỉnh ([§2](API_CONTRACT.md#2-quản-lý-nhân-viên--nguyễn-quang-hiếu)) — `security/AuthIT`, `employee/EmployeeIT` | Kiểm chéo `@PreAuthorize` các module với ma trận docs/dac-ta/07 §10 |
 | Lê Anh | Danh mục, món, công thức (version), thực đơn ngày + hạn mức + tạm dừng, `GET /api/daily-menus/today` ([§3](API_CONTRACT.md#3-quản-lý-thực-đơn--lê-anh)) — `MenuIT` | Ảnh món, sắp xếp hiển thị cho màn hình gọi món |
 | Đỗ Tuấn Anh | Nguyên liệu/loại bếp, nhập/xuất/kiểm kê (`rc_create_*`), bếp nhận, sơ chế, hoàn trả, hủy hàng, lô hỏng, báo cáo kho ([§4](API_CONTRACT.md#4-quản-lý-kho--đỗ-tuấn-anh)) — `InventoryIT` | Kiểm thử luồng lô hỏng → `reallocate` cùng Order |
-| Bùi Đào Đức Anh | Khoản chi (idempotent, hủy), đối soát tiền mặt (phiên bản, stale), báo cáo doanh thu/không thu/chi theo nhóm ([§5](API_CONTRACT.md#5-quản-lý-tài-chính--bùi-đào-đức-anh)) — `FinanceIT` | Đối chiếu số liệu báo cáo với docs/11 trên dữ liệu thật |
+| Bùi Đào Đức Anh | Khoản chi (idempotent, hủy), đối soát tiền mặt (phiên bản, stale), báo cáo doanh thu/không thu/chi theo nhóm ([§5](API_CONTRACT.md#5-quản-lý-tài-chính--bùi-đào-đức-anh)) — `FinanceIT` | Đối chiếu số liệu báo cáo với docs/database/11 trên dữ liệu thật |
 
 ## Trách nhiệm kiểm thử
 
@@ -35,11 +35,11 @@ Phân công theo **vòng đời nghiệp vụ**, không máy móc theo package. 
 | --- | --- | --- |
 | Unit + integration test của endpoint | Người sở hữu tính năng (bắt buộc: 1 ca thành công, 1 ca sai vai trò, 1 ca lỗi nghiệp vụ từ DB) | Phạm Duy An review PR |
 | Kiểm thử tích hợp liên phân hệ (gọi món dùng thực đơn của Lê Anh, bếp tiêu hao kho của Đỗ Tuấn Anh, báo cáo của Bùi Đào Đức Anh đọc thanh toán) | Phạm Duy An điều phối, mỗi chủ module cung cấp dữ liệu test | Cả nhóm trước mỗi lần tích hợp |
-| Quyền (RBAC, `@PreAuthorize` khớp ma trận docs/07 §10) | Người sở hữu endpoint | Nguyễn Quang Hiếu kiểm chéo |
+| Quyền (RBAC, `@PreAuthorize` khớp ma trận docs/dac-ta/07 §10) | Người sở hữu endpoint | Nguyễn Quang Hiếu kiểm chéo |
 
 ## Bắt đầu
 
-1. Đọc [ARCHITECTURE](ARCHITECTURE.md), [DEVELOPMENT_GUIDE](DEVELOPMENT_GUIDE.md), [API_CONVENTIONS](API_CONVENTIONS.md), phần của mình trong [API_CONTRACT](API_CONTRACT.md) và thẻ chức năng ở docs/03.
+1. Đọc [ARCHITECTURE](ARCHITECTURE.md), [DEVELOPMENT_GUIDE](DEVELOPMENT_GUIDE.md), [API_CONVENTIONS](API_CONVENTIONS.md), phần của mình trong [API_CONTRACT](API_CONTRACT.md) và thẻ chức năng ở docs/dac-ta/03.
 2. `./mvnw test` phải xanh; `docker compose up -d db`; tạo Manager bằng `docker/bootstrap-manager.sql`.
 3. Làm theo mẫu `order/` (Controller → Service → Repository, test kế thừa `order/OrderApiTestBase` hoặc `IntegrationTestBase`).
 4. Mỗi chức năng một nhánh Git, PR nhỏ; không sửa lớp của người khác trong cùng PR.

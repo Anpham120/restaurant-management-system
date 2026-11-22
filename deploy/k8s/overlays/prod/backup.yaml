@@ -1,7 +1,7 @@
 # Sao lưu liên tục cho DB production (CloudNativePG + plugin barman-cloud), lưu ở SeaweedFS máy 2 (S3, qua WireGuard).
 #   - WAL (nhật ký ghi của PostgreSQL) được đẩy lên liên tục: khôi phục được về bất kỳ thời điểm nào (PITR) trong 14 ngày.
 #   - Bản sao lưu nền (base backup) mỗi ngày 19:00 UTC (02:00 giờ Việt Nam): mốc để phát lại WAL khi khôi phục.
-# Bản pg_dump hằng ngày (scripts/backup-db.sh) và bản offsite Telegram vẫn giữ: hai cách sao lưu độc lập.
+# Bản pg_dump hằng ngày (scripts/backup/backup-db.sh) và bản offsite Telegram vẫn giữ: hai cách sao lưu độc lập.
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:

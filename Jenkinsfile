@@ -37,13 +37,13 @@ pipeline {
     environment {
         JENKINS_CONTAINER = 'jenkins'
         // kubeconfig của ServiceAccount argocd/jenkins-ci (chỉ đọc Application): file /opt/jenkins/secrets/kubeconfig-ci
-        // trên máy 2, mount vào /run/secrets. Dùng để chờ Argo CD triển khai xong (scripts/argocd-wait.sh).
+        // trên máy 2, mount vào /run/secrets. Dùng để chờ Argo CD triển khai xong (scripts/release/argocd-wait.sh).
         KUBECONFIG = '/run/secrets/kubeconfig-ci'
         // Repo GitHub (dùng cho fetch/push bằng token trong các bước chạy ngoài workspace)
         REPO = 'github.com/Anpham120/restaurant-management-system.git'
         // Thư mục staging tạm thời trên máy 2 (clone nhánh develop, tự tạo lần đầu), thuộc user ci. Không chứa secret thật.
         STAGING_DIR = '/home/ci/rms-staging'
-        // Bản sao lưu database trên máy 2: máy 1 sao lưu hằng ngày rồi chép bản mới nhất sang (scripts/backup-db.sh).
+        // Bản sao lưu database trên máy 2: máy 1 sao lưu hằng ngày rồi chép bản mới nhất sang (scripts/backup/backup-db.sh).
         // Staging tạm thời nạp bản này để thử migration và API trên dữ liệu thật.
         BACKUP_DIR = '/home/coder/rms-backups'
         // Địa chỉ công khai (qua nginx + HTTPS) để kiểm production sau deploy
@@ -57,7 +57,7 @@ pipeline {
             steps {
                 script {
                     // Commit chỉ đổi dòng newTag trong 2 overlay, mọi tag mới là commit có trong lịch sử repo: commit "deploy: image ..."
-                    // của bot (scripts/bump-image.sh), hoặc người revert commit đó để quay lui về image cũ. Không test, không build:
+                    // của bot (scripts/release/bump-image.sh), hoặc người revert commit đó để quay lui về image cũ. Không test, không build:
                     // image đó đã qua đủ kiểm tra lúc phát hành; nhánh feature kiểm image còn trên GHCR (stage Kiểm image phát hành).
                     env.CHI_DOI_TAG = sh(returnStdout: true, script: '''
                         ovl='deploy/k8s/overlays/(staging|prod)/kustomization.yaml'
@@ -108,7 +108,7 @@ pipeline {
             when { allOf { not { branch 'main' }; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'DA_TEST', value: 'false'; environment name: 'CHI_TAI_LIEU', value: 'false' } }
             steps {
                 // Migration phải tương thích ngược (expand/contract) để quay lui image không cần khôi phục database
-                sh 'scripts/check-migrations.sh'
+                sh 'scripts/ci/check-migrations.sh'
             }
             post { failure { script { ghiBuocLoi() } } }
         }
@@ -167,7 +167,7 @@ pipeline {
                 stage('Quét bảo mật mã nguồn') {
                     steps {
                         // Trivy: thư viện Maven/npm có lỗ hổng HIGH/CRITICAL đã có bản vá, hoặc secret lộ trong mã
-                        sh 'scripts/security-scan.sh fs'
+                        sh 'scripts/ci/security-scan.sh fs'
                     }
                     post { failure { script { ghiBuocLoi() } } }
                 }
@@ -180,7 +180,7 @@ pipeline {
                 // Commit đổi tag (thường là revert để quay lui): image app, web của tag mới phải còn trên GHCR, nếu không
                 // Argo CD sẽ kéo image thất bại. Kiểm ngay ở đây thay vì đợi staging báo lỗi sau vài phút.
                 withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
-                    sh 'scripts/check-release-images.sh'
+                    sh 'scripts/release/check-release-images.sh'
                 }
             }
             post { failure { script { ghiBuocLoi() } } }
@@ -190,7 +190,7 @@ pipeline {
             when { branch pattern: 'feature/.*', comparator: 'REGEXP' }
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
-                    sh 'scripts/auto-merge.sh develop'
+                    sh 'scripts/release/auto-merge.sh develop'
                 }
             }
             post { failure { script { ghiBuocLoi() } } }
@@ -217,7 +217,7 @@ pipeline {
                             [ -d .git ] || git init -q
                             git fetch -q "https://x-access-token:$GH_TOKEN@$REPO" develop
                             git reset -q --hard "$GIT_COMMIT"
-                            scripts/staging-test.sh
+                            scripts/ci/staging-test.sh
                           '
                     '''
                 }
@@ -229,8 +229,8 @@ pipeline {
             when { allOf { branch 'develop'; environment name: 'CHI_DOI_TAG', value: 'false'; environment name: 'CHI_TAI_LIEU', value: 'false' } }
             steps {
                 // Image vừa build ở staging. Qua quét thì gắn tag phát hành theo commit: production chạy đúng image này.
-                sh 'scripts/security-scan.sh image rms-staging-app rms-staging-web'
-                sh 'scripts/tag-release.sh "$GIT_COMMIT"'
+                sh 'scripts/ci/security-scan.sh image rms-staging-app rms-staging-web'
+                sh 'scripts/release/tag-release.sh "$GIT_COMMIT"'
             }
             post { failure { script { ghiBuocLoi() } } }
         }
@@ -240,19 +240,19 @@ pipeline {
             steps {
                 // Kubernetes kéo image từ GHCR nên bước này bắt buộc: thiếu credential ghcr-token hoặc registry lỗi thì dừng.
                 withCredentials([string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')]) {
-                    sh 'scripts/push-release.sh "$GIT_COMMIT"'
+                    sh 'scripts/release/push-release.sh "$GIT_COMMIT"'
                     // Dọn image cũ trên GHCR: giữ 20 bản mới nhất (đủ để quay lui bằng git revert) và các tag đang chạy ở
                     // staging/production. Token đi qua biến môi trường (-e GHCR_TOKEN), không nằm trên dòng lệnh.
                     // Lỗi dọn không làm hỏng phát hành.
                     sh '''
                         PROTECT="$GIT_COMMIT $(sed -nE 's/^ *newTag: ([0-9a-f]{7,40}).*/\\1/p' deploy/k8s/overlays/*/kustomization.yaml | sort -u | tr '\\n' ' ')"
                         docker run --rm -i -e GHCR_TOKEN -e KEEP=20 -e PROTECT="$PROTECT" python:3.12-alpine \
-                          python - < scripts/ghcr-cleanup.py || echo "[ghcr-cleanup] lỗi, bỏ qua"
+                          python - < scripts/ops/ghcr-cleanup.py || echo "[ghcr-cleanup] lỗi, bỏ qua"
                     '''
                 }
                 // Ghi tag vào Git (commit "deploy: image ..."). Commit đó chạy lại pipeline ở nhánh này, nhưng chỉ chờ Argo CD.
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
-                    sh 'scripts/bump-image.sh "$GIT_COMMIT"'
+                    sh 'scripts/release/bump-image.sh "$GIT_COMMIT"'
                 }
             }
             post { failure { script { ghiBuocLoi() } } }
@@ -263,7 +263,7 @@ pipeline {
             steps {
                 // rms-staging (máy 2) theo nhánh develop: blue-green + AnalysisTemplate, lỗi thì không promote.
                 // Commit chỉ đổi tài liệu: Argo CD không có gì mới để triển khai, bước này xác nhận staging vẫn Healthy.
-                sh 'scripts/argocd-wait.sh rms-staging "$GIT_COMMIT" 900'
+                sh 'scripts/release/argocd-wait.sh rms-staging "$GIT_COMMIT" 900'
             }
             post { failure { script { ghiBuocLoi() } } }
         }
@@ -272,7 +272,7 @@ pipeline {
             when { allOf { branch 'develop'; anyOf { environment name: 'CHI_DOI_TAG', value: 'true'; environment name: 'CHI_TAI_LIEU', value: 'true' } } }
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
-                    sh 'scripts/auto-merge.sh main'
+                    sh 'scripts/release/auto-merge.sh main'
                 }
             }
             post { failure { script { ghiBuocLoi() } } }
@@ -283,7 +283,7 @@ pipeline {
             steps {
                 // rms-prod (máy 1) theo nhánh main. Argo Rollouts dựng bản mới cạnh bản cũ, AnalysisTemplate gọi thử qua
                 // Service preview, đạt mới chuyển traffic; không đạt thì giữ bản cũ và báo Degraded.
-                sh 'scripts/argocd-wait.sh rms-prod "$GIT_COMMIT" 1200'
+                sh 'scripts/release/argocd-wait.sh rms-prod "$GIT_COMMIT" 1200'
                 // Kiểm như người dùng: domain thật qua nginx + HTTPS
                 sh '''
                     for i in $(seq 1 12); do

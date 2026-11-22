@@ -19,9 +19,9 @@ configMapGenerator:
   # Đường dẫn ra ngoài thư mục base nên Argo CD phải bật --load-restrictor LoadRestrictionsNone.
   - name: rms-db-schema
     files:
-      - 10-schema.sql=../../../docs/04-schema-v4.1.sql
-      - 20-acl.sql=../../../docs/09-acl-v4.1.sql
-      - 30-bao-cao.sql=../../../docs/10-bao-cao-v4.1.sql
+      - 10-schema.sql=../../../docs/database/04-schema-v4.1.sql
+      - 20-acl.sql=../../../docs/database/09-acl-v4.1.sql
+      - 30-bao-cao.sql=../../../docs/database/10-bao-cao-v4.1.sql
     options:
       # CloudNativePG tham chiếu ConfigMap theo tên cố định, nên không thêm đuôi băm vào tên
       disableNameSuffixHash: true

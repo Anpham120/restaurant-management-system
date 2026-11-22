@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sinh DBML (dbdiagram.io) từ catalog PostgreSQL thật + chú thích trong docs/04 + nhóm phân hệ trong docs/02."""
+"""Sinh DBML (dbdiagram.io) từ catalog PostgreSQL thật + chú thích trong docs/database/04 + nhóm phân hệ trong docs/dac-ta/02."""
 import json, re, sys
 from collections import defaultdict, OrderedDict
 
@@ -29,7 +29,7 @@ def default(d):
         return d
     return '`' + d + '`'
 
-# --- chú thích cột trong CREATE TABLE của docs/04 ("col ... -- ghi chú")
+# --- chú thích cột trong CREATE TABLE của docs/database/04 ("col ... -- ghi chú")
 col_notes = defaultdict(dict)
 for m in re.finditer(r'CREATE TABLE (\w+) \((.*?)\n\);', schema_sql, re.S):
     t = m.group(1)
@@ -38,7 +38,7 @@ for m in re.finditer(r'CREATE TABLE (\w+) \((.*?)\n\);', schema_sql, re.S):
         if cm and cm.group(1).upper() not in ('CONSTRAINT', 'PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN'):
             col_notes[t][cm.group(1)] = cm.group(2).strip()
 
-# --- nhóm phân hệ theo mục "-- n. PHÂN HỆ x …" hoặc "-- n.m. PHÂN HỆ x …" của docs/04 (mỗi bảng đúng một nhóm); tên nhóm theo docs/02
+# --- nhóm phân hệ theo mục "-- n. PHÂN HỆ x …" hoặc "-- n.m. PHÂN HỆ x …" của docs/database/04 (mỗi bảng đúng một nhóm); tên nhóm theo docs/dac-ta/02
 names = {m.group(1): m.group(2).strip() for m in re.finditer(r'^## \d+\. Phân hệ (\d) — ([^\n(]+)', doc02, re.M)}
 groups = OrderedDict((f'Phân hệ {n} — {names[n]}', []) for n in sorted(names))
 current = None
@@ -60,10 +60,10 @@ for i in cat['uidx'] or []:
     uidx[i['t']].append(i)
 
 lines = ['// Sơ đồ CSDL Restaurant Core v4.1 cho https://dbdiagram.io/d — dán toàn bộ file vào ô code.',
-         '// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,',
-         '// nhóm bảng theo 5 phân hệ của docs/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).',
+         '// Sinh tự động từ catalog PostgreSQL sau khi nạp docs/database/04-schema-v4.1.sql; ghi chú cột lấy từ comment trong file đó,',
+         '// nhóm bảng theo 5 phân hệ của docs/dac-ta/02. CHECK, index một phần và trigger chỉ ghi ở Note (DBML không biểu diễn được).',
          '', 'Project restaurant_core {', "  database_type: 'PostgreSQL'",
-         "  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/04).'", '}', '']
+         "  Note: 'Restaurant Core v4.1 — 48 bảng. Quy tắc nghiệp vụ nằm trong hàm rc_* và trigger (docs/database/04).'", '}', '']
 refs = []          # (dòng Ref, bảng, bảng đích)
 blocks = {}
 for t in sorted(cols):
@@ -136,7 +136,7 @@ if missing:
     lines += ['TableGroup "Khác" {'] + ['  ' + x for x in missing] + ['}', '']
 open(out, 'w', encoding='utf-8').write('\n'.join(lines))
 
-# File riêng cho từng phân hệ: bảng của phân hệ + bảng phân hệ khác mà nó trỏ tới (nhóm "Liên kết ngoài"), như sơ đồ docs/02
+# File riêng cho từng phân hệ: bảng của phân hệ + bảng phân hệ khác mà nó trỏ tới (nhóm "Liên kết ngoài"), như sơ đồ docs/dac-ta/02
 header = lines[:9]
 for i, (name, tables) in enumerate(groups.items(), 1):
     own = set(tables)

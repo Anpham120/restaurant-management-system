@@ -4,18 +4,18 @@ Bộ tài liệu dựng theo **Restaurant Core Master Specification v4** (48 b�
 
 | File | Nội dung | Dùng khi |
 | --- | --- | --- |
-| [01-luong-chinh.md](01-luong-chinh.md) | 7 luồng chính L1–L7, sơ đồ ngữ cảnh, DFD mức 1, quy trình, trạng thái (gồm UNCOLLECTED/WAIVED), tuần tự QR/SePay, ví dụ xuyên suốt có số liệu | Nắm bức tranh tổng, thuyết trình, viết báo cáo |
-| [02-danh-gia-database.md](02-danh-gia-database.md) | Rà soát theo phân hệ: liên kết, 3NF, index; 53 phát hiện (DB-01…DB-53) và cách đã xử lý; ERD Mermaid; 22 truy vấn bất biến; quyết định nghiệp vụ; kiểm toán 48 bảng | Hiểu vì sao schema như vậy |
-| [03-luong-du-lieu-chuc-nang.md](03-luong-du-lieu-chuc-nang.md) | 27 thẻ chức năng: Actor → Điều kiện → Đọc → Ghi → Transaction/khóa → Trạng thái → Ngoại lệ → Test; ma trận CRUD; DFD mức 2 | Lập trình service/API, phân công |
-| [04-schema-v4.1.sql](04-schema-v4.1.sql) | Schema: 48 bảng, 375 cột, 102 FK, 106 CHECK, 52 index, 47 trigger (6 hoãn tới COMMIT), **32 hàm nghiệp vụ `rc_*`** + 16 hàm hỗ trợ + 22 hàm trigger | Tạo database |
-| [05-test-v4.1.sql](05-test-v4.1.sql) | 650 kiểm tra một kết nối: ma trận L1 của spec, mọi quyết định nghiệp vụ, ma trận quyền 31 hàm, guard trigger, ràng buộc, từng hàm, ACL/leo thang đặc quyền (nạp 09), 22 truy vấn bất biến | Sau khi tạo database |
-| [06-test-concurrency-v4.1.mjs](06-test-concurrency-v4.1.mjs) | 78 kiểm tra nhiều kết nối (Node + `pg`): suất cuối, nguyên liệu cuối, tiền mặt ↔ webhook, webhook trùng, hủy ↔ nấu, bỏ về/miễn thu ↔ thanh toán và webhook, `request_key` đồng thời, hai Manager cùng xác nhận, thứ tự khóa, deadlock | Chứng minh khóa và thứ tự khóa |
-| [07-kiem-toan-ham-rc.md](07-kiem-toan-ham-rc.md) | Kiểm toán 32 hàm × 12 tiêu chí; phân loại ràng buộc/trigger/hàm/Spring Boot; rà soát 47 trigger; **ma trận quyền và ranh giới tin cậy** (§10); kết quả kiểm thử; **đánh giá đóng băng** (§12) | Nghiệm thu, review code |
-| [08-vi-du-xuyen-suot.sql](08-vi-du-xuyen-suot.sql) | Ví dụ xuyên suốt của 01 §11 chạy thật qua các hàm `rc_*`, 34 phép so sánh | Xem hệ thống chạy từ nhập kho tới đối soát |
-| [09-acl-v4.1.sql](09-acl-v4.1.sql) | **Phân quyền chính thức**: `rc_owner` sở hữu, `rc_app` (backend), `rc_webhook` (SePay), `rc_readonly` (báo cáo); GRANT/REVOKE theo bảng và cột; tự kiểm cấu hình | Triển khai thật, sau 04 |
-| [10-bao-cao-v4.1.sql](10-bao-cao-v4.1.sql) | 10 hàm báo cáo `rpt_*`: doanh thu theo ngày/món, bỏ về/miễn thu, tồn RAW, đang bàn giao/WIP, tồn bếp khả dụng, lô hỏng/hết hạn, lịch sử kho, hao hụt sơ chế, đối soát tiền mặt | Màn hình báo cáo |
-| [11-test-bao-cao-v4.1.sql](11-test-bao-cao-v4.1.sql) | Bộ dữ liệu có kết quả tính trước cho 10 báo cáo, 43 phép so sánh | Sau 10, database riêng |
-| [12-mutation-v4.1.py](12-mutation-v4.1.py) | Kiểm thử đột biến: 27 lỗi cài cố ý vào 04/09/10 phải bị 05/06/11 phát hiện | Chứng minh bộ test đủ nhạy |
+| [01-luong-chinh.md](dac-ta/01-luong-chinh.md) | 7 luồng chính L1–L7, sơ đồ ngữ cảnh, DFD mức 1, quy trình, trạng thái (gồm UNCOLLECTED/WAIVED), tuần tự QR/SePay, ví dụ xuyên suốt có số liệu | Nắm bức tranh tổng, thuyết trình, viết báo cáo |
+| [02-danh-gia-database.md](dac-ta/02-danh-gia-database.md) | Rà soát theo phân hệ: liên kết, 3NF, index; 53 phát hiện (DB-01…DB-53) và cách đã xử lý; ERD Mermaid; 22 truy vấn bất biến; quyết định nghiệp vụ; kiểm toán 48 bảng | Hiểu vì sao schema như vậy |
+| [03-luong-du-lieu-chuc-nang.md](dac-ta/03-luong-du-lieu-chuc-nang.md) | 27 thẻ chức năng: Actor → Điều kiện → Đọc → Ghi → Transaction/khóa → Trạng thái → Ngoại lệ → Test; ma trận CRUD; DFD mức 2 | Lập trình service/API, phân công |
+| [04-schema-v4.1.sql](database/04-schema-v4.1.sql) | Schema: 48 bảng, 375 cột, 102 FK, 106 CHECK, 52 index, 47 trigger (6 hoãn tới COMMIT), **32 hàm nghiệp vụ `rc_*`** + 16 hàm hỗ trợ + 22 hàm trigger | Tạo database |
+| [05-test-v4.1.sql](database/05-test-v4.1.sql) | 650 kiểm tra một kết nối: ma trận L1 của spec, mọi quyết định nghiệp vụ, ma trận quyền 31 hàm, guard trigger, ràng buộc, từng hàm, ACL/leo thang đặc quyền (nạp 09), 22 truy vấn bất biến | Sau khi tạo database |
+| [06-test-concurrency-v4.1.mjs](database/06-test-concurrency-v4.1.mjs) | 78 kiểm tra nhiều kết nối (Node + `pg`): suất cuối, nguyên liệu cuối, tiền mặt ↔ webhook, webhook trùng, hủy ↔ nấu, bỏ về/miễn thu ↔ thanh toán và webhook, `request_key` đồng thời, hai Manager cùng xác nhận, thứ tự khóa, deadlock | Chứng minh khóa và thứ tự khóa |
+| [07-kiem-toan-ham-rc.md](dac-ta/07-kiem-toan-ham-rc.md) | Kiểm toán 32 hàm × 12 tiêu chí; phân loại ràng buộc/trigger/hàm/Spring Boot; rà soát 47 trigger; **ma trận quyền và ranh giới tin cậy** (§10); kết quả kiểm thử; **đánh giá đóng băng** (§12) | Nghiệm thu, review code |
+| [08-vi-du-xuyen-suot.sql](database/08-vi-du-xuyen-suot.sql) | Ví dụ xuyên suốt của 01 §11 chạy thật qua các hàm `rc_*`, 34 phép so sánh | Xem hệ thống chạy từ nhập kho tới đối soát |
+| [09-acl-v4.1.sql](database/09-acl-v4.1.sql) | **Phân quyền chính thức**: `rc_owner` sở hữu, `rc_app` (backend), `rc_webhook` (SePay), `rc_readonly` (báo cáo); GRANT/REVOKE theo bảng và cột; tự kiểm cấu hình | Triển khai thật, sau 04 |
+| [10-bao-cao-v4.1.sql](database/10-bao-cao-v4.1.sql) | 10 hàm báo cáo `rpt_*`: doanh thu theo ngày/món, bỏ về/miễn thu, tồn RAW, đang bàn giao/WIP, tồn bếp khả dụng, lô hỏng/hết hạn, lịch sử kho, hao hụt sơ chế, đối soát tiền mặt | Màn hình báo cáo |
+| [11-test-bao-cao-v4.1.sql](database/11-test-bao-cao-v4.1.sql) | Bộ dữ liệu có kết quả tính trước cho 10 báo cáo, 43 phép so sánh | Sau 10, database riêng |
+| [12-mutation-v4.1.py](database/12-mutation-v4.1.py) | Kiểm thử đột biến: 27 lỗi cài cố ý vào 04/09/10 phải bị 05/06/11 phát hiện | Chứng minh bộ test đủ nhạy |
 | [erd/](erd/) | Sơ đồ DBML cho dbdiagram.io: [rms-schema.dbml](erd/rms-schema.dbml) (48 bảng) và `rms-schema-p1..p5.dbml` theo phân hệ, sinh lại bằng `bash docs/erd/sinh-dbml.sh`. 5 ERD theo 5 phân hệ: `.drawio` (XML gốc) + `.png`; [kiem-erd-schema.py](erd/kiem-erd-schema.py) đối chiếu ERD với catalog | Báo cáo, chỉnh sửa trực quan |
 
 ## Quyết định nghiệp vụ (đã chốt toàn bộ — vòng đóng băng 26/10/2026)
@@ -32,7 +32,7 @@ Bộ tài liệu dựng theo **Restaurant Core Master Specification v4** (48 b�
 | QĐ-MT | **Miễn thu** (yêu cầu gọi "QĐ-7 miễn thu"): `WAIVED` — Manager, lý do, người, thời điểm; giữ `invoice_items`/giá; không payments, không doanh thu; không áp cho PAID; hóa đơn 0 đồng đóng bằng WAIVED |
 | QĐ-ID | Phiếu nhập/xuất/kiểm kê tạo bằng `rc_create_*` với `request_key`: cùng khóa + payload → phiếu cũ; khác payload → RC409 |
 | QĐ-NG | Ngày kinh doanh 04:00 `Asia/Ho_Chi_Minh`, `TIMESTAMPTZ`, không phụ thuộc TimeZone của phiên |
-| QĐ-BM | Mọi hàm có `p_actor` kiểm vai trò trong DB (ma trận [07 §10](07-kiem-toan-ham-rc.md)); `p_actor` chỉ lấy từ principal Spring Security đã xác thực; ACL chính thức ở 09 |
+| QĐ-BM | Mọi hàm có `p_actor` kiểm vai trò trong DB (ma trận [07 §10](dac-ta/07-kiem-toan-ham-rc.md)); `p_actor` chỉ lấy từ principal Spring Security đã xác thực; ACL chính thức ở 09 |
 
 ## Chạy
 
@@ -86,7 +86,7 @@ Chạy ngày 26/10/2026 trên **PostgreSQL 15.19, 16.15, 17.11 và 18.6** (image
 | 12 — mutation | **27/27** lỗi cài cố ý bị phát hiện (20 SQL/ACL, 4 báo cáo, 3 khóa) |
 | ERD ↔ schema | 5 file `.drawio` khớp catalog: **1 231 kiểm tra, 0 lỗi** (bảng, cột, NULL, PK, FK); không khối nào chồng nhau sau khi thêm cột |
 
-**Chưa kiểm chứng** (chi tiết [07 §8](07-kiem-toan-ham-rc.md)): hiệu năng và tải lớn; mức cô lập khác READ COMMITTED; tầng Spring Boot (JWT → `p_actor`, `@PreAuthorize`, retry, ánh xạ lỗi, chữ ký SePay); chuyển ngày 04:00 và hết hạn lô theo thời gian thật (kiểm bằng mốc cố định và dữ liệu); báo cáo nhiều ngày; migration v3 → v4.1. Repository **không chứa SQL v4 gốc** nên đối chiếu theo hợp đồng của Master Spec ([07 §1, §6](07-kiem-toan-ham-rc.md)). **Kết luận đóng băng database:** [07 §12](07-kiem-toan-ham-rc.md).
+**Chưa kiểm chứng** (chi tiết [07 §8](dac-ta/07-kiem-toan-ham-rc.md)): hiệu năng và tải lớn; mức cô lập khác READ COMMITTED; tầng Spring Boot (JWT → `p_actor`, `@PreAuthorize`, retry, ánh xạ lỗi, chữ ký SePay); chuyển ngày 04:00 và hết hạn lô theo thời gian thật (kiểm bằng mốc cố định và dữ liệu); báo cáo nhiều ngày; migration v3 → v4.1. Repository **không chứa SQL v4 gốc** nên đối chiếu theo hợp đồng của Master Spec ([07 §1, §6](dac-ta/07-kiem-toan-ham-rc.md)). **Kết luận đóng băng database:** [07 §12](dac-ta/07-kiem-toan-ham-rc.md).
 
 ## Xem sơ đồ Mermaid
 

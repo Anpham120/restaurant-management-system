@@ -2,9 +2,9 @@
 
 Năm module nghiệp vụ là **package** trong cùng ứng dụng (`com.restaurant.core.<module>`), không phải service riêng. Mỗi bảng có **một** module chủ: chỉ module đó ghi bảng (qua JPA repository trong Service) và đặt API quản lý. Module khác cần dữ liệu thì gọi **interface ở package gốc** của module chủ (Java, không HTTP nội bộ), hoặc đọc bằng truy vấn chỉ-đọc khi màn hình/báo cáo cần nối nhiều bảng. Người phụ trách: [TEAM_ASSIGNMENT](TEAM_ASSIGNMENT.md).
 
-Nguồn chính về kiến trúc hiện hành là [ARCHITECTURE](ARCHITECTURE.md): **nghiệp vụ nằm ở tầng Service Java**. Các hàm `rc_*` / `rpt_*` (PL/pgSQL) của bản thiết kế v4.1 đã bị migration `V3__xoa_ham_nghiep_vu_sql.sql` xóa; chỉ còn các hàm phục vụ trigger bảo vệ dữ liệu (`rc_guard_*`, `rc_raise`, `rc_forbid_*`, `rc_quota_used`…). Tài liệu [07](../07-kiem-toan-ham-rc.md) và phần hàm trong `docs/04`, `docs/10` là **lịch sử thiết kế**, không phải cách viết code mới.
+Nguồn chính về kiến trúc hiện hành là [ARCHITECTURE](ARCHITECTURE.md): **nghiệp vụ nằm ở tầng Service Java**. Các hàm `rc_*` / `rpt_*` (PL/pgSQL) của bản thiết kế v4.1 đã bị migration `V3__xoa_ham_nghiep_vu_sql.sql` xóa; chỉ còn các hàm phục vụ trigger bảo vệ dữ liệu (`rc_guard_*`, `rc_raise`, `rc_forbid_*`, `rc_quota_used`…). Tài liệu [07](../dac-ta/07-kiem-toan-ham-rc.md) và phần hàm trong `docs/04`, `docs/10` là **lịch sử thiết kế**, không phải cách viết code mới.
 
-Đặc tả bảng/cột: [02 §12](../02-danh-gia-database.md) · luồng từng chức năng: [03](../03-luong-du-lieu-chuc-nang.md).
+Đặc tả bảng/cột: [02 §12](../dac-ta/02-danh-gia-database.md) · luồng từng chức năng: [03](../dac-ta/03-luong-du-lieu-chuc-nang.md).
 
 | Module | Người phụ trách | Bảng chủ | API cho module khác (package gốc) |
 | --- | --- | --- | --- |

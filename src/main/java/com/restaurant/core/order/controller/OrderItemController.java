@@ -22,7 +22,7 @@ import com.restaurant.core.order.service.OrderService;
 import com.restaurant.core.security.CurrentUser;
 
 /**
- * Chuyển trạng thái một dòng món — mỗi endpoint là một bước của máy trạng thái (OrderItemStatusChanger, docs/01 §7.3);
+ * Chuyển trạng thái một dòng món — mỗi endpoint là một bước của máy trạng thái (OrderItemStatusChanger, docs/dac-ta/01 §7.3);
  * trigger trong DB chặn bước sai làm lưới an toàn. Owner: Phạm Duy An.
  */
 @RestController

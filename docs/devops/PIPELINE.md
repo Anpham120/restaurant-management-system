@@ -46,10 +46,10 @@ Docker rootless của user `ci`, cấu hình bằng JCasC: `deploy/jenkins/`, c�
 |---|---|---|
 | `github-token` | token classic, scope `repo` | merge, promote, bot ghi tag |
 | `github-branch-source` | username + cùng token | multibranch quét repo |
-| `ghcr-token` | token classic, `write:packages` + `delete:packages` | đẩy image, dọn image cũ (`scripts/ghcr-cleanup.py`, giữ 20 bản + bản đang chạy) |
+| `ghcr-token` | token classic, `write:packages` + `delete:packages` | đẩy image, dọn image cũ (`scripts/ops/ghcr-cleanup.py`, giữ 20 bản + bản đang chạy) |
 | `telegram-bot-token` | token bot | báo kết quả build |
 | `github-webhook-secret` | chuỗi HMAC | xác thực webhook |
-| `/run/secrets/kubeconfig-ci` | token ServiceAccount `argocd/jenkins-ci` (chỉ get/list/watch Application) | `scripts/argocd-wait.sh` |
+| `/run/secrets/kubeconfig-ci` | token ServiceAccount `argocd/jenkins-ci` (chỉ get/list/watch Application) | `scripts/release/argocd-wait.sh` |
 
 ### 3.2 Argo CD (máy 2)
 Application trong `deploy/k8s/argocd/`, áp bằng `kubectl apply` trên máy 2 (bản chép ở `~/k8s/argocd/`):
@@ -83,12 +83,12 @@ khóa 15 phút, bộ đếm ở bảng `login_throttles`, dùng chung mọi bả
 
 ## 5. Giám sát và cảnh báo (máy 2)
 
-Chạy từ bản clone nhánh `main`: `/home/coder/rms-deploy/monitoring` (`docker compose up -d`), systemd timer
+Chạy từ bản clone nhánh `main`: `/home/coder/rms-deploy/deploy/monitoring` (`docker compose up -d`), systemd timer
 `rms-monitoring-sync.timer` kéo `main` mỗi 5 phút và gửi SIGHUP cho Prometheus, Alertmanager. Máy 1 chỉ chạy node-exporter
 (cùng timer, `SERVICES=node-exporter`). Grafana: `https://grafana.atlasplatform12.tech` (đăng nhập GitHub), dashboard
-lưu dạng mã trong `monitoring/grafana/provisioning/`, log trong Loki 7 ngày.
+lưu dạng mã trong `deploy/monitoring/grafana/provisioning/`, log trong Loki 7 ngày.
 
-23 luật trong `monitoring/prometheus/alerts.yml`, gửi Telegram (Watchdog gửi healthchecks.io làm nhịp tim):
+23 luật trong `deploy/monitoring/prometheus/alerts.yml`, gửi Telegram (Watchdog gửi healthchecks.io làm nhịp tim):
 
 | Nhóm | Luật |
 |---|---|
@@ -110,14 +110,14 @@ cố định `10.43.0.82:8082` (`deploy/k8s/platform/argocd-metrics-service.yaml
 | Replica PostgreSQL | liên tục | pod `rms-db` thứ 2 (máy 1) |
 | WAL (barman-cloud) | liên tục, chậm nhất 60 giây (`archive_timeout`) | SeaweedFS máy 2, bucket `rms-pg-backups`, 14 ngày |
 | Bản nền | 02:00 giờ VN (ScheduledBackup `rms-db-daily`) | SeaweedFS máy 2 |
-| `pg_dump` | 02:30 (`scripts/backup-db.sh daily`) | máy 1 `/home/coder/rms-backups` (7 bản), chép máy 2 cho staging |
-| Offsite | 02:35 (`scripts/offsite-backup.sh`) | `*.dump.enc` (AES-256) qua bot Telegram |
-| Khóa Sealed Secrets | Chủ nhật 02:40 (`scripts/backup-sealed-key.sh`) | máy 1 (8 bản), máy 2, Telegram; mã hóa AES-256 |
+| `pg_dump` | 02:30 (`scripts/backup/backup-db.sh daily`) | máy 1 `/home/coder/rms-backups` (7 bản), chép máy 2 cho staging |
+| Offsite | 02:35 (`scripts/backup/offsite-backup.sh`) | `*.dump.enc` (AES-256) qua bot Telegram |
+| Khóa Sealed Secrets | Chủ nhật 02:40 (`scripts/backup/backup-sealed-key.sh`) | máy 1 (8 bản), máy 2, Telegram; mã hóa AES-256 |
 
 Khóa mã hóa offsite: `/home/coder/rms-backups/.offsite.key` (máy 1, quyền 600), có bản trong trình quản lý mật khẩu.
 
 Khôi phục:
-- **Từ `pg_dump`:** `scripts/restore-db.sh <file.dump>` (máy 1). Sao lưu bản hiện tại (`pre-restore-*`), thay toàn bộ dữ liệu
+- **Từ `pg_dump`:** `scripts/backup/restore-db.sh <file.dump>` (máy 1). Sao lưu bản hiện tại (`pre-restore-*`), thay toàn bộ dữ liệu
   trong một transaction trên pod primary, khởi động lại app theo blue-green. Đã chạy thử trên `rms-staging`
   (`NAMESPACE=rms-staging`, 21/11/2026).
 - **Về thời điểm bất kỳ trong 14 ngày (PITR):** tạo Cluster CloudNativePG mới với `bootstrap.recovery` từ ObjectStore
@@ -134,17 +134,17 @@ Khôi phục:
 - **Theo GitOps:** tạo nhánh `feature/*`, `git revert <commit "deploy: image …">`, push. Không test, không build; Argo CD
   đưa staging rồi production về image cũ bằng blue-green. Commit tài liệu sau đó không build lại bản lỗi.
 - **Khẩn cấp:** tắt tự đồng bộ `rms-prod` trên Argo CD, `kubectl argo rollouts undo rms-app -n rms-prod`, xong thì bật lại.
-- **Database:** quay lui image không hoàn tác migration, nên migration bắt buộc tương thích ngược (`scripts/check-migrations.sh`).
+- **Database:** quay lui image không hoàn tác migration, nên migration bắt buộc tương thích ngược (`scripts/ci/check-migrations.sh`).
 
 ## 8. Việc định kỳ trên máy
 
 | Máy | Lịch | Việc |
 |---|---|---|
-| 1 | cron 19:30 UTC | `backup-db.sh daily` (`COPY_TO=coder@10.10.0.2:/home/coder/rms-backups`) |
-| 1 | cron 19:35 UTC | `offsite-backup.sh` |
-| 1 | cron 19:40 UTC thứ Bảy | `backup-sealed-key.sh` (`COPY_TO` máy 2) |
-| 1, 2 | systemd `rms-monitoring-sync.timer`, 5 phút | kéo `main`, nạp lại cấu hình giám sát |
-| 2 | cron mỗi 5 phút | `argocd-webhook-metric.sh` (đếm webhook bị từ chối) |
+| 1 | cron 19:30 UTC | `scripts/backup/backup-db.sh daily` (`COPY_TO=coder@10.10.0.2:/home/coder/rms-backups`) |
+| 1 | cron 19:35 UTC | `scripts/backup/offsite-backup.sh` |
+| 1 | cron 19:40 UTC thứ Bảy | `scripts/backup/backup-sealed-key.sh` (`COPY_TO` máy 2) |
+| 1, 2 | systemd `rms-monitoring-sync.timer`, 5 phút | kéo `main`, nạp lại cấu hình giám sát (`deploy/monitoring/sync/`) |
+| 2 | cron mỗi 5 phút | `scripts/ops/argocd-webhook-metric.sh` (đếm webhook bị từ chối) |
 | 1, 2 | `certbot.timer` | gia hạn chứng chỉ Let's Encrypt |
 
 Script chạy từ bản clone `main` (`/home/coder/rms-deploy`), nên đổi script chỉ cần merge.
