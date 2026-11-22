@@ -1,10 +1,10 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 
-import { ApiError } from '../api/client';
-import { AuthLayout, PasswordInput } from '../components/AuthLayout';
-import { ErrorNotice } from '../components/ErrorNotice';
-import { homeFor, useAuth } from '../auth/AuthContext';
+import { ApiError } from '../../api/client';
+import { AuthLayout, PasswordInput } from '../../components/AuthLayout';
+import { ErrorNotice } from '../../components/ErrorNotice';
+import { homeFor, useAuth } from '../../auth/AuthContext';
 
 /** Chỉ nhớ tên đăng nhập (không bao giờ nhớ mật khẩu) để lần sau nhân viên chỉ cần gõ mật khẩu. */
 const LAST_USER = 'rms.lastUser';

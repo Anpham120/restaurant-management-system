@@ -1,5 +1,6 @@
-package com.restaurant.core;
+package com.restaurant.core.common;
 
+import com.restaurant.core.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;

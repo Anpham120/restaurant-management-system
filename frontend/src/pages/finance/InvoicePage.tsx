@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 
-import { api } from '../api/client';
-import type { InvoiceResponse, OrderResponse, PaymentResponse } from '../api/types';
-import { useAuth } from '../auth/AuthContext';
-import { ErrorNotice } from '../components/ErrorNotice';
-import { ReasonDialog } from '../components/ReasonDialog';
-import { InvoiceStatusChip } from '../components/StatusChip';
-import { useToast } from '../components/Toast';
-import { clock, vnd } from '../lib/format';
+import { api } from '../../api/client';
+import type { InvoiceResponse, OrderResponse, PaymentResponse } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
+import { ErrorNotice } from '../../components/ErrorNotice';
+import { ReasonDialog } from '../../components/ReasonDialog';
+import { InvoiceStatusChip } from '../../components/StatusChip';
+import { useToast } from '../../components/Toast';
+import { clock, vnd } from '../../lib/format';
 
 /** Yêu cầu QR còn mở (chưa thu, chưa hủy). */
 const QR_OPEN = ['REQUESTED', 'WAITING_TRANSFER'];

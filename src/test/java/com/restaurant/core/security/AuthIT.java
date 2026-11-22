@@ -1,5 +1,7 @@
-package com.restaurant.core;
+package com.restaurant.core.security;
 
+import com.restaurant.core.TestData;
+import com.restaurant.core.IntegrationTestBase;
 import java.util.Locale;
 
 import org.junit.jupiter.api.Test;

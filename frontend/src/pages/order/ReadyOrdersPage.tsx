@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 
-import { api } from '../api/client';
-import { readyOrdersQuery } from '../api/readyOrders';
-import type { OrderItem } from '../api/types';
-import { ErrorNotice } from '../components/ErrorNotice';
-import { useToast } from '../components/Toast';
-import { PageHead } from '../components/ui';
+import { api } from '../../api/client';
+import { readyOrdersQuery } from '../../api/readyOrders';
+import type { OrderItem } from '../../api/types';
+import { ErrorNotice } from '../../components/ErrorNotice';
+import { useToast } from '../../components/Toast';
+import { PageHead } from '../../components/ui';
 
 export function ReadyOrdersPage() {
   const ready = useQuery(readyOrdersQuery);

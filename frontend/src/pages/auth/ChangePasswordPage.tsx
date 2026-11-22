@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 
-import { api } from '../api/client';
-import type { LoginResponse } from '../api/types';
-import { AuthLayout, PasswordInput } from '../components/AuthLayout';
-import { ErrorNotice } from '../components/ErrorNotice';
-import { useToast } from '../components/Toast';
-import { homeFor, useAuth } from '../auth/AuthContext';
+import { api } from '../../api/client';
+import type { LoginResponse } from '../../api/types';
+import { AuthLayout, PasswordInput } from '../../components/AuthLayout';
+import { ErrorNotice } from '../../components/ErrorNotice';
+import { useToast } from '../../components/Toast';
+import { homeFor, useAuth } from '../../auth/AuthContext';
 
 export function ChangePasswordPage() {
   const { user, loading, mustChangePassword, passwordChanged, logout } = useAuth();

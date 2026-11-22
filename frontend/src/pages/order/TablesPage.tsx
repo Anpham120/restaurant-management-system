@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router';
 
-import { api } from '../api/client';
-import { readyOrdersQuery } from '../api/readyOrders';
-import type { OpenSessionResponse, OrderItem, OrderResponse, TableResponse } from '../api/types';
-import { useAuth } from '../auth/AuthContext';
-import { ErrorNotice } from '../components/ErrorNotice';
-import { Icon } from '../components/Icon';
-import { useToast } from '../components/Toast';
-import { elapsed, itemStatusLabel, vnd } from '../lib/format';
+import { api } from '../../api/client';
+import { readyOrdersQuery } from '../../api/readyOrders';
+import type { OpenSessionResponse, OrderItem, OrderResponse, TableResponse } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
+import { ErrorNotice } from '../../components/ErrorNotice';
+import { Icon } from '../../components/Icon';
+import { useToast } from '../../components/Toast';
+import { elapsed, itemStatusLabel, vnd } from '../../lib/format';
 
 type State = 'free' | 'busy' | 'bill';
 const STATE_LABEL: Record<State, string> = { free: 'Trống', busy: 'Đang phục vụ', bill: 'Chờ thanh toán' };

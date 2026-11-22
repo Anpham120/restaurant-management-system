@@ -1,7 +1,7 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 
-import { api, ApiError } from '../api/client';
+import { api, ApiError } from '../../api/client';
 import type {
   DailyMenuResponse,
   OrderItem,
@@ -10,11 +10,11 @@ import type {
   RevenueByItem,
   SessionResponse,
   TableResponse,
-  UnusableLotRow, PageResponse } from '../api/types';
-import { useAuth } from '../auth/AuthContext';
-import { ErrorNotice } from '../components/ErrorNotice';
-import { Icon, type IconName } from '../components/Icon';
-import { businessToday, day, minutesSince, vnd } from '../lib/format';
+  UnusableLotRow, PageResponse } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
+import { ErrorNotice } from '../../components/ErrorNotice';
+import { Icon, type IconName } from '../../components/Icon';
+import { businessToday, day, minutesSince, vnd } from '../../lib/format';
 
 /** Món chưa xong quá ngưỡng này (phút) là trễ, giống màu đỏ ở màn bếp. */
 const LATE_MINUTES = 15;
