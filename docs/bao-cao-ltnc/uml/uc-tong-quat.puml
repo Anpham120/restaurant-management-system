@@ -1,0 +1,38 @@
+@startuml
+!include _style.iuml
+title Biểu đồ use case tổng quát
+left to right direction
+actor "Nhân viên" as NV
+actor "Phục vụ" as W
+actor "Bếp" as K
+actor "Thu ngân" as C
+actor "Quản lý" as M
+actor "SePay" as S <<hệ thống>>
+W -up-|> NV
+K -up-|> NV
+C -up-|> NV
+M -up-|> NV
+rectangle "Hệ thống quản lý nhà hàng Atlas Restaurant" {
+  usecase "Đăng nhập, đổi mật khẩu" as UC0
+  usecase "Phục vụ tại bàn, gọi món" as UC4
+  usecase "Chế biến món" as UC5
+  usecase "Chốt hóa đơn, thanh toán" as UC6
+  usecase "Quản lý nhân sự, ca làm" as UC1
+  usecase "Quản lý thực đơn" as UC2
+  usecase "Quản lý kho" as UC3
+  usecase "Nhận hàng, sơ chế,\nhoàn trả, báo hủy" as UC3b
+  usecase "Quản lý tài chính, báo cáo" as UC7
+}
+NV -- UC0
+W -- UC4
+K -- UC5
+K -- UC3b
+C -- UC6
+M -- UC1
+M -- UC2
+M -- UC3
+M -- UC7
+UC6 -- S
+note "Quản lý được thực hiện cả\ncác use case của Phục vụ, Bếp,\nThu ngân (có đủ các vai trò)." as N
+M .. N
+@enduml

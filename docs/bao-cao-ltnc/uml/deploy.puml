@@ -1,0 +1,47 @@
+@startuml
+!include _style.iuml
+title Biểu đồ triển khai
+left to right direction
+node "Máy khách" <<device>> as PC {
+  node "Trình duyệt web" <<executionEnvironment>> as BR {
+    artifact "SPA React\n(file tĩnh JS, CSS)" as SPA
+  }
+}
+node "Máy 1: production\nUbuntu 24.04" <<device>> as M1 {
+  node "nginx" <<executionEnvironment>> as NG {
+    artifact "Cấu hình HTTPS,\ngiới hạn đăng nhập" as NGC
+  }
+  node "Kubernetes k3s" <<executionEnvironment>> as K3S {
+    node "Traefik" <<executionEnvironment>> as TR
+    node "Pod rms-web (x2)" <<container>> as WEB {
+      artifact "image rms-web" as IWEB
+    }
+    node "Pod rms-app (x2)" <<container>> as APP {
+      artifact "rms-app.jar\n(Spring Boot)" as JAR
+    }
+    node "PostgreSQL 17\n(CloudNativePG, 2 bản)" <<container>> as DB {
+      artifact "CSDL restaurant_core" as SCHEMA
+    }
+  }
+}
+node "Máy 2: công cụ\nUbuntu 24.04" <<device>> as M2 {
+  node "Jenkins" <<executionEnvironment>> as JK
+  node "Argo CD" <<executionEnvironment>> as AR
+  node "Prometheus, Grafana, Loki" <<executionEnvironment>> as MON
+  node "SeaweedFS (S3)" <<executionEnvironment>> as S3
+}
+node "SePay" <<external system>> as SP
+node "GitHub, GHCR" <<external system>> as GH
+
+BR -- NG : HTTPS 443
+SP -- NG : HTTPS webhook
+NG -- TR : HTTP
+TR -- WEB : HTTP /
+TR -- APP : HTTP /api
+APP -- DB : JDBC 5432
+JK -- GH : webhook,\nđẩy image
+AR -- GH : đọc manifest
+AR -- K3S : WireGuard\n(triển khai)
+DB -- S3 : WireGuard\n(sao lưu WAL)
+MON -- K3S : WireGuard\n(số liệu, log)
+@enduml

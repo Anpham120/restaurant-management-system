@@ -1,0 +1,111 @@
+// Phân hệ Kho: sơ chế, lô bếp, giữ nguyên liệu, hoàn trả: 6 bảng. Sinh tự động từ catalog PostgreSQL (gen_dbml.py).
+// Dán toàn bộ file vào https://dbdiagram.io/d để xem database diagram.
+
+Project atlas_restaurant {
+  database_type: 'PostgreSQL'
+}
+
+Table kitchen_preparations {
+  id bigint [pk]
+  stock_issue_item_id bigint [not null]
+  input_quantity numeric(12,3) [not null]
+  status varchar(20) [not null]
+  loss_reason varchar(255)
+  prepared_by_id bigint [not null]
+  prepared_at timestamptz
+  request_key varchar(64) [not null]
+  request_hash char(64)
+}
+
+Table kitchen_preparation_outputs {
+  id bigint [pk]
+  kitchen_preparation_id bigint [not null]
+  kitchen_ingredient_type_id bigint [not null]
+  output_quantity numeric(12,3) [not null]
+  usable_until timestamptz
+}
+
+Table kitchen_batches {
+  id bigint [pk]
+  kitchen_ingredient_type_id bigint [not null]
+  preparation_output_id bigint [unique]
+  direct_issue_item_id bigint [unique]
+  usable_until timestamptz
+  quantity_on_hand numeric(12,3) [not null]
+  reserved_quantity numeric(12,3) [not null]
+  is_usable boolean [not null]
+  unusable_reason varchar(255)
+  created_at timestamptz [not null]
+  unusable_marked_by_id bigint
+  unusable_marked_at timestamptz
+}
+
+Table stock_reservations {
+  id bigint [pk]
+  order_item_id bigint [not null]
+  kitchen_batch_id bigint [not null]
+  quantity numeric(12,3) [not null]
+  status varchar(20) [not null]
+  release_reason varchar(30)
+  created_at timestamptz [not null]
+  closed_at timestamptz
+}
+
+Table stock_returns {
+  id bigint [pk]
+  status varchar(20) [not null]
+  requested_by_id bigint [not null]
+  confirmed_by_id bigint
+  reason varchar(255) [not null]
+  created_at timestamptz [not null]
+  confirmed_at timestamptz
+  request_key varchar(64) [not null]
+  request_hash char(64)
+}
+
+Table stock_return_items {
+  id bigint [pk]
+  stock_return_id bigint [not null]
+  source_issue_item_id bigint [not null]
+  direct_kitchen_batch_id bigint
+  quantity numeric(12,3) [not null]
+}
+
+Table kitchen_ingredient_types {
+  id bigint [pk]
+}
+
+Table order_items {
+  id bigint [pk]
+}
+
+Table stock_issue_items {
+  id bigint [pk]
+}
+
+Ref: kitchen_preparations.stock_issue_item_id > stock_issue_items.id
+Ref: kitchen_preparation_outputs.kitchen_ingredient_type_id > kitchen_ingredient_types.id
+Ref: kitchen_preparation_outputs.kitchen_preparation_id > kitchen_preparations.id
+Ref: kitchen_batches.direct_issue_item_id ?- stock_issue_items.id
+Ref: kitchen_batches.kitchen_ingredient_type_id > kitchen_ingredient_types.id
+Ref: kitchen_batches.preparation_output_id ?- kitchen_preparation_outputs.id
+Ref: stock_reservations.kitchen_batch_id > kitchen_batches.id
+Ref: stock_reservations.order_item_id > order_items.id
+Ref: stock_return_items.direct_kitchen_batch_id ?> kitchen_batches.id
+Ref: stock_return_items.source_issue_item_id > stock_issue_items.id
+Ref: stock_return_items.stock_return_id > stock_returns.id
+
+TableGroup "Kho: sơ chế, lô bếp, giữ nguyên liệu, hoàn trả" {
+  kitchen_preparations
+  kitchen_preparation_outputs
+  kitchen_batches
+  stock_reservations
+  stock_returns
+  stock_return_items
+}
+
+TableGroup "Phân hệ khác" {
+  kitchen_ingredient_types
+  order_items
+  stock_issue_items
+}

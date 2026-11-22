@@ -1,0 +1,96 @@
+[
+ [
+  "tv-1-an-qr-sepay",
+  "src/main/java/com/restaurant/core/finance/service/impl/QrTransferProcessor.java",
+  [
+   [
+    43,
+    90
+   ]
+  ],
+  "Phạm Duy An: QrTransferProcessor.recordVerifiedTransfer"
+ ],
+ [
+  "tv-1b-an-qr-fe",
+  "frontend/src/pages/InvoicePage.tsx",
+  [
+   [
+    15,
+    15
+   ],
+   [
+    39,
+    51
+   ],
+   [
+    60,
+    68
+   ],
+   [
+    114,
+    114
+   ],
+   [
+    199,
+    204
+   ],
+   [
+    283,
+    299
+   ]
+  ],
+  "Phạm Duy An: InvoicePage.tsx thanh toán QR"
+ ],
+ [
+  "tv-2-hieu-dang-nhap",
+  "src/main/java/com/restaurant/core/security/service/impl/AuthServiceImpl.java",
+  [
+   [
+    47,
+    76
+   ]
+  ],
+  "Nguyễn Quang Hiếu: AuthServiceImpl.login"
+ ],
+ [
+  "tv-3-le-anh-han-muc",
+  "src/main/java/com/restaurant/core/menu/service/impl/DailyMenuServiceImpl.java",
+  [
+   [
+    155,
+    176
+   ],
+   [
+    295,
+    303
+   ]
+  ],
+  "Lê Anh: DailyMenuServiceImpl.updateDailyMenuQuotas"
+ ],
+ [
+  "tv-4-tuan-anh-fefo",
+  "src/main/java/com/restaurant/core/inventory/service/impl/KitchenStockAllocatorImpl.java",
+  [
+   [
+    50,
+    55
+   ],
+   [
+    109,
+    175
+   ]
+  ],
+  "Đỗ Tuấn Anh: KitchenStockAllocatorImpl giữ nguyên liệu FEFO"
+ ],
+ [
+  "tv-5-duc-anh-doi-soat",
+  "src/main/java/com/restaurant/core/finance/service/impl/CashReconciliationServiceImpl.java",
+  [
+   [
+    30,
+    61
+   ]
+  ],
+  "Bùi Đào Đức Anh: CashReconciliationServiceImpl.reconcileCashForDay"
+ ]
+]

@@ -1,0 +1,129 @@
+// Phân hệ Kho: hủy hàng, kiểm kê, sổ kho: 5 bảng. Sinh tự động từ catalog PostgreSQL (gen_dbml.py).
+// Dán toàn bộ file vào https://dbdiagram.io/d để xem database diagram.
+
+Project atlas_restaurant {
+  database_type: 'PostgreSQL'
+}
+
+Table stock_adjustments {
+  id bigint [pk]
+  status varchar(20) [not null]
+  adjustment_type varchar(20) [not null]
+  reason varchar(255) [not null]
+  created_by_id bigint [not null]
+  confirmed_by_id bigint
+  created_at timestamptz [not null]
+  confirmed_at timestamptz
+  request_key varchar(64) [not null]
+  request_hash char(64)
+}
+
+Table stock_adjustment_items {
+  id bigint [pk]
+  stock_adjustment_id bigint [not null]
+  raw_batch_id bigint
+  wip_issue_item_id bigint
+  kitchen_batch_id bigint
+  quantity_delta numeric(12,3) [not null]
+  note varchar(255)
+}
+
+Table stock_counts {
+  id bigint [pk]
+  status varchar(20) [not null]
+  note varchar(255)
+  created_at timestamptz [not null]
+  created_by_id bigint [not null]
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+  request_key varchar(64) [not null]
+  request_hash char(64) [not null]
+}
+
+Table stock_count_items {
+  id bigint [pk]
+  stock_count_id bigint [not null]
+  raw_batch_id bigint
+  wip_issue_item_id bigint
+  kitchen_batch_id bigint
+  book_quantity numeric(12,3) [not null]
+  actual_quantity numeric(12,3) [not null]
+  reason varchar(255)
+}
+
+Table stock_movements {
+  id bigint [pk]
+  movement_type varchar(30) [not null]
+  raw_batch_id bigint
+  wip_issue_item_id bigint
+  kitchen_batch_id bigint
+  quantity_delta numeric(12,3) [not null]
+  ref_issue_item_id bigint
+  preparation_id bigint
+  order_item_id bigint
+  stock_count_item_id bigint
+  stock_return_item_id bigint
+  stock_adjustment_item_id bigint
+  reason varchar(255)
+  event_key varchar(64) [not null]
+  created_at timestamptz [not null]
+}
+
+Table inventory_batches {
+  id bigint [pk]
+}
+
+Table kitchen_batches {
+  id bigint [pk]
+}
+
+Table kitchen_preparations {
+  id bigint [pk]
+}
+
+Table order_items {
+  id bigint [pk]
+}
+
+Table stock_issue_items {
+  id bigint [pk]
+}
+
+Table stock_return_items {
+  id bigint [pk]
+}
+
+Ref: stock_adjustment_items.kitchen_batch_id ?> kitchen_batches.id
+Ref: stock_adjustment_items.raw_batch_id ?> inventory_batches.id
+Ref: stock_adjustment_items.stock_adjustment_id > stock_adjustments.id
+Ref: stock_adjustment_items.wip_issue_item_id ?> stock_issue_items.id
+Ref: stock_count_items.kitchen_batch_id ?> kitchen_batches.id
+Ref: stock_count_items.raw_batch_id ?> inventory_batches.id
+Ref: stock_count_items.stock_count_id > stock_counts.id
+Ref: stock_count_items.wip_issue_item_id ?> stock_issue_items.id
+Ref: stock_movements.kitchen_batch_id ?> kitchen_batches.id
+Ref: stock_movements.order_item_id ?> order_items.id
+Ref: stock_movements.preparation_id ?> kitchen_preparations.id
+Ref: stock_movements.raw_batch_id ?> inventory_batches.id
+Ref: stock_movements.ref_issue_item_id ?> stock_issue_items.id
+Ref: stock_movements.stock_adjustment_item_id ?> stock_adjustment_items.id
+Ref: stock_movements.stock_count_item_id ?> stock_count_items.id
+Ref: stock_movements.stock_return_item_id ?> stock_return_items.id
+Ref: stock_movements.wip_issue_item_id ?> stock_issue_items.id
+
+TableGroup "Kho: hủy hàng, kiểm kê, sổ kho" {
+  stock_adjustments
+  stock_adjustment_items
+  stock_counts
+  stock_count_items
+  stock_movements
+}
+
+TableGroup "Phân hệ khác" {
+  inventory_batches
+  kitchen_batches
+  kitchen_preparations
+  order_items
+  stock_issue_items
+  stock_return_items
+}

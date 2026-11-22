@@ -1,0 +1,33 @@
+@startuml
+!include _style.iuml
+skinparam conditionStyle diamond
+skinparam conditionEndStyle diamond
+title Activity: đăng nhập
+|Nhân viên|
+start
+:Nhập tên đăng nhập, mật khẩu;
+|Hệ thống|
+if (Tên đăng nhập đang bị khóa tạm\n(sai 5 lần trong 15 phút)?) then ([có])
+  :Trả 429, báo thời gian chờ;
+  stop
+else ([không])
+endif
+if (Tài khoản, nhân viên ACTIVE,\nmật khẩu đúng, có vai trò?) then ([sai])
+  :Tăng bộ đếm sai;
+  :Trả 401 cùng một thông báo\n(không lộ tên nào tồn tại);
+  stop
+else ([đúng])
+endif
+:Xóa bộ đếm sai;
+:Phát JWT (vai trò, token_version);
+if (Phải đổi mật khẩu?) then ([có])
+  |Nhân viên|
+  :Đổi mật khẩu (8–72 ký tự);
+  |Hệ thống|
+  :Lưu hash mới, tăng token_version,\nphát token mới;
+else ([không])
+endif
+|Nhân viên|
+:Vào màn hình theo vai trò;
+stop
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+!include _style.iuml
+title Use case chi tiết: phục vụ và bếp
+left to right direction
+actor "Phục vụ" as W
+actor "Bếp" as K
+actor "Quản lý" as M
+rectangle "Phục vụ và bếp" {
+  usecase "Mở bàn" as O1
+  usecase "Gọi món theo đợt" as O2
+  usecase "Kiểm tra món đang bán,\nđủ nguyên liệu" as O2a
+  usecase "Cảnh báo vượt hạn mức" as O2b
+  usecase "Bưng món" as O4
+  usecase "Hủy món chưa nấu" as O3
+  usecase "Trả bàn khi khách\nkhông gọi món" as O5
+  usecase "Cấp lại nguyên liệu\n(lô đang giữ bị hỏng)" as K4
+  usecase "Quản lý bàn" as M1
+  usecase "Nhận món" as K1
+  usecase "Giữ nguyên liệu (FEFO)" as K1a
+  usecase "Từ chối món" as K2
+  usecase "Nấu, báo xong" as K3
+  usecase "Hủy món ngoại lệ\n(món đã nấu)" as P7
+}
+W -- O1
+W -- O2
+W -- O4
+W -- O3
+W -- O5
+K -- O3
+K -- K4
+M -- M1
+O2 ..> O2a : <<include>>
+O2b .up.> O2 : <<extend>>
+K -- K1
+K -- K2
+K -- K3
+K1 ..> K1a : <<include>>
+M -- P7
+@enduml

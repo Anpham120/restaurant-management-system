@@ -1,0 +1,23 @@
+[
+ [
+  "gen-03-seed-goi-api",
+  "ltnc-code/seed_baocao.py",
+  38,
+  75,
+  "seed_baocao.py: hàm gọi API"
+ ],
+ [
+  "gen-04-seed-ban-hang",
+  "ltnc-code/seed_baocao.py",
+  375,
+  440,
+  "seed_baocao.py: sinh dữ liệu bán hàng"
+ ],
+ [
+  "gen-05-mau-sql",
+  "ltnc-code/gen_sample_sql.py",
+  1,
+  20,
+  "gen_sample_sql.py"
+ ]
+]

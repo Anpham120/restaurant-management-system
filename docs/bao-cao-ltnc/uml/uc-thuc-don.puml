@@ -1,0 +1,30 @@
+@startuml
+!include _style.iuml
+title Use case chi tiết: thực đơn
+left to right direction
+actor "Phục vụ" as W
+actor "Bếp" as K
+actor "Quản lý" as M
+rectangle "Thực đơn" {
+  usecase "Xem thực đơn hôm nay" as T8
+  usecase "Tạm dừng, mở bán lại món" as T7
+  usecase "Xem công thức món" as T9
+  usecase "Quản lý nhóm món" as T1
+  usecase "Quản lý món, giá bán" as T2
+  usecase "Khai báo công thức\n(theo phiên bản)" as T3
+  usecase "Lập thực đơn ngày" as T4
+  usecase "Đặt hạn mức suất" as T5
+  usecase "Công bố, đóng thực đơn" as T6
+}
+W -- T8
+K -- T8
+K -- T7
+K -- T9
+M -- T7
+M -- T1
+M -- T2
+M -- T3
+M -- T4
+M -- T6
+T5 .up.> T4 : <<extend>>
+@enduml

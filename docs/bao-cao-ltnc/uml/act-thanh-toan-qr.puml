@@ -1,0 +1,45 @@
+@startuml
+!include _style.iuml
+skinparam conditionStyle diamond
+skinparam conditionEndStyle diamond
+title Activity: thanh toán chuyển khoản QR (SePay)
+|Thu ngân|
+start
+:Chọn thanh toán QR;
+|Hệ thống|
+:Tạo yêu cầu WAITING_TRANSFER,\nmã tham chiếu RC<hóa đơn>Q<n>, ảnh QR;
+|Khách|
+:Quét QR, chuyển khoản;
+|SePay|
+:Gửi webhook (Apikey, mã giao dịch,\nmã tham chiếu, số tiền);
+|Hệ thống|
+if (Khóa API đúng?) then ([sai])
+  :Trả 401;
+  stop
+else ([đúng])
+endif
+:Khóa theo mã giao dịch;
+if (Mã giao dịch đã ghi?) then ([có])
+  :Trả lại kết quả cũ;
+  stop
+else ([chưa])
+endif
+:Tìm và khóa hóa đơn theo mã tham chiếu;
+if (Đúng tài khoản nhà hàng\nvà tìm thấy mã tham chiếu?) then ([không])
+  :Ghi sự kiện MISMATCH;
+else ([có])
+  if (Yêu cầu QR và hóa đơn\ncòn chờ thu?) then ([không])
+    :Ghi sự kiện AFTER_CANCEL;
+  else ([có])
+    if (Đúng số tiền?) then ([sai])
+      :Ghi sự kiện MISMATCH;
+    else ([đúng])
+      :Ghi lần thu QR, hóa đơn PAID;
+      :Đóng đơn, đóng phiên, trả bàn;
+    endif
+  endif
+endif
+|Thu ngân|
+:Màn hình thấy kết quả\n(tải lại mỗi 3 giây);
+stop
+@enduml

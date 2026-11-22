@@ -1,0 +1,58 @@
+// Phân hệ Tài chính: 2 bảng. Sinh tự động từ catalog PostgreSQL (gen_dbml.py).
+// Dán toàn bộ file vào https://dbdiagram.io/d để xem database diagram.
+
+Project atlas_restaurant {
+  database_type: 'PostgreSQL'
+}
+
+Table operating_expenses {
+  id bigint [pk]
+  business_date date [not null]
+  category varchar(30) [not null]
+  description varchar(255) [not null]
+  amount numeric(12,2) [not null]
+  payment_method varchar(20) [not null]
+  fund_source varchar(20) [not null]
+  stock_receipt_id bigint
+  recorded_by_id bigint [not null]
+  paid_at timestamptz [not null]
+  created_at timestamptz [not null]
+  request_key varchar(64) [not null]
+  status varchar(20) [not null]
+  void_reason varchar(255)
+  voided_by_id bigint
+  voided_at timestamptz
+  request_hash char(64)
+}
+
+Table daily_cash_reconciliations {
+  id bigint [pk]
+  business_date date [not null]
+  version int [not null]
+  status varchar(20) [not null]
+  opening_cash numeric(12,2) [not null]
+  cash_sales numeric(12,2) [not null]
+  cash_expenses numeric(12,2) [not null]
+  expected_cash numeric(12,2)
+  actual_cash numeric(12,2) [not null]
+  difference numeric(12,2)
+  reason varchar(255)
+  revision_reason varchar(255)
+  reconciled_by_id bigint [not null]
+  reconciled_at timestamptz [not null]
+}
+
+Table stock_receipts {
+  id bigint [pk]
+}
+
+Ref: operating_expenses.stock_receipt_id ?> stock_receipts.id
+
+TableGroup "Tài chính" {
+  operating_expenses
+  daily_cash_reconciliations
+}
+
+TableGroup "Phân hệ khác" {
+  stock_receipts
+}

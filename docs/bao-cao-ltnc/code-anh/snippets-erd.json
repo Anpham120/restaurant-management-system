@@ -1,0 +1,6 @@
+[
+ ["gen-01-catalog-sql", "docs/bao-cao-ltnc/erd/catalog.sql", [[1, 19]], "catalog.sql"],
+ ["gen-02-gen-dbml", "docs/bao-cao-ltnc/erd/gen_dbml.py", [[44, 46], [77, 110]], "gen_dbml.py"],
+ ["gen-02b-dbml-mau", "docs/bao-cao-ltnc/erd/dbml-p2-thuc-don.dbml", [[1, 32], [64, 84]], "dbml-p2-thuc-don.dbml"],
+ ["gen-02c-render-dbdiagram", "docs/bao-cao-ltnc/erd/render_dbdiagram.py", [[15, 45]], "render_dbdiagram.py"]
+]
