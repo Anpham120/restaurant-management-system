@@ -190,15 +190,6 @@ def chapter3():
     for key, name in DBD:
         xoay = f'{E}/dbml-{key}-xoay.png'      # sơ đồ dàn ngang: xoay dọc trang cho chữ to hơn
         out.append(fig(xoay if os.path.exists(xoay) else f'{E}/dbml-{key}.png', f'ERD {name}', maxw=5760000, maxh=7800000))
-    out += [H3('3.1.5. Sinh dữ liệu bằng code'),
-            B('Dữ liệu không chèn bằng câu INSERT tay. Script seed_baocao.py gọi REST API của chính hệ thống như người dùng thật: đăng nhập theo vai trò, tạo nhân viên, ca làm, nguyên liệu, phiếu nhập, xuất, thực đơn, rồi mô phỏng 105 lượt khách với đủ kịch bản: thu tiền mặt, QR thành công, QR đang chờ, lệch tiền, khách bỏ về, miễn thu, hủy món, bếp từ chối. Vì đi qua tầng Service, mọi dòng dữ liệu đều đã qua kiểm tra nghiệp vụ, trigger và máy trạng thái; dữ liệu không hợp lệ không thể lọt vào.'),
-            fig(f'{C}/gen-03-seed-goi-api.png', 'Hàm call() và soft() của seed_baocao.py', maxw=5760000),
-            fig(f'{C}/gen-04-seed-ban-hang.png', 'Đoạn sinh dữ liệu bán hàng nhiều kịch bản', maxw=5760000, maxh=8000000),
-            B(f'Chạy một lần mất khoảng 35 giây, sinh {sum(x["n"] for x in MAU.values())} dòng trên {len(CAT)} bảng. Bảng dưới cho thấy dữ liệu phủ hầu hết các trạng thái của từng cột trạng thái:')]
-    out += status_table()
-    out += [B('Câu SQL lấy 5 dòng mẫu của từng bảng cũng sinh bằng code (gen_sample_sql.py) từ catalog, chọn 6 cột đầu, bỏ các cột kỹ thuật như mật khẩu băm, nội dung webhook thô.'),
-            fig(f'{C}/gen-05-mau-sql.png', 'gen_sample_sql.py sinh câu truy vấn dữ liệu mẫu', maxw=5760000)]
-    out += sample_tables()
     out += [H2('3.2. Thiết kế hệ thống'),
             H3('3.2.1. Biểu đồ use case tổng quát (mức khung)'),
             B('Mức khung cho thấy các nhóm chức năng lớn và tác nhân dùng chúng. Phục vụ, Bếp, Thu ngân, Quản lý đều là Nhân viên (quan hệ tổng quát hóa, mũi tên tam giác rỗng) nên cùng dùng use case Đăng nhập; mỗi vai trò nối với nhóm chức năng của mình bằng đường liền. SePay là hệ thống ngoài, tham gia nhóm thanh toán.'),

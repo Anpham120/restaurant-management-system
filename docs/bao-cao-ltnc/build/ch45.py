@@ -114,7 +114,7 @@ def chapter4():
                 ['Mục tiêu', 'Xác nhận mỗi chức năng làm đúng ở ca thành công, chặn đúng ở ca sai dữ liệu, sai quyền, sai trạng thái'],
                 ['Phạm vi', 'Đăng nhập, phân quyền, nhân sự, thực đơn, bán hàng, bếp, thanh toán, kho, tài chính'],
                 ['Loại kiểm thử', 'Kiểm thử chức năng hộp đen qua REST API (40 ca); kiểm thử tích hợp tự động JUnit + Testcontainers trên PostgreSQL thật (83 test, chạy mỗi lần đẩy code)'],
-                ['Môi trường', 'Bản chạy riêng của hệ thống (Docker Compose) với dữ liệu sinh bởi seed_baocao.py; không chạy trên dữ liệu thật'],
+                ['Môi trường', 'Bản chạy riêng của hệ thống (Docker Compose) với dữ liệu mẫu nạp sẵn; không chạy trên dữ liệu thật'],
                 ['Công cụ', 'Script test/tc_runner.py (Python) gửi request, so output thực tế với output mong muốn, ghi kết quả; Google Sheet lưu bảng test case'],
                 ['Tiêu chí đạt', 'Đúng mã HTTP và đúng kết quả nghiệp vụ (trạng thái, cờ replayed, kết quả webhook...)'],
                 ['Thời gian', 'Chạy lại sau mỗi thay đổi nghiệp vụ; lần ghi trong báo cáo: 21/11/2026']]),
@@ -160,7 +160,7 @@ def chapter5():
     A = f'{R}/giao-dien/anh'
     out = [H1('5. Kết quả và hướng phát triển'),
            H2('5.1. Kết quả'),
-           B('Các màn hình dưới chụp từ hệ thống đang chạy với dữ liệu sinh ở mục 3.1.5, đăng nhập bằng tài khoản quản lý.')]
+           B('Các màn hình dưới chụp từ hệ thống đang chạy với dữ liệu mẫu nạp sẵn, đăng nhập bằng tài khoản quản lý.')]
     for key, title, text in UI:
         out += [fig4(f'{A}/{key}.png', title, ch=5, maxw=5760000), B(text)]
     out += [H3('5.1.1. Đã làm được'),
@@ -175,7 +175,7 @@ def chapter5():
             L('Chưa in hóa đơn ra máy in nhiệt và chưa xuất báo cáo ra Excel.'),
             H2('5.2. Kết luận'),
             H3('5.2.1. Kiến thức đạt được'),
-            L('Thiết kế cơ sở dữ liệu chuẩn hóa 3NF, dùng ràng buộc, khóa, trigger để bảo vệ dữ liệu; sinh dữ liệu mẫu bằng code qua API của hệ thống.'),
+            L('Thiết kế cơ sở dữ liệu chuẩn hóa 3NF, dùng ràng buộc, khóa, trigger để bảo vệ dữ liệu.'),
             L('Xây dựng ứng dụng Modular Monolith chia tầng Controller, Service, Repository với Spring Boot, Spring Modulith, Spring Data JPA, Spring Security; áp dụng mẫu Strategy, Repository.'),
             L('Xử lý đồng thời: giao dịch, khóa bi quan, idempotency; xác thực JWT có thu hồi token.'),
             L('Viết kiểm thử tự động và kiểm thử chức năng có ghi kết quả; làm việc nhóm qua Git với nhánh feature.'),
