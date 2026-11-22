@@ -25,8 +25,7 @@ def chapter1():
             ['Frontend', 'React 19 [6], TypeScript, Vite', 'Giao diện một trang (SPA)'],
             ['Gọi API ở frontend', 'TanStack Query [7]', 'Tải, làm mới, đồng bộ dữ liệu màn hình'],
             ['Kiểm thử', 'JUnit 5, Testcontainers [8]', 'Kiểm thử tích hợp trên PostgreSQL thật'],
-            ['Sơ đồ', 'PlantUML [9]', 'ERD, use case, activity, class, deployment'],
-            ['Thanh toán QR', 'SePay [10]', 'Nhận webhook khi khách chuyển khoản']]),
+            ['Thanh toán QR', 'SePay [9]', 'Nhận webhook khi khách chuyển khoản']]),
     ]
 
 
