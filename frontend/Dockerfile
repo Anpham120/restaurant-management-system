@@ -14,15 +14,16 @@ FROM nginxinc/nginx-unprivileged:1.30-alpine
 ARG PATCH_DATE=none
 USER root
 # nginx trong image gốc cài từ kho nginx.org và bị ghim đúng phiên bản trong /etc/apk/world (nginx=1.30.6-r1),
-# nên "apk upgrade" thường không nâng được nginx. Bước này: bỏ ghim, tạm thêm kho + khóa ký của nginx.org để lấy
-# bản vá cùng nhánh 1.30, nâng cấp mọi gói, rồi gỡ kho và khóa ra (develop #60-#62: CVE nginx 1.30.6, đã có 1.30.7).
+# nên "apk upgrade" thường không nâng được nginx. Bước này: bỏ ghim, tạm thêm kho nginx.org để lấy bản vá cùng
+# nhánh 1.30, nâng cấp mọi gói, rồi gỡ kho ra (develop #60-#62: CVE nginx 1.30.6, đã có 1.30.7). Khóa ký nginx.org đã có
+# sẵn trong image gốc (/etc/apk/keys/nginx_signing.rsa.pub), không tải lại: URL khóa trên nginx.org từng trả 404
+# làm hỏng build (develop #94).
 RUN echo "patch $PATCH_DATE" \
  && sed -i 's/=.*//' /etc/apk/world \
- && wget -qO /etc/apk/keys/nginx_signing.rsa.pub https://nginx.org/keys/nginx_signing.rsa.pub \
+ && test -s /etc/apk/keys/nginx_signing.rsa.pub \
  && echo "https://nginx.org/packages/alpine/v$(cut -d. -f1,2 /etc/alpine-release)/main" >> /etc/apk/repositories \
  && apk upgrade --no-cache \
  && sed -i '/nginx.org/d' /etc/apk/repositories \
- && rm -f /etc/apk/keys/nginx_signing.rsa.pub \
  && nginx -v
 USER 101
 COPY nginx.conf /etc/nginx/conf.d/default.conf
