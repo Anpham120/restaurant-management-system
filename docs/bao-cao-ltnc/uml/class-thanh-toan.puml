@@ -1,0 +1,65 @@
+@startuml
+!include _style.iuml
+title Biểu đồ lớp thanh toán (module finance, mẫu Strategy)
+skinparam linetype ortho
+
+package "controller" {
+  class PaymentController <<RestController>> {
+    + startPayment(invoiceId, request) : ApiResponse<PaymentResponse>
+  }
+  class SepayWebhookController <<RestController>> {
+    + receive(authorization, rawBody) : ApiResponse<WebhookResult>
+  }
+}
+package "service" {
+  interface PaymentService {
+    + startPayment(invoiceId, actorId, request) : PaymentResponse
+  }
+  class PaymentServiceImpl {
+    - strategies : Map<PaymentMethod, PaymentStrategy>
+    + startPayment(invoiceId, actorId, request) : PaymentResponse
+  }
+  class SepayWebhookService {
+    + receiveTransferWebhook(authorization, rawBody)
+  }
+  class QrTransferProcessor
+  class InvoiceSettlement {
+    + settlePaidInvoice(invoice, actorId)
+  }
+}
+package "strategy" {
+  interface PaymentStrategy <<Strategy>> {
+    + method() : PaymentMethod
+    + startPayment(invoiceId, actorId, request) : PaymentResponse
+  }
+  class CashPaymentStrategy
+  class QrPaymentStrategy
+  enum PaymentMethod {
+    CASH
+    QR
+  }
+}
+package "repository" {
+  interface PaymentRequestRepository
+  interface PaymentRepository
+}
+interface OrderBillingApi <<API module order>> {
+  + closeOrderAndReleaseTable(orderId, actorId)
+}
+
+PaymentController --> PaymentService
+PaymentService <|.. PaymentServiceImpl
+PaymentServiceImpl o--> "1..*" PaymentStrategy
+PaymentStrategy <|.. CashPaymentStrategy
+PaymentStrategy <|.. QrPaymentStrategy
+PaymentStrategy --> PaymentMethod
+SepayWebhookController --> SepayWebhookService
+SepayWebhookService --> QrTransferProcessor
+CashPaymentStrategy ..> InvoiceSettlement
+QrTransferProcessor ..> InvoiceSettlement
+CashPaymentStrategy ..> PaymentRequestRepository
+CashPaymentStrategy ..> PaymentRepository
+QrPaymentStrategy ..> PaymentRequestRepository
+QrTransferProcessor ..> PaymentRepository
+InvoiceSettlement ..> OrderBillingApi
+@enduml

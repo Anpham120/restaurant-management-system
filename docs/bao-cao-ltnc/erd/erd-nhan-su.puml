@@ -1,0 +1,137 @@
+@startuml
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam entity {
+  BackgroundColor #EAF2FB
+  BorderColor #1565C0
+}
+title ERD phân hệ Nhân sự và bảo mật
+entity "departments" as departments {
+  * id : bigint <<PK>>
+  --
+  * department_name : character varying(50)
+}
+entity "employees" as employees {
+  * id : bigint <<PK>>
+  --
+  * employee_code : character varying(20)
+  * full_name : character varying(100)
+  gender : character varying(10)
+  date_of_birth : date
+  phone : character varying(15)
+  email : character varying(100)
+  address : character varying(255)
+  hire_date : date
+  end_date : date
+  * work_status : character varying(20)
+  * department_id : bigint <<FK>>
+}
+entity "accounts" as accounts {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  * username : character varying(50)
+  * password_hash : character varying(255)
+  * must_change_password : boolean
+  * account_status : character varying(20)
+  * token_version : integer
+}
+entity "roles" as roles {
+  * id : bigint <<PK>>
+  --
+  * role_code : character varying(30)
+  * role_name : character varying(50)
+}
+entity "permissions" as permissions {
+  * id : bigint <<PK>>
+  --
+  * permission_code : character varying(50)
+  * description : character varying(255)
+}
+entity "account_roles" as account_roles {
+  * id : bigint <<PK>>
+  --
+  * account_id : bigint <<FK>>
+  * role_id : bigint <<FK>>
+}
+entity "role_permissions" as role_permissions {
+  * id : bigint <<PK>>
+  --
+  * role_id : bigint <<FK>>
+  * permission_id : bigint <<FK>>
+}
+entity "shifts" as shifts {
+  * id : bigint <<PK>>
+  --
+  * shift_name : character varying(50)
+  * start_time : time without time zone
+  * end_time : time without time zone
+  * break_minutes : integer
+  * is_active : boolean
+}
+entity "shift_assignments" as shift_assignments {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  * shift_id : bigint <<FK>>
+  * work_date : date
+  * scheduled_start_at : timestamp with time zone
+  * scheduled_end_at : timestamp with time zone
+  * scheduled_break_minutes : integer
+  * status : character varying(20)
+  note : character varying(255)
+  cancel_reason : character varying(255)
+  cancelled_by_id : bigint <<FK>>
+  cancelled_at : timestamp with time zone
+}
+entity "attendances" as attendances {
+  * id : bigint <<PK>>
+  --
+  * shift_assignment_id : bigint <<FK>>
+  * attendance_status : character varying(20)
+  actual_start_at : timestamp with time zone
+  actual_end_at : timestamp with time zone
+  worked_minutes : integer
+  note : character varying(255)
+  confirmed_by_id : bigint <<FK>>
+  confirmed_at : timestamp with time zone
+}
+entity "attendance_adjustments" as attendance_adjustments {
+  * id : bigint <<PK>>
+  --
+  * attendance_id : bigint <<FK>>
+  * old_status : character varying(20)
+  * new_status : character varying(20)
+  old_start_at : timestamp with time zone
+  new_start_at : timestamp with time zone
+  old_end_at : timestamp with time zone
+  new_end_at : timestamp with time zone
+  old_worked_minutes : integer
+  new_worked_minutes : integer
+  * reason : character varying(255)
+  * adjusted_by_id : bigint <<FK>>
+  * adjusted_at : timestamp with time zone
+}
+entity "login_throttles" as login_throttles {
+  * username_key : character varying(50) <<PK>>
+  --
+  * failures : integer
+  * first_failure_at : timestamp with time zone
+  locked_until : timestamp with time zone
+}
+accounts |o--|| employees : employee_id
+account_roles }o--|| accounts : account_id
+account_roles }o--|| roles : role_id
+attendance_adjustments }o--|| employees : adjusted_by_id
+attendance_adjustments }o--|| attendances : attendance_id
+attendances }o--o| employees : confirmed_by_id
+attendances |o--|| shift_assignments : shift_assignment_id
+employees }o--|| departments : department_id
+role_permissions }o--|| permissions : permission_id
+role_permissions }o--|| roles : role_id
+shift_assignments }o--o| employees : cancelled_by_id
+shift_assignments }o--|| employees : employee_id
+shift_assignments }o--|| shifts : shift_id
+@enduml

@@ -1,0 +1,44 @@
+@startuml
+!include _style.iuml
+title Biểu đồ triển khai
+skinparam node {
+  BackgroundColor #EAF2FB
+  BorderColor #1565C0
+}
+node "Thiết bị người dùng" {
+  artifact "Trình duyệt\n(SPA React)" as Browser
+}
+cloud "GitHub" {
+  artifact "Mã nguồn, webhook, SSO" as Git
+  artifact "GHCR: image rms-app, rms-web" as Ghcr
+}
+cloud "SePay" as Sepay
+node "Máy 1: production (Ubuntu 24.04, k3s)" as M1 {
+  component "nginx\nHTTPS, HTTP/2, giới hạn đăng nhập" as Nginx
+  node "Cụm k3s" {
+    component "Traefik\nIngress, header bảo mật" as Traefik
+    component "Pod rms-web x2\n(nginx, file tĩnh)" as Web
+    component "Pod rms-app x2\n(Spring Boot, Argo Rollouts)" as App
+    database "PostgreSQL 17\nCloudNativePG primary + replica" as Db
+  }
+}
+node "Máy 2: công cụ (Ubuntu 24.04)" as M2 {
+  component "Jenkins (CI)" as Jenkins
+  component "Argo CD (GitOps)" as Argo
+  component "Prometheus, Grafana, Loki" as Mon
+  database "SeaweedFS (S3)\nsao lưu WAL" as S3
+}
+Browser --> Nginx : HTTPS 443
+Nginx --> Traefik : HTTP 80
+Traefik --> Web : /
+Traefik --> App : /api
+App --> Db : JDBC 5432
+Sepay --> Nginx : webhook /api/webhooks/sepay
+Git --> Jenkins : webhook push
+Jenkins --> Ghcr : đẩy image
+Argo --> Git : đọc manifest
+Argo --> M1 : triển khai qua WireGuard
+App ..> Ghcr : kéo image
+Db --> S3 : WAL qua WireGuard
+Mon --> M1 : số liệu, log qua WireGuard
+@enduml

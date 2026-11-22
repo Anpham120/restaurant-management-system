@@ -1,0 +1,17 @@
+skinparam defaultFontName "DejaVu Sans"
+skinparam shadowing false
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF2FB
+  BorderColor #1565C0
+}
+skinparam activity {
+  BackgroundColor #EAF2FB
+  BorderColor #1565C0
+  DiamondBackgroundColor #FFF8E1
+}
+skinparam class {
+  BackgroundColor #EAF2FB
+  BorderColor #1565C0
+}
+skinparam packageStyle rectangle

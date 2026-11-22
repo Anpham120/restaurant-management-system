@@ -1,0 +1,33 @@
+@startuml
+!include _style.iuml
+title Activity: phân ca và chấm công
+|Quản lý|
+start
+:Chọn nhân viên, ca, ngày làm;
+|Hệ thống|
+if (Nhân viên ACTIVE, ca đang dùng,\nkhông trùng giờ ca khác?) then (đúng)
+  :Phân ca SCHEDULED,\nchụp giờ bắt đầu/kết thúc;
+else (sai)
+  :Trả 409 OVERLAP / 422;
+  stop
+endif
+|Quản lý|
+if (Nhân viên xin nghỉ trước ca?) then (có)
+  :Hủy phân ca (lý do);
+  |Hệ thống|
+  :Phân ca CANCELLED;
+  stop
+else (không)
+endif
+|Quản lý|
+:Chấm công sau ca (có mặt / vắng,\ngiờ vào, giờ ra);
+|Hệ thống|
+:Ghi chấm công, phân ca COMPLETED,\ntính phút công = có mặt - phút nghỉ;
+|Quản lý|
+if (Cần sửa công?) then (có)
+  :Điều chỉnh (lý do);
+  |Hệ thống|
+  :Ghi bản điều chỉnh (giá trị cũ, mới),\ncập nhật chấm công;
+endif
+stop
+@enduml

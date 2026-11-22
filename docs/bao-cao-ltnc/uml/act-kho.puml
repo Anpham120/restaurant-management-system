@@ -1,0 +1,33 @@
+@startuml
+!include _style.iuml
+title Activity: nhập kho, xuất cho bếp, bếp nhận
+|Quản lý|
+start
+:Lập phiếu nhập (nhà cung cấp, lô, hạn dùng,\nđơn vị nhập, hệ số quy đổi, đơn giá);
+|Hệ thống|
+:Phiếu DRAFT, tính thành tiền;
+|Quản lý|
+:Xác nhận phiếu nhập;
+|Hệ thống|
+if (Lô còn hạn, đủ thông tin?) then (đúng)
+  :Phiếu CONFIRMED, tạo lô RAW,\nghi sổ RECEIPT;
+else (sai)
+  :Trả 422;
+  stop
+endif
+|Quản lý|
+:Lập phiếu xuất cho bếp\n(DIRECT dùng thẳng / PREPARE sơ chế);
+:Xuất kho;
+|Hệ thống|
+if (Chọn đúng lô hết hạn sớm nhất (FEFO)\nvà đủ số lượng?) then (đúng)
+  :Trừ tồn RAW, phiếu ISSUED;
+else (sai)
+  :Trả 409;
+  stop
+endif
+|Bếp|
+:Kiểm hàng, xác nhận nhận;
+|Hệ thống|
+:Phiếu RECEIVED: DIRECT thành lô bếp,\nPREPARE thành hàng chờ sơ chế (WIP);
+stop
+@enduml

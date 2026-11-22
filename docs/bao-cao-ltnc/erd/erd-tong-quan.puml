@@ -1,0 +1,173 @@
+@startuml
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam entity {
+  BackgroundColor #EAF2FB
+  BorderColor #1565C0
+}
+title ERD tổng quan (49 bảng, khóa ngoại thật trong database)
+left to right direction
+package "Nhân sự và bảo mật" {
+  entity departments
+  entity employees
+  entity accounts
+  entity roles
+  entity permissions
+  entity account_roles
+  entity role_permissions
+  entity shifts
+  entity shift_assignments
+  entity attendances
+  entity attendance_adjustments
+  entity login_throttles
+}
+package "Thực đơn" {
+  entity menu_categories
+  entity menu_items
+  entity recipes
+  entity recipe_ingredients
+  entity daily_menus
+  entity daily_menu_items
+}
+package "Bán hàng và thanh toán" {
+  entity dining_tables
+  entity table_sessions
+  entity orders
+  entity order_batches
+  entity order_items
+  entity order_item_events
+  entity invoices
+  entity invoice_items
+  entity payment_requests
+  entity payment_webhook_events
+  entity payments
+}
+package "Kho và bếp" {
+  entity ingredients
+  entity kitchen_ingredient_types
+  entity stock_receipts
+  entity stock_receipt_items
+  entity inventory_batches
+  entity stock_issues
+  entity stock_issue_items
+  entity kitchen_preparations
+  entity kitchen_preparation_outputs
+  entity kitchen_batches
+  entity stock_reservations
+  entity stock_returns
+  entity stock_return_items
+  entity stock_adjustments
+  entity stock_adjustment_items
+  entity stock_counts
+  entity stock_count_items
+  entity stock_movements
+}
+package "Tài chính" {
+  entity operating_expenses
+  entity daily_cash_reconciliations
+}
+accounts }o--|| employees
+account_roles }o--|| accounts
+account_roles }o--|| roles
+attendance_adjustments }o--|| employees
+attendance_adjustments }o--|| attendances
+attendances }o--|| employees
+attendances }o--|| shift_assignments
+daily_cash_reconciliations }o--|| employees
+daily_menu_items }o--|| daily_menus
+daily_menu_items }o--|| menu_items
+daily_menu_items }o--|| employees
+daily_menu_items }o--|| recipes
+daily_menu_items }o--|| recipes
+employees }o--|| departments
+inventory_batches }o--|| stock_receipt_items
+inventory_batches }o--|| employees
+invoice_items }o--|| invoices
+invoice_items }o--|| order_items
+invoices }o--|| employees
+invoices }o--|| orders
+invoices }o--|| employees
+invoices }o--|| employees
+kitchen_batches }o--|| kitchen_preparation_outputs
+kitchen_batches }o--|| stock_issue_items
+kitchen_batches }o--|| kitchen_ingredient_types
+kitchen_batches }o--|| kitchen_preparation_outputs
+kitchen_batches }o--|| employees
+kitchen_ingredient_types }o--|| ingredients
+kitchen_preparation_outputs }o--|| kitchen_ingredient_types
+kitchen_preparation_outputs }o--|| kitchen_preparations
+menu_items }o--|| menu_categories
+order_item_events }o--|| employees
+order_item_events }o--|| order_items
+order_items }o--|| daily_menu_items
+order_items }o--|| order_batches
+orders }o--|| table_sessions
+payment_requests }o--|| employees
+payment_requests }o--|| employees
+payment_requests }o--|| invoices
+payment_webhook_events }o--|| payment_requests
+payment_webhook_events }o--|| employees
+payments }o--|| payment_requests
+payments }o--|| payment_webhook_events
+payments }o--|| invoices
+payments }o--|| payment_requests
+payments }o--|| payment_webhook_events
+recipe_ingredients }o--|| kitchen_ingredient_types
+recipe_ingredients }o--|| recipes
+recipes }o--|| menu_items
+role_permissions }o--|| permissions
+role_permissions }o--|| roles
+shift_assignments }o--|| employees
+shift_assignments }o--|| employees
+shift_assignments }o--|| shifts
+stock_adjustment_items }o--|| kitchen_batches
+stock_adjustment_items }o--|| inventory_batches
+stock_adjustment_items }o--|| stock_adjustments
+stock_adjustment_items }o--|| stock_issue_items
+stock_count_items }o--|| kitchen_batches
+stock_count_items }o--|| inventory_batches
+stock_count_items }o--|| stock_counts
+stock_count_items }o--|| stock_issue_items
+stock_counts }o--|| employees
+stock_counts }o--|| employees
+stock_issue_items }o--|| inventory_batches
+stock_issue_items }o--|| stock_issues
+stock_issues }o--|| employees
+stock_issues }o--|| employees
+stock_issues }o--|| employees
+stock_movements }o--|| kitchen_batches
+stock_movements }o--|| order_items
+stock_movements }o--|| kitchen_preparations
+stock_movements }o--|| inventory_batches
+stock_movements }o--|| stock_issue_items
+stock_movements }o--|| stock_adjustment_items
+stock_movements }o--|| stock_count_items
+stock_movements }o--|| stock_return_items
+stock_movements }o--|| stock_issue_items
+stock_receipt_items }o--|| ingredients
+stock_receipt_items }o--|| stock_receipts
+stock_receipts }o--|| employees
+stock_receipts }o--|| employees
+stock_reservations }o--|| kitchen_batches
+stock_reservations }o--|| order_items
+stock_return_items }o--|| kitchen_batches
+stock_return_items }o--|| kitchen_batches
+stock_return_items }o--|| stock_issue_items
+stock_return_items }o--|| stock_returns
+table_sessions }o--|| employees
+table_sessions }o--|| dining_tables
+table_sessions }o--|| employees
+kitchen_preparations }o--|| employees
+kitchen_preparations }o--|| stock_issue_items
+stock_returns }o--|| employees
+stock_returns }o--|| employees
+stock_adjustments }o--|| employees
+stock_adjustments }o--|| employees
+operating_expenses }o--|| employees
+operating_expenses }o--|| stock_receipts
+operating_expenses }o--|| employees
+order_batches }o--|| orders
+order_batches }o--|| employees
+@enduml

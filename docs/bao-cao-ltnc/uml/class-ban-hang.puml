@@ -1,0 +1,93 @@
+@startuml
+!include _style.iuml
+title Biểu đồ lớp các tầng trong module order (gọi món, bếp)
+skinparam linetype ortho
+
+package "controller" {
+  class OrderController <<RestController>> {
+    - orderService : OrderService
+    - currentUser : CurrentUser
+    + submitOrderBatch(orderId, request) : ApiResponse<SubmitBatchResponse>
+  }
+  class OrderItemController <<RestController>> {
+    + acceptOrderItem(itemId) : ApiResponse<AcceptItemResponse>
+    + startCookingOrderItem(itemId) : ApiResponse<OrderItemResponse>
+  }
+}
+package "service" {
+  interface OrderService {
+    + submitOrderBatch(orderId, actorId, request) : SubmitBatchResponse
+    + markOrderItemServed(itemId, actorId) : OrderItemResponse
+  }
+  interface KitchenService {
+    + acceptOrderItem(itemId, actorId) : AcceptItemResponse
+    + startCookingOrderItem(itemId, actorId) : OrderItemResponse
+  }
+  class OrderServiceImpl
+  class KitchenServiceImpl
+  class OrderItemStatusChanger {
+    + recordItemCreated(item, actorId)
+    + changeItemStatus(item, allowedFrom, next, actorId, reason)
+  }
+}
+package "repository" {
+  interface CustomerOrderRepository {
+    + findByIdForUpdate(id)
+  }
+  interface OrderBatchRepository {
+    + findByRequestKey(requestKey)
+  }
+  interface OrderItemRepository {
+    + findByIdForUpdate(id)
+  }
+}
+package "entity" {
+  class CustomerOrder {
+    - id : Long
+    - status : OrderStatus
+  }
+  class OrderBatch {
+    - id : Long
+    - requestKey : String
+  }
+  class OrderItem {
+    - id : Long
+    - quantity : int
+    - itemNameSnapshot : String
+    - unitPrice : BigDecimal
+    - status : OrderItemStatus
+  }
+  enum OrderItemStatus {
+    PENDING
+    ACCEPTED
+    COOKING
+    READY
+    SERVED
+    REJECTED
+    CANCELLED
+  }
+}
+package "API của module khác" {
+  interface DailyMenuLookup <<menu>>
+  interface KitchenStockAllocator <<inventory>>
+}
+
+OrderController --> OrderService
+OrderItemController --> KitchenService
+OrderService <|.. OrderServiceImpl
+KitchenService <|.. KitchenServiceImpl
+OrderServiceImpl --> OrderItemStatusChanger
+KitchenServiceImpl --> OrderItemStatusChanger
+OrderServiceImpl ..> CustomerOrderRepository
+OrderServiceImpl ..> OrderBatchRepository
+OrderServiceImpl ..> OrderItemRepository
+KitchenServiceImpl ..> OrderItemRepository
+OrderServiceImpl ..> DailyMenuLookup
+KitchenServiceImpl ..> KitchenStockAllocator
+CustomerOrderRepository ..> CustomerOrder
+OrderBatchRepository ..> OrderBatch
+OrderItemRepository ..> OrderItem
+CustomerOrder "1" *-- "n" OrderBatch
+OrderBatch "1" *-- "n" OrderItem
+OrderItem --> OrderItemStatus
+@enduml

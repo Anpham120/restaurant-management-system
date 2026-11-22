@@ -1,0 +1,36 @@
+@startuml
+!include _style.iuml
+title Activity: bếp xử lý món và phục vụ
+|Bếp|
+start
+:Xem hàng đợi (PENDING trước);
+if (Nhận món?) then (nhận)
+  |Hệ thống|
+  if (Còn suất và đủ nguyên liệu?) then (đủ)
+    :Chiếm suất, giữ nguyên liệu\ntheo lô hết hạn sớm nhất (FEFO);
+    :Món ACCEPTED;
+  else (thiếu)
+    :Món REJECTED kèm lý do;
+    stop
+  endif
+else (từ chối)
+  :Nhập lý do;
+  |Hệ thống|
+  :Món REJECTED (không chiếm suất);
+  stop
+endif
+|Bếp|
+:Bắt đầu nấu;
+|Hệ thống|
+:Tiêu hao phần đã giữ,\nghi sổ kho COOK một lần;
+:Món COOKING;
+|Bếp|
+:Nấu xong;
+|Hệ thống|
+:Món READY;
+|Phục vụ|
+:Bưng món cho khách;
+|Hệ thống|
+:Món SERVED, ghi sự kiện\n(người, thời điểm);
+stop
+@enduml

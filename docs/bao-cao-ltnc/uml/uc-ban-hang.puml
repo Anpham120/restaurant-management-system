@@ -1,0 +1,46 @@
+@startuml
+!include _style.iuml
+title Use case chi tiết: phục vụ, bếp, thanh toán
+left to right direction
+actor "Phục vụ" as W
+actor "Bếp" as K
+actor "Thu ngân" as C
+actor "Quản lý" as M
+actor "SePay" as S <<hệ thống ngoài>>
+rectangle "Bán hàng" {
+  usecase "Mở bàn (mở phiên + đơn)" as O1
+  usecase "Gọi món theo đợt" as O2
+  usecase "Kiểm tra thực đơn ngày, hạn mức" as O2a
+  usecase "Kiểm tra đủ nguyên liệu" as O2b
+  usecase "Hủy món chưa nấu" as O3
+  usecase "Bưng món" as O4
+  usecase "Nhận món (giữ nguyên liệu FEFO)" as K1
+  usecase "Từ chối món" as K2
+  usecase "Bắt đầu nấu, nấu xong" as K3
+  usecase "Chốt hóa đơn" as P1
+  usecase "Thu tiền mặt" as P2
+  usecase "Thanh toán QR" as P3
+  usecase "Nhận webhook chuyển khoản" as P4
+  usecase "Mở lại hóa đơn" as P5
+  usecase "Miễn thu / khách bỏ về" as P6
+  usecase "Hủy món ngoại lệ" as P7
+}
+W --> O1
+W --> O2
+W --> O3
+W --> O4
+O2 ..> O2a : <<include>>
+O2 ..> O2b : <<include>>
+K --> K1
+K --> K2
+K --> K3
+K2 .> K1 : <<extend>>
+C --> P1
+C --> P2
+C --> P3
+C --> P5
+P3 <.. P4 : <<extend>>
+S --> P4
+M --> P6
+M --> P7
+@enduml

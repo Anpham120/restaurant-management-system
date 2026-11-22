@@ -1,0 +1,33 @@
+@startuml
+!include _style.iuml
+title Activity: mở bàn và gọi món
+|Phục vụ|
+start
+:Chọn bàn trống;
+|Hệ thống|
+if (Bàn đang dùng và không có khách?) then (đúng)
+  :Tạo phiên OPEN + đơn OPEN,\nbàn OCCUPIED;
+else (sai)
+  :Trả 409 bàn đã có khách;
+  stop
+endif
+|Phục vụ|
+repeat
+  :Chọn món từ thực đơn hôm nay, số lượng, ghi chú;
+  :Gửi đợt gọi món (requestKey);
+  |Hệ thống|
+  if (requestKey đã gửi?) then (có)
+    :Trả lại đợt cũ (replayed);
+  elseif (Món thuộc thực đơn PUBLISHED,\nkhông tạm dừng, đủ nguyên liệu?) then (đúng)
+    :Tạo đợt + dòng món PENDING,\nchụp giá bán;
+    if (Vượt hạn mức suất?) then (có)
+      :Kèm cảnh báo QUOTA_EXCEEDED;
+    endif
+  else (sai)
+    :Trả 409 (món không bán / tạm dừng /\nkhông đủ nguyên liệu);
+  endif
+  |Phục vụ|
+repeat while (Khách gọi thêm?) is (có)
+->không;
+stop
+@enduml

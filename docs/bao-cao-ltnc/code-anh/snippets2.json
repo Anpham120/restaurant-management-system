@@ -1,0 +1,7 @@
+[
+ ["gen-01-catalog-sql", "docs/bao-cao-ltnc/erd/catalog.sql", 1, 20, "catalog.sql"],
+ ["gen-02-gen-erd", "docs/bao-cao-ltnc/erd/gen_erd.py", 50, 85, "gen_erd.py"],
+ ["gen-03-seed-goi-api", "docs/bao-cao-ltnc/seed/seed_baocao.py", 38, 75, "seed_baocao.py: hàm gọi API"],
+ ["gen-04-seed-ban-hang", "docs/bao-cao-ltnc/seed/seed_baocao.py", 375, 440, "seed_baocao.py: sinh dữ liệu bán hàng"],
+ ["gen-05-mau-sql", "docs/bao-cao-ltnc/du-lieu-mau/gen_sample_sql.py", 1, 20, "gen_sample_sql.py"]
+]

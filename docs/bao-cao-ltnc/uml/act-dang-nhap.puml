@@ -1,0 +1,35 @@
+@startuml
+!include _style.iuml
+title Activity: đăng nhập
+|Nhân viên|
+start
+:Nhập tên đăng nhập, mật khẩu;
+|Hệ thống|
+if (Tên đăng nhập đang bị khóa tạm\n(sai 5 lần trong 15 phút)?) then (có)
+  :Trả 429 TOO_MANY_ATTEMPTS;
+  |Nhân viên|
+  :Chờ hết thời gian khóa;
+  stop
+else (không)
+endif
+|Hệ thống|
+if (Tài khoản và nhân viên ACTIVE,\nmật khẩu đúng, có vai trò?) then (đúng)
+  :Xóa bộ đếm sai;
+  :Phát JWT (vai trò, token_version);
+  if (Phải đổi mật khẩu?) then (có)
+    |Nhân viên|
+    :Đổi mật khẩu (8–72 ký tự);
+    |Hệ thống|
+    :Lưu hash mới, tăng token_version,\nphát token mới;
+  else (không)
+  endif
+  |Nhân viên|
+  :Vào màn hình theo vai trò;
+  stop
+else (sai)
+  :Tăng bộ đếm sai (login_throttles);
+  :Trả 401 cùng một thông báo\n(không lộ tên nào tồn tại);
+  |Nhân viên|
+  stop
+endif
+@enduml

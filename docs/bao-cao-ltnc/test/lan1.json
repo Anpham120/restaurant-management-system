@@ -1,0 +1,402 @@
+[
+ {
+  "ma": "TC01",
+  "phan_he": "Đăng nhập",
+  "muc_dich": "Đăng nhập thành công",
+  "input": "username=manager, password=<mật khẩu đúng>",
+  "mong_muon": "HTTP 200; trả accessToken, roles=[MANAGER]",
+  "thuc_te": "HTTP 200",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC02",
+  "phan_he": "Đăng nhập",
+  "muc_dich": "Sai mật khẩu",
+  "input": "username=nv02, password=sai12345",
+  "mong_muon": "HTTP 401; INVALID_CREDENTIALS, thông báo chung",
+  "thuc_te": "HTTP 401 INVALID_CREDENTIALS: Sai tên đăng nhập hoặc mật khẩu",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC03",
+  "phan_he": "Đăng nhập",
+  "muc_dich": "Tên đăng nhập không tồn tại trả cùng thông báo",
+  "input": "username=khongtontai, password=abc12345",
+  "mong_muon": "HTTP 401; INVALID_CREDENTIALS giống TC02 (không lộ tài khoản)",
+  "thuc_te": "HTTP 401 INVALID_CREDENTIALS: Sai tên đăng nhập hoặc mật khẩu",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC04",
+  "phan_he": "Đăng nhập",
+  "muc_dich": "Bỏ trống mật khẩu",
+  "input": "username=manager, password=\"\"",
+  "mong_muon": "HTTP 400; VALIDATION_ERROR",
+  "thuc_te": "HTTP 400 VALIDATION_ERROR: Dữ liệu gửi lên không hợp lệ",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC05",
+  "phan_he": "Đăng nhập",
+  "muc_dich": "Sai 5 lần thì khóa tạm 15 phút",
+  "input": "username=thu<số>, sai mật khẩu 6 lần liên tiếp",
+  "mong_muon": "HTTP 429; TOO_MANY_ATTEMPTS ở lần thứ 6",
+  "thuc_te": "HTTP 429 TOO_MANY_ATTEMPTS: Đăng nhập sai quá nhiều lần. Thử lại sau 15 phút; lần thứ 6",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC06",
+  "phan_he": "Đăng nhập",
+  "muc_dich": "Tài khoản bị khóa không đăng nhập được",
+  "input": "username=nv07 (LOCKED), password=TamThoi@2026",
+  "mong_muon": "HTTP 401; INVALID_CREDENTIALS",
+  "thuc_te": "HTTP 401 INVALID_CREDENTIALS: Sai tên đăng nhập hoặc mật khẩu",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC07",
+  "phan_he": "Phân quyền",
+  "muc_dich": "Phục vụ không xem được báo cáo tài chính",
+  "input": "token nv01 (WAITER), GET /api/reports/revenue-by-day",
+  "mong_muon": "HTTP 403; FORBIDDEN",
+  "thuc_te": "HTTP 403 FORBIDDEN: Không có quyền thực hiện thao tác này",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC08",
+  "phan_he": "Phân quyền",
+  "muc_dich": "Không có token",
+  "input": "GET /api/tables, không gửi Authorization",
+  "mong_muon": "HTTP 401; UNAUTHORIZED",
+  "thuc_te": "HTTP 401 UNAUTHORIZED: Chưa đăng nhập hoặc token không hợp lệ",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC09",
+  "phan_he": "Nhân sự",
+  "muc_dich": "Thêm nhân viên mới",
+  "input": "employeeCode=NVT275505, fullName=Trần Văn Test, departmentId=3, username=t275505, roles=[WAITER]",
+  "mong_muon": "HTTP 201; nhân viên ACTIVE, mustChangePassword=true",
+  "thuc_te": "HTTP 201",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC10",
+  "phan_he": "Nhân sự",
+  "muc_dich": "Trùng tên đăng nhập",
+  "input": "username=nv01 (đã có), employeeCode=NVX275505",
+  "mong_muon": "HTTP 409; DUPLICATE",
+  "thuc_te": "HTTP 409 DUPLICATE: Dữ liệu đã tồn tại",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC11",
+  "phan_he": "Nhân sự",
+  "muc_dich": "Vai trò không tồn tại",
+  "input": "roles=[ADMIN]",
+  "mong_muon": "HTTP 422; UNKNOWN_ROLE",
+  "thuc_te": "HTTP 422 UNKNOWN_ROLE: Vai trò không tồn tại trong [ADMIN]",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC12",
+  "phan_he": "Nhân sự",
+  "muc_dich": "Phân ca hợp lệ",
+  "input": "employeeId=26, shiftId=1 (Ca sáng), workDate=2026-12-11",
+  "mong_muon": "HTTP 201; phân ca SCHEDULED",
+  "thuc_te": "HTTP 201",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC13",
+  "phan_he": "Nhân sự",
+  "muc_dich": "Phân ca trùng giờ cùng ngày",
+  "input": "cùng nhân viên, shiftId=1, workDate=2026-12-11 lần 2",
+  "mong_muon": "HTTP 409; OVERLAP",
+  "thuc_te": "HTTP 409 OVERLAP: Nhân viên đã có ca trùng khoảng thời gian này",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC14",
+  "phan_he": "Thực đơn",
+  "muc_dich": "Thêm món mới",
+  "input": "categoryId=1, name=Món thử 275505, price=55000",
+  "mong_muon": "HTTP 201; món có công thức phiên bản 1",
+  "thuc_te": "HTTP 201",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC15",
+  "phan_he": "Thực đơn",
+  "muc_dich": "Giá có phần lẻ (VND phải là số nguyên)",
+  "input": "price=55000.5",
+  "mong_muon": "HTTP 400; VALIDATION_ERROR",
+  "thuc_te": "HTTP 400 VALIDATION_ERROR: Dữ liệu gửi lên không hợp lệ",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC16",
+  "phan_he": "Thực đơn",
+  "muc_dich": "Trùng tên nhóm món (không phân biệt hoa thường)",
+  "input": "name=MÓN CHÍNH",
+  "mong_muon": "HTTP 409; DUPLICATE",
+  "thuc_te": "HTTP 409 DUPLICATE: Dữ liệu đã tồn tại",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC17",
+  "phan_he": "Bán hàng",
+  "muc_dich": "Mở bàn đang có khách",
+  "input": "tableId=1 (vừa mở phiên)",
+  "mong_muon": "HTTP 409; bàn đã có khách",
+  "thuc_te": "HTTP 409 INVALID_STATE: Bàn B01 đang có khách",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC18",
+  "phan_he": "Bán hàng",
+  "muc_dich": "Gọi món số lượng 0",
+  "input": "orderId=106, Bia Hà Nội, quantity=0",
+  "mong_muon": "HTTP 400; VALIDATION_ERROR",
+  "thuc_te": "HTTP 400 VALIDATION_ERROR: Tham số không hợp lệ",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC19",
+  "phan_he": "Bán hàng",
+  "muc_dich": "Gọi món đang tạm dừng",
+  "input": "dailyMenuItemId=20 (Chè đậu), quantity=1",
+  "mong_muon": "HTTP 409; món tạm dừng",
+  "thuc_te": "HTTP 409 INVALID_STATE: Món Chè đậu đang tạm dừng",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC20",
+  "phan_he": "Bán hàng",
+  "muc_dich": "Gọi món hợp lệ",
+  "input": "orderId=106, Bia Hà Nội x2, requestKey=tc20-275505",
+  "mong_muon": "HTTP 201; tạo 1 dòng món PENDING, giá 25000",
+  "thuc_te": "HTTP 201",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC21",
+  "phan_he": "Bán hàng",
+  "muc_dich": "Gửi lặp cùng requestKey (chống gửi trùng)",
+  "input": "gửi lại đúng body TC20",
+  "mong_muon": "HTTP 201; replayed=true, không tạo dòng mới",
+  "thuc_te": "HTTP 201",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC22",
+  "phan_he": "Bán hàng",
+  "muc_dich": "Chốt hóa đơn khi món chưa xong",
+  "input": "orderId=106 (món PENDING)",
+  "mong_muon": "HTTP 409; còn món chưa kết thúc",
+  "thuc_te": "HTTP 409 INVALID_STATE: Đơn 106 còn món chưa phục vụ xong",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC23",
+  "phan_he": "Bếp",
+  "muc_dich": "Bếp nhận món",
+  "input": "itemId=291",
+  "mong_muon": "HTTP 200; result=ACCEPTED, giữ nguyên liệu",
+  "thuc_te": "HTTP 200",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC24",
+  "phan_he": "Bếp",
+  "muc_dich": "Nhận lại món đã nhận",
+  "input": "itemId=291 lần 2",
+  "mong_muon": "HTTP 409; INVALID_STATE",
+  "thuc_te": "HTTP 409 INVALID_STATE: Món 291 đang ACCEPTED, không phải chờ bếp nhận",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC25",
+  "phan_he": "Bán hàng",
+  "muc_dich": "Phục vụ hủy món đang nấu",
+  "input": "itemId=291 (COOKING), lý do=Khách đổi ý",
+  "mong_muon": "HTTP 409; chỉ Manager hủy ngoại lệ",
+  "thuc_te": "HTTP 409 INVALID_STATE: Món 291 đã COOKING: chỉ Quản lý hủy ngoại lệ được",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC26",
+  "phan_he": "Bán hàng",
+  "muc_dich": "Bưng món đã xong",
+  "input": "itemId=291 (READY)",
+  "mong_muon": "HTTP 200; món SERVED",
+  "thuc_te": "HTTP 200",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC27",
+  "phan_he": "Thanh toán",
+  "muc_dich": "Thu tiền mặt thiếu",
+  "input": "invoiceId=73, tổng=50000.0, cashReceived=10000",
+  "mong_muon": "HTTP 422; tiền đưa nhỏ hơn số phải thu",
+  "thuc_te": "HTTP 422 INVALID_REQUEST: Tiền khách đưa 10000 nhỏ hơn số phải thu 50000.00",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC28",
+  "phan_he": "Thanh toán",
+  "muc_dich": "Thu tiền mặt đủ",
+  "input": "invoiceId=73, cashReceived=100000",
+  "mong_muon": "HTTP 201; status=PAID, bàn trống lại",
+  "thuc_te": "HTTP 201",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC29",
+  "phan_he": "Thanh toán",
+  "muc_dich": "Thu tiền lần hai",
+  "input": "invoiceId=73 đã PAID",
+  "mong_muon": "HTTP 409; hóa đơn không còn chờ thu",
+  "thuc_te": "HTTP 409 INVALID_STATE: Hóa đơn 73 đang PAID, không chờ thanh toán",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC30",
+  "phan_he": "Thanh toán",
+  "muc_dich": "Webhook SePay sai API key",
+  "input": "Authorization: Apikey sai-khoa",
+  "mong_muon": "HTTP 401; từ chối, không ghi nhận",
+  "thuc_te": "HTTP 401 UNAUTHORIZED: Webhook không hợp lệ",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC31",
+  "phan_he": "Thanh toán",
+  "muc_dich": "Webhook không thấy mã tham chiếu",
+  "input": "API key đúng, code=RC1Q1 không tồn tại, 1000đ",
+  "mong_muon": "HTTP 200; result=MISMATCH (mở sự cố)",
+  "thuc_te": "HTTP 200",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC32",
+  "phan_he": "Thanh toán",
+  "muc_dich": "Webhook gửi lặp cùng mã giao dịch",
+  "input": "id=275505 lần 2",
+  "mong_muon": "HTTP 200; cùng kết quả, không tạo bản ghi mới",
+  "thuc_te": "HTTP 200",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC33",
+  "phan_he": "Kho",
+  "muc_dich": "Lập phiếu nhập",
+  "input": "Bánh phở 2 kg x 100000đ, hệ số 1000",
+  "mong_muon": "HTTP 201; phiếu DRAFT, tổng 200000",
+  "thuc_te": "HTTP 201; gửi lặp cùng requestKey trả lại phiếu cũ",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC34",
+  "phan_he": "Kho",
+  "muc_dich": "Xác nhận phiếu nhập",
+  "input": "receiptId=13",
+  "mong_muon": "HTTP 200; CONFIRMED, tạo lô RAW",
+  "thuc_te": "HTTP 200",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC35",
+  "phan_he": "Kho",
+  "muc_dich": "Xác nhận phiếu nhập lần hai",
+  "input": "receiptId=13 đã CONFIRMED",
+  "mong_muon": "HTTP 409; không xác nhận lặp",
+  "thuc_te": "HTTP 409 INVALID_STATE: Phiếu nhập 13 đang CONFIRMED, không phải nháp",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC36",
+  "phan_he": "Kho",
+  "muc_dich": "Bếp không được lập phiếu nhập",
+  "input": "token nv10 (KITCHEN), POST /api/stock-receipts",
+  "mong_muon": "HTTP 403; FORBIDDEN",
+  "thuc_te": "HTTP 403 FORBIDDEN: Không có quyền thực hiện thao tác này",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC37",
+  "phan_he": "Tài chính",
+  "muc_dich": "Chi từ két nhưng chuyển khoản",
+  "input": "fundSource=CASH_DRAWER, paymentMethod=BANK_TRANSFER, 50000",
+  "mong_muon": "HTTP 422; INVALID_DATA",
+  "thuc_te": "HTTP 422 INVALID_REQUEST: Chi từ két tiền mặt thì phương thức phải là tiền mặt",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC38",
+  "phan_he": "Tài chính",
+  "muc_dich": "Hủy khoản chi",
+  "input": "expenseId=13, lý do=Ghi nhầm",
+  "mong_muon": "HTTP 200; status=VOIDED",
+  "thuc_te": "HTTP 200",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC39",
+  "phan_he": "Tài chính",
+  "muc_dich": "Hủy khoản chi lần hai",
+  "input": "expenseId=13 đã VOIDED",
+  "mong_muon": "HTTP 409; ALREADY_VOIDED",
+  "thuc_te": "HTTP 409 ALREADY_VOIDED: Khoản chi 13 đã hủy",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ },
+ {
+  "ma": "TC40",
+  "phan_he": "Tài chính",
+  "muc_dich": "Đối soát ngày tương lai",
+  "input": "businessDate=2026-11-24, openingCash=0, actualCash=0",
+  "mong_muon": "HTTP 422; không đối soát ngày chưa tới",
+  "thuc_te": "HTTP 422 INVALID_REQUEST: Ngày kinh doanh không hợp lệ hoặc ở tương lai",
+  "trang_thai": "Đạt",
+  "ngay": "21/11/2026 22:38"
+ }
+]
