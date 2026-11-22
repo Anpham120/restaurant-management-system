@@ -48,5 +48,5 @@ docs/bao-cao-ltnc/build/lam.sh        # dựng → render → cập nhật số 
 ## Còn phải điền
 
 - Bảng 4.1: phần trăm hoàn thành và mức đánh giá (Khá, Tốt) của từng thành viên.
-- Bìa: tên giảng viên hướng dẫn.
+
 - Mục 4.2.2–4.2.5: mỗi thành viên tự viết lại phần giải thích đoạn code của mình.
