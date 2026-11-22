@@ -235,7 +235,7 @@ def chapter3():
             L2('Năm module nghiệp vụ employee, menu, order, inventory, finance; mỗi module sở hữu một nhóm bảng, chỉ module chủ được ghi bảng đó.'),
             L2('Module khác chỉ được gọi interface ở package gốc của module chủ, không được dùng package con (controller, service, repository, entity, dto).'),
             B('Phụ thuộc giữa các module đi một chiều menu ← inventory ← order ← finance, không có vòng. Khi module phía trước cần dữ liệu của module phía sau, module phía trước khai báo interface và module phía sau cài đặt (đảo phụ thuộc). Ví dụ order khai báo OrderInvoiceAccess để hỏi trạng thái hóa đơn, finance cài đặt bằng OrderInvoiceAccessImpl; nhờ vậy order không phụ thuộc finance. Lớp ModularityTest kiểm các luật này mỗi lần build, vi phạm thì build đỏ.'),
-            fig(f'{U}/class-kien-truc-xoay.png', 'Biểu đồ lớp kiến trúc Modular Monolith và giao tiếp giữa các module', maxw=5760000, maxh=7800000),
+            fig(f'{U}/class-kien-truc.png', 'Biểu đồ lớp kiến trúc: giao tiếp giữa các module nghiệp vụ', maxw=5760000, maxh=7800000),
             B('Bên trong mỗi module, mã chia tầng Controller → Service → Repository → Entity:'),
             L('Controller (@RestController): nhận request, kiểm dữ liệu bằng @Valid, kiểm quyền bằng @PreAuthorize, lấy người thực hiện từ token qua CurrentUser rồi gọi Service. Không truy cập database.'),
             L('Service: interface liệt kê nghiệp vụ, lớp Impl cài đặt, mỗi phương thức ghi là một giao dịch @Transactional; nghiệp vụ chỉ nằm ở tầng này.'),

@@ -7,7 +7,7 @@ import sys
 from playwright.sync_api import sync_playwright
 
 # Thuật toán sắp xếp của dbdiagram cho từng phân hệ (chọn cái cho ít đường cắt nhau nhất)
-LAYOUT = {}   # mặc định Pipeline: bảng xếp trái sang phải theo chiều khóa ngoại, đường ít cắt nhau nhất
+LAYOUT = {'p1a-tai-khoan': 'Pipeline', 'p1b-ca-lam': 'Pipeline', 'p2-thuc-don': 'Snowflake', 'p3a-goi-mon': 'Snowflake', 'p3b-thanh-toan': 'Snowflake', 'p4a-nhap-xuat': 'Pipeline', 'p4b-bep': 'Snowflake', 'p4c-kiem-ke': 'Pipeline', 'p5-tai-chinh': 'Pipeline'}   # thuật toán cho ít đường cắt nhất, chọn sau khi so 4 thuật toán
 HIDE = """header, .controller-btn, [class*=controller], .minimap, .right-sidebar-toggle-btn, .panel-close-button,
           [class*=ad-], [class*=promo], [class*=Promo], [class*=banner], .monaco-editor, button { visibility: hidden !important; }"""
 

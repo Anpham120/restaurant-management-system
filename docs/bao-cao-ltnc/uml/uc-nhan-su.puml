@@ -24,7 +24,7 @@ rectangle "Nhân sự và bảo mật" {
 E -- A1
 E -- A3
 E -- S5
-A2 ..> A1 : <<extend>>
+A2 .up.> A1 : <<extend>>
 M -- H1
 M -- H2
 M -- H3
@@ -34,5 +34,5 @@ M -- S1
 M -- S2
 M -- S3
 S2 ..> S2a : <<include>>
-S4 ..> S3 : <<extend>>
+S4 .up.> S3 : <<extend>>
 @enduml

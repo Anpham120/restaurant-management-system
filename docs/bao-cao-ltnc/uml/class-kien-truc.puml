@@ -2,111 +2,75 @@
 !include _style.iuml
 skinparam style strictuml
 hide empty members
-title Biểu đồ lớp kiến trúc: Modular Monolith (Spring Modulith), giao tiếp giữa các module
 skinparam linetype ortho
 left to right direction
-hide empty members
+skinparam nodesep 40
+skinparam ranksep 55
+title Biểu đồ lớp kiến trúc: giao tiếp giữa các module nghiệp vụ (Spring Modulith)
 
-package "Frontend: React SPA (frontend/src)" as FE {
-  class "pages/*Page.tsx" as Pages <<View>>
-  class "api/client.ts" as Api {
-    + request(method, path, body)
-    + newRequestKey()
-  }
-  Pages ..> Api
+package "finance" as finance {
+  class InvoiceServiceImpl
+  class OrderInvoiceAccessImpl
 }
-
-package "Backend: com.restaurant.core (một ứng dụng Spring Boot)" as BE {
-  package "common (module mở)" as common {
-    class ApiResponse<T>
-    class GlobalExceptionHandler
-    class ApiException
-    class RequestKeys
-    class PerformanceLoggingAspect <<Aspect>>
+package "order" as order {
+  interface OrderBillingApi <<interface>> <<API module>> {
+    + lockOrderForBilling(orderId)
+    + getServedItems(orderId)
+    + closeOrderAndReleaseTable(orderId, actorId)
   }
-  package "security" as security {
-    class SecurityConfig
-    class CurrentUser {
-      + employeeId() : long
-    }
-    class JwtTokenService
+  interface OrderInvoiceAccess <<interface>> <<khai báo, finance cài>> {
+    + findInvoiceStatus(orderId)
+    + reopenInvoiceForMoreOrdering(orderId)
   }
-  package "menu" as menu {
-    interface DailyMenuLookup <<interface>> <<API module>> {
-      + findOrderableDish(dailyMenuItemId)
-      + getRecipeLines(dailyMenuItemId)
-    }
-    interface QuotaUsageCounter <<interface>> <<khai báo, order cài>> {
-      + countUsedPortions(dailyMenuItemId)
-    }
-    class DailyMenuLookupImpl
-  }
-  package "inventory" as inventory {
-    interface KitchenStockAllocator <<interface>> <<API module>> {
-      + reserveIngredientsForItem(...)
-      + consumeReservationsForCooking(orderItemId)
-      + releaseReservationsOfItem(orderItemId)
-    }
-    interface OrderItemStockFlags <<interface>> <<khai báo, order cài>> {
-      + markStockException(orderItemIds)
-    }
-    class KitchenStockAllocatorImpl
-  }
-  package "order" as order {
-    interface OrderBillingApi <<interface>> <<API module>> {
-      + lockOrderForBilling(orderId)
-      + getServedItems(orderId)
-      + closeOrderAndReleaseTable(orderId, actorId)
-    }
-    interface OrderInvoiceAccess <<interface>> <<khai báo, finance cài>> {
-      + findInvoiceStatus(orderId)
-      + reopenInvoiceForMoreOrdering(orderId)
-    }
-    class OrderServiceImpl
-    class KitchenServiceImpl
-    class OrderBillingApiImpl
-    class QuotaUsageCounterImpl
-    class OrderItemStockFlagsImpl
-  }
-  package "finance" as finance {
-    class InvoiceServiceImpl
-    class OrderInvoiceAccessImpl
-  }
-  package "employee" as employee {
-    class EmployeeServiceImpl
-  }
+  class OrderBillingApiImpl
+  class OrderServiceImpl
+  class KitchenServiceImpl
+  class QuotaUsageCounterImpl
+  class OrderItemStockFlagsImpl
 }
+package "inventory" as inventory {
+  interface KitchenStockAllocator <<interface>> <<API module>> {
+    + reserveIngredientsForItem(...)
+    + consumeReservationsForCooking(orderItemId)
+  }
+  interface OrderItemStockFlags <<interface>> <<khai báo, order cài>> {
+    + markStockException(orderItemIds)
+  }
+  class KitchenStockAllocatorImpl
+}
+package "menu" as menu {
+  interface DailyMenuLookup <<interface>> <<API module>> {
+    + findOrderableDish(dailyMenuItemId)
+    + getRecipeLines(dailyMenuItemId)
+  }
+  interface QuotaUsageCounter <<interface>> <<khai báo, order cài>> {
+    + countUsedPortions(dailyMenuItemId)
+  }
+  class DailyMenuLookupImpl
+}
+' dùng API của module khác (phụ thuộc xuôi chiều)
+InvoiceServiceImpl ..> OrderBillingApi
+OrderServiceImpl ..> KitchenStockAllocator
+KitchenServiceImpl ..> KitchenStockAllocator
+OrderServiceImpl ..> DailyMenuLookup
+KitchenStockAllocatorImpl ..> DailyMenuLookup
+OrderServiceImpl ..> OrderInvoiceAccess
 
-Api ..> SecurityConfig : HTTPS REST/JSON\nAuthorization: Bearer JWT
-
-DailyMenuLookup <|.. DailyMenuLookupImpl
-KitchenStockAllocator <|.. KitchenStockAllocatorImpl
+' cài đặt interface (kể cả đảo phụ thuộc)
 OrderBillingApi <|.. OrderBillingApiImpl
+KitchenStockAllocator <|.. KitchenStockAllocatorImpl
+DailyMenuLookup <|.. DailyMenuLookupImpl
+OrderInvoiceAccess <|.. OrderInvoiceAccessImpl
 QuotaUsageCounter <|.. QuotaUsageCounterImpl
 OrderItemStockFlags <|.. OrderItemStockFlagsImpl
-OrderInvoiceAccess <|.. OrderInvoiceAccessImpl
 
-OrderServiceImpl ..> DailyMenuLookup
-OrderServiceImpl ..> KitchenStockAllocator
-OrderServiceImpl ..> OrderInvoiceAccess
-KitchenServiceImpl ..> KitchenStockAllocator
-KitchenServiceImpl ..> QuotaUsageCounter
-InvoiceServiceImpl ..> OrderBillingApi
-KitchenStockAllocatorImpl ..> DailyMenuLookup
 
-note bottom of order
-  Mỗi module chia tầng bên trong:
-  controller -> service (interface + impl)
-  -> repository -> entity; dto, mapper.
-  Package con là nội bộ, module khác chỉ
-  được dùng interface ở package gốc.
-end note
-note bottom of finance
-  Chiều phụ thuộc không vòng:
-  menu <- inventory <- order <- finance.
-  Chiều ngược lại dùng đảo phụ thuộc:
-  module trước khai báo interface,
-  module sau cài đặt.
-  ModularityTest kiểm tra mỗi lần build.
-end note
+legend bottom left
+  Mỗi module chia tầng bên trong: controller -> service (interface + impl) -> repository -> entity.
+  Package con là nội bộ; module khác chỉ dùng interface ở package gốc («API module»).
+  Phụ thuộc xuôi chiều, không vòng: finance -> order -> inventory -> menu. Mọi module dùng chung security
+  (CurrentUser, JWT) và common (ApiResponse, xử lý lỗi, RequestKeys); frontend gọi backend qua REST/JSON.
+  Khi module phía dưới cần dữ liệu của module phía trên thì đảo phụ thuộc: module dưới khai báo
+  interface («khai báo, ... cài»), module trên cài đặt. ModularityTest kiểm tra các luật này mỗi lần build.
+endlegend
 @enduml

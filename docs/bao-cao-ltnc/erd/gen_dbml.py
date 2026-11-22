@@ -88,6 +88,10 @@ def main(path):
     cat = json.load(open(path, encoding='utf-8'))
     for key, title, tables in MODULES:
         refs = [(t, fk) for t in tables for fk in cat[t]['fks'] if key.startswith('p1') or not is_audit(fk)]
+        # Khóa ngoại kép (vd. payments.(invoice_id, payment_request_id)) chỉ để DB kiểm hai cột khớp nhau; đã có khóa
+        # ngoại đơn tới cùng bảng thì không vẽ thêm đường trùng (vẫn liệt kê trong bảng quan hệ của báo cáo)
+        don = {(t, fk['ref']) for t, fk in refs if len(fk['columns']) == 1}
+        refs = [(t, fk) for t, fk in refs if len(fk['columns']) == 1 or (t, fk['ref']) not in don]
         outside = sorted({fk['ref'] for _, fk in refs if fk['ref'] not in tables})
         lines = [f'// Phân hệ {title}: {len(tables)} bảng. Sinh tự động từ catalog PostgreSQL (gen_dbml.py).',
                  '// Dán toàn bộ file vào https://dbdiagram.io/d để xem database diagram.', '',

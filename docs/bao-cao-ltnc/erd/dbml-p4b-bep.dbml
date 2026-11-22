@@ -23,9 +23,6 @@ Table kitchen_preparation_outputs {
   kitchen_ingredient_type_id bigint [not null]
   output_quantity numeric(12,3) [not null]
   usable_until timestamptz
-  indexes {
-    (id, kitchen_ingredient_type_id) [unique]
-  }
 }
 
 Table kitchen_batches {
@@ -41,9 +38,6 @@ Table kitchen_batches {
   created_at timestamptz [not null]
   unusable_marked_by_id bigint
   unusable_marked_at timestamptz
-  indexes {
-    (id, direct_issue_item_id) [unique]
-  }
 }
 
 Table stock_reservations {
@@ -92,13 +86,11 @@ Table stock_issue_items {
 Ref: kitchen_preparations.stock_issue_item_id > stock_issue_items.id
 Ref: kitchen_preparation_outputs.kitchen_ingredient_type_id > kitchen_ingredient_types.id
 Ref: kitchen_preparation_outputs.kitchen_preparation_id > kitchen_preparations.id
-Ref: kitchen_batches.(preparation_output_id, kitchen_ingredient_type_id) ?> kitchen_preparation_outputs.(id, kitchen_ingredient_type_id)
 Ref: kitchen_batches.direct_issue_item_id ?- stock_issue_items.id
 Ref: kitchen_batches.kitchen_ingredient_type_id > kitchen_ingredient_types.id
 Ref: kitchen_batches.preparation_output_id ?- kitchen_preparation_outputs.id
 Ref: stock_reservations.kitchen_batch_id > kitchen_batches.id
 Ref: stock_reservations.order_item_id > order_items.id
-Ref: stock_return_items.(direct_kitchen_batch_id, source_issue_item_id) ?> kitchen_batches.(id, direct_issue_item_id)
 Ref: stock_return_items.direct_kitchen_batch_id ?> kitchen_batches.id
 Ref: stock_return_items.source_issue_item_id > stock_issue_items.id
 Ref: stock_return_items.stock_return_id > stock_returns.id

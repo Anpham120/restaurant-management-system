@@ -44,9 +44,6 @@ Table payment_requests {
   created_at timestamptz [not null]
   cancelled_at timestamptz
   cancelled_by_id bigint
-  indexes {
-    (id, invoice_id, method) [unique]
-  }
 }
 
 Table payment_webhook_events {
@@ -62,9 +59,6 @@ Table payment_webhook_events {
   resolved_by_id bigint
   resolved_at timestamptz
   resolution_note varchar(255)
-  indexes {
-    (id, payment_request_id) [unique]
-  }
 }
 
 Table payments {
@@ -96,8 +90,6 @@ Ref: invoice_items.order_item_id - order_items.id
 Ref: payment_requests.cashier_id > employees.id
 Ref: payment_requests.invoice_id > invoices.id
 Ref: payment_webhook_events.payment_request_id ?> payment_requests.id
-Ref: payments.(payment_request_id, invoice_id, method) > payment_requests.(id, invoice_id, method)
-Ref: payments.(payment_webhook_event_id, payment_request_id) ?> payment_webhook_events.(id, payment_request_id)
 Ref: payments.invoice_id - invoices.id
 Ref: payments.payment_request_id - payment_requests.id
 Ref: payments.payment_webhook_event_id ?- payment_webhook_events.id

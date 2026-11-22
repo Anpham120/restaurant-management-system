@@ -26,9 +26,6 @@ Table recipes {
   menu_item_id bigint [not null]
   version int [not null]
   is_current boolean [not null]
-  indexes {
-    (id, menu_item_id) [unique]
-  }
 }
 
 Table recipe_ingredients {
@@ -68,7 +65,6 @@ Ref: recipe_ingredients.recipe_id > recipes.id
 Ref: daily_menu_items.daily_menu_id > daily_menus.id
 Ref: daily_menu_items.menu_item_id > menu_items.id
 Ref: daily_menu_items.recipe_id > recipes.id
-Ref: daily_menu_items.(recipe_id, menu_item_id) > recipes.(id, menu_item_id)
 
 TableGroup "Thực đơn" {
   menu_categories
