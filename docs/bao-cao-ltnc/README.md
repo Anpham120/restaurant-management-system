@@ -2,7 +2,7 @@
 
 File nộp: [BaoCao_LapTrinhNangCao_AtlasRestaurant.docx](BaoCao_LapTrinhNangCao_AtlasRestaurant.docx).
 Bìa, header, footer và style lấy từ báo cáo Triển khai phần mềm; Times New Roman 13, giãn dòng 1,3, gạch đầu dòng 3 cấp
-"-", "+", "✓"; mọi sơ đồ vẽ bằng PlantUML.
+"-", "+", "✓"; ERD vẽ bằng mã DBML trên dbdiagram.io, sơ đồ UML vẽ bằng PlantUML.
 
 Mọi số liệu, sơ đồ và ảnh trong báo cáo đều sinh bằng code từ hệ thống thật. Không có dữ liệu chèn bằng tay.
 
