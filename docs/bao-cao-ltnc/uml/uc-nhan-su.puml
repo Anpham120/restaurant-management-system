@@ -2,35 +2,37 @@
 !include _style.iuml
 title Use case chi tiết: nhân sự và bảo mật
 left to right direction
+actor "Nhân viên" as E
 actor "Quản lý" as M
-actor "Nhân viên\n(mọi vai trò)" as E
-rectangle "Nhân sự" {
+M -up-|> E
+rectangle "Nhân sự và bảo mật" {
   usecase "Đăng nhập" as A1
   usecase "Đổi mật khẩu lần đầu" as A2
   usecase "Đăng xuất mọi thiết bị" as A3
+  usecase "Xem lịch làm của mình" as S5
   usecase "Quản lý phòng ban" as H1
-  usecase "Thêm nhân viên + tài khoản" as H2
-  usecase "Cho nghỉ việc / tạm nghỉ" as H3
+  usecase "Thêm nhân viên, tài khoản" as H2
+  usecase "Cho tạm nghỉ, nghỉ việc" as H3
   usecase "Phân vai trò" as H4
-  usecase "Khóa, mở, đặt lại mật khẩu" as H5
+  usecase "Khóa, mở khóa,\nđặt lại mật khẩu" as H5
   usecase "Khai báo ca làm" as S1
   usecase "Phân ca" as S2
+  usecase "Kiểm tra trùng giờ" as S2a
   usecase "Chấm công" as S3
   usecase "Điều chỉnh công" as S4
-  usecase "Xem lịch làm của mình" as S5
 }
-E --> A1
-E --> A2
-E --> A3
-E --> S5
-A1 <.. A2 : <<extend>>
-M --> H1
-M --> H2
-M --> H3
-M --> H4
-M --> H5
-M --> S1
-M --> S2
-M --> S3
-S3 <.. S4 : <<extend>>
+E -- A1
+E -- A3
+E -- S5
+A2 ..> A1 : <<extend>>
+M -- H1
+M -- H2
+M -- H3
+M -- H4
+M -- H5
+M -- S1
+M -- S2
+M -- S3
+S2 ..> S2a : <<include>>
+S4 ..> S3 : <<extend>>
 @enduml

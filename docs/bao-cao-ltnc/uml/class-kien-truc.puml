@@ -1,5 +1,7 @@
 @startuml
 !include _style.iuml
+skinparam style strictuml
+hide empty members
 title Biểu đồ lớp kiến trúc: Modular Monolith (Spring Modulith), giao tiếp giữa các module
 skinparam linetype ortho
 left to right direction
@@ -30,33 +32,33 @@ package "Backend: com.restaurant.core (một ứng dụng Spring Boot)" as BE {
     class JwtTokenService
   }
   package "menu" as menu {
-    interface DailyMenuLookup <<API module>> {
+    interface DailyMenuLookup <<interface>> <<API module>> {
       + findOrderableDish(dailyMenuItemId)
       + getRecipeLines(dailyMenuItemId)
     }
-    interface QuotaUsageCounter <<khai báo, order cài>> {
+    interface QuotaUsageCounter <<interface>> <<khai báo, order cài>> {
       + countUsedPortions(dailyMenuItemId)
     }
     class DailyMenuLookupImpl
   }
   package "inventory" as inventory {
-    interface KitchenStockAllocator <<API module>> {
+    interface KitchenStockAllocator <<interface>> <<API module>> {
       + reserveIngredientsForItem(...)
       + consumeReservationsForCooking(orderItemId)
       + releaseReservationsOfItem(orderItemId)
     }
-    interface OrderItemStockFlags <<khai báo, order cài>> {
+    interface OrderItemStockFlags <<interface>> <<khai báo, order cài>> {
       + markStockException(orderItemIds)
     }
     class KitchenStockAllocatorImpl
   }
   package "order" as order {
-    interface OrderBillingApi <<API module>> {
+    interface OrderBillingApi <<interface>> <<API module>> {
       + lockOrderForBilling(orderId)
       + getServedItems(orderId)
       + closeOrderAndReleaseTable(orderId, actorId)
     }
-    interface OrderInvoiceAccess <<khai báo, finance cài>> {
+    interface OrderInvoiceAccess <<interface>> <<khai báo, finance cài>> {
       + findInvoiceStatus(orderId)
       + reopenInvoiceForMoreOrdering(orderId)
     }

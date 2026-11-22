@@ -228,6 +228,7 @@ REFS_LIST = [
     (13, 'https://www.oreilly.com/library/view/design-patterns-elements/0201633612/', 'E. Gamma, R. Helm, R. Johnson, J. Vlissides, Design Patterns: Elements of Reusable Object-Oriented Software. Addison-Wesley, 1994.'),
     (14, 'https://dl.acm.org/doi/10.1145/362384.362685', 'E. F. Codd, "A Relational Model of Data for Large Shared Data Banks", Communications of the ACM, 1970.'),
     (15, 'https://docs.spring.io/spring-modulith/reference/', 'Spring, "Spring Modulith Reference Documentation".'),
+    (16, 'https://dbml.dbdiagram.io/docs/', 'Holistics, "DBML: Database Markup Language" và công cụ dbdiagram.io.'),
 ]
 
 

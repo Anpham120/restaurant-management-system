@@ -1,0 +1,26 @@
+@startuml
+!include _style.iuml
+title Use case chi tiết: hóa đơn và thanh toán
+left to right direction
+actor "Thu ngân" as C
+actor "Quản lý" as M
+rectangle "Hóa đơn và thanh toán" {
+  usecase "Chốt hóa đơn" as P1
+  usecase "Thu tiền mặt" as P2
+  usecase "Thanh toán QR" as P3
+  usecase "Tạo mã QR" as P3a
+  usecase "Mở lại hóa đơn" as P5
+  usecase "Miễn thu,\nghi khách bỏ về" as P6
+  usecase "Nhận thông báo\nchuyển khoản" as P4
+  usecase "Ghi sự cố\nchuyển khoản" as P4a
+}
+actor "SePay" as S <<hệ thống>>
+C -- P1
+C -- P2
+C -- P3
+C -- P5
+M -- P6
+P3 ..> P3a : <<include>>
+P4 -- S
+P4a ..> P4 : <<extend>>
+@enduml

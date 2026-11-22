@@ -1,5 +1,7 @@
 @startuml
 !include _style.iuml
+skinparam style strictuml
+hide empty members
 title Biểu đồ lớp các tầng trong module order (gọi món, bếp)
 skinparam linetype ortho
 
@@ -15,11 +17,11 @@ package "controller" {
   }
 }
 package "service" {
-  interface OrderService {
+  interface OrderService <<interface>> {
     + submitOrderBatch(orderId, actorId, request) : SubmitBatchResponse
     + markOrderItemServed(itemId, actorId) : OrderItemResponse
   }
-  interface KitchenService {
+  interface KitchenService <<interface>> {
     + acceptOrderItem(itemId, actorId) : AcceptItemResponse
     + startCookingOrderItem(itemId, actorId) : OrderItemResponse
   }
@@ -31,13 +33,13 @@ package "service" {
   }
 }
 package "repository" {
-  interface CustomerOrderRepository {
+  interface CustomerOrderRepository <<interface>> {
     + findByIdForUpdate(id)
   }
-  interface OrderBatchRepository {
+  interface OrderBatchRepository <<interface>> {
     + findByRequestKey(requestKey)
   }
-  interface OrderItemRepository {
+  interface OrderItemRepository <<interface>> {
     + findByIdForUpdate(id)
   }
 }
@@ -57,7 +59,7 @@ package "entity" {
     - unitPrice : BigDecimal
     - status : OrderItemStatus
   }
-  enum OrderItemStatus {
+  enum OrderItemStatus <<enumeration>> {
     PENDING
     ACCEPTED
     COOKING
@@ -68,8 +70,8 @@ package "entity" {
   }
 }
 package "API của module khác" {
-  interface DailyMenuLookup <<menu>>
-  interface KitchenStockAllocator <<inventory>>
+  interface DailyMenuLookup <<interface>> <<menu>>
+  interface KitchenStockAllocator <<interface>> <<inventory>>
 }
 
 OrderController --> OrderService

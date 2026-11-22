@@ -7,16 +7,16 @@ rectangle "Tài chính" {
   usecase "Ghi khoản chi" as F1
   usecase "Hủy khoản chi" as F2
   usecase "Đối soát tiền mặt cuối ngày" as F3
-  usecase "Lập lại đối soát (phiên bản mới)" as F4
-  usecase "Báo cáo doanh thu theo ngày, theo món" as F5
-  usecase "Xem hóa đơn không thu, miễn thu" as F6
-  usecase "Xử lý sự cố thanh toán QR" as F7
+  usecase "Lập lại đối soát\n(phiên bản mới)" as F4
+  usecase "Báo cáo doanh thu\ntheo ngày, theo món" as F5
+  usecase "Xem hóa đơn không thu,\nmiễn thu" as F6
+  usecase "Xử lý sự cố chuyển khoản" as F7
 }
-M --> F1
-M --> F2
-M --> F3
-M --> F5
-M --> F6
-M --> F7
-F3 <.. F4 : <<extend>>
+M -- F1
+M -- F2
+M -- F3
+M -- F5
+M -- F6
+M -- F7
+F4 ..> F3 : <<extend>>
 @enduml

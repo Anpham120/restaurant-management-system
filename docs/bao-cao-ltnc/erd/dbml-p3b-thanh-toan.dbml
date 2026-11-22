@@ -1,0 +1,117 @@
+// Phân hệ Bán hàng: hóa đơn, thanh toán: 5 bảng. Sinh tự động từ catalog PostgreSQL (gen_dbml.py).
+// Dán toàn bộ file vào https://dbdiagram.io/d để xem database diagram.
+
+Project atlas_restaurant {
+  database_type: 'PostgreSQL'
+}
+
+Table invoices {
+  id bigint [pk]
+  order_id bigint [not null, unique]
+  total numeric(12,2) [not null]
+  status varchar(20) [not null]
+  created_at timestamptz [not null]
+  created_by_id bigint [not null]
+  uncollected_reason varchar(255)
+  uncollected_by_id bigint
+  uncollected_at timestamptz
+  waived_reason varchar(255)
+  waived_by_id bigint
+  waived_at timestamptz
+}
+
+Table invoice_items {
+  id bigint [pk]
+  invoice_id bigint [not null]
+  order_item_id bigint [not null, unique]
+  item_name varchar(100) [not null]
+  quantity int [not null]
+  unit_price numeric(12,2) [not null]
+  line_total numeric(12,2)
+}
+
+Table payment_requests {
+  id bigint [pk]
+  invoice_id bigint [not null]
+  cashier_id bigint [not null]
+  amount_due numeric(12,2) [not null]
+  cash_received numeric(12,2)
+  change_amount numeric(12,2)
+  method varchar(20) [not null]
+  status varchar(30) [not null]
+  payment_reference varchar(64)
+  cancel_reason varchar(255)
+  created_at timestamptz [not null]
+  cancelled_at timestamptz
+  cancelled_by_id bigint
+  indexes {
+    (id, invoice_id, method) [unique]
+  }
+}
+
+Table payment_webhook_events {
+  id bigint [pk]
+  payment_request_id bigint
+  provider_transaction_code varchar(64) [not null]
+  payment_reference varchar(64) [not null]
+  amount numeric(12,2) [not null]
+  processing_result varchar(20) [not null]
+  received_at timestamptz [not null]
+  raw_payload text [not null]
+  resolution_status varchar(20)
+  resolved_by_id bigint
+  resolved_at timestamptz
+  resolution_note varchar(255)
+  indexes {
+    (id, payment_request_id) [unique]
+  }
+}
+
+Table payments {
+  id bigint [pk]
+  invoice_id bigint [not null, unique]
+  payment_request_id bigint [not null, unique]
+  payment_webhook_event_id bigint [unique]
+  amount numeric(12,2) [not null]
+  method varchar(20) [not null]
+  paid_at timestamptz [not null]
+  business_date date [not null]
+}
+
+Table employees {
+  id bigint [pk]
+}
+
+Table order_items {
+  id bigint [pk]
+}
+
+Table orders {
+  id bigint [pk]
+}
+
+Ref: invoices.order_id - orders.id
+Ref: invoice_items.invoice_id > invoices.id
+Ref: invoice_items.order_item_id - order_items.id
+Ref: payment_requests.cashier_id > employees.id
+Ref: payment_requests.invoice_id > invoices.id
+Ref: payment_webhook_events.payment_request_id ?> payment_requests.id
+Ref: payments.(payment_request_id, invoice_id, method) > payment_requests.(id, invoice_id, method)
+Ref: payments.(payment_webhook_event_id, payment_request_id) ?> payment_webhook_events.(id, payment_request_id)
+Ref: payments.invoice_id - invoices.id
+Ref: payments.payment_request_id - payment_requests.id
+Ref: payments.payment_webhook_event_id ?- payment_webhook_events.id
+
+TableGroup "Bán hàng: hóa đơn, thanh toán" {
+  invoices
+  invoice_items
+  payment_requests
+  payment_webhook_events
+  payments
+}
+
+TableGroup "Phân hệ khác" {
+  employees
+  order_items
+  orders
+}

@@ -3,8 +3,29 @@ import json, html, sys
 from pygments import highlight
 from pygments.lexers import get_lexer_for_filename
 from pygments.formatters import HtmlFormatter
+from pygments.lexer import RegexLexer
+from pygments.token import Comment, Keyword, Name, Operator, Punctuation, String, Text
+
+
+class DbmlLexer(RegexLexer):
+    """Pygments chưa có lexer DBML: tô màu từ khóa, kiểu dữ liệu, thuộc tính cột, toán tử quan hệ."""
+    tokens = {'root': [
+        (r'//.*$', Comment.Single),
+        (r'\b(Project|Table|TableGroup|Ref|indexes)\b', Keyword),
+        (r'\b(bigint|int|integer|varchar|char|text|boolean|date|time|timestamptz|numeric)\b', Keyword.Type),
+        (r'\b(pk|not null|unique|increment|note|database_type)\b', Name.Attribute),
+        (r"'[^']*'|\"[^\"]*\"", String),
+        (r'\?[<>-]|<>|[<>-](?=\s)', Operator),
+        (r'[\[\]{}(),.:]', Punctuation),
+        (r'\s+', Text), (r'\w+', Name), (r'.', Text)]}
+
+
+def lexer_for(path):
+    return DbmlLexer() if path.endswith('.dbml') else get_lexer_for_filename(path)
+
 from playwright.sync_api import sync_playwright
-snips = json.load(open('/w/code-anh/snippets-tv.json'))
+import os
+snips = json.load(open('/w/code-anh/' + os.environ.get('SNIP', 'snippets-tv.json')))
 css = HtmlFormatter(style='friendly').get_style_defs('.highlight')
 with sync_playwright() as p:
     b = p.chromium.launch(); pg = b.new_page(viewport={'width': 1200, 'height': 400}, device_scale_factor=2)
@@ -13,7 +34,7 @@ with sync_playwright() as p:
         parts = []
         for s, e in ranges:
             src = '\n'.join(allines[s - 1:e])
-            code = highlight(src, get_lexer_for_filename(path), HtmlFormatter(linenos='table', linenostart=s, style='friendly'))
+            code = highlight(src, lexer_for(path), HtmlFormatter(linenos='table', linenostart=s, style='friendly'))
             parts.append(code)
         body = "<div class='sep'>…</div>".join(parts)
         dai = max(len(allines[i]) for s, e in ranges for i in range(s - 1, e))

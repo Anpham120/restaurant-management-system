@@ -1,35 +1,37 @@
 @startuml
 !include _style.iuml
-title Biểu đồ use case tổng quát (mức khung)
+title Biểu đồ use case tổng quát
 left to right direction
-actor "Quản lý" as M
+actor "Nhân viên" as NV
 actor "Phục vụ" as W
 actor "Bếp" as K
 actor "Thu ngân" as C
-actor "SePay" as S <<hệ thống ngoài>>
+actor "Quản lý" as M
+actor "SePay" as S <<hệ thống>>
+W -up-|> NV
+K -up-|> NV
+C -up-|> NV
+M -up-|> NV
 rectangle "Hệ thống quản lý nhà hàng Atlas Restaurant" {
   usecase "Đăng nhập, đổi mật khẩu" as UC0
-  usecase "Quản lý nhân sự, ca làm, chấm công" as UC1
-  usecase "Quản lý thực đơn và thực đơn ngày" as UC2
-  usecase "Quản lý kho và bếp" as UC3
   usecase "Phục vụ tại bàn, gọi món" as UC4
   usecase "Chế biến món" as UC5
-  usecase "Chốt hóa đơn và thanh toán" as UC6
+  usecase "Chốt hóa đơn, thanh toán" as UC6
+  usecase "Quản lý nhân sự, ca làm" as UC1
+  usecase "Quản lý thực đơn" as UC2
+  usecase "Quản lý kho" as UC3
   usecase "Quản lý tài chính, báo cáo" as UC7
 }
-M --> UC0
-W --> UC0
-K --> UC0
-C --> UC0
-M --> UC1
-M --> UC2
-M --> UC3
-K --> UC3
-W --> UC4
-M --> UC4
-K --> UC5
-C --> UC6
-M --> UC6
-UC6 <-- S
-M --> UC7
+NV -- UC0
+W -- UC4
+K -- UC5
+K -- UC3
+C -- UC6
+M -- UC1
+M -- UC2
+M -- UC3
+M -- UC7
+UC6 -- S
+note "Quản lý được thực hiện cả\ncác use case của Phục vụ, Bếp,\nThu ngân (có đủ các vai trò)." as N
+M .. N
 @enduml

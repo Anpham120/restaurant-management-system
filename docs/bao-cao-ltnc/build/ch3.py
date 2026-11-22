@@ -154,6 +154,12 @@ ACTIVITY = [
 ]
 
 
+DBD = [('p1a-tai-khoan', 'nhân sự: nhân viên, tài khoản, phân quyền'), ('p1b-ca-lam', 'nhân sự: ca làm, chấm công'),
+       ('p2-thuc-don', 'thực đơn'), ('p3a-goi-mon', 'bán hàng: bàn, phiên, gọi món'), ('p3b-thanh-toan', 'bán hàng: hóa đơn, thanh toán'),
+       ('p4a-nhap-xuat', 'kho: nhập kho, xuất cho bếp'), ('p4b-bep', 'kho: sơ chế, lô bếp, giữ nguyên liệu, hoàn trả'),
+       ('p4c-kiem-ke', 'kho: hủy hàng, kiểm kê, sổ kho'), ('p5-tai-chinh', 'tài chính')]
+
+
 def chapter3():
     U = f'{R}/uml'
     E = f'{R}/erd'
@@ -178,16 +184,21 @@ def chapter3():
             L('order_items.item_name_snapshot, unit_price: tên và giá món lúc khách gọi. Quản lý đổi giá sau đó không làm sai hóa đơn cũ.'),
             L('invoice_items và invoices.total: số tiền chốt lúc lập hóa đơn, là chứng từ kế toán không được đổi.'),
             L('shift_assignments lưu giờ bắt đầu, kết thúc thực tế của ca tại ngày làm, để đổi giờ ca mẫu không làm sai lịch đã phân.'),
-            H3('3.1.4. Sơ đồ thực thể liên kết (ERD) sinh bằng code'),
-            B('ERD không vẽ tay. Câu truy vấn catalog.sql đọc bảng, cột, khóa chính, khóa ngoại từ pg_catalog của PostgreSQL và xuất JSON; script gen_erd.py đọc JSON, sinh file PlantUML theo từng phân hệ (ký hiệu chân chim: bên nhiều }o, bên một ||, khóa ngoại cho phép NULL o|), rồi PlantUML vẽ ra ảnh. Đổi schema chỉ cần chạy lại là sơ đồ khớp.'),
+            H3('3.1.4. Sinh mã sơ đồ cơ sở dữ liệu bằng code'),
+            B('Sơ đồ cơ sở dữ liệu không vẽ tay mà viết bằng DBML, ngôn ngữ mô tả schema của dbdiagram.io [16], và mã DBML cũng được sinh bằng code từ database thật qua ba bước:'),
+            numbered(['Câu truy vấn catalog.sql đọc bảng, cột, kiểu dữ liệu, khóa chính, khóa ngoại (theo đúng thứ tự cột) từ pg_catalog của PostgreSQL và xuất JSON.',
+                      'Script gen_dbml.py đọc JSON, viết mỗi cụm nghiệp vụ một file .dbml: khai báo Table với cột, kiểu, pk, not null, unique; mỗi khóa ngoại một dòng Ref với ký hiệu quan hệ của DBML: ">" nhiều - một, "-" một - một, thêm "?" khi cột khóa ngoại cho phép NULL (quan hệ tùy chọn).',
+                      'Script render_dbdiagram.py dùng Playwright mở dbdiagram.io, dán mã DBML, kiểm tra không có lỗi cú pháp, chọn thuật toán tự sắp xếp Pipeline của dbdiagram rồi chụp sơ đồ. Đổi schema chỉ cần chạy lại ba bước là sơ đồ khớp.']),
             fig(f'{C}/gen-01-catalog-sql.png', 'Câu truy vấn catalog.sql đọc cấu trúc database', maxw=5760000),
-            fig(f'{C}/gen-02-gen-erd.png', 'Hàm rel() trong gen_erd.py sinh quan hệ chân chim', maxw=5760000),
-            fig(f'{E}/erd-tong-quan.png', 'ERD tổng quan 49 bảng (chỉ tên thực thể và quan hệ)', maxh=8200000)]
-    out += [H3('3.1.5. Database diagram'),
-            B('Database diagram là ERD mức vật lý: đủ cột, kiểu dữ liệu PostgreSQL, cột bắt buộc (dấu *), khóa chính <<PK>>, khóa ngoại <<FK>>. Mỗi phân hệ một sơ đồ; bảng của phân hệ khác được vẽ nền nhạt, chỉ có khóa chính, để thấy quan hệ liên phân hệ.')]
-    for key, name in [('nhan-su', 'Nhân sự và bảo mật'), ('thuc-don', 'Thực đơn'), ('ban-hang', 'Bán hàng và thanh toán'),
-                      ('kho', 'Kho và bếp'), ('tai-chinh', 'Tài chính')]:
-        out.append(fig(f'{E}/erd-{key}.png', f'Database diagram phân hệ {name}', maxh=8200000))
+            fig(f'{C}/gen-02-gen-dbml.png', 'gen_dbml.py: sinh dòng Ref theo loại quan hệ', maxw=5760000),
+            fig(f'{C}/gen-02b-dbml-mau.png', 'Mã DBML sinh ra cho phân hệ Thực đơn', maxw=5760000, maxh=8000000),
+            fig(f'{C}/gen-02c-render-dbdiagram.png', 'render_dbdiagram.py: dán DBML vào dbdiagram.io và chụp sơ đồ', maxw=5760000),
+            H3('3.1.5. Sơ đồ thực thể liên kết (ERD) và database diagram'),
+            B('Sơ đồ do dbdiagram.io vẽ từ mã DBML ở mục 3.1.4, dùng ký hiệu chân chim: đầu một gạch là phía "một", đầu chạc ba là phía "nhiều", vòng tròn là quan hệ tùy chọn (cột khóa ngoại cho phép NULL). Mỗi bảng ghi đủ cột và kiểu dữ liệu PostgreSQL; biểu tượng chìa khóa là khóa chính, biểu tượng mắt xích là khóa ngoại, NN là bắt buộc (NOT NULL).'),
+            B('Để sơ đồ đọc được, 49 bảng được chia thành 9 cụm nghiệp vụ, mỗi cụm 2 đến 8 bảng. Bảng của cụm khác mà cụm đang xét trỏ tới được vẽ thêm, chỉ có khóa chính. Các cột ghi người thao tác (created_by_id, confirmed_by_id...) tới employees có ở hầu hết bảng nên chỉ vẽ đường nối trong cụm Nhân sự; đầy đủ mọi quan hệ ở bảng quan hệ của mục 3.1.2.')]
+    for key, name in DBD:
+        xoay = f'{E}/dbml-{key}-xoay.png'      # sơ đồ dàn ngang: xoay dọc trang cho chữ to hơn
+        out.append(fig(xoay if os.path.exists(xoay) else f'{E}/dbml-{key}.png', f'ERD {name}', maxw=5760000, maxh=7800000))
     out += [H3('3.1.6. Sinh dữ liệu bằng code'),
             B('Dữ liệu không chèn bằng câu INSERT tay. Script seed_baocao.py gọi REST API của chính hệ thống như người dùng thật: đăng nhập theo vai trò, tạo nhân viên, ca làm, nguyên liệu, phiếu nhập, xuất, thực đơn, rồi mô phỏng 105 lượt khách với đủ kịch bản: thu tiền mặt, QR thành công, QR đang chờ, lệch tiền, khách bỏ về, miễn thu, hủy món, bếp từ chối. Vì đi qua tầng Service, mọi dòng dữ liệu đều đã qua kiểm tra nghiệp vụ, trigger và máy trạng thái; dữ liệu không hợp lệ không thể lọt vào.'),
             fig(f'{C}/gen-03-seed-goi-api.png', 'Hàm call() và soft() của seed_baocao.py', maxw=5760000),
@@ -199,11 +210,11 @@ def chapter3():
     out += sample_tables()
     out += [H2('3.2. Thiết kế hệ thống'),
             H3('3.2.1. Biểu đồ use case tổng quát (mức khung)'),
-            B('Mức khung cho thấy các nhóm chức năng lớn và tác nhân dùng chúng. Quản lý dùng được hầu hết nhóm chức năng; phục vụ, bếp, thu ngân dùng đúng nhóm của mình; SePay là hệ thống ngoài tham gia nhóm thanh toán.'),
+            B('Mức khung cho thấy các nhóm chức năng lớn và tác nhân dùng chúng. Phục vụ, Bếp, Thu ngân, Quản lý đều là Nhân viên (quan hệ tổng quát hóa, mũi tên tam giác rỗng) nên cùng dùng use case Đăng nhập; mỗi vai trò nối với nhóm chức năng của mình bằng đường liền. SePay là hệ thống ngoài, tham gia nhóm thanh toán.'),
             fig(f'{U}/uc-tong-quat.png', 'Biểu đồ use case tổng quát', maxh=6500000),
             H3('3.2.2. Biểu đồ use case chi tiết (mức đỉnh)'),
-            B('Mỗi phân hệ có một biểu đồ chi tiết với các quan hệ include (luôn thực hiện kèm) và extend (chỉ xảy ra trong trường hợp riêng).')]
-    for key, name in [('ban-hang', 'phục vụ, bếp, thanh toán'), ('nhan-su', 'nhân sự và bảo mật'), ('thuc-don', 'thực đơn'), ('kho', 'kho và bếp'), ('tai-chinh', 'tài chính')]:
+            B('Mỗi phân hệ có một biểu đồ chi tiết theo ký hiệu UML: tác nhân hình người que nối với use case bằng đường liền; «include» là phần luôn thực hiện kèm, mũi tên nét đứt đi từ use case gốc tới phần được gộp; «extend» là phần chỉ xảy ra trong trường hợp riêng, mũi tên đi từ phần mở rộng về use case gốc.')]
+    for key, name in [('ban-hang', 'phục vụ và bếp'), ('thanh-toan', 'hóa đơn và thanh toán'), ('nhan-su', 'nhân sự và bảo mật'), ('thuc-don', 'thực đơn'), ('kho', 'kho và bếp'), ('tai-chinh', 'tài chính')]:
         out.append(fig(f'{U}/uc-{key}.png', f'Use case chi tiết: {name}', maxh=7000000))
     out += [H3('3.2.3. Đặc tả use case chính')]
     for code, name, actor, desc, pre, post, flow, alt in UC:
@@ -236,5 +247,5 @@ def chapter3():
             fig(f'{U}/class-thanh-toan.png', 'Biểu đồ lớp thanh toán (mẫu Strategy)', maxw=5760000),
             H3('3.2.6. Biểu đồ triển khai'),
             B('Trình duyệt kết nối HTTPS tới nginx ở máy 1; nginx chuyển vào Traefik trong cụm Kubernetes (k3s); Traefik đưa / tới pod giao diện và /api tới pod backend; backend kết nối PostgreSQL. Máy 2 chứa công cụ: Jenkins kiểm thử và đóng gói, Argo CD triển khai theo Git, bộ giám sát, kho sao lưu. Chi tiết ở mục 4.4.'),
-            fig(f'{U}/deploy.png', 'Biểu đồ triển khai', maxw=5760000)]
+            fig(f'{U}/deploy-xoay.png', 'Biểu đồ triển khai', maxw=5760000, maxh=7800000)]
     return out

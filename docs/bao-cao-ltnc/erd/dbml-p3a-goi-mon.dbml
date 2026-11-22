@@ -1,0 +1,91 @@
+// Phân hệ Bán hàng: bàn, phiên, gọi món: 6 bảng. Sinh tự động từ catalog PostgreSQL (gen_dbml.py).
+// Dán toàn bộ file vào https://dbdiagram.io/d để xem database diagram.
+
+Project atlas_restaurant {
+  database_type: 'PostgreSQL'
+}
+
+Table dining_tables {
+  id bigint [pk]
+  code varchar(20) [not null]
+  capacity int [not null]
+  status varchar(20) [not null]
+  is_active boolean [not null]
+}
+
+Table table_sessions {
+  id bigint [pk]
+  dining_table_id bigint [not null]
+  opened_at timestamptz [not null]
+  closed_at timestamptz
+  status varchar(20) [not null]
+  opened_by_id bigint [not null]
+  closed_by_id bigint
+}
+
+Table orders {
+  id bigint [pk]
+  table_session_id bigint [not null, unique]
+  status varchar(20) [not null]
+}
+
+Table order_batches {
+  id bigint [pk]
+  order_id bigint [not null]
+  waiter_id bigint [not null]
+  submitted_at timestamptz [not null]
+  request_key varchar(64) [not null]
+  request_hash char(64)
+}
+
+Table order_items {
+  id bigint [pk]
+  order_batch_id bigint [not null]
+  daily_menu_item_id bigint [not null]
+  quantity int [not null]
+  item_name_snapshot varchar(100) [not null]
+  unit_price numeric(12,2) [not null]
+  status varchar(20) [not null]
+  has_stock_exception boolean [not null]
+  note varchar(255)
+}
+
+Table order_item_events {
+  id bigint [pk]
+  order_item_id bigint [not null]
+  actor_id bigint [not null]
+  from_status varchar(20)
+  to_status varchar(20) [not null]
+  reason varchar(255)
+  created_at timestamptz [not null]
+}
+
+Table daily_menu_items {
+  id bigint [pk]
+}
+
+Table employees {
+  id bigint [pk]
+}
+
+Ref: table_sessions.dining_table_id > dining_tables.id
+Ref: orders.table_session_id - table_sessions.id
+Ref: order_batches.order_id > orders.id
+Ref: order_batches.waiter_id > employees.id
+Ref: order_items.daily_menu_item_id > daily_menu_items.id
+Ref: order_items.order_batch_id > order_batches.id
+Ref: order_item_events.order_item_id > order_items.id
+
+TableGroup "Bán hàng: bàn, phiên, gọi món" {
+  dining_tables
+  table_sessions
+  orders
+  order_batches
+  order_items
+  order_item_events
+}
+
+TableGroup "Phân hệ khác" {
+  daily_menu_items
+  employees
+}

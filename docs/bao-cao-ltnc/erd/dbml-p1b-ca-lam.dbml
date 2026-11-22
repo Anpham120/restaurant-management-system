@@ -1,0 +1,81 @@
+// Phân hệ Nhân sự: ca làm, chấm công: 4 bảng. Sinh tự động từ catalog PostgreSQL (gen_dbml.py).
+// Dán toàn bộ file vào https://dbdiagram.io/d để xem database diagram.
+
+Project atlas_restaurant {
+  database_type: 'PostgreSQL'
+}
+
+Table shifts {
+  id bigint [pk]
+  shift_name varchar(50) [not null]
+  start_time time [not null]
+  end_time time [not null]
+  break_minutes int [not null]
+  is_active boolean [not null]
+}
+
+Table shift_assignments {
+  id bigint [pk]
+  employee_id bigint [not null]
+  shift_id bigint [not null]
+  work_date date [not null]
+  scheduled_start_at timestamptz [not null]
+  scheduled_end_at timestamptz [not null]
+  scheduled_break_minutes int [not null]
+  status varchar(20) [not null]
+  note varchar(255)
+  cancel_reason varchar(255)
+  cancelled_by_id bigint
+  cancelled_at timestamptz
+}
+
+Table attendances {
+  id bigint [pk]
+  shift_assignment_id bigint [not null, unique]
+  attendance_status varchar(20) [not null]
+  actual_start_at timestamptz
+  actual_end_at timestamptz
+  worked_minutes int
+  note varchar(255)
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+}
+
+Table attendance_adjustments {
+  id bigint [pk]
+  attendance_id bigint [not null]
+  old_status varchar(20) [not null]
+  new_status varchar(20) [not null]
+  old_start_at timestamptz
+  new_start_at timestamptz
+  old_end_at timestamptz
+  new_end_at timestamptz
+  old_worked_minutes int
+  new_worked_minutes int
+  reason varchar(255) [not null]
+  adjusted_by_id bigint [not null]
+  adjusted_at timestamptz [not null]
+}
+
+Table employees {
+  id bigint [pk]
+}
+
+Ref: shift_assignments.cancelled_by_id ?> employees.id
+Ref: shift_assignments.employee_id > employees.id
+Ref: shift_assignments.shift_id > shifts.id
+Ref: attendances.confirmed_by_id ?> employees.id
+Ref: attendances.shift_assignment_id - shift_assignments.id
+Ref: attendance_adjustments.adjusted_by_id > employees.id
+Ref: attendance_adjustments.attendance_id > attendances.id
+
+TableGroup "Nhân sự: ca làm, chấm công" {
+  shifts
+  shift_assignments
+  attendances
+  attendance_adjustments
+}
+
+TableGroup "Phân hệ khác" {
+  employees
+}

@@ -2,29 +2,31 @@
 !include _style.iuml
 title Use case chi tiết: kho và bếp
 left to right direction
-actor "Quản lý" as M
 actor "Bếp" as K
-rectangle "Kho" {
-  usecase "Quản lý nguyên liệu, loại dùng ở bếp" as I1
-  usecase "Lập và xác nhận phiếu nhập (theo lô)" as I2
-  usecase "Lập phiếu xuất cho bếp (FEFO)" as I3
+actor "Quản lý" as M
+rectangle "Kho và bếp" {
   usecase "Bếp nhận hàng" as I4
   usecase "Sơ chế" as I5
   usecase "Hoàn trả về kho" as I6
-  usecase "Hủy hàng (hỏng, hết hạn)" as I7
+  usecase "Báo hủy hàng" as I7
+  usecase "Xem tồn kho, lịch sử" as I10
+  usecase "Quản lý nguyên liệu,\nloại dùng ở bếp" as I1
+  usecase "Lập, xác nhận phiếu nhập\n(theo lô, hạn dùng)" as I2
+  usecase "Lập phiếu xuất cho bếp" as I3
+  usecase "Chọn lô theo FEFO" as I3a
   usecase "Kiểm kê" as I8
   usecase "Đánh dấu lô hỏng" as I9
-  usecase "Xem tồn kho, lịch sử" as I10
 }
-M --> I1
-M --> I2
-M --> I3
-K --> I4
-K --> I5
-K --> I6
-K --> I7
-M --> I8
-M --> I9
-M --> I10
-K --> I10
+K -- I4
+K -- I5
+K -- I6
+K -- I7
+K -- I10
+M -- I10
+M -- I1
+M -- I2
+M -- I3
+M -- I8
+M -- I9
+I3 ..> I3a : <<include>>
 @enduml

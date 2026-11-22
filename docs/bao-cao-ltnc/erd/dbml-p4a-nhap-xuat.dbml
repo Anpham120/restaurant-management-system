@@ -1,0 +1,104 @@
+// Phân hệ Kho: nhập kho, xuất cho bếp: 7 bảng. Sinh tự động từ catalog PostgreSQL (gen_dbml.py).
+// Dán toàn bộ file vào https://dbdiagram.io/d để xem database diagram.
+
+Project atlas_restaurant {
+  database_type: 'PostgreSQL'
+}
+
+Table ingredients {
+  id bigint [pk]
+  name varchar(100) [not null]
+  base_unit varchar(20) [not null]
+  min_quantity numeric(12,3) [not null]
+  is_expiry_tracked boolean [not null]
+  is_active boolean [not null]
+}
+
+Table kitchen_ingredient_types {
+  id bigint [pk]
+  raw_ingredient_id bigint [not null]
+  name varchar(100) [not null]
+  handling_type varchar(12) [not null]
+  shelf_life_hours int
+  minimum_quantity numeric(12,3) [not null]
+  is_active boolean [not null]
+}
+
+Table stock_receipts {
+  id bigint [pk]
+  supplier_name varchar(100)
+  status varchar(20) [not null]
+  note varchar(255)
+  created_at timestamptz [not null]
+  created_by_id bigint [not null]
+  received_at timestamptz
+  confirmed_by_id bigint
+  confirmed_at timestamptz
+  request_key varchar(64) [not null]
+  request_hash char(64) [not null]
+}
+
+Table stock_receipt_items {
+  id bigint [pk]
+  stock_receipt_id bigint [not null]
+  ingredient_id bigint [not null]
+  input_quantity numeric(12,3) [not null]
+  input_unit varchar(20) [not null]
+  conversion_factor numeric(12,3) [not null]
+  unit_price_per_input_unit numeric(12,2) [not null]
+  lot_code varchar(50)
+  expiry_date date
+}
+
+Table inventory_batches {
+  id bigint [pk]
+  stock_receipt_item_id bigint [not null, unique]
+  received_at timestamptz [not null]
+  quantity_on_hand numeric(12,3) [not null]
+  is_usable boolean [not null]
+  unusable_reason varchar(255)
+  unusable_marked_by_id bigint
+  unusable_marked_at timestamptz
+}
+
+Table stock_issues {
+  id bigint [pk]
+  issued_by_id bigint [not null]
+  received_by_id bigint
+  status varchar(20) [not null]
+  issued_at timestamptz
+  received_at timestamptz
+  note varchar(255)
+  cancel_reason varchar(255)
+  cancelled_at timestamptz
+  created_at timestamptz [not null]
+  cancelled_by_id bigint
+  request_key varchar(64) [not null]
+  request_hash char(64) [not null]
+}
+
+Table stock_issue_items {
+  id bigint [pk]
+  stock_issue_id bigint [not null]
+  inventory_batch_id bigint [not null]
+  quantity numeric(12,3) [not null]
+  fulfillment_mode varchar(12) [not null]
+  wip_remaining_quantity numeric(12,3) [not null]
+}
+
+Ref: kitchen_ingredient_types.raw_ingredient_id > ingredients.id
+Ref: stock_receipt_items.ingredient_id > ingredients.id
+Ref: stock_receipt_items.stock_receipt_id > stock_receipts.id
+Ref: inventory_batches.stock_receipt_item_id - stock_receipt_items.id
+Ref: stock_issue_items.inventory_batch_id > inventory_batches.id
+Ref: stock_issue_items.stock_issue_id > stock_issues.id
+
+TableGroup "Kho: nhập kho, xuất cho bếp" {
+  ingredients
+  kitchen_ingredient_types
+  stock_receipts
+  stock_receipt_items
+  inventory_batches
+  stock_issues
+  stock_issue_items
+}

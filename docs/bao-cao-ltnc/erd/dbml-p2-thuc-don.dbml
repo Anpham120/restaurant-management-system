@@ -1,0 +1,84 @@
+// Phân hệ Thực đơn: 6 bảng. Sinh tự động từ catalog PostgreSQL (gen_dbml.py).
+// Dán toàn bộ file vào https://dbdiagram.io/d để xem database diagram.
+
+Project atlas_restaurant {
+  database_type: 'PostgreSQL'
+}
+
+Table menu_categories {
+  id bigint [pk]
+  name varchar(100) [not null]
+  sort_order int [not null]
+  is_active boolean [not null]
+}
+
+Table menu_items {
+  id bigint [pk]
+  menu_category_id bigint [not null]
+  name varchar(100) [not null]
+  price numeric(12,2) [not null]
+  image_url varchar(255)
+  is_active boolean [not null]
+}
+
+Table recipes {
+  id bigint [pk]
+  menu_item_id bigint [not null]
+  version int [not null]
+  is_current boolean [not null]
+  indexes {
+    (id, menu_item_id) [unique]
+  }
+}
+
+Table recipe_ingredients {
+  id bigint [pk]
+  recipe_id bigint [not null]
+  kitchen_ingredient_type_id bigint [not null]
+  quantity_per_serving numeric(12,3) [not null]
+}
+
+Table daily_menus {
+  id bigint [pk]
+  business_date date [not null]
+  status varchar(20) [not null]
+  published_at timestamptz
+}
+
+Table daily_menu_items {
+  id bigint [pk]
+  daily_menu_id bigint [not null]
+  menu_item_id bigint [not null]
+  recipe_id bigint [not null]
+  quota_total int
+  is_paused boolean [not null]
+  pause_reason varchar(255)
+  paused_by_id bigint
+  paused_at timestamptz
+}
+
+Table kitchen_ingredient_types {
+  id bigint [pk]
+}
+
+Ref: menu_items.menu_category_id > menu_categories.id
+Ref: recipes.menu_item_id > menu_items.id
+Ref: recipe_ingredients.kitchen_ingredient_type_id > kitchen_ingredient_types.id
+Ref: recipe_ingredients.recipe_id > recipes.id
+Ref: daily_menu_items.daily_menu_id > daily_menus.id
+Ref: daily_menu_items.menu_item_id > menu_items.id
+Ref: daily_menu_items.recipe_id > recipes.id
+Ref: daily_menu_items.(recipe_id, menu_item_id) > recipes.(id, menu_item_id)
+
+TableGroup "Thực đơn" {
+  menu_categories
+  menu_items
+  recipes
+  recipe_ingredients
+  daily_menus
+  daily_menu_items
+}
+
+TableGroup "Phân hệ khác" {
+  kitchen_ingredient_types
+}

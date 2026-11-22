@@ -1,19 +1,22 @@
 @startuml
 !include _style.iuml
+skinparam conditionStyle diamond
+skinparam conditionEndStyle diamond
 title Activity: bếp xử lý món và phục vụ
 |Bếp|
 start
 :Xem hàng đợi (PENDING trước);
-if (Nhận món?) then (nhận)
+if (Nhận món?) then ([nhận])
   |Hệ thống|
-  if (Còn suất và đủ nguyên liệu?) then (đủ)
+  if (Còn suất và đủ nguyên liệu?) then ([đủ])
     :Chiếm suất, giữ nguyên liệu\ntheo lô hết hạn sớm nhất (FEFO);
     :Món ACCEPTED;
-  else (thiếu)
+  else ([thiếu])
     :Món REJECTED kèm lý do;
     stop
   endif
-else (từ chối)
+else ([từ chối])
+  |Bếp|
   :Nhập lý do;
   |Hệ thống|
   :Món REJECTED (không chiếm suất);

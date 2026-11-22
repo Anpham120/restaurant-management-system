@@ -1,24 +1,26 @@
 @startuml
 !include _style.iuml
+skinparam conditionStyle diamond
+skinparam conditionEndStyle diamond
 title Activity: chốt hóa đơn và thu tiền mặt
 |Thu ngân|
 start
 :Chọn bàn cần thanh toán;
 :Chốt hóa đơn;
 |Hệ thống|
-if (Mọi món đã kết thúc,\ncó món SERVED, tổng > 0?) then (đúng)
+if (Mọi món đã kết thúc,\ncó món SERVED, tổng > 0?) then ([đúng])
   :Tạo hóa đơn PAYMENT_PENDING,\ntổng tiền do hệ thống tính;
-else (sai)
+else ([sai])
   :Trả 409/422 (còn món chưa xong /\n0 đồng → miễn thu);
   stop
 endif
 |Thu ngân|
 :Nhập tiền khách đưa;
 |Hệ thống|
-if (Tiền đưa >= số phải thu?) then (đủ)
+if (Tiền đưa >= số phải thu?) then ([đủ])
   :Khóa hóa đơn, ghi payment CASH,\ntiền thối lại;
   :Hóa đơn PAID, đơn và phiên CLOSED,\nbàn AVAILABLE;
-else (thiếu)
+else ([thiếu])
   :Trả 422, không ghi gì;
   stop
 endif

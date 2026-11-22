@@ -1,5 +1,7 @@
 @startuml
 !include _style.iuml
+skinparam style strictuml
+hide empty members
 title Biểu đồ lớp thanh toán (module finance, mẫu Strategy)
 skinparam linetype ortho
 
@@ -12,7 +14,7 @@ package "controller" {
   }
 }
 package "service" {
-  interface PaymentService {
+  interface PaymentService <<interface>> {
     + startPayment(invoiceId, actorId, request) : PaymentResponse
   }
   class PaymentServiceImpl {
@@ -28,22 +30,22 @@ package "service" {
   }
 }
 package "strategy" {
-  interface PaymentStrategy <<Strategy>> {
+  interface PaymentStrategy <<interface>> <<Strategy>> {
     + method() : PaymentMethod
     + startPayment(invoiceId, actorId, request) : PaymentResponse
   }
   class CashPaymentStrategy
   class QrPaymentStrategy
-  enum PaymentMethod {
+  enum PaymentMethod <<enumeration>> {
     CASH
     QR
   }
 }
 package "repository" {
-  interface PaymentRequestRepository
-  interface PaymentRepository
+  interface PaymentRequestRepository <<interface>>
+  interface PaymentRepository <<interface>>
 }
-interface OrderBillingApi <<API module order>> {
+interface OrderBillingApi <<interface>> <<API module order>> {
   + closeOrderAndReleaseTable(orderId, actorId)
 }
 

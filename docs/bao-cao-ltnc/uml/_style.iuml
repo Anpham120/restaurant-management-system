@@ -1,17 +1,52 @@
+' Ký hiệu UML 2.5 chuẩn: actor hình người que, liên kết actor - use case là đường liền không mũi tên,
+' «include»/«extend» là mũi tên nét đứt, lớp không có biểu tượng tròn của PlantUML, gói hình thư mục.
 skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 13
 skinparam shadowing false
-skinparam actorStyle awesome
+skinparam monochrome false
+skinparam ArrowColor #1F2937
 skinparam usecase {
-  BackgroundColor #EAF2FB
-  BorderColor #1565C0
+  BackgroundColor #FFFFFF
+  BorderColor #1F2937
+}
+skinparam actor {
+  BorderColor #1F2937
+  BackgroundColor #FFFFFF
+}
+skinparam rectangle {
+  BorderColor #1F2937
+  BackgroundColor #FFFFFF
 }
 skinparam activity {
-  BackgroundColor #EAF2FB
-  BorderColor #1565C0
-  DiamondBackgroundColor #FFF8E1
+  BackgroundColor #FFFFFF
+  BorderColor #1F2937
+  DiamondBackgroundColor #FFFFFF
+  DiamondBorderColor #1F2937
+}
+skinparam partition {
+  BorderColor #1F2937
+}
+skinparam swimlane {
+  BorderColor #1F2937
+  TitleFontStyle bold
 }
 skinparam class {
-  BackgroundColor #EAF2FB
-  BorderColor #1565C0
+  BackgroundColor #FFFFFF
+  BorderColor #1F2937
 }
-skinparam packageStyle rectangle
+skinparam node {
+  BackgroundColor #FFFFFF
+  BorderColor #1F2937
+}
+skinparam artifact {
+  BackgroundColor #FFFFFF
+  BorderColor #1F2937
+}
+skinparam database {
+  BackgroundColor #FFFFFF
+  BorderColor #1F2937
+}
+skinparam packageStyle folder
+skinparam classAttributeIconSize 0
+skinparam noteBackgroundColor #FFFFFF
+skinparam noteBorderColor #1F2937
