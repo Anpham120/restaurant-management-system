@@ -27,6 +27,9 @@ khoản nhân viên mẫu do chính script tạo ra trong bản chạy riêng n�
 
 ```bash
 BASE=http://127.0.0.1:28080 MANAGER_PASSWORD=... SEPAY_API_KEY=... python3 seed/seed_baocao.py
+# Nạp thêm vào hệ thống đã có dữ liệu thật (production): dùng lại nguyên liệu, nhóm món, bàn có sẵn,
+# bỏ qua món trùng tên, không đổi công thức thật. Sao lưu database trước khi chạy.
+PROD_MODE=1 BASE=... MANAGER_USER=... MANAGER_PASSWORD=... STAFF_PASSWORD=... SEPAY_API_KEY=... SEPAY_BANK_ACCOUNT=... python3 seed/seed_baocao.py
 BASE=http://127.0.0.1:28080 MANAGER_PASSWORD=... SEPAY_API_KEY=... python3 test/tc_runner.py > test/ket-qua.json
 ```
 
