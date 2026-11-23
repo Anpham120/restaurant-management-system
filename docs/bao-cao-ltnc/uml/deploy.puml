@@ -19,7 +19,7 @@ node "Máy 1: production\nUbuntu 24.04" <<device>> as M1 {
     node "Pod rms-app (x2)" <<container>> as APP {
       artifact "rms-app.jar\n(Spring Boot)" as JAR
     }
-    node "PostgreSQL 17\n(CloudNativePG, 2 bản)" <<container>> as DB {
+    node "PostgreSQL 17\n(CloudNativePG,\nprimary + replica)" <<container>> as DB {
       artifact "CSDL restaurant_core" as SCHEMA
     }
   }
