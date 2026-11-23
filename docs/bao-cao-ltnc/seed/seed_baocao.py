@@ -29,6 +29,14 @@ RUN = str(int(time.time()))[-6:]
 VN = timezone(timedelta(hours=7))
 TODAY = (datetime.now(VN) - timedelta(hours=4)).date()   # ngày bán bắt đầu 04:00 giờ Việt Nam
 stats = {}
+# PROD_MODE=1: nạp thêm vào hệ thống đã có dữ liệu thật. Dùng lại nguyên liệu, loại bếp, nhóm món, bàn có sẵn; món trùng
+# tên với món thật thì bỏ qua (không đổi công thức thật); chỉ gọi các món mẫu; không đăng nhập sai vào tài khoản có sẵn.
+PROD = os.environ.get('PROD_MODE') == '1'
+SEED_ITEMS = set()   # id món do script tạo
+
+
+def by_name(path, tk):
+    return {x['name'].strip().lower(): x for x in call('GET', path, token=tk)}
 
 
 def count(key):
@@ -195,10 +203,28 @@ PREPARED = [('Thịt bò thái', 'Thịt bò thăn'), ('Gà luộc xé', 'Ức g
             ('Rau sơ chế', 'Rau muống'), ('Hành phi', 'Hành tây'), ('Mực làm sạch', 'Mực ống')]
 
 
+def fefo_lot(ing_id, seed_lots, tk):
+    """Lô phải xuất theo FEFO: hạn sớm nhất, cùng hạn thì nhận trước. Production có cả lô cũ của nguyên liệu dùng lại."""
+    if not PROD:
+        return min(seed_lots, key=lambda x: x.get('expiryDate') or '9999')
+    today = str(TODAY)
+    rows = [r for r in call('GET', f'/api/inventory/raw-lots?ingredientId={ing_id}', token=tk)
+            if r['usable'] and float(r['quantityOnHand']) > 0 and (not r.get('expiryDate') or r['expiryDate'] >= today)]
+    r = min(rows, key=lambda r: (r.get('expiryDate') or '9999-12-31', r.get('receivedAt') or '', r['inventoryBatchId']))
+    return {'inventoryBatchId': r['inventoryBatchId'], 'baseQuantity': float(r['quantityOnHand'])}
+
+
 def seed_inventory(tk, ktk):
     ing, direct, prepared = {}, {}, {}
+    old_ing = by_name('/api/ingredients?activeOnly=false', tk)
+    old_types = call('GET', '/api/kitchen-ingredient-types?activeOnly=false', token=tk)
     for name, unit, exp, *_ in INGREDIENTS:
-        r = soft('nguyên liệu trùng', call, 'POST', '/api/ingredients',
+        if name.lower() in old_ing:                       # nguyên liệu đã có: dùng lại, loại dùng thẳng có sẵn thì dùng lại
+            ing[name] = old_ing[name.lower()]['id']
+            d = next((t for t in old_types if t['rawIngredientId'] == ing[name] and t['handlingType'] == 'DIRECT'), None)
+            if d:
+                direct[name] = d['id']; continue
+        r = None if name in ing else soft('nguyên liệu trùng', call, 'POST', '/api/ingredients',
                  {'name': name, 'baseUnit': unit, 'minQuantity': 500 if unit in ('g', 'ml') else 10, 'expiryTracked': exp}, tk)
         if r:
             ing[name] = r['id']; count('ingredients')
@@ -208,6 +234,9 @@ def seed_inventory(tk, ktk):
         if t:
             direct[name] = t['id']; count('kitchen_ingredient_types')
     for pname, raw in PREPARED:
+        same = next((t for t in old_types if t['rawIngredientId'] == ing[raw] and t['name'].lower() == pname.lower()), None)
+        if same:
+            prepared[pname] = same['id']; continue
         t = soft('loại bếp', call, 'POST', '/api/kitchen-ingredient-types',
                  {'rawIngredientId': ing[raw], 'name': pname, 'handlingType': 'PREPARED', 'shelfLifeHours': 24,
                   'minimumQuantity': 100}, tk)
@@ -246,7 +275,7 @@ def seed_inventory(tk, ktk):
     for gi, (grp, ratio, mode) in enumerate(plans):
         items = []
         for ing_id, ls in grp:
-            l = min(ls, key=lambda x: x.get('expiryDate') or '9999')   # FEFO: lô hết hạn sớm nhất trước
+            l = fefo_lot(ing_id, ls, tk)
             items.append({'inventoryBatchId': l['inventoryBatchId'], 'quantity': max(1, round(l['baseQuantity'] * ratio)), 'fulfillmentMode': 'DIRECT'})
             name = next(n for n, i in ing.items() if i == ing_id)
             if mode == 'full' and any(raw_n == name for _, raw_n in PREPARED):
@@ -333,9 +362,16 @@ QTY = {'g': 120, 'ml': 250, 'quả': 1, 'lon': 1, 'cốc': 1, 'miếng': 2}
 def seed_menu(tk, direct, prepared):
     unit_of = {n: u for n, u, *_ in INGREDIENTS}
     items = []
+    old_cat = by_name('/api/menu-categories?activeOnly=false', tk)
+    old_item = by_name('/api/menu-items?activeOnly=false', tk)
     for sort, (cat, dishes) in enumerate(MENU.items(), 1):
-        c = call('POST', '/api/menu-categories', {'name': cat, 'sortOrder': sort, 'active': True}, tk); count('menu_categories')
+        if cat.lower() in old_cat:
+            c = old_cat[cat.lower()]
+        else:
+            c = call('POST', '/api/menu-categories', {'name': cat, 'sortOrder': sort, 'active': True}, tk); count('menu_categories')
         for name, price, recipe in dishes:
+            if name.lower() in old_item:                 # trùng tên món thật: không tạo, không đổi công thức món thật
+                count('món trùng tên, bỏ qua'); continue
             m = call('POST', '/api/menu-items', {'categoryId': c['id'], 'name': name, 'price': price, 'active': True}, tk); count('menu_items')
             ingr = []
             for r in recipe:
@@ -347,7 +383,7 @@ def seed_menu(tk, direct, prepared):
             if name in ('Bún chả', 'Phở bò tái'):   # đổi công thức: phiên bản 2
                 call('POST', f"/api/menu-items/{m['id']}/recipes", {'ingredients': ingr[:1] + [dict(ingr[-1], quantityPerServing=ingr[-1]['quantityPerServing'] + 20)]}, tk)
                 count('recipes')
-            items.append((m, cat))
+            items.append((m, cat)); SEED_ITEMS.add(m['id'])
             if name.endswith('(ngừng bán)'):
                 call('PUT', f"/api/menu-items/{m['id']}", {'categoryId': c['id'], 'name': name, 'price': price, 'active': False}, tk)
     menu = soft('thực đơn hôm nay', call, 'GET', '/api/daily-menus/today', None, tk)
@@ -356,13 +392,17 @@ def seed_menu(tk, direct, prepared):
     if menu['status'] == 'DRAFT':
         menu = call('POST', f"/api/daily-menus/{menu['id']}/publish", None, tk)
     menu = call('GET', '/api/daily-menus/today', token=tk)
+    have = {i['menuItemId'] for i in menu['items']}
+    for mid in SEED_ITEMS - have:                            # thực đơn hôm nay lập trước khi có món mẫu: thêm vào
+        soft('thêm món vào thực đơn', call, 'POST', f"/api/daily-menus/{menu['id']}/items", {'menuItemId': mid, 'quotaTotal': None}, tk)
+    menu = call('GET', '/api/daily-menus/today', token=tk)
     for it in menu['items']:                                         # hạn mức cho món giá cao
-        if it['price'] >= 145000:
+        if it['price'] >= 145000 and (not PROD or it['menuItemId'] in SEED_ITEMS):
             soft('hạn mức', call, 'PUT', f"/api/daily-menu-items/{it['dailyMenuItemId']}", {'quotaTotal': 12}, tk)
     pause = next(i for i in menu['items'] if i['name'] == 'Chè đậu')
     soft('tạm dừng', call, 'POST', f"/api/daily-menu-items/{pause['dailyMenuItemId']}/pause", {'reason': 'Hết đậu xanh'}, tk)
     # Thực đơn 4 ngày tới: 2 ngày đã công bố trước, 2 ngày còn nháp
-    for d in range(1, 5):
+    for d in range(1, 1 if PROD else 5):                  # production: không lập sẵn thực đơn các ngày tới
         tm = soft('thực đơn ngày tới', call, 'POST', '/api/daily-menus', {'businessDate': str(TODAY + timedelta(days=d)), 'fromCatalog': True}, tk)
         if tm:
             count('daily_menus')
@@ -373,14 +413,15 @@ def seed_menu(tk, direct, prepared):
 
 # ---------------------------------------------------------------- 4. Bán hàng
 def seed_sales(tk, wtk, ktk, ctk, menu):
-    sellable = [i for i in menu['items'] if not i.get('paused')]
+    sellable = [i for i in menu['items'] if not i.get('paused') and (not PROD or i['menuItemId'] in SEED_ITEMS)]
     tables = []
-    for n in range(1, 31):
+    for n in range(1, 0 if PROD else 31):                   # production: dùng bàn có sẵn, không tạo thêm
         t = soft('bàn trùng', call, 'POST', '/api/tables', {'code': f'B{n:02d}', 'capacity': random.choice([2, 4, 4, 6, 8])}, tk)
         if t:
             tables.append(t); count('dining_tables')
-    t = call('POST', '/api/tables', {'code': 'VIP-01', 'capacity': 12}, tk); tables.append(t)
-    call('POST', f"/api/tables/{call('POST', '/api/tables', {'code': 'B99', 'capacity': 2}, tk)['id']}/deactivate", None, tk)
+    if not PROD:
+        t = call('POST', '/api/tables', {'code': 'VIP-01', 'capacity': 12}, tk); tables.append(t)
+        call('POST', f"/api/tables/{call('POST', '/api/tables', {'code': 'B99', 'capacity': 2}, tk)['id']}/deactivate", None, tk)
     kinds = ['cash'] * 60 + ['qr'] * 16 + ['qr_wait'] * 3 + ['waive'] * 5 + ['abandon'] * 4 + ['empty'] * 5 + ['open'] * 8 + ['mismatch'] * 2 + ['after_cancel'] * 2
     random.shuffle(kinds)
     for n, kind in enumerate(kinds):
@@ -509,7 +550,7 @@ def seed_finance(tk):
 
 def seed_login_failures():
     # Đăng nhập sai: bộ đếm theo tên đăng nhập (bảng login_throttles). nv20 sai 5 lần nên bị khóa tạm 15 phút.
-    for user, times in [('nv20', 5), ('nv21', 2), ('nv22', 1), ('khach-la', 3), ('admin', 4)]:
+    for user, times in [('nv20', 5), ('nv21', 2), ('nv22', 1), ('khach-la', 3)] + ([] if PROD else [('admin', 4)]):
         for _ in range(times):
             soft('đăng nhập sai', call, 'POST', '/api/auth/login', {'username': user, 'password': 'sai-mat-khau'})
         count('login_throttles')
