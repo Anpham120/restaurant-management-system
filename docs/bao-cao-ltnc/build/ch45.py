@@ -150,9 +150,9 @@ def chapter4():
             numbered(['Lập trình viên đẩy nhánh feature lên GitHub; GitHub báo Jenkins (máy 2).',
                       'Jenkins kiểm tra migration, chạy test backend, test frontend, quét bảo mật mã nguồn; đạt thì tự gộp vào nhánh develop.',
                       'Trên develop, Jenkins dựng một bản chạy thử trên bản sao dữ liệu, chạy kiểm thử end-to-end, quét lỗ hổng image, rồi đẩy image lên GitHub Container Registry và ghi phiên bản image vào Git.',
-                      'Argo CD đọc Git và triển khai lên cụm Kubernetes ở máy 1 theo kiểu blue-green: dựng bản mới bên cạnh bản cũ, kiểm tra xong mới chuyển người dùng sang; lỗi thì giữ bản cũ.',
+                      'Argo CD đọc Git và triển khai lên cụm Kubernetes ở máy 1 theo kiểu blue-green: dựng phiên bản mới bên cạnh phiên bản cũ, kiểm tra xong mới chuyển người dùng sang; lỗi thì giữ phiên bản cũ. Production luôn chỉ có một phiên bản phục vụ người dùng.',
                       'nginx ở máy 1 nhận HTTPS (chứng chỉ Let\'s Encrypt), chuyển vào Traefik; Traefik đưa / tới giao diện và /api tới backend.']),
-            B('Database PostgreSQL chạy 2 bản (chính và dự phòng), sao lưu liên tục sang máy 2. Bộ giám sát Prometheus, Grafana, Loki ở máy 2 cảnh báo qua Telegram khi có sự cố. Thời gian từ lúc đẩy code tới khi lên production khoảng 6 phút, không có bước làm tay.')]
+            B('Database PostgreSQL chạy 2 instance trong một cluster (primary và replica), sao lưu liên tục sang máy 2. Bộ giám sát Prometheus, Grafana, Loki ở máy 2 cảnh báo qua Telegram khi có sự cố. Thời gian từ lúc đẩy code tới khi lên production khoảng 6 phút, không có bước làm tay.')]
     return out
 
 
