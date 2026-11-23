@@ -47,7 +47,8 @@ trap cleanup EXIT
 
 echo "[staging] dựng bản $(git rev-parse --short HEAD)"
 BACKUP_DIR=${BACKUP_DIR:-/home/coder/rms-backups}
-LATEST=$(ls -1t "$BACKUP_DIR"/*.dump 2>/dev/null | head -1 || true)
+# Bản mới nhất mà user chạy pipeline đọc được: bản chép tay sang máy 2 quên chmod 640 không làm hỏng pipeline (develop #105)
+LATEST=$(for f in $(ls -1t "$BACKUP_DIR"/*.dump 2>/dev/null); do [ -r "$f" ] && { echo "$f"; break; }; done || true)
 docker compose up -d --wait db
 if [ -n "$LATEST" ]; then
   echo "[staging] nạp dữ liệu từ $(basename "$LATEST")"
