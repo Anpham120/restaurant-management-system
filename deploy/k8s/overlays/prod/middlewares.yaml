@@ -13,12 +13,13 @@ spec:
     frameDeny: true                   # X-Frame-Options: DENY (không cho nhúng trang vào iframe)
     referrerPolicy: strict-origin-when-cross-origin
     permissionsPolicy: "camera=(), microphone=(), geolocation=(), payment=()"
-    # Chỉ tải script, CSS, ảnh, API từ chính domain; ngoại lệ duy nhất là Google Fonts (frontend/index.html).
+    # Chỉ tải script, CSS, ảnh, API từ chính domain; ngoại lệ: Google Fonts (frontend/index.html) và ảnh VietQR
+    # của SePay https://qr.sepay.vn (SepayQr.java dựng URL, trang hóa đơn hiện ảnh để khách quét chuyển khoản).
     # 'unsafe-inline' cho style vì React dùng thuộc tính style; script vẫn chặn inline.
     contentSecurityPolicy: >-
       default-src 'self'; script-src 'self';
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;
-      img-src 'self' data: blob:; connect-src 'self'; object-src 'none';
+      img-src 'self' data: blob: https://qr.sepay.vn; connect-src 'self'; object-src 'none';
       base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 ---
 # Nén response của API (JSON). File tĩnh đã được nginx trong pod web nén sẵn; Traefik bỏ qua response đã có
