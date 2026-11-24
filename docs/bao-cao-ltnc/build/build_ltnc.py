@@ -57,6 +57,31 @@ body = cover + [FRONT('MỤC LỤC'), '<!--MUCLUC-->', FRONT('DANH SÁCH TỪ, K
 body += chapter1() + chapter2() + chapter3() + chapter4() + chapter5() + references()
 newbody = ''.join(body)
 
+# Cùng cách xử lý với báo cáo Triển khai phần mềm (bc_build.py)
+def _ngat_chuoi_dai(body):
+    """Đoạn căn đều 2 bên có URL/đường dẫn dài: Word không ngắt được giữa chuỗi nên kéo giãn khoảng trắng của dòng
+    (chữ cách nhau quá xa). Chèn zero-width space sau / . - _ trong chuỗi từ 25 ký tự để Word được xuống dòng ở đó;
+    ký tự này không hiện ra. Không đụng bảng, khối code, URL của hyperlink (nằm ở rels)."""
+    def tach(m):
+        w = m.group(0)
+        return re.sub(r'([/._-])(?=[^\s])', '\\1\u200b', w) if len(w) >= 25 or (len(w) >= 16 and '/' in w) else w
+    def para(m):
+        p = m.group(0)
+        if not re.search(r'<w:pStyle w:val="(RMSBody|RMSList)"/>', p):
+            return p
+        chu = ''.join(re.findall(r'<w:t(?: [^>]*)?>([^<]*)</w:t>', p))
+        p = re.sub(r'(<w:t(?: [^>]*)?>)([^<]*)(</w:t>)', lambda t: t.group(1) + re.sub(r'\S{16,}', tach, t.group(2)) + t.group(3), p)
+        if not re.search(r'\S{25,}', chu):
+            return p
+        # Đoạn có chuỗi dài: căn trái để dòng không bị giãn (jc đứng trước rPr trong pPr theo thứ tự của OOXML)
+        p = re.sub(r'<w:jc w:val="\w+"/>', '', p, count=1)
+        ppr = re.search(r'<w:pPr>.*?</w:pPr>', p, re.S).group(0)
+        moi = ppr.replace('<w:rPr>', '<w:jc w:val="left"/><w:rPr>', 1) if '<w:rPr>' in ppr else ppr.replace('</w:pPr>', '<w:jc w:val="left"/></w:pPr>')
+        return p.replace(ppr, moi, 1)
+    parts = re.split(r'(<w:tbl>.*?</w:tbl>)', body, flags=re.S)
+    return ''.join(x if x.startswith('<w:tbl>') else re.sub(r'<w:p[ >].*?</w:p>', para, x, flags=re.S) for x in parts)
+newbody = _ngat_chuoi_dai(newbody)
+
 # ---------- Bookmark cho chú thích; danh sách hình, bảng dạng bảng có cột trang (PAGEREF)
 dm = {'RMSFigureCaption': [], 'RMSTableCaption': []}
 def _bm(m):
