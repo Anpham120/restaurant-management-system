@@ -1,0 +1,12 @@
+# Cấu hình k3s cụm quản lý (máy 2). k3s đọc file này khi khởi động; tương đương cờ dòng lệnh.
+# File kubeconfig chỉ root đọc được (mặc định 0644 ai cũng đọc được = ai cũng điều khiển được cụm)
+write-kubeconfig-mode: "0600"
+# Tên node dễ đọc thay cho hostname ngẫu nhiên của nhà cung cấp
+node-name: may2-mgmt
+# Thêm IP đường hầm vào chứng chỉ của API server, để sau này gọi API qua 10.10.0.2 không bị lỗi TLS
+tls-san:
+  - 10.10.0.2
+# Máy 2 dùng nginx máy chủ làm cửa vào: không cần Traefik; ServiceLB sẽ chiếm cổng 80/443 nên tắt
+disable:
+  - traefik
+  - servicelb
