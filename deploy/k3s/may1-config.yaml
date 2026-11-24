@@ -1,0 +1,15 @@
+# Cấu hình k3s cụm production (máy 1). Máy này còn chạy Docker (production cũ, dự án order) song song.
+write-kubeconfig-mode: "0600"
+node-name: may1-prod
+# IP đường hầm trong chứng chỉ API server: Argo CD ở máy 2 gọi API qua 10.10.0.1:6443
+tls-san:
+  - 10.10.0.1
+# ServiceLB chiếm cổng 80/443 của máy (đang thuộc nginx máy chủ) nên tắt; Traefik giữ lại làm Ingress nội bộ
+disable:
+  - servicelb
+kubelet-arg:
+  # Giữ RAM cho hệ điều hành + Docker (1 GiB) và cho chính k3s (512 MiB): pod không được dùng phần này
+  - "system-reserved=memory=1Gi"
+  - "kube-reserved=memory=512Mi"
+  # Khi RAM trống < 300 MiB hoặc ổ còn < 10% thì đuổi bớt pod, bảo vệ máy khỏi treo
+  - "eviction-hard=memory.available<300Mi,nodefs.available<10%,imagefs.available<10%"
