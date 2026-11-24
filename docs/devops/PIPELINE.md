@@ -18,7 +18,7 @@ cho địa chỉ WireGuard của máy kia.
 Nguyên tắc: không có bước làm tay; image build một lần, staging và production kéo đúng image đó; Jenkins không có quyền
 và không giữ secret của production; muốn đổi production chỉ có một đường là sửa Git.
 
-## 2. Luồng từ commit tới production (~6 phút)
+## 2. Luồng từ commit tới production (~6–8 phút)
 
 | Nhánh / loại commit | Pipeline (`Jenkinsfile`) | Khi đạt |
 |---|---|---|
