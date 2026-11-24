@@ -186,7 +186,8 @@ def chapter3():
             L('shift_assignments lưu giờ bắt đầu, kết thúc thực tế của ca tại ngày làm, để đổi giờ ca mẫu không làm sai lịch đã phân.'),
             H3('3.1.4. Sơ đồ thực thể liên kết (ERD) và database diagram'),
             B('Sơ đồ dùng ký hiệu chân chim: đầu một gạch là phía "một", đầu chạc ba là phía "nhiều", vòng tròn là quan hệ tùy chọn (cột khóa ngoại cho phép NULL). Mỗi bảng ghi đủ cột và kiểu dữ liệu PostgreSQL; biểu tượng chìa khóa là khóa chính, biểu tượng mắt xích là khóa ngoại, NN là bắt buộc (NOT NULL).'),
-            B('49 bảng được chia thành 9 cụm nghiệp vụ, mỗi cụm 2 đến 8 bảng. Bảng của cụm khác mà cụm đang xét trỏ tới được vẽ thêm, chỉ có khóa chính. Các cột ghi người thao tác (created_by_id, confirmed_by_id...) tới employees có ở hầu hết bảng nên chỉ vẽ đường nối trong cụm Nhân sự; đầy đủ mọi quan hệ ở bảng quan hệ của mục 3.1.2.')]
+            B('49 bảng được chia thành 9 cụm nghiệp vụ, mỗi cụm 2 đến 8 bảng. Bảng của cụm khác mà cụm đang xét trỏ tới được vẽ thêm, chỉ có khóa chính. Các cột ghi người thao tác (created_by_id, confirmed_by_id...) tới employees có ở hầu hết bảng nên chỉ vẽ đường nối trong cụm Nhân sự; đầy đủ mọi quan hệ ở bảng quan hệ của mục 3.1.2.'),
+            B('Mỗi quan hệ là một đường riêng, đi từ cột khóa ngoại tới khóa chính mà nó tham chiếu, không đi chung đoạn với đường khác và không đi qua sau bảng. Hai bảng đặt ở cột kề nhau thì đường đi thẳng qua khe giữa; hai bảng cách xa nhau thì đường đi vòng phía dưới sơ đồ. Sơ đồ nằm ngang được xoay dọc trang để chữ đủ to.')]
     for key, name in DBD:
         xoay = f'{E}/dbml-{key}-xoay.png'      # sơ đồ dàn ngang: xoay dọc trang cho chữ to hơn
         out.append(fig(xoay if os.path.exists(xoay) else f'{E}/dbml-{key}.png', f'ERD {name}', maxw=5760000, maxh=7800000))
