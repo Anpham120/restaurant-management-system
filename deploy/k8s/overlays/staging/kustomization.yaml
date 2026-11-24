@@ -22,9 +22,9 @@ configMapGenerator:
       - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
 images:
   - name: ghcr.io/anpham120/rms-app
-    newTag: 454b860b4402949ce593f8618413eb2befcba626
+    newTag: 808fbc581f970b03ec84f5a97005cca11ee1026d
   - name: ghcr.io/anpham120/rms-web
-    newTag: 454b860b4402949ce593f8618413eb2befcba626
+    newTag: 808fbc581f970b03ec84f5a97005cca11ee1026d
 # Staging nhỏ hơn: 1 bản app, 1 bản web, ổ DB 2 GiB
 patches:
   - target: {kind: Rollout, name: rms-app}
