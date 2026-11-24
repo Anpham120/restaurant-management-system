@@ -10,5 +10,6 @@ Mô tả đủ ở đầu mỗi file.
 | `release/` | `auto-merge.sh` (feature → develop → main), `tag-release.sh`, `push-release.sh` (đẩy image lên GHCR), `bump-image.sh` (ghi tag vào overlay), `check-release-images.sh`, `argocd-wait.sh` (chờ Argo CD triển khai xong) | Jenkins |
 | `backup/` | `backup-db.sh` (pg_dump), `offsite-backup.sh` (mã hóa, gửi ra ngoài), `backup-sealed-key.sh` (khóa Sealed Secrets), `backup-metric.sh` (ghi số liệu cho Prometheus), `restore-db.sh` (khôi phục, XÓA dữ liệu hiện tại) | cron máy 1, người vận hành |
 | `ops/` | `argocd-webhook-metric.sh` (đếm webhook bị từ chối), `ghcr-cleanup.py` (giữ 20 image gần nhất và tag đang chạy), `set-github-oauth.sh` (OAuth Grafana/Jenkins, nhập secret ẩn) | cron máy 2, Jenkins, người vận hành |
+| `demo/` | `kiem-tra.sh` (kiểm tra trước buổi demo, chạy trên máy 1), `doi-chu.sh` (thay đổi nhìn thấy được đi tới production, `--tra-lai` để đưa về cũ), `gay-loi.sh` (commit sai cố ý để pipeline chặn), `don-dep.sh` (xóa nhánh demo) | người trình bày |
 
 Script cho cụm Kubernetes (seal secret, webhook Argo CD) nằm ở `deploy/k8s/scripts/`.
