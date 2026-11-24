@@ -1,0 +1,439 @@
+# SINH TỰ ĐỘNG bởi gen_alerts_test.py, không sửa tay. Chạy: bash scripts/demo/test-canh-bao.sh
+rule_files:
+- ../alerts.yml
+evaluation_interval: 1m
+tests:
+- name: 'Watchdog bật: luôn bật'
+  interval: 1m
+  input_series:
+  - series: khong_co{}
+    values: '0'
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: Watchdog
+    exp_alerts:
+    - exp_labels:
+        severity: none
+      exp_annotations:
+        summary: Nhịp tim giám sát (luôn bật, không phải sự cố)
+- name: 'AppDown bật: app không trả số liệu 1 phút'
+  interval: 1m
+  input_series:
+  - series: up{job="rms-app",instance="10.10.0.1:9181"}
+    values: '0x10'
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: AppDown
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+      exp_annotations:
+        summary: Ứng dụng RMS không phản hồi
+        description: Prometheus không lấy được số liệu từ app trong hơn 1 phút.
+- name: 'HighErrorRate bật: 50% request lỗi 5xx'
+  interval: 1m
+  input_series:
+  - series: http_server_requests_seconds_count{status="500",uri="/api/orders"}
+    values: 0+10x20
+  - series: http_server_requests_seconds_count{status="200",uri="/api/orders"}
+    values: 0+10x20
+  alert_rule_test:
+  - eval_time: 12m
+    alertname: HighErrorRate
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: Tỉ lệ lỗi 5xx trên 5%
+        description: Hơn 5% request trả lỗi máy chủ trong 5 phút gần nhất.
+- name: 'JvmHeapHigh bật: heap 95%, bỏ vùng max = -1'
+  interval: 1m
+  input_series:
+  - series: jvm_memory_used_bytes{area="heap",id="G1 Old Gen",instance="pod-a"}
+    values: 95x20
+  - series: jvm_memory_max_bytes{area="heap",id="G1 Old Gen",instance="pod-a"}
+    values: 100x20
+  - series: jvm_memory_used_bytes{area="heap",id="G1 Eden Space",instance="pod-a"}
+    values: '0x20'
+  - series: jvm_memory_max_bytes{area="heap",id="G1 Eden Space",instance="pod-a"}
+    values: -1x20
+  alert_rule_test:
+  - eval_time: 12m
+    alertname: JvmHeapHigh
+    exp_alerts:
+    - exp_labels:
+        instance: pod-a
+        severity: warning
+      exp_annotations:
+        summary: Bộ nhớ heap JVM trên 90%
+        description: App có thể sắp hết bộ nhớ (rò rỉ hoặc tải cao).
+- name: 'DatabaseUnreachable bật: Hikari hết thời gian chờ kết nối'
+  interval: 1m
+  input_series:
+  - series: hikaricp_connections_timeout_total{job="rms-app",instance="10.10.0.1:9181"}
+    values: 0 0 1 2 3 4 5 6
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: DatabaseUnreachable
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+      exp_annotations:
+        summary: Ứng dụng không kết nối được database
+        description: 'Hikari không lấy được kết nối PostgreSQL trong 2 phút gần nhất: kiểm container db (docker ps), mật khẩu DB_APP_PASSWORD, số kết nối.'
+- name: 'SiteDown bật: domain thật lỗi 2 phút'
+  interval: 1m
+  input_series:
+  - series: probe_success{job="site",instance="https://rms.atlasplatform12.tech/"}
+    values: '0x10'
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: SiteDown
+    exp_alerts:
+    - exp_labels:
+        job: site
+        instance: https://rms.atlasplatform12.tech/
+        severity: critical
+      exp_annotations:
+        summary: Người dùng không vào được https://rms.atlasplatform12.tech/
+        description: 'Gọi qua domain thật (nginx + HTTPS) thất bại hơn 2 phút: database chết (health DOWN), nginx, DNS hoặc chứng chỉ lỗi.'
+- name: 'CertExpiringSoon bật: chứng chỉ còn khoảng 9 ngày'
+  interval: 1m
+  input_series:
+  - series: probe_ssl_earliest_cert_expiry{job="site",instance="https://rms.atlasplatform12.tech/"}
+    values: 864000x200
+  alert_rule_test:
+  - eval_time: 2h
+    alertname: CertExpiringSoon
+    exp_alerts:
+    - exp_labels:
+        instance: https://rms.atlasplatform12.tech/
+        severity: warning
+      exp_annotations:
+        summary: Chứng chỉ HTTPS còn dưới 14 ngày
+        description: 'certbot chưa gia hạn được chứng chỉ của https://rms.atlasplatform12.tech/ (rms: máy 1; argocd, grafana, jenkins: máy 2). Kiểm: sudo certbot renew --dry-run; systemctl status certbot.timer'
+- name: 'ProbeExporterDown bật: blackbox không phản hồi'
+  interval: 1m
+  input_series:
+  - series: up{job="site",instance="https://rms.atlasplatform12.tech/"}
+    values: '0x10'
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: ProbeExporterDown
+    exp_alerts:
+    - exp_labels:
+        job: site
+        instance: https://rms.atlasplatform12.tech/
+        severity: warning
+      exp_annotations:
+        summary: blackbox-exporter không phản hồi
+        description: Không kiểm được domain từ phía người dùng (SiteDown sẽ không báo được).
+- name: 'BackupStale bật: bản daily cũ quá 26 giờ'
+  interval: 1m
+  input_series:
+  - series: rms_backup_last_success_timestamp_seconds{kind="daily",instance="may1-prod"}
+    values: '0x1700'
+  alert_rule_test:
+  - eval_time: 27h
+    alertname: BackupStale
+    exp_alerts:
+    - exp_labels:
+        kind: daily
+        instance: may1-prod
+        severity: critical
+      exp_annotations:
+        summary: Quá 26 giờ không có bản sao lưu database mới
+        description: Cron backup-db.sh daily (02:30 giờ VN) không chạy hoặc lỗi. Xem /home/coder/rms-backups/backup.log
+- name: 'OffsiteBackupStale bật: chưa từng có bản offsite (absent)'
+  interval: 1m
+  input_series:
+  - series: rms_backup_last_success_timestamp_seconds{kind="daily",instance="may1-prod"}
+    values: '0x60'
+  alert_rule_test:
+  - eval_time: 40m
+    alertname: OffsiteBackupStale
+    exp_alerts:
+    - exp_labels:
+        kind: offsite
+        severity: warning
+      exp_annotations:
+        summary: Quá 26 giờ chưa gửi bản sao lưu ra ngoài máy chủ
+        description: 'Cron offsite-backup.sh (02:35 giờ VN) lỗi: thiếu khóa, token Telegram hoặc mạng. Xem /home/coder/rms-backups/backup.log'
+- name: 'WalArchivingFailing bật: lần đẩy WAL gần nhất lỗi'
+  interval: 1m
+  input_series:
+  - series: cnpg_pg_stat_archiver_last_failed_time{job="cnpg",instance="10.10.0.1:9182"}
+    values: 200x10
+  - series: cnpg_pg_stat_archiver_last_archived_time{job="cnpg",instance="10.10.0.1:9182"}
+    values: 100x10
+  alert_rule_test:
+  - eval_time: 7m
+    alertname: WalArchivingFailing
+    exp_alerts:
+    - exp_labels:
+        job: cnpg
+        instance: 10.10.0.1:9182
+        severity: critical
+      exp_annotations:
+        summary: Đẩy WAL lên kho sao lưu bị lỗi
+        description: 'PostgreSQL không đẩy được WAL lên SeaweedFS (máy 2): không khôi phục được tới thời điểm gần nhất. Xem kubectl -n rms-prod logs rms-db-1 -c plugin-barman-cloud.'
+- name: 'PostgresExporterDown bật: mất số liệu CloudNativePG'
+  interval: 1m
+  input_series:
+  - series: up{job="cnpg",instance="10.10.0.1:9182"}
+    values: '0x10'
+  alert_rule_test:
+  - eval_time: 7m
+    alertname: PostgresExporterDown
+    exp_alerts:
+    - exp_labels:
+        job: cnpg
+        instance: 10.10.0.1:9182
+        severity: warning
+      exp_annotations:
+        summary: Mất số liệu PostgreSQL
+        description: Không đọc được số liệu CloudNativePG (cổng 9182 máy 1), không theo dõi được sao lưu WAL.
+- name: 'SealedKeyBackupStale bật: khóa sealed cũ quá 8 ngày'
+  interval: 1m
+  input_series:
+  - series: rms_backup_last_success_timestamp_seconds{kind="sealed-key",instance="may1-prod"}
+    values: '0x11800'
+  alert_rule_test:
+  - eval_time: 195h
+    alertname: SealedKeyBackupStale
+    exp_alerts:
+    - exp_labels:
+        kind: sealed-key
+        instance: may1-prod
+        severity: warning
+      exp_annotations:
+        summary: Quá 8 ngày chưa sao lưu khóa Sealed Secrets
+        description: Cron backup-sealed-key.sh (Chủ nhật 02:40 giờ VN, máy 1) không chạy hoặc lỗi. Xem /home/coder/rms-backups/backup.log
+- name: 'ArgoCDDown bật: mất số liệu Argo CD'
+  interval: 1m
+  input_series:
+  - series: up{job="argocd",instance="10.43.0.82:8082"}
+    values: '0x10'
+  alert_rule_test:
+  - eval_time: 7m
+    alertname: ArgoCDDown
+    exp_alerts:
+    - exp_labels:
+        job: argocd
+        instance: 10.43.0.82:8082
+        severity: critical
+      exp_annotations:
+        summary: Mất số liệu Argo CD
+        description: 'Không đọc được application controller (10.43.0.82:8082, cụm máy 2): Argo CD có thể đã ngừng đồng bộ.'
+- name: 'ArgoAppOutOfSync bật: lệch Git 15 phút'
+  interval: 1m
+  input_series:
+  - series: argocd_app_info{name="rms-prod",sync_status="OutOfSync",health_status="Healthy"}
+    values: 1x20
+  alert_rule_test:
+  - eval_time: 17m
+    alertname: ArgoAppOutOfSync
+    exp_alerts:
+    - exp_labels:
+        name: rms-prod
+        sync_status: OutOfSync
+        health_status: Healthy
+        severity: warning
+      exp_annotations:
+        summary: rms-prod lệch Git quá 15 phút
+        description: 'Argo CD không đưa rms-prod về đúng Git. Xem giao diện Argo CD hoặc: kubectl -n argocd get application rms-prod'
+- name: 'ArgoAppUnhealthy bật: Degraded 15 phút'
+  interval: 1m
+  input_series:
+  - series: argocd_app_info{name="rms-prod",sync_status="Synced",health_status="Degraded"}
+    values: 1x20
+  alert_rule_test:
+  - eval_time: 17m
+    alertname: ArgoAppUnhealthy
+    exp_alerts:
+    - exp_labels:
+        name: rms-prod
+        sync_status: Synced
+        health_status: Degraded
+        severity: warning
+      exp_annotations:
+        summary: rms-prod không Healthy quá 15 phút (Degraded)
+        description: Tài nguyên của rms-prod hỏng hoặc kẹt Progressing (Rollout không qua kiểm tra, pod lỗi).
+- name: 'ArgoSyncFailed bật: một lần đồng bộ thất bại'
+  interval: 1m
+  input_series:
+  - series: argocd_app_sync_total{name="rms-prod",phase="Failed"}
+    values: 0 0 1 1 1
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: ArgoSyncFailed
+    exp_alerts:
+    - exp_labels:
+        name: rms-prod
+        phase: Failed
+        severity: warning
+      exp_annotations:
+        summary: Argo CD đồng bộ rms-prod thất bại
+        description: Lần đồng bộ gần đây lỗi (manifest sai, thiếu quyền, webhook admission từ chối). Argo CD sẽ thử lại.
+- name: 'ArgoWebhookRejected bật: GitHub gửi webhook sai chữ ký'
+  interval: 1m
+  input_series:
+  - series: rms_argocd_webhook_rejected_10m{instance="may2-mgmt"}
+    values: 2x10
+  - series: rms_argocd_webhook_check_timestamp_seconds{instance="may2-mgmt"}
+    values: 0+60x10
+  alert_rule_test:
+  - eval_time: 7m
+    alertname: ArgoWebhookRejected
+    exp_alerts:
+    - exp_labels:
+        instance: may2-mgmt
+        severity: warning
+      exp_annotations:
+        summary: Webhook GitHub tới Argo CD bị từ chối hoặc không kiểm được
+        description: 'Sai secret HMAC (sửa: chạy lại set-argocd-webhook-secret.sh trong terminal riêng rồi cập nhật webhook trên GitHub), hoặc cron argocd-webhook-metric.sh máy 2 ngừng.'
+- name: 'ToolDown bật: Grafana không trả 200'
+  interval: 1m
+  input_series:
+  - series: probe_success{job="tool",instance="https://grafana.atlasplatform12.tech/api/health"}
+    values: '0x10'
+  alert_rule_test:
+  - eval_time: 7m
+    alertname: ToolDown
+    exp_alerts:
+    - exp_labels:
+        job: tool
+        instance: https://grafana.atlasplatform12.tech/api/health
+        severity: warning
+      exp_annotations:
+        summary: 'Công cụ không truy cập được: https://grafana.atlasplatform12.tech/api/health'
+        description: Argo CD, Grafana hoặc Jenkins (máy 2) không trả 200 qua HTTPS. Production không bị ảnh hưởng.
+- name: 'NodeExporterDown bật: mất số liệu máy 2'
+  interval: 1m
+  input_series:
+  - series: up{job="node",instance="may2-mgmt"}
+    values: '0x10'
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: NodeExporterDown
+    exp_alerts:
+    - exp_labels:
+        job: node
+        instance: may2-mgmt
+        severity: warning
+      exp_annotations:
+        summary: Mất số liệu máy chủ may2-mgmt
+        description: node-exporter không phản hồi, không theo dõi được CPU, RAM, ổ đĩa.
+- name: 'DiskAlmostFull bật: đĩa còn 10%'
+  interval: 1m
+  input_series:
+  - series: node_filesystem_avail_bytes{mountpoint="/",instance="may1-prod",fstype="ext4"}
+    values: 10x10
+  - series: node_filesystem_size_bytes{mountpoint="/",instance="may1-prod",fstype="ext4"}
+    values: 100x10
+  alert_rule_test:
+  - eval_time: 7m
+    alertname: DiskAlmostFull
+    exp_alerts:
+    - exp_labels:
+        mountpoint: /
+        instance: may1-prod
+        fstype: ext4
+        severity: critical
+      exp_annotations:
+        summary: Ổ đĩa may1-prod còn dưới 15%
+        description: Phân vùng gốc sắp đầy, pipeline và database có thể lỗi.
+- name: 'HighMemory bật: RAM dùng 95%'
+  interval: 1m
+  input_series:
+  - series: node_memory_MemAvailable_bytes{instance="may1-prod"}
+    values: 5x20
+  - series: node_memory_MemTotal_bytes{instance="may1-prod"}
+    values: 100x20
+  alert_rule_test:
+  - eval_time: 12m
+    alertname: HighMemory
+    exp_alerts:
+    - exp_labels:
+        instance: may1-prod
+        severity: warning
+      exp_annotations:
+        summary: RAM may1-prod trên 90%
+        description: RAM khả dụng thấp liên tục trong 10 phút.
+- name: 'HighCpu bật: CPU rảnh 5%'
+  interval: 1m
+  input_series:
+  - series: node_cpu_seconds_total{instance="may1-prod",cpu="0",mode="idle"}
+    values: 0+3x20
+  alert_rule_test:
+  - eval_time: 16m
+    alertname: HighCpu
+    exp_alerts:
+    - exp_labels:
+        instance: may1-prod
+        severity: warning
+      exp_annotations:
+        summary: CPU may1-prod trên 90%
+        description: CPU quá tải liên tục trong 10 phút.
+- name: 'AppDown không bật: còn 1 pod trả số liệu'
+  interval: 1m
+  input_series:
+  - series: up{job="rms-app",instance="pod-a"}
+    values: '0x10'
+  - series: up{job="rms-app",instance="pod-b"}
+    values: 1x10
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: AppDown
+    exp_alerts: []
+- name: 'SiteDown không bật: lỗi 1 phút rồi tự hết (chưa đủ 2 phút)'
+  interval: 1m
+  input_series:
+  - series: probe_success{job="site",instance="https://rms.atlasplatform12.tech/"}
+    values: 0 0 1 1 1 1
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: SiteDown
+    exp_alerts: []
+- name: 'HighErrorRate không bật: 1% lỗi'
+  interval: 1m
+  input_series:
+  - series: http_server_requests_seconds_count{status="500",uri="/api/orders"}
+    values: 0+1x20
+  - series: http_server_requests_seconds_count{status="200",uri="/api/orders"}
+    values: 0+99x20
+  alert_rule_test:
+  - eval_time: 12m
+    alertname: HighErrorRate
+    exp_alerts: []
+- name: 'BackupStale không bật: sao lưu đều đặn'
+  interval: 1m
+  input_series:
+  - series: rms_backup_last_success_timestamp_seconds{kind="daily",instance="may1-prod"}
+    values: 0+60x1700
+  alert_rule_test:
+  - eval_time: 27h
+    alertname: BackupStale
+    exp_alerts: []
+- name: 'WalArchivingFailing không bật: đã đẩy lại thành công sau lần lỗi'
+  interval: 1m
+  input_series:
+  - series: cnpg_pg_stat_archiver_last_failed_time{job="cnpg",instance="10.10.0.1:9182"}
+    values: 100x10
+  - series: cnpg_pg_stat_archiver_last_archived_time{job="cnpg",instance="10.10.0.1:9182"}
+    values: 200x10
+  alert_rule_test:
+  - eval_time: 7m
+    alertname: WalArchivingFailing
+    exp_alerts: []
+- name: 'DiskAlmostFull không bật: đĩa còn 64%'
+  interval: 1m
+  input_series:
+  - series: node_filesystem_avail_bytes{mountpoint="/",instance="may1-prod",fstype="ext4"}
+    values: 64x10
+  - series: node_filesystem_size_bytes{mountpoint="/",instance="may1-prod",fstype="ext4"}
+    values: 100x10
+  alert_rule_test:
+  - eval_time: 7m
+    alertname: DiskAlmostFull
+    exp_alerts: []
