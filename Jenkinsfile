@@ -124,6 +124,8 @@ pipeline {
                         sh '''
                             # Volume cache Maven mới tạo thuộc root, đổi quyền để user Jenkins ghi được
                             docker run --rm -v rms-m2-cache:/m2 alpine:3.20 chown "$(id -u):$(id -g)" /m2
+                            # clean: xóa target/ của lần trước trong workspace, để báo cáo test không còn file của lớp test đã đổi
+                            # tên hay chuyển package (trước đây Jenkins đếm 109 test trong khi Maven chạy 92).
                             # Giới hạn tài nguyên: máy 2 (4 CPU, 8 GB) chạy chung k3s (Argo CD, staging) và giám sát. Tối đa 2 CPU,
                             # 2,5 GB; cpu-shares 512: khi tranh CPU, các dịch vụ đang chạy được ưu tiên gấp đôi.
                             docker run --rm --network host --cpus=2 --cpu-shares=512 --memory=2560m \
@@ -132,7 +134,7 @@ pipeline {
                               -e HOME=/tmp -v rms-m2-cache:/tmp/.m2 \
                               -e TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$DOCKER_SOCK_HOST" \
                               maven:3.9-eclipse-temurin-25 \
-                              mvn -B -ntp -Dmaven.repo.local=/tmp/.m2/repository verify
+                              mvn -B -ntp -Dmaven.repo.local=/tmp/.m2/repository clean verify
                         '''
                     }
                     post {
