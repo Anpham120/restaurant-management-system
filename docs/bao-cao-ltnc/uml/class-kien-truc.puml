@@ -3,9 +3,8 @@
 skinparam style strictuml
 hide empty members
 skinparam linetype ortho
-left to right direction
-skinparam nodesep 40
-skinparam ranksep 55
+skinparam nodesep 70
+skinparam ranksep 80
 title Biểu đồ lớp kiến trúc: giao tiếp giữa các module nghiệp vụ (Spring Modulith)
 
 package "finance" as finance {
@@ -18,63 +17,61 @@ package "order" as order {
     + getServedItems(orderId)
     + closeOrderAndReleaseTable(orderId, actorId)
   }
+  class OrderBillingApiImpl
   interface OrderInvoiceAccess <<interface>> <<khai báo, finance cài>> {
     + findInvoiceStatus(orderId)
     + reopenInvoiceForMoreOrdering(orderId)
   }
-  class OrderBillingApiImpl
   class OrderServiceImpl
-  class KitchenServiceImpl
-  class QuotaUsageCounterImpl
   class OrderItemStockFlagsImpl
+  class QuotaUsageCounterImpl
 }
 package "inventory" as inventory {
   interface KitchenStockAllocator <<interface>> <<API module>> {
     + reserveIngredientsForItem(...)
     + consumeReservationsForCooking(orderItemId)
   }
+  class KitchenStockAllocatorImpl
   interface OrderItemStockFlags <<interface>> <<khai báo, order cài>> {
     + markStockException(orderItemIds)
   }
-  class KitchenStockAllocatorImpl
-  class KitchenStockServiceImpl
 }
 package "menu" as menu {
   interface DailyMenuLookup <<interface>> <<API module>> {
     + findOrderableDish(dailyMenuItemId)
     + getRecipeLines(dailyMenuItemId)
   }
+  class DailyMenuLookupImpl
   interface QuotaUsageCounter <<interface>> <<khai báo, order cài>> {
     + countUsedPortions(dailyMenuItemId)
   }
-  class DailyMenuLookupImpl
-  class DailyMenuServiceImpl
 }
-' dùng API của module khác (phụ thuộc xuôi chiều)
+finance -[hidden]down- order
+order -[hidden]down- inventory
+inventory -[hidden]right- menu
+
+' gọi API của module phía dưới (phụ thuộc xuôi chiều)
 InvoiceServiceImpl ..> OrderBillingApi
+OrderServiceImpl ..> OrderInvoiceAccess
 OrderServiceImpl ..> KitchenStockAllocator
-KitchenServiceImpl ..> KitchenStockAllocator
 OrderServiceImpl ..> DailyMenuLookup
 KitchenStockAllocatorImpl ..> DailyMenuLookup
-OrderServiceImpl ..> OrderInvoiceAccess
-DailyMenuServiceImpl ..> QuotaUsageCounter
-KitchenStockServiceImpl ..> OrderItemStockFlags
-
-' cài đặt interface (kể cả đảo phụ thuộc)
+' cài đặt interface; ba interface «khai báo, ... cài» là chỗ đảo phụ thuộc
 OrderBillingApi <|.. OrderBillingApiImpl
-KitchenStockAllocator <|.. KitchenStockAllocatorImpl
-DailyMenuLookup <|.. DailyMenuLookupImpl
 OrderInvoiceAccess <|.. OrderInvoiceAccessImpl
-QuotaUsageCounter <|.. QuotaUsageCounterImpl
+KitchenStockAllocator <|.. KitchenStockAllocatorImpl
 OrderItemStockFlags <|.. OrderItemStockFlagsImpl
-
+DailyMenuLookup <|.. DailyMenuLookupImpl
+QuotaUsageCounter <|.. QuotaUsageCounterImpl
 
 legend bottom left
   Mỗi module chia tầng bên trong: controller -> service (interface + impl) -> repository -> entity.
   Package con là nội bộ; module khác chỉ dùng interface ở package gốc («API module»).
-  Phụ thuộc xuôi chiều, không vòng: finance -> order -> inventory -> menu. Mọi module dùng chung security
-  (CurrentUser, JWT) và common (ApiResponse, xử lý lỗi, RequestKeys); frontend gọi backend qua REST/JSON.
-  Khi module phía dưới cần dữ liệu của module phía trên thì đảo phụ thuộc: module dưới khai báo
-  interface («khai báo, ... cài»), module trên cài đặt. ModularityTest kiểm tra các luật này mỗi lần build.
+  Phụ thuộc xuôi chiều, không vòng: finance -> order -> inventory -> menu.
+  Khi module phía dưới cần dữ liệu của module phía trên thì đảo phụ thuộc: module dưới khai báo interface
+  («khai báo, ... cài»), module trên cài đặt. Ví dụ menu gọi QuotaUsageCounter (DailyMenuServiceImpl)
+  để biết số suất đã nhận, inventory gọi OrderItemStockFlags (KitchenStockServiceImpl) để đánh dấu món thiếu hàng.
+  Mọi module dùng chung security (CurrentUser, JWT) và common (ApiResponse, xử lý lỗi, RequestKeys).
+  ModularityTest kiểm tra các luật này mỗi lần build.
 endlegend
 @enduml

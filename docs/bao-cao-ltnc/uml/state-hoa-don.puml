@@ -6,15 +6,20 @@ skinparam state {
 }
 hide empty description
 title Biểu đồ trạng thái: hóa đơn (invoices.status)
+state "Chưa thanh toán" as CHUA {
+  state PAYMENT_PENDING
+  state DRAFT
+  PAYMENT_PENDING --> DRAFT : Mở lại hóa đơn\nhoặc khách gọi thêm món
+  DRAFT --> PAYMENT_PENDING : Chốt lại hóa đơn\n/ tính lại tổng tiền
+}
 [*] --> PAYMENT_PENDING : Thu ngân chốt hóa đơn\n[mọi món đã kết thúc,\ncó món SERVED, tổng > 0]
-PAYMENT_PENDING --> DRAFT : Mở lại hóa đơn\nhoặc khách gọi thêm món
-DRAFT --> PAYMENT_PENDING : Chốt lại hóa đơn\n/ tính lại tổng tiền
 PAYMENT_PENDING --> PAID : Thu tiền mặt đủ\nhoặc webhook SePay khớp\n/ đóng đơn, trả bàn
-DRAFT --> WAIVED : Quản lý miễn thu\nhoặc khách bỏ về [0 đồng]
-PAYMENT_PENDING --> WAIVED : Quản lý miễn thu\nhoặc khách bỏ về [0 đồng]
-DRAFT --> UNCOLLECTED : Khách bỏ về\n[còn tiền phải thu]
-PAYMENT_PENDING --> UNCOLLECTED : Khách bỏ về\n[còn tiền phải thu]
+CHUA --> WAIVED : Quản lý miễn thu\nhoặc khách bỏ về [0 đồng]
+CHUA --> UNCOLLECTED : Khách bỏ về\n[còn tiền phải thu]
 PAID --> [*]
 WAIVED --> [*]
 UNCOLLECTED --> [*]
+legend bottom
+  Chuyển trạng thái đi từ viền "Chưa thanh toán" áp dụng cho cả DRAFT và PAYMENT_PENDING.
+endlegend
 @enduml
