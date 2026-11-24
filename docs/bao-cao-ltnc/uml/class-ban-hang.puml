@@ -3,7 +3,9 @@
 skinparam style strictuml
 hide empty members
 title Biểu đồ lớp các tầng trong module order (gọi món, bếp)
-skinparam linetype ortho
+skinparam linetype polyline
+skinparam nodesep 60
+skinparam ranksep 70
 
 package "controller" {
   class OrderController <<RestController>> {
@@ -81,7 +83,6 @@ OrderServiceImpl --> OrderItemStatusChanger
 KitchenServiceImpl --> OrderItemStatusChanger
 OrderServiceImpl ..> CustomerOrderRepository
 OrderServiceImpl ..> OrderBatchRepository
-OrderServiceImpl ..> OrderItemRepository
 KitchenServiceImpl ..> OrderItemRepository
 OrderServiceImpl ..> DailyMenuLookup
 KitchenServiceImpl ..> KitchenStockAllocator
@@ -91,13 +92,8 @@ OrderItemRepository ..> OrderItem
 OrderBatch "1..*" --> "1" CustomerOrder : order
 OrderItem "1..*" --> "1" OrderBatch : batch
 OrderItem --> "1" OrderItemStatus : status
-note bottom of OrderItemRepository
-  findByIdForUpdate: @Lock(PESSIMISTIC_WRITE)
-  sinh SELECT ... FOR UPDATE, khóa dòng món
-  trong giao dịch trước khi đổi trạng thái.
-end note
-note right of OrderBatch
-  requestKey UNIQUE: gửi lặp cùng khóa
-  trả lại đợt cũ (chống gửi trùng).
-end note
+legend bottom
+  findByIdForUpdate: @Lock(PESSIMISTIC_WRITE) sinh SELECT ... FOR UPDATE, khóa dòng trong giao dịch trước khi đổi trạng thái.
+  OrderBatch.requestKey UNIQUE: gửi lặp cùng khóa thì trả lại đợt cũ (chống gửi trùng).
+endlegend
 @enduml

@@ -17,10 +17,9 @@ ACCEPTED --> CANCELLED : Hủy món chưa nấu\nhoặc khách bỏ về\n/ tr�
 COOKING --> CANCELLED : Hủy ngoại lệ (Quản lý)\nhoặc khách bỏ về
 READY --> CANCELLED : Hủy ngoại lệ (Quản lý)\nhoặc khách bỏ về
 SERVED --> CANCELLED : Hủy ngoại lệ (Quản lý)\n[hóa đơn còn nháp]
-note bottom of REJECTED
-  Mỗi lần đổi trạng thái qua OrderItemStatusChanger:
-  khóa dòng món (SELECT ... FOR UPDATE), kiểm trạng thái
-  nguồn hợp lệ, ghi order_item_events (người, lý do, lúc).
+legend bottom
+  Mỗi lần đổi trạng thái qua OrderItemStatusChanger: khóa dòng món (SELECT ... FOR UPDATE),
+  kiểm trạng thái nguồn hợp lệ, ghi order_item_events (người, lý do, lúc).
   Trigger trong database chặn chuyển trạng thái sai.
-end note
+endlegend
 @enduml

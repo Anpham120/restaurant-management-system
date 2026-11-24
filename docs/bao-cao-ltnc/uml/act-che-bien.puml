@@ -6,21 +6,17 @@ title Activity: bếp xử lý món và phục vụ
 |Bếp|
 start
 :Xem hàng đợi (PENDING trước);
-if (Nhận món?) then ([nhận])
-  |Hệ thống|
-  if (Còn suất và đủ nguyên liệu?) then ([đủ])
-    :Chiếm suất, giữ nguyên liệu\ntheo lô hết hạn sớm nhất (FEFO);
-    :Món ACCEPTED;
-  else ([thiếu])
-    :Món REJECTED kèm lý do;
-    stop
-  endif
-else ([từ chối])
-  |Bếp|
-  :Nhập lý do;
-  |Hệ thống|
-  :Món REJECTED (không chiếm suất);
+:Chọn nhận món, hoặc từ chối\nkèm lý do;
+|Hệ thống|
+if (Bếp từ chối?) then ([có])
+  :Món REJECTED kèm lý do\n(không chiếm suất);
   stop
+elseif (Còn suất và đủ nguyên liệu?) then ([không])
+  :Món REJECTED\n(thiếu suất hoặc nguyên liệu);
+  stop
+else ([có])
+  :Chiếm suất, giữ nguyên liệu\ntheo lô hết hạn sớm nhất (FEFO);
+  :Món ACCEPTED;
 endif
 |Bếp|
 :Bắt đầu nấu;

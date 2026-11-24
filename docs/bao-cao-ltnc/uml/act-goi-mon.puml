@@ -7,31 +7,34 @@ title Activity: mở bàn và gọi món
 start
 :Chọn bàn trống;
 |Hệ thống|
-if (Bàn đang dùng và không có khách?) then ([đúng])
+if (Bàn còn hoạt động và đang trống?) then ([đúng])
   :Tạo phiên OPEN + đơn OPEN,\nbàn OCCUPIED;
 else ([sai])
   :Trả 409 bàn đã có khách;
   stop
 endif
 |Phục vụ|
-while (Khách gọi món?) is ([có])
-  :Chọn món từ thực đơn hôm nay, số lượng, ghi chú;
+if (Khách gọi món?) then ([không])
+  :Trả bàn (khách không gọi món);
+  stop
+else ([có])
+endif
+repeat
+  :Chọn món từ thực đơn hôm nay,\nsố lượng, ghi chú;
   :Gửi đợt gọi món (requestKey);
   |Hệ thống|
   if (requestKey đã gửi?) then ([có])
     :Trả lại đợt cũ (replayed);
-  else ([chưa])
-    if (Món đang bán, không tạm dừng,\nđủ nguyên liệu?) then ([đúng])
-      :Tạo đợt + dòng món PENDING,\nchụp giá bán;
-      if (Vượt hạn mức suất?) then ([có])
-        :Kèm cảnh báo vượt hạn mức;
-      else ([không])
-      endif
-    else ([sai])
-      :Báo lỗi 409, không tạo đợt;
+  elseif (Món đang bán, không tạm dừng,\nđủ nguyên liệu?) then ([đúng])
+    :Tạo đợt + dòng món PENDING,\nchụp giá bán;
+    if (Vượt hạn mức suất?) then ([có])
+      :Kèm cảnh báo vượt hạn mức;
     endif
+  else ([sai])
+    :Báo lỗi 409, không tạo đợt;
   endif
   |Phục vụ|
-endwhile ([không])
+repeat while (Khách gọi thêm món?) is ([có])
+->[không];
 stop
 @enduml
