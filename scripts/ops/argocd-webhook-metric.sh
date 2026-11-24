@@ -7,11 +7,16 @@
 set -euo pipefail
 export KUBECONFIG=${KUBECONFIG:-$HOME/.kube/config}
 DIR=${METRICS_DIR:-/home/coder/rms-backups/metrics}
-logs=$(kubectl -n argocd logs deploy/argocd-server --since=10m 2>/dev/null)
+mkdir -p "$DIR"; chmod 755 "$DIR"
+# Máy chậm (đĩa máy 2 từng treo 24/11/2026) thì lần chạy trước chưa xong lần sau đã bắt đầu và hai lần giẫm file tạm của
+# nhau: chỉ cho một lần chạy một lúc, lần sau bỏ qua; file tạm mang PID; kubectl có giới hạn thời gian.
+exec 9>"$DIR/.argocd-webhook-metric.lock"
+flock -n 9 || { echo "$(date -u +%FT%TZ) lần chạy trước chưa xong, bỏ qua"; exit 0; }
+TMP="$DIR/rms_argocd_webhook.prom.$$"
+logs=$(kubectl --request-timeout=60s -n argocd logs deploy/argocd-server --since=10m 2>/dev/null)
 rejected=$(printf '%s\n' "$logs" | grep -c 'HMAC verification failed' || true)
 handled=$(printf '%s\n' "$logs" | grep -c 'Webhook handler completed' || true)
-mkdir -p "$DIR"; chmod 755 "$DIR"
-cat > "$DIR/rms_argocd_webhook.prom.tmp" <<METRIC
+cat > "$TMP" <<METRIC
 # HELP rms_argocd_webhook_rejected_10m Số webhook GitHub Argo CD từ chối (sai HMAC) trong 10 phút gần nhất.
 # TYPE rms_argocd_webhook_rejected_10m gauge
 rms_argocd_webhook_rejected_10m $rejected
@@ -22,5 +27,5 @@ rms_argocd_webhook_handled_10m $handled
 # TYPE rms_argocd_webhook_check_timestamp_seconds gauge
 rms_argocd_webhook_check_timestamp_seconds $(date +%s)
 METRIC
-chmod 644 "$DIR/rms_argocd_webhook.prom.tmp"
-mv "$DIR/rms_argocd_webhook.prom.tmp" "$DIR/rms_argocd_webhook.prom"
+chmod 644 "$TMP"
+mv "$TMP" "$DIR/rms_argocd_webhook.prom"
