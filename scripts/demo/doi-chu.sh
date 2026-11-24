@@ -19,7 +19,7 @@ for a in "$@"; do
   esac
 done
 
-cd "$(git rev-parse --show-toplevel)"
+cd "$(dirname "$(readlink -f "$0")")/../.."   # gốc repo, chạy từ thư mục nào cũng được
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "Cây làm việc còn thay đổi chưa commit. Commit hoặc stash trước khi demo." >&2; exit 1
 fi
