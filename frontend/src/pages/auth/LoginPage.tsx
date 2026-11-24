@@ -56,7 +56,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout title="Đăng nhập" onSubmit={submit}
+    <AuthLayout title="Đăng nhập - Nhóm 1" onSubmit={submit}
                 foot="Quên mật khẩu? Nhờ quản lý đặt lại.">
       <div className="field">
         <label htmlFor="username">Tên đăng nhập</label>
