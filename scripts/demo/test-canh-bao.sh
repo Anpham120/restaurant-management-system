@@ -6,7 +6,7 @@
 # Dùng (trong thư mục repo, máy nào có Docker cũng được, ví dụ máy 2):
 #   bash scripts/demo/test-canh-bao.sh
 set -euo pipefail
-cd "$(git rev-parse --show-toplevel)/deploy/monitoring/prometheus"
+cd "$(dirname "$(readlink -f "$0")")/../../deploy/monitoring/prometheus"   # chạy từ thư mục nào cũng được
 IMAGE=prom/prometheus:v3.5.0   # cùng bản với deploy/monitoring/compose.yaml
 
 echo "== Cú pháp luật"

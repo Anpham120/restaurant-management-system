@@ -4,7 +4,7 @@
 #
 # Dùng (trong thư mục repo): bash scripts/demo/don-dep.sh
 set -euo pipefail
-cd "$(git rev-parse --show-toplevel)"
+cd "$(dirname "$(readlink -f "$0")")/../.."   # gốc repo, chạy từ thư mục nào cũng được
 git fetch -q --prune origin
 git switch -q main 2>/dev/null || true
 
