@@ -141,7 +141,8 @@ class InventoryIT extends OrderApiTestBase {
 
     @Test
     void issueReceivePrepareAdjustReturnCount() throws Exception {
-        long fish = ingredient(uniq("Cá hồi"));
+        String fishName = uniq("Cá hồi");
+        long fish = ingredient(fishName);
         long whole = type(fish, uniq("Cá hồi phi lê"), "DIRECT");
         long sliced = type(fish, uniq("Cá hồi cắt sashimi"), "PREPARED");
         long batch = receive(fish, 10);                                       // 10 000 g
@@ -181,6 +182,14 @@ class InventoryIT extends OrderApiTestBase {
                 .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.data.outputs[0].kitchenBatchId", notNullValue()))
                 .andExpect(jsonPath("$.data.outputs[0].usableUntil", notNullValue()));
+        getAs(kitchen, "/api/inventory/handover").andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.stockIssueItemId == " + prepLine.getFirst() + ")]").isEmpty());
+        getAs(kitchen, "/api/kitchen-preparations/{id}", prep).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stockIssueItemId").value(prepLine.getFirst().intValue()))
+                .andExpect(jsonPath("$.data.stockIssueId").value(issue))
+                .andExpect(jsonPath("$.data.ingredientName").value(fishName))
+                .andExpect(jsonPath("$.data.baseUnit").value("g"))
+                .andExpect(jsonPath("$.data.inputQuantity").value(3000.0));
         postEmpty(kitchen, "/api/kitchen-preparations/{id}/confirm", prep).andExpect(status().isConflict());
         LocalDate today = LocalDate.now();
         getAs(manager, "/api/inventory/preparation-yield?from=" + today.minusDays(1) + "&to=" + today.plusDays(1))
@@ -218,7 +227,11 @@ class InventoryIT extends OrderApiTestBase {
         assertThat(rawOnHand(batch).intValue()).isEqualTo(5350);
 
         // danh sách phiếu (mới nhất trước) cho màn hình duyệt nháp
-        getAs(kitchen, "/api/kitchen-preparations?status=CONFIRMED&size=5").andExpect(jsonPath("$.data.items[*].id", hasItem((int) prep)));
+        String preparation = "$.data.items[?(@.id == " + prep + ")]";
+        getAs(kitchen, "/api/kitchen-preparations?status=CONFIRMED&size=5").andExpect(status().isOk())
+                .andExpect(jsonPath(preparation + ".stockIssueId", hasItem((int) issue)))
+                .andExpect(jsonPath(preparation + ".ingredientName", hasItem(fishName)))
+                .andExpect(jsonPath(preparation + ".baseUnit", hasItem("g")));
         getAs(kitchen, "/api/stock-adjustments").andExpect(jsonPath("$.data.items[*].id", hasItem((int) adj)));
         getAs(manager, "/api/stock-returns?status=CONFIRMED").andExpect(jsonPath("$.data.items[*].id", hasItem((int) ret)));
         getAs(manager, "/api/stock-counts").andExpect(jsonPath("$.data.items[*].id", hasItem((int) count)));

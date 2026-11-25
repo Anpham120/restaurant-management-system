@@ -10,6 +10,10 @@ import { DocStatus, STOCK_KEYS, useHandover, useKitchenTypes } from './shared';
 
 type Out = { typeId: number | ''; qty: string; usableUntil: string };
 
+function preparationSource(source: Pick<PreparationHeader, 'ingredientName' | 'stockIssueId'>) {
+  return `${source.ingredientName} · Phiếu xuất #${source.stockIssueId}`;
+}
+
 /** Sơ chế: lấy từ hàng chờ sơ chế → ra thành phẩm (lô bếp loại "sau sơ chế"), phần chênh lệch là hao hụt. */
 export function PreparationsPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -61,16 +65,16 @@ export function PreparationsPage() {
     <main className="main">
       <PageHead title="Sơ chế"
                 actions={<button className="btn btn-primary" onClick={start} disabled={wip.length === 0}>Ghi sơ chế</button>} />
-      {handover.isSuccess && wip.length === 0 && <div className="notice notice-warn" style={{ marginBottom: '1rem' }}>Không có hàng chờ sơ chế. Kho cần xuất hàng ở chế độ "Chờ sơ chế" và bếp xác nhận đã nhận.</div>}
+      {handover.isSuccess && wip.length === 0 && <div className="notice notice-warn" style={{ marginBottom: '1rem' }}>Không có nguyên liệu chờ sơ chế. Kho cần xuất hàng ở chế độ "Chờ sơ chế" và bếp xác nhận đã nhận.</div>}
       <div className="split">
         <div>
           <ErrorNotice error={list.error} />
           <DataTable rows={list.data} rowKey={(h) => h.id} selectedKey={selectedId} onRowClick={(h) => setSelectedId(h.id)} empty="Chưa có phiếu sơ chế."
             columns={[
-              { header: 'Phiếu', render: (h) => <b>#{h.id}</b> },
-              { header: 'Dòng xuất', render: (h) => h.stockIssueItemId },
-              { header: 'Đầu vào', render: (h) => amount(h.inputQuantity), align: 'right' },
-              { header: 'Lúc', render: (h) => dateTime(h.preparedAt) },
+              { header: 'Phiếu sơ chế', render: (h) => <b>#{h.id}</b> },
+              { header: 'Nguồn sơ chế', render: preparationSource },
+              { header: 'Lượng đem sơ chế', render: (h) => amount(h.inputQuantity, h.baseUnit), align: 'right' },
+              { header: 'Thời điểm sơ chế', render: (h) => dateTime(h.preparedAt) },
               { header: 'Trạng thái', render: (h) => <DocStatus status={h.status} /> },
             ]} />
         </div>
@@ -79,7 +83,10 @@ export function PreparationsPage() {
             <>
               <div className="row-between"><h2>Phiếu sơ chế #{d.id}</h2><DocStatus status={d.status} /></div>
               <dl className="kv">
-                <dt>Đầu vào</dt><dd className="num">{amount(d.inputQuantity)}</dd>
+                <dt>Nguồn sơ chế</dt><dd>{preparationSource(d)}</dd>
+                <dt>Mã dòng trên phiếu xuất</dt><dd className="num">#{d.stockIssueItemId}</dd>
+                <dt>Lượng đem sơ chế</dt><dd className="num">{amount(d.inputQuantity, d.baseUnit)}</dd>
+                <dt>Thời điểm sơ chế</dt><dd>{dateTime(d.preparedAt)}</dd>
                 <dt>Thành phẩm</dt><dd className="num">{amount(d.outputQuantity)}</dd>
                 <dt>Hao hụt</dt><dd className="num">{amount(d.lossQuantity)}{d.inputQuantity > 0 && ` (${Math.round((d.lossQuantity / d.inputQuantity) * 100)}%)`}</dd>
                 <dt>Lý do hao hụt</dt><dd>{d.lossReason ?? '—'}</dd>
@@ -101,10 +108,10 @@ export function PreparationsPage() {
                  onSubmit={() => create.mutate(undefined)} onClose={() => setCreating(false)}
                  description={inQty > 0 ? `Hao hụt dự kiến: ${amount(Math.max(0, inQty - outTotal), src?.baseUnit)} (${Math.round(Math.max(0, inQty - outTotal) / inQty * 100)}%)` : 'Hạn dùng thành phẩm để trống = tự tính theo loại bếp, không vượt hạn lô gốc.'}>
         <div className="form-grid">
-          <Field label="Hàng chờ sơ chế" span>
+          <Field label="Nguyên liệu chờ sơ chế" span>
             <select className="input" required value={wipLine} onChange={(e) => setWipLine(e.target.value ? Number(e.target.value) : '')}>
               <option value="">Chọn…</option>
-              {wip.map((r) => <option key={r.stockIssueItemId} value={r.stockIssueItemId}>{r.ingredientName} · phiếu xuất #{r.stockIssueId} · còn {amount(r.quantity, r.baseUnit)}</option>)}
+              {wip.map((r) => <option key={r.stockIssueItemId} value={r.stockIssueItemId}>{preparationSource(r)} · còn {amount(r.quantity, r.baseUnit)}</option>)}
             </select>
           </Field>
           <Field label={src ? `Lượng đem sơ chế (${src.baseUnit})` : 'Lượng đem sơ chế'}><input className="input" type="number" min={0} max={src?.quantity} step="any" required value={input} onChange={(e) => setInput(e.target.value)} /></Field>

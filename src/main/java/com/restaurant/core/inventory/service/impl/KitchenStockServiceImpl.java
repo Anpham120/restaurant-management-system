@@ -176,7 +176,8 @@ public class KitchenStockServiceImpl implements KitchenStockService {
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy phiếu sơ chế " + preparationId));
         List<OutputView> outputs = kitchenQueryRepository.findPreparationOutputs(preparationId);
         BigDecimal out = outputs.stream().map(OutputView::outputQuantity).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new PreparationResponse(h.id(), h.status(), h.stockIssueItemId(), h.inputQuantity(), out, h.inputQuantity().subtract(out),
+        return new PreparationResponse(h.id(), h.status(), h.stockIssueItemId(), h.stockIssueId(), h.ingredientName(), h.baseUnit(),
+                h.inputQuantity(), out, h.inputQuantity().subtract(out),
                 h.lossReason(), h.preparedById(), h.preparedAt(), h.requestKey(), outputs);
     }
 

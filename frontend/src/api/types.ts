@@ -332,6 +332,9 @@ export interface PreparationHeader {
   id: number;
   status: DocStatus;
   stockIssueItemId: number;
+  stockIssueId: number;
+  ingredientName: string;
+  baseUnit: string;
   inputQuantity: number;
   lossReason: string | null;
   preparedById: number;
