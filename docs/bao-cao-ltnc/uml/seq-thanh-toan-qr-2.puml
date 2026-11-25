@@ -2,21 +2,19 @@
 !include _style.iuml
 skinparam sequence {
   ParticipantBackgroundColor #FFFFFF
-  ParticipantBorderColor #1F2937
-  LifeLineBorderColor #6B7280
-  LifeLineBackgroundColor #EEF2F7
-  ActorBorderColor #1F2937
+  ParticipantBorderColor #000000
+  LifeLineBorderColor #000000
+  LifeLineBackgroundColor #FFFFFF
+  ActorBorderColor #000000
   ActorBackgroundColor #FFFFFF
 }
-skinparam maxMessageSize 200
-autonumber
-title Biểu đồ tuần tự: thanh toán chuyển khoản QR qua SePay
-actor "Thu ngân" as TN
-participant "InvoicePage\n(React)" as FE
-participant "InvoiceController" as IC
-participant "PaymentController" as PC
-participant "PaymentServiceImpl" as PS
-participant "QrPaymentStrategy" as QS
+skinparam maxMessageSize 130
+skinparam ParticipantPadding 4
+skinparam defaultFontSize 14
+skinparam ArrowColor #000000
+hide footbox
+autonumber 13
+title Biểu đồ tuần tự (2/2): SePay báo tiền về, hệ thống ghi tiền và đóng hóa đơn
 actor "Khách" as K
 participant "SePay" as SP <<hệ thống>>
 participant "SepayWebhook\nController" as WC
@@ -24,32 +22,6 @@ participant "SepayWebhook\nService" as WS
 participant "QrTransfer\nProcessor" as QP
 participant "Invoice\nSettlement" as IS
 database "PostgreSQL" as DB
-
-TN -> FE : bấm "Tạo mã QR"
-activate FE
-FE -> PC : POST /api/invoices/{id}/payments {method: QR}
-activate PC
-PC -> PS : startPayment(invoiceId, actorId, request)
-activate PS
-PS -> QS : startPayment(...) theo strategies[QR]
-activate QS
-QS -> DB : khóa hóa đơn (FOR UPDATE)
-QS -> DB : lưu PaymentRequest WAITING_TRANSFER, mã RC<hóa đơn>Q<n>
-QS --> PS : PaymentResponse
-deactivate QS
-PS --> PC : PaymentResponse
-deactivate PS
-PC --> FE : 201 (mã tham chiếu, ảnh QR)
-deactivate PC
-FE --> TN : hiện ảnh QR, "Đang chờ tiền về"
-deactivate FE
-
-loop mỗi 3 giây khi còn QR đang chờ
-  FE -> IC : GET /api/orders/{id}/invoice
-  activate IC
-  IC --> FE : hóa đơn PAYMENT_PENDING
-  deactivate IC
-end
 
 K -> SP : quét QR, chuyển khoản
 SP -> WC : POST /api/webhooks/sepay (Authorization: Apikey)
@@ -80,9 +52,4 @@ deactivate WS
 WC --> SP : 200 OK
 deactivate WC
 
-FE -> IC : GET /api/orders/{id}/invoice
-activate IC
-IC --> FE : hóa đơn PAID
-deactivate IC
-FE --> TN : "Đã thu ... bằng chuyển khoản. Bàn đã được trả."
 @enduml
