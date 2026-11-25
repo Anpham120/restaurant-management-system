@@ -79,7 +79,7 @@ public class IngredientServiceImpl implements IngredientService {
 
     @Override
     public KitchenTypeResponse getKitchenIngredientTypeById(long id) {
-        return repo.findKitchenIngredientType(id).orElseThrow(() -> notFoundError("Không tìm thấy loại nguyên liệu bếp " + id));
+        return repo.findKitchenIngredientType(id).orElseThrow(() -> notFoundError("Không tìm thấy nguyên liệu tại bếp " + id));
     }
 
     @Override
@@ -94,10 +94,10 @@ public class IngredientServiceImpl implements IngredientService {
     @Override
     @Transactional
     public KitchenTypeResponse updateKitchenIngredientType(long id, KitchenTypeRequest r) {
-        KitchenIngredientType type = kitchenTypeRepository.findById(id).orElseThrow(() -> notFoundError("Không tìm thấy loại nguyên liệu bếp " + id));
+        KitchenIngredientType type = kitchenTypeRepository.findById(id).orElseThrow(() -> notFoundError("Không tìm thấy nguyên liệu tại bếp " + id));
         if (!type.getRawIngredientId().equals(r.rawIngredientId()) || !type.getHandlingType().equals(r.handlingType())) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "IMMUTABLE_FIELD",
-                    "Không được đổi nguyên liệu gốc hoặc cách dùng của loại bếp đã tạo");
+                    "Nguyên liệu gốc và cách sử dụng được cố định sau khi tạo nguyên liệu tại bếp");
         }
         type.changeDetails(r.name().strip(), r.shelfLifeHours(), orZero(r.minimumQuantity()), isTrueOrMissing(r.active()));
         kitchenTypeRepository.flush();

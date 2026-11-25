@@ -219,8 +219,9 @@ def seed_inventory(tk, ktk):
     old_ing = by_name('/api/ingredients?activeOnly=false', tk)
     old_types = call('GET', '/api/kitchen-ingredient-types?activeOnly=false', token=tk)
     for name, unit, exp, *_ in INGREDIENTS:
-        if name.lower() in old_ing:                       # nguyên liệu đã có: dùng lại, loại dùng thẳng có sẵn thì dùng lại
-            ing[name] = old_ing[name.lower()]['id']
+        existing = old_ing.get(name.lower())
+        if existing:                                    # dùng lại nguyên liệu gốc và mục dùng trực tiếp đã có
+            ing[name] = existing['id']
             d = next((t for t in old_types if t['rawIngredientId'] == ing[name] and t['handlingType'] == 'DIRECT'), None)
             if d:
                 direct[name] = d['id']; continue
@@ -228,8 +229,11 @@ def seed_inventory(tk, ktk):
                  {'name': name, 'baseUnit': unit, 'minQuantity': 500 if unit in ('g', 'ml') else 10, 'expiryTracked': exp}, tk)
         if r:
             ing[name] = r['id']; count('ingredients')
-        t = soft('loại bếp', call, 'POST', '/api/kitchen-ingredient-types',
-                 {'rawIngredientId': ing.get(name), 'name': f'{name} (dùng thẳng)', 'handlingType': 'DIRECT',
+        direct_name = existing['name'] if existing else name
+        if any(t['rawIngredientId'] == ing.get(name) and t['name'].lower() == direct_name.lower() for t in old_types):
+            direct_name = f'{direct_name} (dùng trực tiếp)'
+        t = soft('nguyên liệu tại bếp', call, 'POST', '/api/kitchen-ingredient-types',
+                 {'rawIngredientId': ing.get(name), 'name': direct_name, 'handlingType': 'DIRECT',
                   'minimumQuantity': 100 if unit in ('g', 'ml') else 5}, tk)
         if t:
             direct[name] = t['id']; count('kitchen_ingredient_types')
@@ -237,7 +241,7 @@ def seed_inventory(tk, ktk):
         same = next((t for t in old_types if t['rawIngredientId'] == ing[raw] and t['name'].lower() == pname.lower()), None)
         if same:
             prepared[pname] = same['id']; continue
-        t = soft('loại bếp', call, 'POST', '/api/kitchen-ingredient-types',
+        t = soft('nguyên liệu tại bếp', call, 'POST', '/api/kitchen-ingredient-types',
                  {'rawIngredientId': ing[raw], 'name': pname, 'handlingType': 'PREPARED', 'shelfLifeHours': 24,
                   'minimumQuantity': 100}, tk)
         if t:
