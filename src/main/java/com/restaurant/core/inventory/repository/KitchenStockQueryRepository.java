@@ -19,6 +19,16 @@ import com.restaurant.core.inventory.dto.response.KitchenStockResponses.ReturnRe
 @Repository
 public class KitchenStockQueryRepository {
 
+    private static final String PREPARATION_SELECT = """
+            SELECT p.id, p.status, p.stock_issue_item_id, l.stock_issue_id, g.name AS ingredient_name, g.base_unit,
+                   p.input_quantity, p.loss_reason, p.prepared_by_id, p.prepared_at, p.request_key
+              FROM kitchen_preparations p
+              JOIN stock_issue_items l ON l.id = p.stock_issue_item_id
+              JOIN inventory_batches b ON b.id = l.inventory_batch_id
+              JOIN stock_receipt_items s ON s.id = b.stock_receipt_item_id
+              JOIN ingredients g ON g.id = s.ingredient_id
+            """;
+
     private final JdbcClient jdbc;
 
     public KitchenStockQueryRepository(JdbcClient jdbc) {
@@ -30,9 +40,7 @@ public class KitchenStockQueryRepository {
 
 
     public Optional<PreparationResponse.Header> findPreparationHeader(long id) {
-        return jdbc.sql("""
-                        SELECT id, status, stock_issue_item_id, input_quantity, loss_reason, prepared_by_id, prepared_at, request_key
-                          FROM kitchen_preparations WHERE id = :id""")
+        return jdbc.sql(PREPARATION_SELECT + " WHERE p.id = :id")
                 .param("id", id).query(PreparationResponse.Header.class).optional();
     }
 
@@ -86,10 +94,10 @@ public class KitchenStockQueryRepository {
     }
 
     public List<PreparationResponse.Header> findPreparations(String status, int page, int size) {
-        return jdbc.sql("""
-                        SELECT id, status, stock_issue_item_id, input_quantity, loss_reason, prepared_by_id, prepared_at, request_key
-                          FROM kitchen_preparations WHERE CAST(:s AS text) IS NULL OR status = :s
-                         ORDER BY id DESC LIMIT :size OFFSET :off""")
+        return jdbc.sql(PREPARATION_SELECT + """
+                 WHERE CAST(:s AS text) IS NULL OR p.status = :s
+                 ORDER BY p.id DESC LIMIT :size OFFSET :off
+                """)
                 .param("s", status).param("size", size).param("off", (long) page * size).query(PreparationResponse.Header.class).list();
     }
 

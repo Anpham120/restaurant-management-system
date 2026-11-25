@@ -12,11 +12,13 @@ public final class KitchenStockResponses {
 
     // ---------- Sơ chế: đầu vào từ một dòng WIP (phiếu xuất PREPARE đã nhận) → nhiều đầu ra PREPARED
     /** lossQuantity = đầu vào − tổng đầu ra (giá trị suy ra, không lưu). */
-    public record PreparationResponse(long id, String status, long stockIssueItemId, BigDecimal inputQuantity,
+    public record PreparationResponse(long id, String status, long stockIssueItemId, long stockIssueId, String ingredientName,
+                                      String baseUnit, BigDecimal inputQuantity,
                                       BigDecimal outputQuantity, BigDecimal lossQuantity, String lossReason, long preparedById,
                                       Instant preparedAt, String requestKey, List<OutputView> outputs) {
 
-        public record Header(long id, String status, long stockIssueItemId, BigDecimal inputQuantity, String lossReason,
+        public record Header(long id, String status, long stockIssueItemId, long stockIssueId, String ingredientName,
+                             String baseUnit, BigDecimal inputQuantity, String lossReason,
                              long preparedById, Instant preparedAt, String requestKey) {
         }
     }

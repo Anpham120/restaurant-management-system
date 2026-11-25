@@ -135,6 +135,8 @@ Package `inventory` (`IngredientController/Service/Repository`, `StockDocumentCo
 
 `raw-lots` và `kitchen-lots` trả thêm `expiryStatus` (`NONE`, `EXPIRING_SOON` trong 7 ngày tới hoặc `EXPIRED`). Lô bếp có `createdAt` để màn Tồn kho xếp cảnh báo theo thời điểm lô vào kho hoặc bếp. Lô hết hạn còn số dư vẫn hiện trong báo cáo. Phiếu hủy chỉ ghi giảm lượng hủy vào sổ kho khi quản lý xác nhận.
 
+Danh sách và chi tiết phiếu sơ chế có `stockIssueId` của phiếu xuất, `ingredientName` và `baseUnit` của nguyên liệu gốc, kể cả khi dòng `stockIssueItemId` đã hết lượng chờ sơ chế.
+
 ## 5. Quản lý tài chính — Bùi Đào Đức Anh
 
 Package `finance` (lớp `Expense*`, `CashReconciliation*`, `FinanceReport*`). **Chỉ đọc** dữ liệu thanh toán do phần của Phạm Duy An tạo; không tạo/sửa payment, hóa đơn, webhook. Test: `FinanceIT`.
