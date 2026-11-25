@@ -84,6 +84,16 @@ public class ShiftAssignment {
         return a;
     }
 
+    public boolean overlaps(ShiftAssignment other) {
+        return scheduledStartAt.isBefore(other.scheduledEndAt) && scheduledEndAt.isAfter(other.scheduledStartAt);
+    }
+
+    public boolean hasSameSchedule(ShiftAssignment other) {
+        return workDate.equals(other.workDate) && getShiftId().equals(other.getShiftId())
+                && scheduledStartAt.equals(other.scheduledStartAt) && scheduledEndAt.equals(other.scheduledEndAt)
+                && scheduledBreakMinutes == other.scheduledBreakMinutes;
+    }
+
     public boolean isScheduled() {
         return SCHEDULED.equals(status);
     }

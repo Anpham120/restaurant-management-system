@@ -10,8 +10,11 @@ export const useAssignments = (from: string, to: string, employeeId?: number | '
     queryFn: () => api.get<ShiftAssignment[]>(`/api/shift-assignments?from=${from}&to=${to}${employeeId ? `&employeeId=${employeeId}` : ''}`),
   });
 
-export const useAttendances = (from: string, to: string) =>
-  useQuery({ queryKey: ['attendances', from, to], queryFn: () => api.get<Attendance[]>(`/api/attendances?from=${from}&to=${to}`) });
+export const useAttendances = (from: string, to: string, employeeId?: number) =>
+  useQuery({
+    queryKey: ['attendances', from, to, employeeId ?? ''],
+    queryFn: () => api.get<Attendance[]>(`/api/attendances?from=${from}&to=${to}${employeeId ? `&employeeId=${employeeId}` : ''}`),
+  });
 
 export const useActiveEmployees = () =>
   useQuery({
@@ -29,5 +32,15 @@ export const useActiveEmployees = () =>
   });
 
 export const span = (a: ShiftAssignment) => `${clock(a.scheduledStartAt)}–${clock(a.scheduledEndAt)}`;
+
+export function assignmentsByDate(assignments: ShiftAssignment[] = []) {
+  const grouped = new Map<string, ShiftAssignment[]>();
+  for (const assignment of assignments) {
+    const date = grouped.get(assignment.workDate);
+    if (date) date.push(assignment);
+    else grouped.set(assignment.workDate, [assignment]);
+  }
+  return grouped;
+}
 
 export const ASSIGNMENT_STATUS: Record<string, string> = { SCHEDULED: 'Đã phân', COMPLETED: 'Đã chấm công', CANCELLED: 'Đã hủy' };

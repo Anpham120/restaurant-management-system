@@ -19,6 +19,9 @@ public final class ShiftResponses {
                                           Instant cancelledAt, Long attendanceId) {
     }
 
+    public record MonthlyAssignmentResponse(int created, int unchanged) {
+    }
+
     public record AttendanceResponse(long id, long shiftAssignmentId, long employeeId, String employeeName, LocalDate workDate,
                                      String status, Instant actualStartAt, Instant actualEndAt, Integer workedMinutes, String note,
                                      Long confirmedById, Instant confirmedAt) {

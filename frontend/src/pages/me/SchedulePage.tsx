@@ -1,36 +1,39 @@
 import { useState } from 'react';
 
+import { useAuth } from '../../auth/AuthContext';
 import { ErrorNotice } from '../../components/ErrorNotice';
-import { PageHead, Stepper } from '../../components/ui';
-import { addDays, businessToday, clock, day, hm, weekStart, weekdayLabel } from '../../lib/format';
-import { ASSIGNMENT_STATUS, span, useAssignments, useAttendances } from '../staff/shared';
+import { PageHead } from '../../components/ui';
+import { businessToday, clock, hm, weekdayLabel } from '../../lib/format';
+import { daysInMonth, MonthCalendar, monthLabel, MonthPicker } from '../staff/monthly';
+import { assignmentsByDate, ASSIGNMENT_STATUS, span, useAssignments, useAttendances } from '../staff/shared';
 
 /** Lịch làm và công của chính người đăng nhập (backend tự giới hạn theo tài khoản). */
 export function SchedulePage() {
+  const { user } = useAuth();
   const today = businessToday();
-  const [monday, setMonday] = useState(weekStart(today));
-  const sunday = addDays(monday, 6);
-  const assignments = useAssignments(monday, sunday);
-  const attendances = useAttendances(monday, sunday);
+  const currentMonth = today.slice(0, 7);
+  const [month, setMonth] = useState(currentMonth);
+  const days = daysInMonth(month);
+  const lastDate = days[days.length - 1];
+  const assignments = useAssignments(days[0], lastDate, user?.employeeId);
+  const attendances = useAttendances(days[0], lastDate, user?.employeeId);
+  const byDate = assignmentsByDate(assignments.data);
   const att = new Map((attendances.data ?? []).map((a) => [a.shiftAssignmentId, a]));
   const list = (assignments.data ?? []).filter((a) => a.status !== 'CANCELLED');
   const worked = list.reduce((s, a) => s + (att.get(a.id)?.workedMinutes ?? 0), 0);
 
   return (
     <main className="main">
-      <PageHead title="Lịch làm của tôi" subtitle={`${day(monday)} – ${day(sunday)} · ${list.length} ca · đã chấm ${hm(worked)}`}
-                actions={<>
-                  <Stepper unit="Tuần" onPrev={() => setMonday(addDays(monday, -7))} onNext={() => setMonday(addDays(monday, 7))}>
-                    <b className="stepper-label num">{day(monday)} – {day(sunday)}</b>
-                  </Stepper>
-                  {monday !== weekStart(today) && <button className="btn btn-sm" onClick={() => setMonday(weekStart(today))}>Tuần này</button>}
-                </>} />
+      <PageHead title="Lịch làm của tôi" subtitle={`${monthLabel(month)} · ${list.length} ca · đã chấm ${hm(worked)}`}
+                actions={<MonthPicker month={month} currentMonth={currentMonth} onChange={setMonth} />} />
       <ErrorNotice error={assignments.error ?? attendances.error} />
-      <div className="week">
-        {Array.from({ length: 7 }, (_, i) => addDays(monday, i)).map((d) => (
-          <section key={d} className="week-day" data-today={d === today}>
+      {assignments.isPending && <p className="muted" role="status">Đang tải lịch tháng…</p>}
+      {assignments.data?.length === 0 && <p className="muted">Tháng này chưa có ca được phân.</p>}
+      <MonthCalendar firstDate={days[0]}>
+        {days.map((d) => (
+          <section key={d} className="week-day" data-today={d === today} aria-label={weekdayLabel(d)}>
             <h3>{weekdayLabel(d)}</h3>
-            {(assignments.data ?? []).filter((a) => a.workDate === d).map((a) => {
+            {byDate.get(d)?.map((a) => {
               const x = att.get(a.id);
               return (
                 <div key={a.id} className="shift-chip" data-status={a.status} style={{ cursor: 'default' }}>
@@ -44,7 +47,7 @@ export function SchedulePage() {
             })}
           </section>
         ))}
-      </div>
+      </MonthCalendar>
     </main>
   );
 }

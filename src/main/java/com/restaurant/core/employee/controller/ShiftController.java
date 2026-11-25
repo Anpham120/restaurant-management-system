@@ -22,9 +22,11 @@ import com.restaurant.core.common.response.ApiResponse;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AdjustAttendanceRequest;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AssignShiftRequest;
 import com.restaurant.core.employee.dto.request.ShiftRequests.BulkAssignShiftRequest;
+import com.restaurant.core.employee.dto.request.ShiftRequests.MonthlyAssignShiftRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceAdjustmentView;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AttendanceRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceResponse;
+import com.restaurant.core.employee.dto.response.ShiftResponses.MonthlyAssignmentResponse;
 import com.restaurant.core.employee.dto.request.ShiftRequests.ReasonRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.ShiftAssignmentResponse;
 import com.restaurant.core.employee.dto.request.ShiftRequests.ShiftRequest;
@@ -76,6 +78,13 @@ public class ShiftController {
     @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<List<ShiftAssignmentResponse>> assignShifts(@Valid @RequestBody BulkAssignShiftRequest request) {
         return ApiResponse.ok(service.assignShifts(request));
+    }
+
+    @PostMapping("/shift-assignments/monthly")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<MonthlyAssignmentResponse> assignMonthlyShifts(@Valid @RequestBody MonthlyAssignShiftRequest request) {
+        return ApiResponse.ok(service.assignMonthlyShifts(request));
     }
 
     /** Manager xem mọi người (lọc employeeId tùy chọn); vai trò khác luôn chỉ thấy ca của mình. */

@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -30,6 +31,15 @@ public final class ShiftRequests {
 
     public record BulkAssignShiftRequest(@NotEmpty List<@NotNull @Positive Long> employeeIds, @NotNull @Positive Long shiftId,
                                          @NotNull LocalDate workDate, @Size(max = 255) String note) {
+    }
+
+    public record MonthlyAssignShiftRequest(@NotEmpty List<@NotNull @Positive Long> employeeIds,
+                                            @NotNull @Pattern(regexp = "(?!0000)[0-9]{4}-(0[1-9]|1[0-2])") String month,
+                                            @NotEmpty @Size(max = 31) List<@NotNull @Valid MonthlyShiftDay> days,
+                                            @Size(max = 255) String note) {
+    }
+
+    public record MonthlyShiftDay(@NotNull LocalDate workDate, @NotNull @Positive Long shiftId) {
     }
 
     public record ReasonRequest(@NotBlank @Size(max = 255) String reason) {
