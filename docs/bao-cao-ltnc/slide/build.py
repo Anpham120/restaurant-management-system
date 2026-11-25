@@ -266,9 +266,9 @@ for i, (ten, nen, mau) in enumerate([('employee', NEN, XANH), ('menu', NEN, XANH
     x = 0.69 + i * 1.72
     the(s, x, 1.68, 1.58, 0.55, nen)
     tb(s, x, 1.68, 1.58, 0.55, [(ten, {'size': 15, 'bold': True, 'color': mau})], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-tb(s, 0.69, 2.45, 11.95, 0.45, [('Bên trong mỗi module: chia tầng', {'size': 17, 'bold': True, 'color': NAVY})])
+tb(s, 0.69, 2.45, 11.95, 0.45, [('Bên trong mỗi module: chia tầng', {'size': 17, 'bold': True, 'color': NAVY, 'after': 0}), ]); tb(s, 6.2, 2.5, 6.45, 0.4, [('DTO dạng record tách dữ liệu vào ra API khỏi Entity', {'size': 13, 'color': PHU, 'italic': True})], align=PP_ALIGN.RIGHT)
 for i, (td, nd) in enumerate([('Controller', 'Nhận request, kiểm dữ liệu, kiểm quyền'), ('Service', 'Interface + Impl; nghiệp vụ, giao dịch'),
-                              ('Repository', 'Spring Data JPA, đọc ghi bảng'), ('PostgreSQL', 'Entity ánh xạ bảng')]):
+                              ('Repository', 'Spring Data JPA, đọc ghi dữ liệu'), ('Entity', 'Lớp ánh xạ bảng PostgreSQL (JPA)')]):
     x = 0.69 + i * 3.05
     the(s, x, 2.95, 2.6, 1.05, NEN)
     tb(s, x + 0.08, 3.0, 2.44, 0.95, [(td, {'size': 16, 'bold': True, 'color': XANH, 'after': 2}), (nd, {'size': 12, 'color': CHU})], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
