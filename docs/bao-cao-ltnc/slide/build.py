@@ -252,7 +252,7 @@ s = moi('Kiến trúc Modular Monolith', 'Một ứng dụng Spring Boot chia mo
 anh(s, 'img/class-kien-truc.png', 0.69, 1.15, 6.0, 5.3, khung=True)
 the_chu(s, 7.05, 1.25, 5.6, 1.6, 'Phụ thuộc một chiều', ['finance → order → inventory → menu, không có vòng'], size=14)
 the_chu(s, 7.05, 3.0, 5.6, 1.85, 'Đảo phụ thuộc', ['Module dưới khai báo interface, module trên cài đặt', 'Ví dụ: order khai báo OrderInvoiceAccess, finance cài'], size=14)
-the_chu(s, 7.05, 5.0, 5.6, 1.35, 'Kiểm tự động', ['ModularityTest (Spring Modulith): vi phạm thì build đỏ'], fill=XLA_NEN, mau=XLA, size=14)
+the_chu(s, 7.05, 5.0, 5.6, 1.35, 'Trong mỗi module', ['Controller → Service (interface + impl) → Repository → Entity; ModularityTest kiểm luật mỗi lần build'], fill=XLA_NEN, mau=XLA, size=13)
 
 # ================= 12. Chia tầng
 s = moi('Chia tầng trong mỗi module', 'Ví dụ module order: controller nhận request, service chứa nghiệp vụ và giao dịch, repository đọc ghi, entity ánh xạ bảng.')
@@ -280,12 +280,12 @@ for i, (a, ds) in enumerate([('Khóa dòng (khóa bi quan)', ['SELECT ... FOR UP
 
 # ================= 15. Phân công
 s = moi('Kế hoạch và phân công', 'Phân công theo vòng đời nghiệp vụ: mỗi người phụ trách một phân hệ gồm backend, giao diện và kiểm thử.')
-bang(s, 0.69, 1.3, 11.95, [('Thành viên', 2.6), ('Phân hệ phụ trách', 5.6), ('Đoạn code tiêu biểu', 3.75)], [
-    ['Phạm Duy An (NT)', 'Bán hàng: bàn, gọi món, bếp, hóa đơn, thanh toán tiền mặt, QR SePay; điều phối kiểm thử; triển khai máy chủ', 'Ghi nhận tiền chuyển khoản QR'],
-    ['Nguyễn Quang Hiếu', 'Nhân sự và bảo mật: nhân viên, tài khoản, Spring Security, JWT, ca làm, chấm công', 'Đăng nhập'],
-    ['Lê Anh', 'Thực đơn: món, công thức theo phiên bản, thực đơn ngày, hạn mức, tạm dừng món', 'Đổi hạn mức suất bán'],
-    ['Đỗ Tuấn Anh', 'Kho: nhập theo lô, xuất FEFO, bếp nhận, sơ chế, hoàn trả, kiểm kê', 'Giữ nguyên liệu theo FEFO'],
-    ['Bùi Đào Đức Anh', 'Tài chính: khoản chi, đối soát tiền mặt, báo cáo doanh thu', 'Đối soát tiền mặt cuối ngày']], size=13, hrow=0.78)
+bang(s, 0.69, 1.3, 11.95, [('Thành viên', 2.6), ('Phân hệ phụ trách (backend, giao diện, kiểm thử)', 9.35)], [
+    ['Phạm Duy An (NT)', 'Bán hàng: bàn, gọi món, bếp, hóa đơn, thanh toán tiền mặt và QR SePay; điều phối kiểm thử; triển khai máy chủ'],
+    ['Nguyễn Quang Hiếu', 'Nhân sự và bảo mật: nhân viên, tài khoản, Spring Security, JWT, ca làm, chấm công'],
+    ['Lê Anh', 'Thực đơn: món, công thức theo phiên bản, thực đơn ngày, hạn mức, tạm dừng món'],
+    ['Đỗ Tuấn Anh', 'Kho: nhập theo lô, xuất FEFO, bếp nhận, sơ chế, hoàn trả, kiểm kê'],
+    ['Bùi Đào Đức Anh', 'Tài chính: khoản chi, đối soát tiền mặt, báo cáo doanh thu']], size=14, hrow=0.78)
 
 # ================= 16. Code An
 s = moi('Code tiêu biểu: ghi nhận tiền chuyển khoản QR', 'Phạm Duy An. Sai ở đây là mất tiền hoặc thu hai lần, nên mọi trường hợp bất thường đều phải xử lý.')
@@ -355,6 +355,15 @@ tb(s, 6.93, 4.27, 5.55, 1.95, [('Chưa làm được', {'size': 18, 'bold': True
    [(t, {'bullet': True, 'size': 14, 'after': 5}) for t in [
        'Phân quyền chi tiết theo từng quyền (mới thiết kế bảng)',
        'In hóa đơn máy in nhiệt, xuất báo cáo Excel']])
+
+# ---- bản ngắn 15 slide: bỏ code tiêu biểu và các slide chi tiết
+BO = {'Nội dung trình bày', 'Ràng buộc nghiệp vụ và yêu cầu phi chức năng', 'Biểu đồ hoạt động và trạng thái',
+      'Chia tầng trong mỗi module', 'Code tiêu biểu: ghi nhận tiền chuyển khoản QR', 'Code tiêu biểu của các thành viên',
+      'Triển khai lên máy chủ'}
+for sid in list(lst):
+    sl = prs.slides.get(int(sid.get('id')))
+    if sl.shapes.title is not None and sl.shapes.title.text in BO:
+        prs.part.drop_rel(sid.rId); lst.remove(sid)
 
 # ---- trang cảm ơn xuống cuối
 ids = list(lst)
