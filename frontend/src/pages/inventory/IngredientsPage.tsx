@@ -8,7 +8,9 @@ import { DataTable, Field, FormModal, PageHead, StatusTag, Tabs, num, useAction 
 import { amount } from '../../lib/format';
 import { useIngredients, useKitchenTypes } from './shared';
 
-/** Nguyên liệu thô (đơn vị gốc, mức tối thiểu) và loại nguyên liệu bếp dùng trong công thức. */
+const kitchenHandlingLabel = { DIRECT: 'Dùng trực tiếp', PREPARED: 'Dùng sau sơ chế' };
+
+/** Nguyên liệu thô (đơn vị gốc, mức tối thiểu) và nguyên liệu tại bếp dùng trong công thức. */
 export function IngredientsPage() {
   const isManager = useAuth().hasRole('MANAGER');
   const [tab, setTab] = useState<'raw' | 'kitchen'>('raw');
@@ -33,7 +35,7 @@ export function IngredientsPage() {
         shelfLifeHours: num(typeForm.shelfLifeHours), minimumQuantity: num(typeForm.minimumQuantity) ?? 0, active: typeForm.active };
       return typeEdit === 'new' ? api.post('/api/kitchen-ingredient-types', body) : api.put(`/api/kitchen-ingredient-types/${(typeEdit as KitchenType).id}`, body);
     },
-    { success: 'Đã lưu loại nguyên liệu bếp', invalidate: [['kitchen-types']], onSuccess: () => setTypeEdit(null) },
+    { success: 'Đã lưu nguyên liệu tại bếp', invalidate: [['kitchen-types']], onSuccess: () => setTypeEdit(null) },
   );
 
   function openIng(i: Ingredient | 'new') {
@@ -55,9 +57,9 @@ export function IngredientsPage() {
         title="Nguyên liệu"
         actions={isManager && (tab === 'raw'
           ? <button className="btn btn-primary" onClick={() => openIng('new')}>Thêm nguyên liệu</button>
-          : <button className="btn btn-primary" onClick={() => openType('new')}>Thêm loại bếp</button>)}
+          : <button className="btn btn-primary" onClick={() => openType('new')}>Thêm nguyên liệu tại bếp</button>)}
       />
-      <Tabs value={tab} onChange={setTab} options={[['raw', 'Nguyên liệu thô'], ['kitchen', 'Loại nguyên liệu bếp']]} />
+      <Tabs value={tab} onChange={setTab} options={[['raw', 'Nguyên liệu thô'], ['kitchen', 'Nguyên liệu tại bếp']]} />
       <ErrorNotice error={ings.error ?? types.error} />
       {tab === 'raw' ? (
         <DataTable rows={ings.data} rowKey={(i) => i.id} empty="Chưa có nguyên liệu."
@@ -70,11 +72,11 @@ export function IngredientsPage() {
             { header: '', render: (i) => isManager && <button className="btn btn-sm" onClick={() => openIng(i)}>Sửa</button> },
           ]} />
       ) : (
-        <DataTable rows={types.data} rowKey={(t) => t.id} empty="Chưa có loại nguyên liệu bếp."
+        <DataTable rows={types.data} rowKey={(t) => t.id} empty="Chưa có nguyên liệu tại bếp."
           columns={[
-            { header: 'Loại bếp', render: (t) => <b>{t.name}</b> },
-            { header: 'Từ nguyên liệu', render: (t) => t.rawIngredientName },
-            { header: 'Cách dùng', render: (t) => (t.handlingType === 'DIRECT' ? 'Dùng thẳng' : 'Sau sơ chế') },
+            { header: 'Tên nguyên liệu', render: (t) => <b>{t.name}</b> },
+            { header: 'Nguyên liệu gốc', render: (t) => t.rawIngredientName },
+            { header: 'Cách sử dụng', render: (t) => kitchenHandlingLabel[t.handlingType] },
             { header: 'Hạn dùng tại bếp', render: (t) => (t.shelfLifeHours ? `${t.shelfLifeHours} giờ` : '—'), align: 'right' },
             { header: 'Tối thiểu', render: (t) => amount(t.minimumQuantity, t.baseUnit), align: 'right' },
             { header: 'Trạng thái', render: (t) => (t.active ? 'Đang dùng' : <StatusTag tone="stop">Ngừng</StatusTag>) },
@@ -93,9 +95,9 @@ export function IngredientsPage() {
         </div>
       </FormModal>
 
-      <FormModal open={typeEdit != null} title={typeEdit === 'new' ? 'Thêm loại nguyên liệu bếp' : 'Sửa loại nguyên liệu bếp'} submitLabel="Lưu"
+      <FormModal open={typeEdit != null} title={typeEdit === 'new' ? 'Thêm nguyên liệu tại bếp' : 'Sửa nguyên liệu tại bếp'} submitLabel="Lưu"
                  busy={saveType.isPending} error={saveType.error} onSubmit={() => saveType.mutate(undefined)} onClose={() => setTypeEdit(null)}
-                 description="Mỗi nguyên liệu có tối đa một loại dùng thẳng. Sau khi tạo không đổi được nguyên liệu gốc và cách dùng.">
+                 description="Mỗi nguyên liệu gốc có tối đa một mục dùng trực tiếp. Nguyên liệu gốc và cách sử dụng được cố định sau khi tạo.">
         <div className="form-grid">
           <Field label="Nguyên liệu gốc">
             <select className="input" required disabled={typeEdit !== 'new'} value={typeForm.rawIngredientId}
@@ -104,13 +106,13 @@ export function IngredientsPage() {
               {ings.data?.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </select>
           </Field>
-          <Field label="Cách dùng">
+          <Field label="Cách sử dụng">
             <select className="input" disabled={typeEdit !== 'new'} value={typeForm.handlingType} onChange={(e) => setTypeForm({ ...typeForm, handlingType: e.target.value })}>
-              <option value="DIRECT">Dùng thẳng</option>
-              <option value="PREPARED">Sau sơ chế</option>
+              <option value="DIRECT">{kitchenHandlingLabel.DIRECT}</option>
+              <option value="PREPARED">{kitchenHandlingLabel.PREPARED}</option>
             </select>
           </Field>
-          <Field label="Tên loại bếp" span><input className="input" required maxLength={100} value={typeForm.name} onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })} /></Field>
+          <Field label="Tên nguyên liệu" span><input className="input" required maxLength={100} value={typeForm.name} onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })} /></Field>
           <Field label="Hạn dùng tại bếp (giờ)"><input className="input" type="number" min={1} value={typeForm.shelfLifeHours} onChange={(e) => setTypeForm({ ...typeForm, shelfLifeHours: e.target.value })} /></Field>
           <Field label="Mức tối thiểu tại bếp"><input className="input" type="number" min={0} step="any" value={typeForm.minimumQuantity} onChange={(e) => setTypeForm({ ...typeForm, minimumQuantity: e.target.value })} /></Field>
           <label className="check span-2"><input type="checkbox" checked={typeForm.active} onChange={(e) => setTypeForm({ ...typeForm, active: e.target.checked })} />Đang dùng</label>
