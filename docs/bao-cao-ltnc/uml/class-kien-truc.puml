@@ -51,7 +51,11 @@ package "inventory" as inventory {
   interface OrderItemStockFlags <<interface>> <<khai báo, order cài>> {
     + markStockException(orderItemIds)
   }
+  interface KitchenStockAvailability <<interface>> <<API module>> {
+    + requireAvailableForBatch(dishes)
+  }
   class KitchenStockAllocatorImpl
+  class KitchenStockAvailabilityImpl
 }
 
 package "menu" as menu {
@@ -62,33 +66,42 @@ package "menu" as menu {
   interface QuotaUsageCounter <<interface>> <<khai báo, order cài>> {
     + countUsedPortions(dailyMenuItemId)
   }
+  interface StockPortionCounter <<interface>> <<khai báo, inventory cài>> {
+    + countAvailablePortions(dailyMenuItemIds)
+  }
   class DailyMenuLookupImpl
 }
 
 ' Xếp các module thẳng hàng từ trên xuống theo chiều phụ thuộc
 InvoiceServiceImpl -[hidden]down- OrderBillingApiImpl
 OrderInvoiceAccessImpl -[hidden]down- OrderServiceImpl
-OrderBillingApi -[hidden]down- KitchenStockAllocator
-OrderInvoiceAccess -[hidden]down- OrderItemStockFlags
+OrderBillingApi -[hidden]down- KitchenStockAllocatorImpl
+OrderInvoiceAccess -[hidden]down- KitchenStockAvailabilityImpl
 KitchenStockAllocator -[hidden]down- DailyMenuLookupImpl
-OrderItemStockFlags -[hidden]down- DailyMenuLookupImpl
+KitchenStockAvailability -[hidden]down- StockPortionCounter
+OrderItemStockFlags -[hidden]down- QuotaUsageCounter
+KitchenStockAllocator -[hidden]right- KitchenStockAvailability
+DailyMenuLookup -[hidden]right- StockPortionCounter
 
 ' Gọi API của module khác (nét đứt xanh)
 InvoiceServiceImpl ..> OrderBillingApi
 OrderServiceImpl ..> OrderInvoiceAccess
 OrderServiceImpl ..> KitchenStockAllocator
+OrderServiceImpl ..> KitchenStockAvailability
 OrderServiceImpl ..> DailyMenuLookup
 KitchenStockAllocatorImpl ..> DailyMenuLookup
 
 ' Cài đặt interface của chính module
 OrderBillingApi <|.up. OrderBillingApiImpl
 KitchenStockAllocator <|.up. KitchenStockAllocatorImpl
+KitchenStockAvailability <|.up. KitchenStockAvailabilityImpl
 DailyMenuLookup <|.up. DailyMenuLookupImpl
 
 ' Đảo phụ thuộc: module trên cài interface do module dưới khai báo (nét đứt cam)
 OrderInvoiceAccessImpl ..|> OrderInvoiceAccess
 OrderItemStockFlagsImpl ..|> OrderItemStockFlags
 QuotaUsageCounterImpl ..|> QuotaUsageCounter
+KitchenStockAvailabilityImpl ..|> StockPortionCounter
 
 legend bottom
   - - >  gọi API của module khác          - - ▷  cài đặt interface; nối giữa 2 module là đảo phụ thuộc
