@@ -156,19 +156,58 @@ for i, (a, b) in enumerate(muc):
     r2 = p2.add_run(); r2.text = b; r2.font.italic = True
     r2.font.color.rgb = rgb(XANH)
 
-# ================= Dự án làm gì
-s = moi('Dự án: hệ thống quản lý nhà hàng Atlas Restaurant',
-        'Nhà hàng phục vụ tại bàn có nhiều bộ phận phối hợp; làm bằng giấy dễ sai: hết nguyên liệu mới biết, tính sai tiền, không kiểm soát hạn dùng và tiền mặt.')
-the_chu(s, 0.69, 1.3, 5.9, 2.3, 'Vấn đề', ['Các bộ phận phối hợp bằng giấy và bảng tính rời', 'Dễ sai món, sai tiền, hàng hết hạn, lệch tiền mặt'], fill=TRANG, size=17)
-s.shapes[-2].line.color.rgb = rgb('C9D6E5')
-the_chu(s, 0.69, 3.8, 5.9, 2.5, 'Giải pháp', ['Một ứng dụng web cho cả nhà hàng', 'Mỗi người chỉ thấy đúng phần việc của vai trò mình', 'Dùng trên máy tính và máy tính bảng'], size=17)
-the(s, 6.85, 1.3, 5.8, 5.0, XLA_NEN)
-tb(s, 7.05, 1.45, 5.4, 4.7, [('Đang chạy thật', {'size': 22, 'bold': True, 'color': XLA, 'after': 6}),
-                              ('https://rms.atlasplatform12.tech', {'size': 18, 'color': NAVY, 'bold': True, 'after': 14}),
-                              ('4 vai trò người dùng', {'size': 17, 'after': 6}),
+# ================= Giới thiệu bài toán (1/2): bối cảnh và thực trạng
+s = moi('Giới thiệu bài toán: bối cảnh và thực trạng',
+        'Nhà hàng phục vụ tại bàn có nhiều bộ phận phải phối hợp liên tục. Khi làm bằng giấy hoặc bảng tính rời rạc, lỗi xảy ra ở mọi khâu.')
+tb(s, 0.69, 1.15, 11.95, 0.75, [('Nhà hàng phục vụ tại bàn có 5 bộ phận phối hợp trong mỗi bữa ăn. Mỗi bộ phận ghi chép riêng bằng giấy hoặc bảng tính, '
+                                'nên thông tin không đi kịp giữa các khâu.', {'size': 16})])
+bang(s, 0.69, 2.0, 11.95, [('Bộ phận', 1.7), ('Công việc', 4.5), ('Lỗi thường gặp khi làm thủ công', 5.75)], [
+    ['Phục vụ', 'Ghi món từng đợt, chuyển xuống bếp', 'Gọi món đã hết, sai món, sót món gọi thêm'],
+    ['Bếp', 'Nhận món, nấu; lấy nguyên liệu từ kho', 'Nhận món rồi mới biết hết nguyên liệu'],
+    ['Thu ngân', 'Tính tiền, thu tiền mặt hoặc chuyển khoản', 'Tính sai tiền; khó đối chiếu tiền chuyển khoản'],
+    ['Kho', 'Nhập nguyên liệu theo lô, xuất cho bếp', 'Không biết lô nào sắp hết hạn; tồn kho lệch sổ'],
+    ['Quản lý', 'Theo dõi doanh thu, chi phí, nhân sự', 'Không biết món nào bán chạy; lệch tiền mặt cuối ngày']], size=15, hrow=0.55)
+the(s, 0.69, 5.6, 11.95, 0.7, XLA_NEN)
+tb(s, 0.87, 5.63, 11.6, 0.64, [('Cần một hệ thống dùng chung: thông tin đi ngay giữa các bộ phận, không còn ghi chép rời', {'size': 16, 'bold': True, 'color': XLA})], anchor=MSO_ANCHOR.MIDDLE)
+
+# ================= Giới thiệu bài toán (2/2): lý do, yêu cầu, mục tiêu
+s = moi('Giới thiệu bài toán: yêu cầu và mục tiêu',
+        'Lý do chọn đề tài: bài toán thực tế, nhiều ràng buộc và nhiều người thao tác cùng lúc, phù hợp áp dụng kỹ thuật lập trình nâng cao.')
+for i, (td, ds, nen, mau) in enumerate([
+        ('Lý do chọn đề tài', ['Bài toán thực tế, nhà hàng nào cũng gặp', 'Nhiều bộ phận, nhiều quy tắc nghiệp vụ ràng buộc lẫn nhau',
+                               'Nhiều người thao tác cùng lúc trên cùng bàn, hóa đơn, lô hàng', 'Phù hợp áp dụng kiến thức Lập trình nâng cao'], NEN, XANH),
+        ('Yêu cầu đặt ra', ['4 vai trò dùng chung một hệ thống', 'Món còn nguyên liệu và còn suất mới được gọi',
+                            'Một hóa đơn chỉ thu một lần, kể cả khi nhiều người bấm cùng lúc', 'Nhận tiền chuyển khoản tự động qua SePay',
+                            'Xuất kho theo hạn dùng sớm nhất (FEFO)'], NEN, XANH),
+        ('Mục tiêu', ['Số hóa trọn vòng nghiệp vụ: bàn, món, bếp, hóa đơn, thu tiền', 'Quản lý thực đơn, kho, nhân sự, tài chính',
+                      'Dữ liệu luôn đúng, có truy vết', 'Áp dụng kiến trúc module, mẫu thiết kế, giao dịch và khóa, kiểm thử tự động'], XLA_NEN, XLA)]):
+    x = 0.69 + i * 4.05
+    the(s, x, 1.3, 3.85, 4.6, nen)
+    tb(s, x + 0.18, 1.45, 3.5, 4.35, [(td, {'size': 19, 'bold': True, 'color': mau, 'after': 10})] +
+       [(t, {'bullet': True, 'size': 16, 'after': 10}) for t in ds])
+
+# ================= Giải pháp
+s = moi('Giải pháp: hệ thống Atlas Restaurant', 'Một ứng dụng web dùng chung cho cả nhà hàng; mỗi người đăng nhập theo vai trò và chỉ thấy phần việc của mình.')
+the_chu(s, 0.69, 1.3, 5.9, 2.95, 'Một ứng dụng web cho cả nhà hàng', [
+    '• 4 vai trò: Quản lý, Phục vụ, Bếp, Thu ngân',
+    '• Mỗi người chỉ thấy đúng phần việc của mình',
+    '• Dùng trên máy tính và máy tính bảng',
+    '• Màn hình tự làm mới, thông báo lỗi tiếng Việt'], size=17)
+the(s, 6.85, 1.3, 5.8, 2.95, XLA_NEN)
+tb(s, 7.05, 1.42, 5.4, 2.75, [('Đang chạy thật', {'size': 20, 'bold': True, 'color': XLA, 'after': 4}),
+                              ('https://rms.atlasplatform12.tech', {'size': 18, 'color': NAVY, 'bold': True, 'after': 10}),
                               ('5 phân hệ nghiệp vụ', {'size': 17, 'after': 6}),
                               ('27 nhóm chức năng', {'size': 17, 'after': 6}),
                               ('Thanh toán chuyển khoản QR thật qua SePay', {'size': 17, 'after': 6})])
+
+tb(s, 0.69, 4.45, 11.95, 0.45, [('Vòng nghiệp vụ một bữa ăn', {'size': 17, 'bold': True, 'color': NAVY})])
+for i, (td, nd) in enumerate([('Mở bàn', 'Phục vụ'), ('Gọi món', 'Phục vụ'), ('Bếp nấu', 'Bếp'), ('Chốt hóa đơn', 'Thu ngân'), ('Thu tiền', 'Tiền mặt hoặc QR')]):
+    x = 0.69 + i * 2.45
+    the(s, x, 5.0, 2.05, 1.15, NEN)
+    tb(s, x, 5.08, 2.05, 1.0, [(td, {'size': 17, 'bold': True, 'color': XANH, 'after': 2}), (nd, {'size': 13, 'color': PHU})], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    if i < 4:
+        m = s.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, Inches(x + 2.1), Inches(5.42), Inches(0.32), Inches(0.32))
+        m.fill.solid(); m.fill.fore_color.rgb = rgb(XANH); m.line.fill.background(); m.shadow.inherit = False
 
 # ================= Hệ thống làm được gì
 s = moi('Hệ thống làm được gì', 'Đi theo vòng một bữa ăn: mở bàn, gọi món, bếp nấu, thu tiền; phía sau là thực đơn, kho, nhân sự và tài chính.')
@@ -215,15 +254,6 @@ the_chu(s, 6.75, 3.2, 5.9, 2.9, 'Về kỹ thuật', [
     '• Nhiều người thao tác cùng lúc vẫn đúng: một hóa đơn chỉ thu một lần',
     '• Kiến trúc chia module, mẫu thiết kế Strategy',
     '• Đăng nhập an toàn: JWT, chặn dò mật khẩu'], size=17)
-
-# ================= Phân công
-s = moi('Phân công', 'Mỗi người phụ trách một phân hệ gồm backend, giao diện và kiểm thử.')
-bang(s, 0.69, 1.4, 11.95, [('Thành viên', 2.8), ('Phụ trách', 9.15)], [
-    ['Phạm Duy An (NT)', 'Bán hàng và thanh toán (tiền mặt, QR SePay); điều phối kiểm thử; triển khai máy chủ'],
-    ['Nguyễn Quang Hiếu', 'Nhân sự và bảo mật: tài khoản, đăng nhập, phân quyền, ca làm, chấm công'],
-    ['Lê Anh', 'Thực đơn: món, công thức, thực đơn ngày, hạn mức suất bán'],
-    ['Đỗ Tuấn Anh', 'Kho: nhập theo lô, xuất FEFO, bếp nhận, kiểm kê'],
-    ['Bùi Đào Đức Anh', 'Tài chính: khoản chi, đối soát tiền mặt, báo cáo doanh thu']], size=15, hrow=0.8)
 
 # ================= Hướng phát triển
 s = moi('Hướng phát triển', 'Kết thúc bằng những gì chưa làm và sẽ làm tiếp.')
