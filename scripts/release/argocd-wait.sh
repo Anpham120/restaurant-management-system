@@ -13,6 +13,20 @@ GRACE=${DEGRADED_GRACE:-180}
 end=$(( $(date +%s) + TIMEOUT ))
 last="" degraded_since=""
 
+# Có người merge tiếp vào nhánh trong lúc chờ thì Argo CD đồng bộ thẳng lên commit mới hơn, không dừng ở SHA.
+# Commit mới hơn đã chứa SHA (SHA là tổ tiên của nó) thì coi như SHA đã được triển khai; chỉ cần Synced + Healthy.
+# Kết quả lưu theo từng revision để không fetch lại mỗi vòng.
+da_kiem="" chua=""
+chua_sha() {
+  [ -n "$1" ] || return 1
+  if [ "$1" != "$da_kiem" ]; then
+    da_kiem=$1 chua=no
+    git cat-file -e "$1^{commit}" 2>/dev/null || git fetch -q origin develop main 2>/dev/null || true
+    git merge-base --is-ancestor "$SHA" "$1" 2>/dev/null && chua=yes
+  fi
+  [ "$chua" = yes ]
+}
+
 loi() {
   echo "[argocd] $APP LỖI ở ${SHA:0:7}: $1"
   kubectl -n argocd get application "$APP" -o jsonpath='{.status.operationState.message}{"\n"}{range .status.resources[?(@.health.status=="Degraded")]}{.kind}/{.name}: {.health.message}{"\n"}{end}' || true
@@ -26,9 +40,13 @@ while :; do
   line="$APP: revision ${rev:0:7} · $sync · $health · ${phase:-}"
   [ "$line" != "$last" ] && echo "[argocd] $line" && last=$line
   now=$(date +%s)
-  if [ "$rev" = "$SHA" ]; then
+  if [ "$rev" = "$SHA" ] || chua_sha "$rev"; then
     if [ "$sync" = Synced ] && [ "$health" = Healthy ]; then
-      echo "[argocd] $APP đã chạy ${SHA:0:7}"
+      if [ "$rev" = "$SHA" ]; then
+        echo "[argocd] $APP đã chạy ${SHA:0:7}"
+      else
+        echo "[argocd] $APP đã chạy ${rev:0:7}, mới hơn và đã chứa ${SHA:0:7}"
+      fi
       exit 0
     fi
     [ "$phase" = Failed ] || [ "$phase" = Error ] && loi "đồng bộ thất bại"
