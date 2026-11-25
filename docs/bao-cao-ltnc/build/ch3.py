@@ -187,10 +187,9 @@ def chapter3():
             H3('3.1.4. Sơ đồ thực thể liên kết (ERD) và database diagram'),
             B('Sơ đồ dùng ký hiệu chân chim: đầu một gạch là phía "một", đầu chạc ba là phía "nhiều", vòng tròn là quan hệ tùy chọn (cột khóa ngoại cho phép NULL). Mỗi bảng ghi đủ cột và kiểu dữ liệu PostgreSQL; biểu tượng chìa khóa là khóa chính, biểu tượng mắt xích là khóa ngoại, NN là bắt buộc (NOT NULL).'),
             B('49 bảng được chia thành 9 cụm nghiệp vụ, mỗi cụm 2 đến 8 bảng. Bảng của cụm khác mà cụm đang xét trỏ tới được vẽ thêm, chỉ có khóa chính. Các cột ghi người thao tác (created_by_id, confirmed_by_id...) tới employees có ở hầu hết bảng nên chỉ vẽ đường nối trong cụm Nhân sự; đầy đủ mọi quan hệ ở bảng quan hệ của mục 3.1.2.'),
-            B('Mỗi quan hệ là một đường riêng, đi từ cột khóa ngoại tới khóa chính mà nó tham chiếu, không đi chung đoạn với đường khác và không đi qua sau bảng. Hai bảng đặt ở cột kề nhau thì đường đi thẳng qua khe giữa; hai bảng cách xa nhau thì đường đi vòng phía dưới sơ đồ. Sơ đồ nằm ngang được xoay dọc trang để chữ đủ to.')]
+            B('Mỗi quan hệ là một đường riêng, đi từ cột khóa ngoại tới khóa chính mà nó tham chiếu, không đi chung đoạn với đường khác và không đi qua sau bảng. Hai bảng đặt ở cột kề nhau thì đường đi thẳng qua khe giữa; hai bảng cách xa nhau thì đường đi vòng phía dưới sơ đồ.')]
     for key, name in DBD:
-        xoay = f'{E}/dbml-{key}-xoay.png'      # sơ đồ dàn ngang: xoay dọc trang cho chữ to hơn
-        out.append(fig(xoay if os.path.exists(xoay) else f'{E}/dbml-{key}.png', f'ERD {name}', maxw=5760000, maxh=7800000))
+        out.append(fig(f'{E}/dbml-{key}.png', f'ERD {name}', maxw=5760000, maxh=8200000))
     out += [H2('3.2. Thiết kế hệ thống'),
             H3('3.2.1. Biểu đồ use case tổng quát (mức khung)'),
             B('Mức khung cho thấy các nhóm chức năng lớn và tác nhân dùng chúng. Phục vụ, Bếp, Thu ngân, Quản lý đều là Nhân viên (quan hệ tổng quát hóa, mũi tên tam giác rỗng) nên cùng dùng use case Đăng nhập; mỗi vai trò nối với nhóm chức năng của mình bằng đường liền. SePay là hệ thống ngoài, tham gia nhóm thanh toán.'),
@@ -217,8 +216,10 @@ def chapter3():
             fig(f'{U}/state-hoa-don.png', 'Biểu đồ trạng thái hóa đơn', maxw=5000000, maxh=6000000),
             B('Hóa đơn sinh ra ở trạng thái chờ thu khi thu ngân chốt; khách gọi thêm thì hóa đơn về nháp và được chốt lại với tổng mới. PAID, WAIVED, UNCOLLECTED là trạng thái kết thúc, không đổi được nữa.'),
             H3('3.2.6. Biểu đồ tuần tự'),
-            B('Biểu đồ tuần tự mô tả luồng thanh toán chuyển khoản QR qua các lớp thật của hệ thống, theo thứ tự thời gian. Phần đầu là thu ngân tạo mã QR (gọi qua Controller, Service, Strategy); phần giữa là màn hình hỏi lại hóa đơn mỗi 3 giây; phần cuối là SePay gọi webhook, QrTransferProcessor chống ghi trùng bằng khóa theo mã giao dịch, đối chiếu rồi ghi tiền và đóng hóa đơn. Khung alt và opt thể hiện các nhánh: webhook gửi lặp thì trả kết quả cũ, chỉ kết quả PROCESSED mới ghi tiền.'),
-            fig(f'{U}/seq-thanh-toan-qr-xoay.png', 'Biểu đồ tuần tự thanh toán chuyển khoản QR', maxw=5760000, maxh=8200000)]
+            B('Biểu đồ tuần tự mô tả luồng thanh toán chuyển khoản QR qua các lớp thật của hệ thống, theo thứ tự thời gian, chia làm hai hình; số bước đánh liên tục giữa hai hình. Hình thứ nhất là phía thu ngân: tạo mã QR (gọi qua Controller, Service, Strategy), màn hình hỏi lại hóa đơn mỗi 3 giây, và bước cuối khi hóa đơn đã được thu (bước 28 đến 30).'),
+            fig(f'{U}/seq-thanh-toan-qr-1.png', 'Biểu đồ tuần tự thanh toán QR (1/2): tạo mã QR và chờ kết quả', maxw=5760000, maxh=8200000),
+            B('Hình thứ hai là phía SePay (bước 13 đến 27): SePay gọi webhook, QrTransferProcessor chống ghi trùng bằng khóa theo mã giao dịch, đối chiếu rồi ghi tiền và đóng hóa đơn. Khung alt và opt thể hiện các nhánh: webhook gửi lặp thì trả kết quả cũ, chỉ kết quả PROCESSED mới ghi tiền.'),
+            fig(f'{U}/seq-thanh-toan-qr-2.png', 'Biểu đồ tuần tự thanh toán QR (2/2): SePay báo tiền về, ghi tiền và đóng hóa đơn', maxw=5760000, maxh=8200000)]
     out += [H3('3.2.7. Biểu đồ lớp theo kiến trúc dự án'),
             B('Hệ thống không dùng MVC kiểu máy chủ tự sinh giao diện. Kiến trúc gồm hai phần tách biệt giao tiếp qua REST/JSON:'),
             L('Frontend là ứng dụng một trang (SPA) React: các trang trong frontend/src/pages chỉ hiển thị và gọi API qua api/client.ts, không chứa nghiệp vụ.'),
@@ -227,17 +228,17 @@ def chapter3():
             L2('Năm module nghiệp vụ employee, menu, order, inventory, finance; mỗi module sở hữu một nhóm bảng, chỉ module chủ được ghi bảng đó.'),
             L2('Module khác chỉ được gọi interface ở package gốc của module chủ, không được dùng package con (controller, service, repository, entity, dto).'),
             B('Phụ thuộc giữa các module đi một chiều menu ← inventory ← order ← finance, không có vòng. Khi module phía trước cần dữ liệu của module phía sau, module phía trước khai báo interface và module phía sau cài đặt (đảo phụ thuộc). Ví dụ order khai báo OrderInvoiceAccess để hỏi trạng thái hóa đơn, finance cài đặt bằng OrderInvoiceAccessImpl; nhờ vậy order không phụ thuộc finance. Lớp ModularityTest kiểm các luật này mỗi lần build, vi phạm thì build đỏ.'),
-            fig(f'{U}/class-kien-truc-xoay.png', 'Biểu đồ lớp kiến trúc: giao tiếp giữa các module nghiệp vụ', maxw=5760000, maxh=7800000),
+            fig(f'{U}/class-kien-truc.png', 'Biểu đồ lớp kiến trúc: giao tiếp giữa các module nghiệp vụ', maxw=5760000, maxh=7800000),
             B('Bên trong mỗi module, mã chia tầng Controller → Service → Repository → Entity:'),
             L('Controller (@RestController): nhận request, kiểm dữ liệu bằng @Valid, kiểm quyền bằng @PreAuthorize, lấy người thực hiện từ token qua CurrentUser rồi gọi Service. Không truy cập database.'),
             L('Service: interface liệt kê nghiệp vụ, lớp Impl cài đặt, mỗi phương thức ghi là một giao dịch @Transactional; nghiệp vụ chỉ nằm ở tầng này.'),
             L('Repository (Spring Data JPA): đọc ghi bảng; các truy vấn khóa dòng có hậu tố ForUpdate. Truy vấn chỉ đọc ghép nhiều bảng nằm ở QueryRepository.'),
             L('Entity: lớp ánh xạ bảng; DTO dạng record tách dữ liệu vào ra API khỏi Entity.'),
-            fig(f'{U}/class-ban-hang-xoay.png', 'Biểu đồ lớp các tầng trong module order (gọi món, bếp)', maxw=5760000, maxh=7800000),
+            fig(f'{U}/class-ban-hang.png', 'Biểu đồ lớp các tầng trong module order (gọi món, bếp)', maxw=5760000, maxh=7800000),
             B('Liên kết giữa các Entity vẽ đúng chiều ánh xạ JPA: OrderBatch giữ tham chiếu @ManyToOne tới CustomerOrder, OrderItem giữ tham chiếu tới OrderBatch (bội số 1..* - 1), khớp khóa ngoại của bảng order_batches, order_items. OrderItemStatusChanger gom việc đổi trạng thái món và ghi nhật ký order_item_events vào một chỗ, để mọi lần đổi trạng thái đều đi đúng máy trạng thái.'),
             B('Phần thanh toán dùng mẫu Strategy [12]: PaymentServiceImpl giữ một Map<PaymentMethod, PaymentStrategy>; Spring tiêm mọi lớp cài PaymentStrategy (CashPaymentStrategy, QrPaymentStrategy), nên thêm phương thức thanh toán mới chỉ cần thêm một lớp, không sửa PaymentServiceImpl. Tiền chuyển khoản đi đường riêng: SePay gọi webhook, SepayWebhookService kiểm khóa API rồi chuyển QrTransferProcessor ghi nhận; cả hai đường thu đều kết thúc ở InvoiceSettlement, nơi đóng hóa đơn và gọi OrderBillingApi để đóng đơn, trả bàn.'),
             fig(f'{U}/class-thanh-toan.png', 'Biểu đồ lớp thanh toán (mẫu Strategy)', maxw=5760000),
             H3('3.2.8. Biểu đồ triển khai'),
             B('Trình duyệt kết nối HTTPS tới nginx ở máy 1; nginx chuyển vào Traefik trong cụm Kubernetes (k3s); Traefik đưa / tới pod giao diện và /api tới pod backend; backend kết nối PostgreSQL. Máy 2 chứa công cụ: Jenkins kiểm thử và đóng gói, Argo CD triển khai theo Git, bộ giám sát, kho sao lưu. Chi tiết ở mục 4.4.'),
-            fig(f'{U}/deploy-xoay.png', 'Biểu đồ triển khai', maxw=5760000, maxh=7800000)]
+            fig(f'{U}/deploy.png', 'Biểu đồ triển khai', maxw=5760000, maxh=8200000)]
     return out
