@@ -123,8 +123,8 @@ export function MonthlyAssignmentModal({ month, initialEmployee, employees, shif
                   <span className="field-label">{weekdayLabel(date)}</span>
                   <select className="input" aria-label={`Ca ngày ${day(date)}`} disabled={!shifts?.length}
                           value={overrides[date] ?? 'template'} onChange={(event) => setDayOverride(date, event.target.value)}>
-                    <option value="template">{shift ? `Theo mẫu · ${shiftLabel(shift)}` : planned != null ? 'Theo mẫu · Ca đã ngừng dùng' : 'Theo mẫu · Không phân ca'}</option>
-                    <option value="off">Không phân ca ngày này</option>
+                    <option value="template">{shift ? `Theo mẫu · ${shift.name}` : planned != null ? 'Theo mẫu · Ca đã ngừng dùng' : 'Theo mẫu · Không phân ca'}</option>
+                    <option value="off">Không phân ca</option>
                     {shiftOptions}
                   </select>
                 </label>
