@@ -1,7 +1,7 @@
 # Kho đối tượng S3 cho sao lưu CloudNativePG (WAL liên tục + bản sao lưu nền). Chạy ở máy 2: /opt/seaweedfs.
 # SeaweedFS thay MinIO: MinIO đã ngừng phát hành bản cộng đồng (không còn image sau 2025, không có bản vá bảo mật).
 # Chỉ mở cổng S3 trên 127.0.0.1:8333; nginx máy 2 cổng 9000 chuyển vào, chỉ cho 10.10.0.1 (máy 1) qua WireGuard
-# (docs/devops/nginx/s3-wireguard.conf). Khóa truy cập nằm trong /opt/seaweedfs/s3.json (quyền 600, không vào Git).
+# (deploy/nginx/may2/sites-available/s3-wireguard.conf). Khóa truy cập nằm trong /opt/seaweedfs/s3.json (quyền 600, không vào Git).
 # Chạy: cd /opt/seaweedfs && docker compose up -d
 services:
   seaweedfs:

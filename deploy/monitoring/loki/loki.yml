@@ -1,6 +1,6 @@
 # Loki (máy 2): kho log tập trung. Alloy trên cụm máy 1 đẩy log của mọi pod vào đây; xem bằng Grafana (Explore).
 # Một tiến trình, lưu trên đĩa (volume monitoring_loki-data = /var/lib/docker/volumes/monitoring_loki-data/_data),
-# giữ 7 ngày. Chỉ nghe 127.0.0.1; nginx máy 2 cổng 3101 nhận log từ 10.10.0.1 (docs/devops/nginx/loki-wireguard.conf).
+# giữ 7 ngày. Chỉ nghe 127.0.0.1; nginx máy 2 cổng 3101 nhận log từ 10.10.0.1 (deploy/nginx/may2/sites-available/loki-wireguard.conf).
 auth_enabled: false
 
 server:

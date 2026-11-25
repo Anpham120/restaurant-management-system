@@ -1,5 +1,5 @@
 # Middleware Traefik của production: việc gắn với ứng dụng nên khai báo trong Git (GitOps), Argo CD áp dụng.
-# nginx máy 1 chỉ lo HTTPS, HTTP/2, HSTS, giới hạn đăng nhập theo IP (docs/devops/nginx/rms.atlasplatform12.tech.conf).
+# nginx máy 1 chỉ lo HTTPS, HTTP/2, HSTS, giới hạn đăng nhập theo IP (deploy/nginx/may1/sites-available/rms.atlasplatform12.tech.conf).
 # Gắn vào Ingress rms bằng annotation traefik.ingress.kubernetes.io/router.middlewares (ingress.yaml).
 
 # Header bảo mật cho mọi response (trang web và API)

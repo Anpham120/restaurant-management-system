@@ -68,14 +68,14 @@ hằng tuần (mục 6).
 
 ## 4. Reverse proxy: nginx và Traefik
 
-| | nginx (máy 1, ngoài cụm, sửa tay) | Traefik (trong k3s, GitOps) |
+| | nginx (máy 1, ngoài cụm, Git + áp có chủ đích) | Traefik (trong k3s, GitOps) |
 |---|---|---|
 | Nhận từ | internet 80/443 | chỉ nginx, ClusterIP `10.43.0.80:80` |
 | Việc | HTTPS (certbot), http→https, HTTP/2, HSTS, `limit_req` đăng nhập 5/phút/IP, keepalive tới Traefik, cổng số liệu WireGuard | định tuyến theo Ingress, header bảo mật (CSP, nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy), nén API, access log JSON → Loki |
-| File | `docs/devops/nginx/rms.atlasplatform12.tech.conf`, `rms-login-ratelimit.conf`, `metrics-wireguard.conf` | `deploy/k8s/overlays/prod/{ingress,middlewares}.yaml`, `deploy/k8s/platform/may1/traefik-config.yaml` |
+| File | `deploy/nginx/may1/sites-available/{rms.atlasplatform12.tech,metrics-wireguard}.conf`, `deploy/nginx/may1/conf.d/rms-login-ratelimit.conf` | `deploy/k8s/overlays/prod/{ingress,middlewares}.yaml`, `deploy/k8s/platform/may1/traefik-config.yaml` |
 
-Áp file nginx (máy 1): sao lưu bản trên máy, `sudo cp docs/devops/nginx/<file> /etc/nginx/sites-available/`,
-`sudo nginx -t && sudo systemctl reload nginx`. Bản trong repo phải luôn trùng bản trên máy. Không thêm định tuyến ứng
+Áp file nginx (máy 1 hoặc máy 2, sau khi thay đổi lên main): `bash ~/rms-deploy/deploy/nginx/apply.sh` để xem khác biệt,
+`--ap-dung` để sao lưu bản trên máy, chép bản Git, `nginx -t` rồi reload (lỗi thì tự trả bản cũ). `scripts/demo/kiem-tra.sh` báo khi máy lệch Git. Không thêm định tuyến ứng
 dụng vào nginx: mọi đường dẫn đi vào Traefik.
 
 Chống dò mật khẩu 2 lớp: nginx theo IP (trên), app theo tên đăng nhập (`LoginThrottleService`: sai 5 lần trong 15 phút thì
