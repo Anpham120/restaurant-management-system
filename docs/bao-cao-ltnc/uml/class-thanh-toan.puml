@@ -4,8 +4,16 @@ skinparam style strictuml
 hide empty members
 title Biểu đồ lớp thanh toán (module finance, mẫu Strategy)
 skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 55
+skinparam defaultFontSize 14
+skinparam package {
+  BorderColor #475569
+  FontStyle bold
+  FontSize 15
+}
 
-package "controller" {
+package "controller" #F1F5F9 {
   class PaymentController <<RestController>> {
     + startPayment(invoiceId, request) : ApiResponse<PaymentResponse>
   }
@@ -13,7 +21,7 @@ package "controller" {
     + receive(authorization, rawBody) : ApiResponse<WebhookResult>
   }
 }
-package "service" {
+package "service" #EFF6FF {
   interface PaymentService <<interface>> {
     + startPayment(invoiceId, actorId, request) : PaymentResponse
   }
@@ -29,7 +37,7 @@ package "service" {
     + settlePaidInvoice(invoice, actorId)
   }
 }
-package "strategy" {
+package "strategy" #FFFBEB {
   interface PaymentStrategy <<interface>> <<Strategy>> {
     + method() : PaymentMethod
     + startPayment(invoiceId, actorId, request) : PaymentResponse
@@ -41,12 +49,14 @@ package "strategy" {
     QR
   }
 }
-package "repository" {
+package "repository" #F0FDF4 {
   interface PaymentRequestRepository <<interface>>
   interface PaymentRepository <<interface>>
 }
-interface OrderBillingApi <<interface>> <<API module order>> {
-  + closeOrderAndReleaseTable(orderId, actorId)
+package "module order" #FEF2F2 {
+  interface OrderBillingApi <<interface>> <<API module>> {
+    + closeOrderAndReleaseTable(orderId, actorId)
+  }
 }
 
 PaymentController --> PaymentService
@@ -63,5 +73,10 @@ CashPaymentStrategy ..> PaymentRequestRepository
 CashPaymentStrategy ..> PaymentRepository
 QrPaymentStrategy ..> PaymentRequestRepository
 QrTransferProcessor ..> PaymentRepository
-InvoiceSettlement ..> OrderBillingApi
+InvoiceSettlement .[#EA580C].> OrderBillingApi
+
+legend bottom
+  Thêm phương thức thanh toán mới = thêm một lớp cài PaymentStrategy; Spring tiêm vào Map, không sửa PaymentServiceImpl.
+  Hai đường thu tiền (tiền mặt, webhook SePay) đều kết thúc ở InvoiceSettlement.
+endlegend
 @enduml
