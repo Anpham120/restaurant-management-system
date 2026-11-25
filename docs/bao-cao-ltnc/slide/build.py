@@ -156,26 +156,35 @@ for i, (a, b) in enumerate(muc):
     r2 = p2.add_run(); r2.text = b; r2.font.italic = True
     r2.font.color.rgb = rgb(XANH)
 
-# ================= Giới thiệu bài toán
-s = moi('Giới thiệu bài toán', 'Bài toán: một nhà hàng phục vụ tại bàn, nhiều bộ phận phải phối hợp liên tục. Làm thủ công thì dễ sai ở mọi khâu.')
-the_chu(s, 0.69, 1.3, 5.9, 1.85, 'Bối cảnh', ['Nhà hàng phục vụ tại bàn: phục vụ ghi món, bếp chế biến, thu ngân tính tiền, kho cấp nguyên liệu, quản lý theo dõi doanh thu'], fill=TRANG, size=16)
-s.shapes[-2].line.color.rgb = rgb('C9D6E5')
-the(s, 0.69, 3.3, 5.9, 3.0, 'FDECEA')
-tb(s, 0.87, 3.42, 5.55, 2.8, [('Vấn đề khi làm bằng giấy, bảng tính', {'size': 17, 'bold': True, 'color': DO, 'after': 6})] +
-   [(t, {'bullet': True, 'size': 15, 'after': 4}) for t in [
-       'Món đã gọi nhưng bếp hết nguyên liệu',
-       'Tính sai tiền, thu thiếu hoặc thu hai lần',
-       'Không biết món nào bán chạy',
-       'Không kiểm soát hàng hết hạn và tiền mặt cuối ngày']])
-the(s, 6.75, 1.3, 5.9, 5.0, NEN)
-tb(s, 6.93, 1.42, 5.55, 4.8, [('Mục tiêu', {'size': 17, 'bold': True, 'color': XANH, 'after': 8})] +
-   [(t, {'bullet': True, 'size': 15, 'after': 6}) for t in [
-       'Số hóa trọn vòng: mở bàn, gọi món, bếp, chốt hóa đơn, thu tiền mặt hoặc QR',
-       'Quản lý thực đơn theo ngày, hạn mức suất, công thức món',
-       'Kho theo lô và hạn dùng, hết hạn trước xuất trước (FEFO)',
-       'Nhân sự, ca làm, chấm công; phân quyền theo vai trò',
-       'Tài chính: khoản chi, đối soát tiền mặt, báo cáo doanh thu',
-       'Áp dụng kỹ thuật lập trình nâng cao: kiến trúc module, mẫu thiết kế, giao dịch và khóa, kiểm thử tự động']])
+# ================= Giới thiệu bài toán (1/2): bối cảnh và thực trạng
+s = moi('Giới thiệu bài toán: bối cảnh và thực trạng',
+        'Nhà hàng phục vụ tại bàn có nhiều bộ phận phải phối hợp liên tục. Khi làm bằng giấy hoặc bảng tính rời rạc, lỗi xảy ra ở mọi khâu.')
+tb(s, 0.69, 1.15, 11.95, 0.75, [('Nhà hàng phục vụ tại bàn có 5 bộ phận phối hợp trong mỗi bữa ăn. Mỗi bộ phận ghi chép riêng bằng giấy hoặc bảng tính, '
+                                'nên thông tin không đi kịp giữa các khâu.', {'size': 16})])
+bang(s, 0.69, 2.0, 11.95, [('Bộ phận', 1.7), ('Công việc', 4.5), ('Lỗi thường gặp khi làm thủ công', 5.75)], [
+    ['Phục vụ', 'Ghi món từng đợt, chuyển xuống bếp', 'Gọi món đã hết, sai món, sót món gọi thêm'],
+    ['Bếp', 'Nhận món, nấu; lấy nguyên liệu từ kho', 'Nhận món rồi mới biết hết nguyên liệu'],
+    ['Thu ngân', 'Tính tiền, thu tiền mặt hoặc chuyển khoản', 'Tính sai tiền; khó đối chiếu tiền chuyển khoản'],
+    ['Kho', 'Nhập nguyên liệu theo lô, xuất cho bếp', 'Không biết lô nào sắp hết hạn; tồn kho lệch sổ'],
+    ['Quản lý', 'Theo dõi doanh thu, chi phí, nhân sự', 'Không biết món nào bán chạy; lệch tiền mặt cuối ngày']], size=15, hrow=0.55)
+the(s, 0.69, 5.6, 11.95, 0.7, XLA_NEN)
+tb(s, 0.87, 5.63, 11.6, 0.64, [('Cần một hệ thống dùng chung: thông tin đi ngay giữa các bộ phận, không còn ghi chép rời', {'size': 16, 'bold': True, 'color': XLA})], anchor=MSO_ANCHOR.MIDDLE)
+
+# ================= Giới thiệu bài toán (2/2): lý do, yêu cầu, mục tiêu
+s = moi('Giới thiệu bài toán: yêu cầu và mục tiêu',
+        'Lý do chọn đề tài: bài toán thực tế, nhiều ràng buộc và nhiều người thao tác cùng lúc, phù hợp áp dụng kỹ thuật lập trình nâng cao.')
+for i, (td, ds, nen, mau) in enumerate([
+        ('Lý do chọn đề tài', ['Bài toán thực tế, nhà hàng nào cũng gặp', 'Nhiều bộ phận, nhiều quy tắc nghiệp vụ ràng buộc lẫn nhau',
+                               'Nhiều người thao tác cùng lúc trên cùng bàn, hóa đơn, lô hàng', 'Phù hợp áp dụng kiến thức Lập trình nâng cao'], NEN, XANH),
+        ('Yêu cầu đặt ra', ['4 vai trò dùng chung một hệ thống', 'Món còn nguyên liệu và còn suất mới được gọi',
+                            'Một hóa đơn chỉ thu một lần, kể cả khi nhiều người bấm cùng lúc', 'Nhận tiền chuyển khoản tự động qua SePay',
+                            'Xuất kho theo hạn dùng sớm nhất (FEFO)'], NEN, XANH),
+        ('Mục tiêu', ['Số hóa trọn vòng nghiệp vụ: bàn, món, bếp, hóa đơn, thu tiền', 'Quản lý thực đơn, kho, nhân sự, tài chính',
+                      'Dữ liệu luôn đúng, có truy vết', 'Áp dụng kiến trúc module, mẫu thiết kế, giao dịch và khóa, kiểm thử tự động'], XLA_NEN, XLA)]):
+    x = 0.69 + i * 4.05
+    the(s, x, 1.3, 3.85, 4.6, nen)
+    tb(s, x + 0.18, 1.45, 3.5, 4.35, [(td, {'size': 19, 'bold': True, 'color': mau, 'after': 10})] +
+       [(t, {'bullet': True, 'size': 16, 'after': 10}) for t in ds])
 
 # ================= Giải pháp
 s = moi('Giải pháp: hệ thống Atlas Restaurant', 'Một ứng dụng web dùng chung cho cả nhà hàng; mỗi người đăng nhập theo vai trò và chỉ thấy phần việc của mình.')
