@@ -2,7 +2,7 @@
 # node-exporter (CPU/RAM/đĩa máy chủ, thời điểm sao lưu), blackbox-exporter (gọi domain thật như người dùng).
 # Vị trí (từ 20/11/2026): máy 2 chạy tất cả: cd /home/coder/rms-deploy/deploy/monitoring && docker compose up -d
 #   máy 1 chỉ chạy node-exporter:            cd /home/coder/rms-deploy/deploy/monitoring && docker compose up -d node-exporter
-# Máy 2 lấy số liệu app và node-exporter của máy 1 qua WireGuard (nginx máy 1, docs/devops/nginx/metrics-wireguard.conf).
+# Máy 2 lấy số liệu app và node-exporter của máy 1 qua WireGuard (nginx máy 1, deploy/nginx/may1/sites-available/metrics-wireguard.conf).
 # Bản clone trên máy 2 tự theo nhánh main bằng deploy/monitoring/sync/ (systemd timer, nạp lại Prometheus/Alertmanager).
 # Chạy bằng network_mode: host, mọi cổng chỉ mở trên 127.0.0.1; Grafana ra ngoài qua nginx của máy 2.
 # Cấu hình mount cả thư mục, không mount từng file: deploy cập nhật mã bằng git reset --hard (file mới, inode mới), bind mount

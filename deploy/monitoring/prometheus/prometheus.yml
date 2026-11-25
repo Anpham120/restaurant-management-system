@@ -14,7 +14,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       # Từ 20/11/2026 app chạy Kubernetes (rms-prod, máy 1). nginx máy 1 cổng 9181 (chỉ cho 10.10.0.2, qua WireGuard)
-      # chuyển vào Traefik với Host rms-metrics.internal -> Service rms-app = bản đang phục vụ (docs/devops/nginx/metrics-wireguard.conf).
+      # chuyển vào Traefik với Host rms-metrics.internal -> Service rms-app = bản đang phục vụ (deploy/nginx/may1/sites-available/metrics-wireguard.conf).
       # Nhãn application: dashboard JVM (Micrometer) lọc theo nhãn này.
       - targets: ['10.10.0.1:9181']
         labels: {application: restaurant-core}

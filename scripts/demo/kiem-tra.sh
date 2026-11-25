@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Kiểm tra nhanh trước buổi demo (chạy trên máy 1, user coder; cần SSH sang máy 2 qua WireGuard).
-# In OK/LỖI cho từng mục: domain, blue-green, PostgreSQL, sao lưu, cấu hình k3s so với Git, Argo CD, cảnh báo đang bật.
+# In OK/LỖI cho từng mục: domain, blue-green, PostgreSQL, sao lưu, cấu hình k3s và nginx so với Git, Argo CD, cảnh báo đang bật.
 #
 # Dùng: bash ~/rms-deploy/scripts/demo/kiem-tra.sh
 set -uo pipefail
@@ -23,6 +23,7 @@ if [ -n "$d" ] && [ -n "$(find "$d" -mmin -1560)" ]; then ok "pg_dump gần nh�
 b=$(kubectl -n rms-prod get backups.postgresql.cnpg.io --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name} {.items[-1:].status.phase}' 2>&1)
 [[ "$b" == *completed ]] && ok "bản nền WAL gần nhất: $b" || bad "bản nền WAL: $b"
 bash "$REPO/deploy/k3s/apply.sh" >/dev/null 2>&1 && ok "cấu hình k3s máy 1 khớp Git" || bad "cấu hình k3s máy 1 lệch Git: bash deploy/k3s/apply.sh để xem"
+bash "$REPO/deploy/nginx/apply.sh" >/dev/null 2>&1 && ok "cấu hình nginx máy 1 khớp Git" || bad "cấu hình nginx máy 1 lệch Git: bash deploy/nginx/apply.sh để xem"
 
 echo "== Máy 2 (Argo CD, giám sát)"
 ssh -o ConnectTimeout=5 -o BatchMode=yes "$MAY2" '
@@ -41,6 +42,8 @@ fi
 rm -f /tmp/kiem-tra-may2.$$
 ssh -o ConnectTimeout=5 -o BatchMode=yes "$MAY2" 'bash ~/rms-deploy/deploy/k3s/apply.sh' >/dev/null 2>&1 \
   && ok "cấu hình k3s máy 2 khớp Git" || bad "cấu hình k3s máy 2 lệch Git: bash ~/rms-deploy/deploy/k3s/apply.sh trên máy 2 để xem"
+ssh -o ConnectTimeout=5 -o BatchMode=yes "$MAY2" 'bash ~/rms-deploy/deploy/nginx/apply.sh' >/dev/null 2>&1 \
+  && ok "cấu hình nginx máy 2 khớp Git" || bad "cấu hình nginx máy 2 lệch Git: bash ~/rms-deploy/deploy/nginx/apply.sh trên máy 2 để xem"
 
 echo
 [ "$loi" = 0 ] && echo "SẴN SÀNG DEMO" || echo "CÓ MỤC LỖI: xử lý trước khi demo"
