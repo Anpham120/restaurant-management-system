@@ -8,20 +8,29 @@ skinparam nodesep 45
 skinparam ranksep 55
 skinparam defaultFontSize 14
 skinparam package {
-  BorderColor #475569
+  BorderColor #000000
+  BackgroundColor #FFFFFF
   FontStyle bold
   FontSize 15
 }
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+}
+skinparam ArrowColor #000000
+skinparam class {
+  BorderColor #000000
+}
 
-package "controller" #F1F5F9 {
+package "controller" {
   class PaymentController <<RestController>> {
-    + startPayment(invoiceId, request) : ApiResponse<PaymentResponse>
+    + startPayment(invoiceId, request)
   }
   class SepayWebhookController <<RestController>> {
-    + receive(authorization, rawBody) : ApiResponse<WebhookResult>
+    + receive(authorization, rawBody)
   }
 }
-package "service" #EFF6FF {
+package "service" {
   interface PaymentService <<interface>> {
     + startPayment(invoiceId, actorId, request) : PaymentResponse
   }
@@ -37,7 +46,7 @@ package "service" #EFF6FF {
     + settlePaidInvoice(invoice, actorId)
   }
 }
-package "strategy" #FFFBEB {
+package "strategy" {
   interface PaymentStrategy <<interface>> <<Strategy>> {
     + method() : PaymentMethod
     + startPayment(invoiceId, actorId, request) : PaymentResponse
@@ -49,16 +58,22 @@ package "strategy" #FFFBEB {
     QR
   }
 }
-package "repository" #F0FDF4 {
+package "repository" {
   interface PaymentRequestRepository <<interface>>
   interface PaymentRepository <<interface>>
 }
-package "module order" #FEF2F2 {
+package "module order" {
   interface OrderBillingApi <<interface>> <<API module>> {
     + closeOrderAndReleaseTable(orderId, actorId)
   }
 }
 
+' Xếp dọc: controller, service, rồi strategy và module order, cuối cùng repository
+PaymentServiceImpl -[hidden]right- InvoiceSettlement
+InvoiceSettlement -[hidden]right- QrTransferProcessor
+PaymentServiceImpl -[hidden]down- PaymentStrategy
+PaymentStrategy -[hidden]right- OrderBillingApi
+CashPaymentStrategy -[hidden]down- PaymentRequestRepository
 PaymentController --> PaymentService
 PaymentService <|.. PaymentServiceImpl
 PaymentServiceImpl o--> "1..*" PaymentStrategy
@@ -73,10 +88,11 @@ CashPaymentStrategy ..> PaymentRequestRepository
 CashPaymentStrategy ..> PaymentRepository
 QrPaymentStrategy ..> PaymentRequestRepository
 QrTransferProcessor ..> PaymentRepository
-InvoiceSettlement .[#EA580C].> OrderBillingApi
+InvoiceSettlement ..> OrderBillingApi
 
 legend bottom
+  ——>  gọi / liên kết     - - >  phụ thuộc     - - ▷  cài đặt interface     ◇——>  giữ nhiều Strategy trong Map
   Thêm phương thức thanh toán mới = thêm một lớp cài PaymentStrategy; Spring tiêm vào Map, không sửa PaymentServiceImpl.
-  Hai đường thu tiền (tiền mặt, webhook SePay) đều kết thúc ở InvoiceSettlement.
+  Hai đường thu tiền (tiền mặt, webhook SePay) đều kết thúc ở InvoiceSettlement. Controller trả về ApiResponse<…>.
 endlegend
 @enduml

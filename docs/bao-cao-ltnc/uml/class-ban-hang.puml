@@ -7,25 +7,34 @@ skinparam nodesep 70
 skinparam ranksep 50
 skinparam defaultFontSize 14
 skinparam package {
-  BorderColor #475569
+  BorderColor #000000
+  BackgroundColor #FFFFFF
   FontStyle bold
   FontSize 15
 }
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+}
+skinparam ArrowColor #000000
+skinparam class {
+  BorderColor #000000
+}
 title Biểu đồ lớp các tầng trong module order (gọi món, bếp)
 
-package "controller" #F1F5F9 {
+package "controller" {
   class OrderItemController <<RestController>> {
-    + acceptOrderItem(itemId) : ApiResponse<AcceptItemResponse>
-    + startCookingOrderItem(itemId) : ApiResponse<OrderItemResponse>
+    + acceptOrderItem(itemId)
+    + startCookingOrderItem(itemId)
   }
   class OrderController <<RestController>> {
     - orderService : OrderService
     - currentUser : CurrentUser
-    + submitOrderBatch(orderId, request) : ApiResponse<SubmitBatchResponse>
+    + submitOrderBatch(orderId, request)
   }
 }
 
-package "service" #EFF6FF {
+package "service" {
   interface KitchenService <<interface>> {
     + acceptOrderItem(itemId, actorId) : AcceptItemResponse
     + startCookingOrderItem(itemId, actorId) : OrderItemResponse
@@ -42,37 +51,37 @@ package "service" #EFF6FF {
   }
 }
 
-package "API của module khác" #FFFBEB {
+package "API của module khác" {
   interface KitchenStockAllocator <<interface>> <<inventory>>
   interface DailyMenuLookup <<interface>> <<menu>>
 }
 
-package "repository" #F0FDF4 {
-  interface OrderItemRepository <<interface>> {
+package "repository" {
+  interface CustomerOrderRepository <<interface>> {
     + findByIdForUpdate(id)
   }
   interface OrderBatchRepository <<interface>> {
     + findByRequestKey(requestKey)
   }
-  interface CustomerOrderRepository <<interface>> {
+  interface OrderItemRepository <<interface>> {
     + findByIdForUpdate(id)
   }
 }
 
-package "entity" #FAF5FF {
-  class OrderItem {
+package "entity" {
+  class CustomerOrder {
     - id : Long
-    - quantity : int
-    - itemNameSnapshot : String
-    - unitPrice : BigDecimal
+    - status : OrderStatus
   }
   class OrderBatch {
     - id : Long
     - requestKey : String
   }
-  class CustomerOrder {
+  class OrderItem {
     - id : Long
-    - status : OrderStatus
+    - quantity : int
+    - itemNameSnapshot : String
+    - unitPrice : BigDecimal
   }
   enum OrderItemStatus <<enumeration>> {
     PENDING
@@ -88,9 +97,10 @@ package "entity" #FAF5FF {
 ' Bố cục: tầng trên xuống dưới, cột trái là luồng bếp, cột phải là luồng gọi món
 OrderItemController -[hidden]right- OrderController
 KitchenService -[hidden]right- OrderService
-OrderItemRepository -[hidden]right- OrderBatchRepository
-OrderBatchRepository -[hidden]right- CustomerOrderRepository
+CustomerOrderRepository -[hidden]right- OrderBatchRepository
+OrderBatchRepository -[hidden]right- OrderItemRepository
 KitchenStockAllocator -[hidden]down- DailyMenuLookup
+OrderItemRepository -[hidden]right- KitchenStockAllocator
 OrderItemStatusChanger -[hidden]down- OrderBatchRepository
 
 ' Controller gọi Service
@@ -105,19 +115,20 @@ OrderServiceImpl --> OrderItemStatusChanger
 KitchenServiceImpl ..> OrderItemRepository
 OrderServiceImpl ..> OrderBatchRepository
 OrderServiceImpl ..> CustomerOrderRepository
-KitchenServiceImpl .[#EA580C].> KitchenStockAllocator
-OrderServiceImpl .[#EA580C].> DailyMenuLookup
+KitchenServiceImpl ..> KitchenStockAllocator
+OrderServiceImpl ..> DailyMenuLookup
 ' Repository quản lý entity
 OrderItemRepository ..> OrderItem
 OrderBatchRepository ..> OrderBatch
 CustomerOrderRepository ..> CustomerOrder
 ' Liên kết entity theo ánh xạ JPA
-OrderItem "1..*" -right-> "1" OrderBatch : batch
-OrderBatch "1..*" -right-> "1" CustomerOrder : order
+OrderItem "1..*" -left-> "1" OrderBatch : batch
+OrderBatch "1..*" -left-> "1" CustomerOrder : order
 OrderItem --> "1" OrderItemStatus : status
 
 legend bottom
-  - - ▷ cài đặt interface     ——> gọi / liên kết     - - > dùng repository     <color:#EA580C>- - ></color> gọi API của module khác
-  findByIdForUpdate: khóa dòng (SELECT ... FOR UPDATE) trước khi đổi trạng thái. OrderBatch.requestKey UNIQUE: gửi lặp trả lại đợt cũ.
+  ——>  gọi / liên kết       - - >  phụ thuộc (repository, API module khác)       - - ▷  cài đặt interface
+  Controller trả về ApiResponse<…> bọc DTO. findByIdForUpdate: khóa dòng (SELECT ... FOR UPDATE) trước khi đổi trạng thái.
+  OrderBatch.requestKey UNIQUE: gửi lặp cùng khóa thì trả lại đợt cũ.
 endlegend
 @enduml
