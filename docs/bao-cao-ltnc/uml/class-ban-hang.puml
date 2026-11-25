@@ -2,63 +2,77 @@
 !include _style.iuml
 skinparam style strictuml
 hide empty members
+skinparam linetype ortho
+skinparam nodesep 70
+skinparam ranksep 50
+skinparam defaultFontSize 14
+skinparam package {
+  BorderColor #475569
+  FontStyle bold
+  FontSize 15
+}
 title Biểu đồ lớp các tầng trong module order (gọi món, bếp)
-skinparam linetype polyline
-skinparam nodesep 60
-skinparam ranksep 70
 
-package "controller" {
+package "controller" #F1F5F9 {
+  class OrderItemController <<RestController>> {
+    + acceptOrderItem(itemId) : ApiResponse<AcceptItemResponse>
+    + startCookingOrderItem(itemId) : ApiResponse<OrderItemResponse>
+  }
   class OrderController <<RestController>> {
     - orderService : OrderService
     - currentUser : CurrentUser
     + submitOrderBatch(orderId, request) : ApiResponse<SubmitBatchResponse>
   }
-  class OrderItemController <<RestController>> {
-    + acceptOrderItem(itemId) : ApiResponse<AcceptItemResponse>
-    + startCookingOrderItem(itemId) : ApiResponse<OrderItemResponse>
-  }
 }
-package "service" {
-  interface OrderService <<interface>> {
-    + submitOrderBatch(orderId, actorId, request) : SubmitBatchResponse
-    + markOrderItemServed(itemId, actorId) : OrderItemResponse
-  }
+
+package "service" #EFF6FF {
   interface KitchenService <<interface>> {
     + acceptOrderItem(itemId, actorId) : AcceptItemResponse
     + startCookingOrderItem(itemId, actorId) : OrderItemResponse
   }
-  class OrderServiceImpl
+  interface OrderService <<interface>> {
+    + submitOrderBatch(orderId, actorId, request) : SubmitBatchResponse
+    + markOrderItemServed(itemId, actorId) : OrderItemResponse
+  }
   class KitchenServiceImpl
+  class OrderServiceImpl
   class OrderItemStatusChanger {
     + recordItemCreated(item, actorId)
     + changeItemStatus(item, allowedFrom, next, actorId, reason)
   }
 }
-package "repository" {
-  interface CustomerOrderRepository <<interface>> {
+
+package "API của module khác" #FFFBEB {
+  interface KitchenStockAllocator <<interface>> <<inventory>>
+  interface DailyMenuLookup <<interface>> <<menu>>
+}
+
+package "repository" #F0FDF4 {
+  interface OrderItemRepository <<interface>> {
     + findByIdForUpdate(id)
   }
   interface OrderBatchRepository <<interface>> {
     + findByRequestKey(requestKey)
   }
-  interface OrderItemRepository <<interface>> {
+  interface CustomerOrderRepository <<interface>> {
     + findByIdForUpdate(id)
   }
 }
-package "entity" {
-  class CustomerOrder {
-    - id : Long
-    - status : OrderStatus
-  }
-  class OrderBatch {
-    - id : Long
-    - requestKey : String
-  }
+
+package "entity" #FAF5FF {
   class OrderItem {
     - id : Long
     - quantity : int
     - itemNameSnapshot : String
     - unitPrice : BigDecimal
+  }
+  class OrderBatch {
+    - id : Long
+    - requestKey : String
+  }
+  class CustomerOrder {
+    - id : Long
+    - status : OrderStatus
   }
   enum OrderItemStatus <<enumeration>> {
     PENDING
@@ -70,30 +84,40 @@ package "entity" {
     CANCELLED
   }
 }
-package "API của module khác" {
-  interface DailyMenuLookup <<interface>> <<menu>>
-  interface KitchenStockAllocator <<interface>> <<inventory>>
-}
 
-OrderController --> OrderService
+' Bố cục: tầng trên xuống dưới, cột trái là luồng bếp, cột phải là luồng gọi món
+OrderItemController -[hidden]right- OrderController
+KitchenService -[hidden]right- OrderService
+OrderItemRepository -[hidden]right- OrderBatchRepository
+OrderBatchRepository -[hidden]right- CustomerOrderRepository
+KitchenStockAllocator -[hidden]down- DailyMenuLookup
+OrderItemStatusChanger -[hidden]down- OrderBatchRepository
+
+' Controller gọi Service
 OrderItemController --> KitchenService
-OrderService <|.. OrderServiceImpl
+OrderController --> OrderService
+' Cài đặt interface
 KitchenService <|.. KitchenServiceImpl
-OrderServiceImpl --> OrderItemStatusChanger
+OrderService <|.. OrderServiceImpl
+' Service dùng lớp phụ trợ, repository, API module khác
 KitchenServiceImpl --> OrderItemStatusChanger
-OrderServiceImpl ..> CustomerOrderRepository
-OrderServiceImpl ..> OrderBatchRepository
+OrderServiceImpl --> OrderItemStatusChanger
 KitchenServiceImpl ..> OrderItemRepository
-OrderServiceImpl ..> DailyMenuLookup
-KitchenServiceImpl ..> KitchenStockAllocator
-CustomerOrderRepository ..> CustomerOrder
-OrderBatchRepository ..> OrderBatch
+OrderServiceImpl ..> OrderBatchRepository
+OrderServiceImpl ..> CustomerOrderRepository
+KitchenServiceImpl .[#EA580C].> KitchenStockAllocator
+OrderServiceImpl .[#EA580C].> DailyMenuLookup
+' Repository quản lý entity
 OrderItemRepository ..> OrderItem
-OrderBatch "1..*" --> "1" CustomerOrder : order
-OrderItem "1..*" --> "1" OrderBatch : batch
+OrderBatchRepository ..> OrderBatch
+CustomerOrderRepository ..> CustomerOrder
+' Liên kết entity theo ánh xạ JPA
+OrderItem "1..*" -right-> "1" OrderBatch : batch
+OrderBatch "1..*" -right-> "1" CustomerOrder : order
 OrderItem --> "1" OrderItemStatus : status
+
 legend bottom
-  findByIdForUpdate: @Lock(PESSIMISTIC_WRITE) sinh SELECT ... FOR UPDATE, khóa dòng trong giao dịch trước khi đổi trạng thái.
-  OrderBatch.requestKey UNIQUE: gửi lặp cùng khóa thì trả lại đợt cũ (chống gửi trùng).
+  - - ▷ cài đặt interface     ——> gọi / liên kết     - - > dùng repository     <color:#EA580C>- - ></color> gọi API của module khác
+  findByIdForUpdate: khóa dòng (SELECT ... FOR UPDATE) trước khi đổi trạng thái. OrderBatch.requestKey UNIQUE: gửi lặp trả lại đợt cũ.
 endlegend
 @enduml
