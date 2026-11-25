@@ -7,18 +7,27 @@ skinparam nodesep 40
 skinparam ranksep 55
 skinparam defaultFontSize 14
 skinparam package {
-  BorderColor #475569
+  BorderColor #000000
+  BackgroundColor #FFFFFF
   FontStyle bold
   FontSize 15
 }
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+}
+skinparam ArrowColor #000000
+skinparam class {
+  BorderColor #000000
+}
 title Biểu đồ lớp kiến trúc: giao tiếp giữa các module nghiệp vụ
 
-package "finance" as finance #FEF2F2 {
+package "finance" as finance {
   class InvoiceServiceImpl
   class OrderInvoiceAccessImpl
 }
 
-package "order" as order #EFF6FF {
+package "order" as order {
   interface OrderBillingApi <<interface>> <<API module>> {
     + lockOrderForBilling(orderId)
     + getServedItems(orderId)
@@ -34,7 +43,7 @@ package "order" as order #EFF6FF {
   class QuotaUsageCounterImpl
 }
 
-package "inventory" as inventory #F0FDF4 {
+package "inventory" as inventory {
   interface KitchenStockAllocator <<interface>> <<API module>> {
     + reserveIngredientsForItem(...)
     + consumeReservationsForCooking(orderItemId)
@@ -45,7 +54,7 @@ package "inventory" as inventory #F0FDF4 {
   class KitchenStockAllocatorImpl
 }
 
-package "menu" as menu #FFFBEB {
+package "menu" as menu {
   interface DailyMenuLookup <<interface>> <<API module>> {
     + findOrderableDish(dailyMenuItemId)
     + getRecipeLines(dailyMenuItemId)
@@ -65,11 +74,11 @@ KitchenStockAllocator -[hidden]down- DailyMenuLookupImpl
 OrderItemStockFlags -[hidden]down- DailyMenuLookupImpl
 
 ' Gọi API của module khác (nét đứt xanh)
-InvoiceServiceImpl .[#2563EB].> OrderBillingApi
-OrderServiceImpl .[#2563EB].> OrderInvoiceAccess
-OrderServiceImpl .[#2563EB].> KitchenStockAllocator
-OrderServiceImpl .[#2563EB].> DailyMenuLookup
-KitchenStockAllocatorImpl .[#2563EB].> DailyMenuLookup
+InvoiceServiceImpl ..> OrderBillingApi
+OrderServiceImpl ..> OrderInvoiceAccess
+OrderServiceImpl ..> KitchenStockAllocator
+OrderServiceImpl ..> DailyMenuLookup
+KitchenStockAllocatorImpl ..> DailyMenuLookup
 
 ' Cài đặt interface của chính module
 OrderBillingApi <|.up. OrderBillingApiImpl
@@ -77,12 +86,12 @@ KitchenStockAllocator <|.up. KitchenStockAllocatorImpl
 DailyMenuLookup <|.up. DailyMenuLookupImpl
 
 ' Đảo phụ thuộc: module trên cài interface do module dưới khai báo (nét đứt cam)
-OrderInvoiceAccessImpl .[#EA580C].|> OrderInvoiceAccess
-OrderItemStockFlagsImpl .[#EA580C].|> OrderItemStockFlags
-QuotaUsageCounterImpl .[#EA580C].|> QuotaUsageCounter
+OrderInvoiceAccessImpl ..|> OrderInvoiceAccess
+OrderItemStockFlagsImpl ..|> OrderItemStockFlags
+QuotaUsageCounterImpl ..|> QuotaUsageCounter
 
 legend bottom
-  <color:#2563EB>- - ></color> gọi API của module khác      <color:#EA580C>- - ▷</color> đảo phụ thuộc: module trên cài interface do module dưới khai báo
-  Mọi mũi tên giữa các module đều hướng xuống: finance → order → inventory → menu, không có vòng (ModularityTest kiểm mỗi lần build).
+  - - >  gọi API của module khác          - - ▷  cài đặt interface; nối giữa 2 module là đảo phụ thuộc
+  Mọi mũi tên giữa các module đều hướng xuống: finance → order → inventory → menu, không có vòng.
 endlegend
 @enduml
