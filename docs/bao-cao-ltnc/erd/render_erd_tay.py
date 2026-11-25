@@ -40,17 +40,16 @@ def dam_net(im):
 
 
 # Cột từ trái sang phải; mỗi cột là danh sách bảng từ trên xuống. Bảng được tham chiếu đặt cạnh bảng tham chiếu tới nó.
+# 25/11: 6 cụm đổi sang 2 cột (dọc trang A4, không cần xoay ảnh); bản trước ở cu-tu-xep/render_erd_tay.truoc-doc.py
 COT = {
-    'p1a-tai-khoan': [['departments', 'permissions'], ['employees', 'role_permissions'], ['accounts', 'roles'], ['account_roles', 'login_throttles']],
-    'p1b-ca-lam': [['shifts', 'employees'], ['shift_assignments'], ['attendances'], ['attendance_adjustments']],
-    'p2-thuc-don': [['menu_categories'], ['menu_items'], ['recipes'], ['recipe_ingredients', 'daily_menu_items'], ['kitchen_ingredient_types', 'daily_menus']],
-    'p3a-goi-mon': [['dining_tables', 'employees'], ['table_sessions', 'order_batches'], ['orders', 'order_items'], ['daily_menu_items', 'order_item_events']],
+    'p1a-tai-khoan': [['departments', 'employees', 'roles', 'permissions'], ['accounts', 'account_roles', 'role_permissions', 'login_throttles']],
+    'p1b-ca-lam': [['shifts', 'shift_assignments', 'employees'], ['attendances', 'attendance_adjustments']],
+    'p2-thuc-don': [['menu_categories', 'menu_items', 'recipes', 'recipe_ingredients'], ['daily_menus', 'daily_menu_items', 'kitchen_ingredient_types']],
+    'p3a-goi-mon': [['dining_tables', 'table_sessions', 'orders', 'employees'], ['order_batches', 'order_items', 'order_item_events', 'daily_menu_items']],
     'p3b-thanh-toan': [['orders'], ['invoices', 'order_items', 'employees'], ['invoice_items', 'payment_requests'], ['payments'], ['payment_webhook_events']],
     'p4a-nhap-xuat': [['ingredients', 'stock_receipts'], ['kitchen_ingredient_types', 'stock_receipt_items'], ['inventory_batches', 'stock_issues'], ['stock_issue_items']],
-    'p4b-bep': [['stock_issue_items', 'kitchen_ingredient_types'], ['kitchen_preparations'], ['kitchen_preparation_outputs'], ['kitchen_batches'],
-                ['stock_reservations', 'stock_return_items'], ['order_items', 'stock_returns']],
-    'p4c-kiem-ke': [['stock_adjustments', 'stock_counts'], ['stock_adjustment_items', 'stock_count_items'], ['inventory_batches', 'stock_issue_items', 'kitchen_batches'],
-                    ['stock_movements'], ['kitchen_preparations', 'order_items', 'stock_return_items']],
+    'p4b-bep': [['stock_issue_items', 'kitchen_ingredient_types', 'kitchen_preparations', 'kitchen_preparation_outputs', 'kitchen_batches'], ['order_items', 'stock_reservations', 'stock_returns', 'stock_return_items']],
+    'p4c-kiem-ke': [['stock_adjustments', 'stock_adjustment_items', 'stock_counts', 'stock_count_items'], ['kitchen_batches', 'inventory_batches', 'stock_issue_items', 'stock_movements', 'kitchen_preparations', 'order_items', 'stock_return_items']],
     'p5-tai-chinh': [['stock_receipts'], ['operating_expenses'], ['daily_cash_reconciliations']],
 }
 HEAD, ROW = 32, 32          # chiều cao tiêu đề và mỗi dòng (đơn vị của dbdiagram)
@@ -184,13 +183,15 @@ def bo_tri(cum, bang, refs, rong):
     nc = len(cot)
 
     # Gán làn: khe g nằm giữa cột g và g+1
-    lan = {g: [] for g in range(nc - 1)}
+    # khe g nằm bên phải cột g; khe nc-1 là lề phải của cột cuối (cho quan hệ giữa 2 bảng cùng cột cuối)
+    lan = {g: [] for g in range(nc)}
     dd = []
     for i, (ta, fa, tb, fb) in enumerate(refs):
         ca, cb = o_cot[ta], o_cot[tb]
         ya, yb = y_dong(ta, fa), y_dong(tb, fb)
         if abs(ca - cb) == 1 or ca == cb:
-            g = min(ca, cb) if ca != cb else (ca if ca < nc - 1 else ca - 1)
+            # cùng cột: dbdiagram gắn ký hiệu ở mép phải bảng, nên đường đi làn bên phải cột đó
+            g = min(ca, cb) if ca != cb else ca
             lan[g].append((min(ya, yb), i))
             dd.append({'kieu': 'ke', 'g': g, 'ya': ya, 'yb': yb})
         else:

@@ -46,7 +46,7 @@ docs/bao-cao-ltnc/build/lam.sh        # dựng → render → cập nhật số 
   `code-anh/render_code_tv.py` (container `mcr.microsoft.com/playwright/python`, mount thư mục này vào `/w`, repo vào `/repo`);
   lời giải thích nằm trong danh sách `CODE` của `build/ch45.py`.
 - Sơ đồ UML: sửa `.puml` rồi render bằng `plantuml/plantuml:1.2025.7 -tpng -charset UTF-8`.
-- ERD: `python3 erd/gen_dbml.py erd/catalog.json` rồi chạy `erd/render_erd_tay.py` trong container Playwright (mount `erd/` vào `/w`). Script đặt bảng theo cột (`COT`) và vạch từng đường quan hệ bằng điểm uốn (checkPoints) của dbdiagram: mỗi quan hệ một làn riêng, không chạy sau bảng; hình có tỉ lệ ngang/dọc từ 2,2 thì báo cáo dùng bản `-xoay.png`. Mỗi file `.dbml` cũng dán thẳng được vào https://dbdiagram.io/d.
+- ERD: `python3 erd/gen_dbml.py erd/catalog.json` rồi chạy `erd/render_erd_tay.py` trong container Playwright (mount `erd/` vào `/w`). Script đặt bảng theo cột (`COT`) và vạch từng đường quan hệ bằng điểm uốn (checkPoints) của dbdiagram: mỗi quan hệ một làn riêng, không chạy sau bảng; các cụm lớn xếp 2 cột cho hình dọc vừa trang A4, không cần xoay; quan hệ giữa 2 bảng cùng cột đi làn bên phải cột đó. Mỗi file `.dbml` cũng dán thẳng được vào https://dbdiagram.io/d.
 
 ## Còn phải điền
 

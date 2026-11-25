@@ -1,7 +1,9 @@
 @startuml
 !include _style.iuml
 title Biểu đồ triển khai
-left to right direction
+skinparam defaultFontSize 15
+skinparam nodesep 30
+skinparam ranksep 45
 node "Máy khách" <<device>> as PC {
   node "Trình duyệt web" <<executionEnvironment>> as BR {
     artifact "SPA React\n(file tĩnh JS, CSS)" as SPA
@@ -33,6 +35,10 @@ node "Máy 2: công cụ\nUbuntu 24.04" <<device>> as M2 {
 node "SePay" <<external system>> as SP
 node "GitHub, GHCR" <<external system>> as GH
 
+JK -[hidden]right- AR
+MON -[hidden]right- S3
+JK -[hidden]down- MON
+AR -[hidden]down- S3
 BR -- NG : HTTPS 443
 SP -- NG : HTTPS webhook
 NG -- TR : HTTP
