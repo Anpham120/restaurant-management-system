@@ -49,6 +49,6 @@ patches:
           parameters: {archive_timeout: "60s"}
 images:
   - name: ghcr.io/anpham120/rms-app
-    newTag: 767ef1f28c5bdd9c30d260bc519a80677cdc1ffe
+    newTag: 5059b380d4f2d1e1689e0a05bf078bd55feb895a
   - name: ghcr.io/anpham120/rms-web
-    newTag: 767ef1f28c5bdd9c30d260bc519a80677cdc1ffe
+    newTag: 5059b380d4f2d1e1689e0a05bf078bd55feb895a
