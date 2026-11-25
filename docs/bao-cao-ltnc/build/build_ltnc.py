@@ -128,6 +128,9 @@ def _toc_p(lv, t, first, last):
 newbody = newbody.replace('<!--MUCLUC-->', ''.join(_toc_p(lv, t, k == 0, k == len(heads) - 1) for k, (lv, t) in enumerate(heads)))
 newbody = newbody.replace('<!--DM-HINH-->', bang_dm(dm['RMSFigureCaption'], 'Tên hình'))
 newbody = newbody.replace('<!--DM-BANG-->', bang_dm(dm['RMSTableCaption'], 'Tên bảng'))
+# Đoạn đệm sau bảng (GAP) mà đứng ngay trước một đoạn tự sang trang mới (pageBreakBefore) thì bỏ: khi bảng vừa đầy trang,
+# đoạn đệm bị đẩy sang trang sau và đoạn kế lại ngắt trang lần nữa, sinh ra một trang trắng (trước đây là trang sau danh sách bảng).
+newbody = re.sub(re.escape(GAP) + r'(?=<w:p><w:pPr><w:pStyle w:val="[^"]+"/><w:pageBreakBefore/>)', '', newbody)
 json.dump({'hinh': [d[0] for d in dm['RMSFigureCaption']], 'bang': [d[0] for d in dm['RMSTableCaption']], 'head': [h[1] for h in heads]},
           open(f'{HERE}/dm_ds.json', 'w'), ensure_ascii=False)
 assert 'Consolas' not in newbody
