@@ -24,6 +24,7 @@ export function FormModal({
   submitLabel,
   submitDisabled,
   busy,
+  preventCloseWhileBusy,
   error,
   wide,
   danger,
@@ -37,6 +38,7 @@ export function FormModal({
   submitLabel: string;
   submitDisabled?: boolean;
   busy?: boolean;
+  preventCloseWhileBusy?: boolean;
   error?: unknown;
   wide?: boolean;
   danger?: boolean;
@@ -46,6 +48,7 @@ export function FormModal({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const closeDisabled = busy && preventCloseWhileBusy;
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -54,7 +57,8 @@ export function FormModal({
   }, [open]);
 
   return (
-    <dialog ref={ref} className={wide ? 'sheet sheet-wide' : 'sheet'} aria-labelledby={titleId} onClose={onClose}>
+    <dialog ref={ref} className={wide ? 'sheet sheet-wide' : 'sheet'} aria-labelledby={titleId}
+            onClose={onClose} onCancel={(event) => { if (closeDisabled) event.preventDefault(); }}>
       {open && (
         <form
           method="dialog"
@@ -68,7 +72,7 @@ export function FormModal({
           {children}
           <ErrorNotice error={error} />
           <div className="sheet-actions">
-            <button type="button" className="btn btn-quiet" onClick={onClose}>
+            <button type="button" className="btn btn-quiet" disabled={closeDisabled} onClick={onClose}>
               Quay lại
             </button>
             <button type="submit" className={danger ? 'btn btn-danger' : 'btn btn-primary'} disabled={busy || submitDisabled}>
@@ -157,7 +161,7 @@ export function DataTable<T>({
 
 /** Chuyển ngày/tuần: hai nút mũi tên ôm lấy ô ngày, luôn nằm trên một hàng kể cả trên điện thoại. */
 export function Stepper({ unit, onPrev, onNext, nextDisabled, children }: {
-  unit: 'Ngày' | 'Tuần';
+  unit: 'Ngày' | 'Tuần' | 'Tháng';
   onPrev: () => void;
   onNext: () => void;
   nextDisabled?: boolean;

@@ -2,6 +2,7 @@ package com.restaurant.core.employee.repository;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +26,13 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
              WHERE a.employee.id = :employeeId AND a.status <> 'CANCELLED'
                AND a.scheduledStartAt < :end AND a.scheduledEndAt > :start""")
     boolean existsOverlapping(@Param("employeeId") Long employeeId, @Param("start") Instant start, @Param("end") Instant end);
+
+    @Query("""
+            SELECT a FROM ShiftAssignment a
+             WHERE a.employee.id IN :employeeIds AND a.status <> 'CANCELLED'
+               AND a.scheduledStartAt < :end AND a.scheduledEndAt > :start""")
+    List<ShiftAssignment> findOverlapping(@Param("employeeIds") Collection<Long> employeeIds,
+                                          @Param("start") Instant start, @Param("end") Instant end);
 
     /** Ca đã xếp sau một ngày, chưa chấm công (để hủy khi nhân viên nghỉ việc). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

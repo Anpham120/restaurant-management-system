@@ -1,5 +1,7 @@
 package com.restaurant.core.employee.repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.persistence.LockModeType;
@@ -30,4 +32,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Employee e WHERE e.id = :id")
     Optional<Employee> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM Employee e WHERE e.id IN :ids ORDER BY e.id")
+    List<Employee> findAllByIdForUpdate(@Param("ids") Collection<Long> ids);
 }

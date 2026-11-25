@@ -229,6 +229,132 @@ class EmployeeIT extends OrderApiTestBase {
                 """.formatted(employeeIds, shift, date));
     }
 
+    @Test
+    void monthlyAssignmentFillsSelectedDaysAndRetriesWithoutChangingAttendance() throws Exception {
+        long first = data.staff("WAITER").employeeId();
+        long second = data.staff("KITCHEN").employeeId();
+        long morning = createTestShift("08:00", "12:00", true);
+        long evening = createTestShift("16:00", "20:00", true);
+        long extra = createTestShift("12:00", "16:00", true);
+        long existing = readLong(postJson(manager, "/api/shift-assignments", """
+                {"employeeId":%d,"shiftId":%d,"workDate":"2028-02-01","note":"Ghi chú cũ"}
+                """.formatted(first, morning)).andExpect(status().isCreated()), "$.data.id");
+        long attendance = readLong(postJson(manager, "/api/attendances", """
+                {"shiftAssignmentId":%d,"status":"ABSENT"}
+                """.formatted(existing)).andExpect(status().isCreated()), "$.data.id");
+        long unrelated = readLong(bulkAssign(manager, List.of(second).toString(), extra, LocalDate.of(2028, 2, 29))
+                .andExpect(status().isCreated()), "$.data[0].id");
+
+        String ids = List.of(second, first).toString();
+        String[] days = {monthlyDay("2028-02-29", evening), monthlyDay("2028-02-01", morning)};
+        monthlyAssign(manager, ids, "2028-02", days).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.created").value(3)).andExpect(jsonPath("$.data.unchanged").value(1));
+        monthlyAssign(manager, ids, "2028-02", days).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.created").value(0)).andExpect(jsonPath("$.data.unchanged").value(4));
+
+        getAs(manager, "/api/shift-assignments?from=2028-02-01&to=2028-02-29&employeeId=" + first)
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].attendanceId").value((int) attendance))
+                .andExpect(jsonPath("$.data[0].note").value("Ghi chú cũ"))
+                .andExpect(jsonPath("$.data[1].note").value("Kế hoạch tháng"));
+        getAs(manager, "/api/shift-assignments?from=2028-02-01&to=2028-02-29&employeeId=" + second)
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[1].id").value((int) unrelated));
+    }
+
+    @Test
+    void monthlyAssignmentRollsBackWhenShiftsCrossTheMonthBoundary() throws Exception {
+        long free = data.staff("WAITER").employeeId();
+        long booked = data.staff("KITCHEN").employeeId();
+        String bookedName = read(getAs(manager, "/api/employees/{id}", booked), "$.data.fullName");
+        long night = createTestShift("22:00", "02:00", true);
+        long early = createTestShift("01:00", "04:00", true);
+        bulkAssign(manager, List.of(booked).toString(), night, LocalDate.of(2027, 12, 31)).andExpect(status().isCreated());
+
+        monthlyAssign(manager, List.of(free, booked).toString(), "2028-01", monthlyDay("2028-01-01", early), monthlyDay("2028-01-02", early))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("OVERLAP"))
+                .andExpect(jsonPath("$.error.message", containsString(bookedName)))
+                .andExpect(jsonPath("$.error.message", containsString("2028-01-01")));
+        assertThat(data.count("SELECT count(*) FROM shift_assignments WHERE shift_id = ?", early)).isZero();
+
+        bulkAssign(manager, List.of(booked).toString(), early, LocalDate.of(2028, 2, 1)).andExpect(status().isCreated());
+        monthlyAssign(manager, List.of(free, booked).toString(), "2028-01", monthlyDay("2028-01-31", night))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("OVERLAP"))
+                .andExpect(jsonPath("$.error.message", containsString("2028-01-31")));
+        assertThat(data.count("SELECT count(*) FROM shift_assignments WHERE shift_id = ?", night)).isEqualTo(1);
+    }
+
+    @Test
+    void monthlyAssignmentRejectsOverlapBetweenNewDaysAndWithChangedShiftSnapshots() throws Exception {
+        String ids = List.of(data.staff("KITCHEN").employeeId()).toString();
+        long night = createTestShift("22:00", "02:00", true);
+        long early = createTestShift("01:00", "04:00", true);
+        String first = monthlyDay("2028-04-01", night);
+        monthlyAssign(manager, ids, "2028-04", first, monthlyDay("2028-04-02", early))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("OVERLAP"))
+                .andExpect(jsonPath("$.error.message", containsString("2028-04-02")));
+        assertThat(data.count("SELECT count(*) FROM shift_assignments WHERE shift_id IN (?, ?)", night, early)).isZero();
+        monthlyAssign(manager, ids, "2028-04", first).andExpect(status().isCreated());
+        putJson(manager, "/api/shifts/{id}", """
+                {"name":"Ca đã đổi giờ","startTime":"23:00","endTime":"02:00"}
+                """, night).andExpect(status().isOk());
+        monthlyAssign(manager, ids, "2028-04", first)
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("OVERLAP"));
+        assertThat(data.count("SELECT count(*) FROM shift_assignments WHERE shift_id = ?", night)).isEqualTo(1);
+    }
+
+    @Test
+    void monthlyAssignmentRejectsInvalidSelectionsAndRequiresManager() throws Exception {
+        long employee = data.staff("WAITER").employeeId();
+        long active = createTestShift("08:00", "12:00", true);
+        long inactive = createTestShift("12:00", "16:00", false);
+        String ids = List.of(employee).toString();
+        String day = monthlyDay("2028-02-01", active);
+        monthlyAssign(waiter, ids, "2028-02", day).andExpect(status().isForbidden());
+        monthlyAssign(manager, ids, "2028-13", day).andExpect(status().isBadRequest());
+        monthlyAssign(manager, ids, "2028-2", day).andExpect(status().isBadRequest());
+        monthlyAssign(manager, ids, "2028-03", day).andExpect(status().isBadRequest());
+        monthlyAssign(manager, ids, "2028-02", day, day).andExpect(status().isBadRequest());
+        monthlyAssign(manager, ids, "2028-02").andExpect(status().isBadRequest());
+        monthlyAssign(manager, ids, "2028-02", "null").andExpect(status().isBadRequest());
+        monthlyAssign(manager, ids, "2028-02", monthlyDay("2028-02-01", 0)).andExpect(status().isBadRequest());
+        monthlyAssign(manager, "[]", "2028-02", day).andExpect(status().isBadRequest());
+        monthlyAssign(manager, List.of(employee, employee).toString(), "2028-02", day).andExpect(status().isBadRequest());
+        monthlyAssign(manager, "[null, 0]", "2028-02", day).andExpect(status().isBadRequest());
+        monthlyAssign(manager, List.of(employee, Long.MAX_VALUE).toString(), "2028-02", day)
+                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_ASSIGNMENT"));
+        monthlyAssign(manager, ids, "2028-02", day, monthlyDay("2028-02-02", inactive))
+                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INVALID_ASSIGNMENT"));
+        assertThat(data.count("SELECT count(*) FROM shift_assignments WHERE shift_id IN (?, ?)", active, inactive)).isZero();
+    }
+
+    @Test
+    void monthlyAssignmentSerializesConcurrentReplays() throws Exception {
+        long first = data.staff("WAITER").employeeId();
+        long second = data.staff("KITCHEN").employeeId();
+        long shift = createTestShift("08:00", "12:00", true);
+        String[] days = {monthlyDay("2028-09-28", shift), monthlyDay("2028-09-30", shift)};
+
+        List<Integer> createdCounts = concurrently(List.of(
+                () -> read(monthlyAssign(manager, List.of(first, second).toString(), "2028-09", days)
+                        .andExpect(status().isCreated()), "$.data.created"),
+                () -> read(monthlyAssign(manager, List.of(second, first).toString(), "2028-09", days)
+                        .andExpect(status().isCreated()), "$.data.created")));
+
+        assertThat(createdCounts).containsExactlyInAnyOrder(4, 0);
+        assertThat(data.count("SELECT count(*) FROM shift_assignments WHERE shift_id = ?", shift)).isEqualTo(4);
+    }
+
+    private static String monthlyDay(String date, long shift) {
+        return "{\"workDate\":\"%s\",\"shiftId\":%d}".formatted(date, shift);
+    }
+
+    private ResultActions monthlyAssign(String token, String employeeIds, String month, String... days) throws Exception {
+        return postJson(token, "/api/shift-assignments/monthly", """
+                {"employeeIds":%s,"month":"%s","days":[%s],"note":"  Kế hoạch tháng  "}
+                """.formatted(employeeIds, month, String.join(",", days)));
+    }
+
     private long createTestShift(String start, String end, boolean active) throws Exception {
         return readLong(postJson(manager, "/api/shifts", """
                 {"name":"%s","startTime":"%s","endTime":"%s","active":%b}

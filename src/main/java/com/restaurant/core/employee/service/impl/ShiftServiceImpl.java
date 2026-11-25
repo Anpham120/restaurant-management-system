@@ -3,8 +3,13 @@ package com.restaurant.core.employee.service.impl;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,9 +19,12 @@ import com.restaurant.core.common.exception.ApiException;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AdjustAttendanceRequest;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AssignShiftRequest;
 import com.restaurant.core.employee.dto.request.ShiftRequests.BulkAssignShiftRequest;
+import com.restaurant.core.employee.dto.request.ShiftRequests.MonthlyAssignShiftRequest;
+import com.restaurant.core.employee.dto.request.ShiftRequests.MonthlyShiftDay;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceAdjustmentView;
 import com.restaurant.core.employee.dto.request.ShiftRequests.AttendanceRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.AttendanceResponse;
+import com.restaurant.core.employee.dto.response.ShiftResponses.MonthlyAssignmentResponse;
 import com.restaurant.core.employee.dto.response.ShiftResponses.ShiftAssignmentResponse;
 import com.restaurant.core.employee.dto.request.ShiftRequests.ShiftRequest;
 import com.restaurant.core.employee.dto.response.ShiftResponses.ShiftResponse;
@@ -97,12 +105,94 @@ public class ShiftServiceImpl implements ShiftService {
     @Override
     @Transactional
     public List<ShiftAssignmentResponse> assignShifts(BulkAssignShiftRequest r) {
-        // Cùng thứ tự khóa nhân viên cho mọi lần phân ca để tránh chờ khóa vòng tròn.
-        List<Long> employeeIds = r.employeeIds().stream().distinct().sorted().toList();
-        if (employeeIds.size() != r.employeeIds().size()) {
+        List<Long> employeeIds = sortedUniqueEmployeeIds(r.employeeIds());
+        return saveAssignments(employeeIds, r.shiftId(), r.workDate(), r.note(), true);
+    }
+
+    @Override
+    @Transactional
+    public MonthlyAssignmentResponse assignMonthlyShifts(MonthlyAssignShiftRequest r) {
+        List<Long> employeeIds = sortedUniqueEmployeeIds(r.employeeIds());
+        NavigableMap<LocalDate, Long> shiftIdsByDate = monthlyShiftIds(r);
+        Map<Long, Shift> activeShifts = shiftRepository.findAllById(shiftIdsByDate.values()).stream()
+                .filter(Shift::isActive).collect(Collectors.toMap(Shift::getId, shift -> shift));
+        shiftIdsByDate.forEach((date, id) -> {
+            if (!activeShifts.containsKey(id)) {
+                throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "INVALID_ASSIGNMENT",
+                        "Ca " + id + " ngày " + date + " không tồn tại hoặc đã ngừng dùng");
+            }
+        });
+
+        // Cùng thứ tự khóa với phân ca một ngày để các lượt không chờ khóa vòng tròn.
+        Map<Long, Employee> employees = employeeRepository.findAllByIdForUpdate(employeeIds).stream()
+                .collect(Collectors.toMap(Employee::getId, employee -> employee));
+        for (long id : employeeIds) {
+            Employee employee = employees.get(id);
+            if (employee == null || employee.getWorkStatus() != WorkStatus.ACTIVE) {
+                throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "INVALID_ASSIGNMENT",
+                        employeeLabel(employee, id) + " không tồn tại hoặc không còn làm việc");
+            }
+        }
+
+        var zone = BusinessDateProvider.RESTAURANT_ZONE;
+        Instant start = shiftIdsByDate.firstKey().atStartOfDay(zone).toInstant();
+        // Ca cuối kế hoạch có thể kết thúc vào ngày hôm sau, kể cả sang tháng mới.
+        Instant end = shiftIdsByDate.lastKey().plusDays(2).atStartOfDay(zone).toInstant();
+        Map<Long, List<ShiftAssignment>> existingByEmployee = assignmentRepository.findOverlapping(employeeIds, start, end).stream()
+                .collect(Collectors.groupingBy(ShiftAssignment::getEmployeeId));
+
+        String note = blankToNull(r.note());
+        List<ShiftAssignment> pending = new ArrayList<>();
+        int unchanged = 0;
+        for (long id : employeeIds) {
+            Employee employee = employees.get(id);
+            List<ShiftAssignment> existing = existingByEmployee.getOrDefault(id, List.of());
+            ShiftAssignment previous = null;
+            for (var day : shiftIdsByDate.entrySet()) {
+                ShiftAssignment assignment = ShiftAssignment.schedule(employee, activeShifts.get(day.getValue()), day.getKey(), note, zone);
+                if (previous != null && previous.overlaps(assignment)) {
+                    throw monthlyOverlap(employee, day.getKey());
+                }
+                previous = assignment;
+                var overlapping = existing.stream().filter(assignment::overlaps).findFirst();
+                if (overlapping.isEmpty()) {
+                    pending.add(assignment);
+                } else if (assignment.hasSameSchedule(overlapping.get())) {
+                    unchanged++;
+                } else {
+                    throw monthlyOverlap(employee, day.getKey());
+                }
+            }
+        }
+        assignmentRepository.saveAllAndFlush(pending);
+        return new MonthlyAssignmentResponse(pending.size(), unchanged);
+    }
+
+    private static NavigableMap<LocalDate, Long> monthlyShiftIds(MonthlyAssignShiftRequest r) {
+        YearMonth month = YearMonth.parse(r.month());
+        NavigableMap<LocalDate, Long> shiftIdsByDate = new TreeMap<>();
+        for (MonthlyShiftDay day : r.days()) {
+            if (!month.equals(YearMonth.from(day.workDate()))) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Ngày " + day.workDate() + " không thuộc tháng " + month);
+            }
+            if (shiftIdsByDate.putIfAbsent(day.workDate(), day.shiftId()) != null) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Ngày " + day.workDate() + " bị trùng");
+            }
+        }
+        return shiftIdsByDate;
+    }
+
+    private static List<Long> sortedUniqueEmployeeIds(List<Long> ids) {
+        List<Long> ordered = ids.stream().distinct().sorted().toList();
+        if (ordered.size() != ids.size()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Danh sách nhân viên bị trùng");
         }
-        return saveAssignments(employeeIds, r.shiftId(), r.workDate(), r.note(), true);
+        return ordered;
+    }
+
+    private static ApiException monthlyOverlap(Employee employee, LocalDate date) {
+        return new ApiException(HttpStatus.CONFLICT, "OVERLAP",
+                employeeLabel(employee, employee.getId()) + " có lịch trùng giờ vào ngày " + date);
     }
 
     private List<ShiftAssignmentResponse> saveAssignments(List<Long> employeeIds, long shiftId, LocalDate workDate, String note,
