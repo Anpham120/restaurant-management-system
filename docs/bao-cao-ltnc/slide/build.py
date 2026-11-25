@@ -156,19 +156,49 @@ for i, (a, b) in enumerate(muc):
     r2 = p2.add_run(); r2.text = b; r2.font.italic = True
     r2.font.color.rgb = rgb(XANH)
 
-# ================= Dự án làm gì
-s = moi('Dự án: hệ thống quản lý nhà hàng Atlas Restaurant',
-        'Nhà hàng phục vụ tại bàn có nhiều bộ phận phối hợp; làm bằng giấy dễ sai: hết nguyên liệu mới biết, tính sai tiền, không kiểm soát hạn dùng và tiền mặt.')
-the_chu(s, 0.69, 1.3, 5.9, 2.3, 'Vấn đề', ['Các bộ phận phối hợp bằng giấy và bảng tính rời', 'Dễ sai món, sai tiền, hàng hết hạn, lệch tiền mặt'], fill=TRANG, size=17)
+# ================= Giới thiệu bài toán
+s = moi('Giới thiệu bài toán', 'Bài toán: một nhà hàng phục vụ tại bàn, nhiều bộ phận phải phối hợp liên tục. Làm thủ công thì dễ sai ở mọi khâu.')
+the_chu(s, 0.69, 1.3, 5.9, 1.85, 'Bối cảnh', ['Nhà hàng phục vụ tại bàn: phục vụ ghi món, bếp chế biến, thu ngân tính tiền, kho cấp nguyên liệu, quản lý theo dõi doanh thu'], fill=TRANG, size=16)
 s.shapes[-2].line.color.rgb = rgb('C9D6E5')
-the_chu(s, 0.69, 3.8, 5.9, 2.5, 'Giải pháp', ['Một ứng dụng web cho cả nhà hàng', 'Mỗi người chỉ thấy đúng phần việc của vai trò mình', 'Dùng trên máy tính và máy tính bảng'], size=17)
-the(s, 6.85, 1.3, 5.8, 5.0, XLA_NEN)
-tb(s, 7.05, 1.45, 5.4, 4.7, [('Đang chạy thật', {'size': 22, 'bold': True, 'color': XLA, 'after': 6}),
-                              ('https://rms.atlasplatform12.tech', {'size': 18, 'color': NAVY, 'bold': True, 'after': 14}),
-                              ('4 vai trò người dùng', {'size': 17, 'after': 6}),
+the(s, 0.69, 3.3, 5.9, 3.0, 'FDECEA')
+tb(s, 0.87, 3.42, 5.55, 2.8, [('Vấn đề khi làm bằng giấy, bảng tính', {'size': 17, 'bold': True, 'color': DO, 'after': 6})] +
+   [(t, {'bullet': True, 'size': 15, 'after': 4}) for t in [
+       'Món đã gọi nhưng bếp hết nguyên liệu',
+       'Tính sai tiền, thu thiếu hoặc thu hai lần',
+       'Không biết món nào bán chạy',
+       'Không kiểm soát hàng hết hạn và tiền mặt cuối ngày']])
+the(s, 6.75, 1.3, 5.9, 5.0, NEN)
+tb(s, 6.93, 1.42, 5.55, 4.8, [('Mục tiêu', {'size': 17, 'bold': True, 'color': XANH, 'after': 8})] +
+   [(t, {'bullet': True, 'size': 15, 'after': 6}) for t in [
+       'Số hóa trọn vòng: mở bàn, gọi món, bếp, chốt hóa đơn, thu tiền mặt hoặc QR',
+       'Quản lý thực đơn theo ngày, hạn mức suất, công thức món',
+       'Kho theo lô và hạn dùng, hết hạn trước xuất trước (FEFO)',
+       'Nhân sự, ca làm, chấm công; phân quyền theo vai trò',
+       'Tài chính: khoản chi, đối soát tiền mặt, báo cáo doanh thu',
+       'Áp dụng kỹ thuật lập trình nâng cao: kiến trúc module, mẫu thiết kế, giao dịch và khóa, kiểm thử tự động']])
+
+# ================= Giải pháp
+s = moi('Giải pháp: hệ thống Atlas Restaurant', 'Một ứng dụng web dùng chung cho cả nhà hàng; mỗi người đăng nhập theo vai trò và chỉ thấy phần việc của mình.')
+the_chu(s, 0.69, 1.3, 5.9, 2.95, 'Một ứng dụng web cho cả nhà hàng', [
+    '• 4 vai trò: Quản lý, Phục vụ, Bếp, Thu ngân',
+    '• Mỗi người chỉ thấy đúng phần việc của mình',
+    '• Dùng trên máy tính và máy tính bảng',
+    '• Màn hình tự làm mới, thông báo lỗi tiếng Việt'], size=17)
+the(s, 6.85, 1.3, 5.8, 2.95, XLA_NEN)
+tb(s, 7.05, 1.42, 5.4, 2.75, [('Đang chạy thật', {'size': 20, 'bold': True, 'color': XLA, 'after': 4}),
+                              ('https://rms.atlasplatform12.tech', {'size': 18, 'color': NAVY, 'bold': True, 'after': 10}),
                               ('5 phân hệ nghiệp vụ', {'size': 17, 'after': 6}),
                               ('27 nhóm chức năng', {'size': 17, 'after': 6}),
                               ('Thanh toán chuyển khoản QR thật qua SePay', {'size': 17, 'after': 6})])
+
+tb(s, 0.69, 4.45, 11.95, 0.45, [('Vòng nghiệp vụ một bữa ăn', {'size': 17, 'bold': True, 'color': NAVY})])
+for i, (td, nd) in enumerate([('Mở bàn', 'Phục vụ'), ('Gọi món', 'Phục vụ'), ('Bếp nấu', 'Bếp'), ('Chốt hóa đơn', 'Thu ngân'), ('Thu tiền', 'Tiền mặt hoặc QR')]):
+    x = 0.69 + i * 2.45
+    the(s, x, 5.0, 2.05, 1.15, NEN)
+    tb(s, x, 5.08, 2.05, 1.0, [(td, {'size': 17, 'bold': True, 'color': XANH, 'after': 2}), (nd, {'size': 13, 'color': PHU})], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    if i < 4:
+        m = s.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, Inches(x + 2.1), Inches(5.42), Inches(0.32), Inches(0.32))
+        m.fill.solid(); m.fill.fore_color.rgb = rgb(XANH); m.line.fill.background(); m.shadow.inherit = False
 
 # ================= Hệ thống làm được gì
 s = moi('Hệ thống làm được gì', 'Đi theo vòng một bữa ăn: mở bàn, gọi món, bếp nấu, thu tiền; phía sau là thực đơn, kho, nhân sự và tài chính.')
@@ -215,15 +245,6 @@ the_chu(s, 6.75, 3.2, 5.9, 2.9, 'Về kỹ thuật', [
     '• Nhiều người thao tác cùng lúc vẫn đúng: một hóa đơn chỉ thu một lần',
     '• Kiến trúc chia module, mẫu thiết kế Strategy',
     '• Đăng nhập an toàn: JWT, chặn dò mật khẩu'], size=17)
-
-# ================= Phân công
-s = moi('Phân công', 'Mỗi người phụ trách một phân hệ gồm backend, giao diện và kiểm thử.')
-bang(s, 0.69, 1.4, 11.95, [('Thành viên', 2.8), ('Phụ trách', 9.15)], [
-    ['Phạm Duy An (NT)', 'Bán hàng và thanh toán (tiền mặt, QR SePay); điều phối kiểm thử; triển khai máy chủ'],
-    ['Nguyễn Quang Hiếu', 'Nhân sự và bảo mật: tài khoản, đăng nhập, phân quyền, ca làm, chấm công'],
-    ['Lê Anh', 'Thực đơn: món, công thức, thực đơn ngày, hạn mức suất bán'],
-    ['Đỗ Tuấn Anh', 'Kho: nhập theo lô, xuất FEFO, bếp nhận, kiểm kê'],
-    ['Bùi Đào Đức Anh', 'Tài chính: khoản chi, đối soát tiền mặt, báo cáo doanh thu']], size=15, hrow=0.8)
 
 # ================= Hướng phát triển
 s = moi('Hướng phát triển', 'Kết thúc bằng những gì chưa làm và sẽ làm tiếp.')
