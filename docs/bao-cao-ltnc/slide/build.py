@@ -217,6 +217,15 @@ stat(s, 9.4, 1.3, 3.3, '2 lớp', 'kiểm ràng buộc: Service và database')
 stat(s, 9.4, 2.85, 3.3, 'Khóa dòng', 'mọi thao tác đổi trạng thái (SELECT ... FOR UPDATE)', NAVY)
 stat(s, 9.4, 4.4, 3.3, 'Truy vết', 'người làm, thời điểm, lý do của mọi lần đổi trạng thái', XLA)
 
+# ================= Thiết kế hệ thống (bản giới thiệu, không sơ đồ)
+s = moi('Thiết kế hệ thống', 'Sơ đồ chi tiết (ERD, use case, hoạt động, tuần tự, lớp) nằm trong báo cáo chương 3; slide chỉ giới thiệu ý chính.')
+for i, (a, ds) in enumerate([('Cơ sở dữ liệu', ['49 bảng, chia 9 cụm nghiệp vụ, chuẩn 3NF', 'Khóa ngoại, CHECK, UNIQUE, trigger bảo vệ dữ liệu']),
+                             ('Kiến trúc Modular Monolith', ['Một ứng dụng Spring Boot, chia module theo nghiệp vụ', 'Phụ thuộc một chiều, ModularityTest kiểm mỗi lần build']),
+                             ('Chia tầng trong module', ['Controller → Service → Repository → Entity', 'Nghiệp vụ và giao dịch chỉ nằm ở tầng Service']),
+                             ('Mẫu Strategy cho thanh toán', ['Tiền mặt và QR là 2 lớp cài cùng một interface', 'Thêm phương thức mới chỉ cần thêm 1 lớp'])]):
+    x, y = 0.69 + (i % 2) * 6.05, 1.3 + (i // 2) * 2.55
+    the_chu(s, x, y, 5.9, 2.35, a, ds, size=15)
+
 # ================= 7. CSDL
 s = moi('Thiết kế cơ sở dữ liệu', 'ERD vẽ trên dbdiagram với vị trí bảng và đường nối đặt thủ công: mỗi quan hệ một đường riêng từ cột khóa ngoại tới khóa chính.')
 stat(s, 0.69, 1.3, 4.6, '49 bảng', 'chia 9 cụm nghiệp vụ, mỗi cụm 2 đến 8 bảng')
@@ -311,11 +320,13 @@ for i, (f, ten, y_nghia) in enumerate([('tv-2-hieu-dang-nhap', 'Nguyễn Quang H
 
 # ================= 18. Kiểm thử
 s = moi('Kiểm thử', '40 test case chức năng có input cụ thể, output mong muốn và thực tế, lưu ở Google Sheet; 92 test tự động chạy mỗi lần đẩy code.')
-stat(s, 0.69, 1.3, 3.6, '92', 'test tự động (JUnit 5 + Testcontainers trên PostgreSQL thật)')
-stat(s, 0.69, 2.85, 3.6, '40/40', 'test case chức năng hộp đen qua REST API đều đạt', XLA)
-stat(s, 0.69, 4.4, 3.6, '9 nhóm', 'đăng nhập, phân quyền, nhân sự, thực đơn, bán hàng, thanh toán, kho, tài chính', NAVY)
-anh(s, 'img/ket-qua-test.png', 4.6, 1.15, 8.05, 5.25, khung=True)
-chu_thich(s, 4.6, 6.4, 8.05, 'Kết quả chạy 40 test case (script test/tc_runner.py)')
+stat(s, 0.69, 1.4, 3.8, '92', 'test tự động, chạy mỗi lần đẩy code')
+stat(s, 4.75, 1.4, 3.8, '40/40', 'test case chức năng đều đạt', XLA)
+stat(s, 8.8, 1.4, 3.8, '9 nhóm', 'chức năng được kiểm thử', NAVY)
+the_chu(s, 0.69, 3.4, 11.95, 2.6, 'Cách kiểm thử', [
+    'JUnit 5 + Testcontainers: kiểm thử tích hợp trên PostgreSQL thật',
+    'Test case hộp đen qua REST API: đúng mã HTTP và đúng kết quả nghiệp vụ, kể cả ca sai dữ liệu, sai quyền, sai trạng thái',
+    'Kết quả lưu ở Google Sheet; đủ 40 ca có trong báo cáo mục 4.3'], size=15)
 
 # ================= 19. Giao diện
 s = moi('Giao diện hệ thống đang chạy', 'Ảnh chụp từ https://rms.atlasplatform12.tech với dữ liệu mẫu; giao diện tự làm mới, thông báo lỗi tiếng Việt.')
@@ -356,8 +367,9 @@ tb(s, 6.93, 4.27, 5.55, 1.95, [('Chưa làm được', {'size': 18, 'bold': True
        'Phân quyền chi tiết theo từng quyền (mới thiết kế bảng)',
        'In hóa đơn máy in nhiệt, xuất báo cáo Excel']])
 
-# ---- bản ngắn 15 slide: bỏ code tiêu biểu và các slide chi tiết
-BO = {'Nội dung trình bày', 'Ràng buộc nghiệp vụ và yêu cầu phi chức năng', 'Biểu đồ hoạt động và trạng thái',
+# ---- bản giới thiệu 11 slide: bỏ code tiêu biểu và các slide sơ đồ chi tiết
+BO = {'Thiết kế cơ sở dữ liệu', 'Biểu đồ use case tổng quát', 'Biểu đồ tuần tự: thanh toán chuyển khoản QR',
+      'Kiến trúc Modular Monolith', 'Mẫu Strategy cho thanh toán', 'Nội dung trình bày', 'Ràng buộc nghiệp vụ và yêu cầu phi chức năng', 'Biểu đồ hoạt động và trạng thái',
       'Chia tầng trong mỗi module', 'Code tiêu biểu: ghi nhận tiền chuyển khoản QR', 'Code tiêu biểu của các thành viên',
       'Triển khai lên máy chủ'}
 for sid in list(lst):
