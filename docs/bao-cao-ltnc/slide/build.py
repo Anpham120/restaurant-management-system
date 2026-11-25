@@ -239,6 +239,50 @@ for i, (ic, a_, ds) in enumerate([('spring', 'Backend', ['Java 25 · Spring Boot
 the_chu(s, 0.69, 4.4, 11.95, 1.5, 'Kiểm thử và triển khai', ['JUnit 5 + Testcontainers trên PostgreSQL thật · Chạy trên máy chủ, tự đưa bản mới lên khi đẩy code'], fill=TRANG, size=16)
 s.shapes[-2].line.color.rgb = rgb('C9D6E5')
 
+# ================= Thiết kế cơ sở dữ liệu
+s = moi('Thiết kế cơ sở dữ liệu', 'PostgreSQL là lớp bảo vệ cuối cùng: ràng buộc nghiệp vụ được kiểm ở Service và kiểm lại ở database. ERD chi tiết từng cụm nằm trong báo cáo mục 3.1.')
+stat(s, 0.69, 1.25, 2.6, '49', 'bảng dữ liệu')
+stat(s, 3.4, 1.25, 2.6, '9', 'cụm nghiệp vụ', NAVY)
+stat(s, 0.69, 2.75, 2.6, '3NF', 'chuẩn hóa', XLA)
+stat(s, 3.4, 2.75, 2.6, 'Flyway', 'quản lý phiên bản schema', NAVY)
+tb(s, 6.45, 1.2, 6.2, 0.45, [('9 cụm bảng theo nghiệp vụ', {'size': 17, 'bold': True, 'color': NAVY})])
+for i, ten in enumerate(['Tài khoản, phân quyền', 'Ca làm, chấm công', 'Thực đơn, công thức', 'Bàn, đơn, gọi món', 'Hóa đơn, thanh toán',
+                         'Nhập, xuất kho', 'Bếp, giữ nguyên liệu', 'Kiểm kê, sổ kho', 'Khoản chi, đối soát']):
+    x, y = 6.45 + (i % 3) * 2.08, 1.75 + (i // 3) * 0.78
+    the(s, x, y, 1.95, 0.66, NEN)
+    tb(s, x, y, 1.95, 0.66, [(ten, {'size': 13, 'bold': True, 'color': XANH})], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+for i, (td, nd) in enumerate([('Ràng buộc trong database', 'Khóa ngoại, CHECK, UNIQUE; trigger chặn sửa dữ liệu đã chốt'),
+                              ('Giữ đúng lịch sử', 'Giá và tên món chụp lúc gọi: đổi giá sau đó không làm sai hóa đơn cũ'),
+                              ('Truy vết', 'Nhật ký trạng thái món, sổ kho ghi mọi biến động, người làm và lý do')]):
+    x = 0.69 + i * 4.05
+    the(s, x, 4.35, 3.85, 1.6, TRANG, line='C9D6E5')
+    tb(s, x + 0.15, 4.45, 3.55, 1.45, [(td, {'size': 16, 'bold': True, 'color': XANH, 'after': 4}), (nd, {'size': 14})])
+
+# ================= Kiến trúc backend
+s = moi('Kiến trúc backend', 'Modular Monolith: một ứng dụng nhưng chia module như các dịch vụ riêng. Ranh giới module được Spring Modulith kiểm tự động, vi phạm thì build đỏ.')
+tb(s, 0.69, 1.15, 11.95, 0.45, [('Modular Monolith: một ứng dụng Spring Boot, chia module theo nghiệp vụ', {'size': 17, 'bold': True, 'color': NAVY})])
+for i, (ten, nen, mau) in enumerate([('employee', NEN, XANH), ('menu', NEN, XANH), ('order', NEN, XANH), ('inventory', NEN, XANH), ('finance', NEN, XANH),
+                                     ('common', 'EEF1F5', PHU), ('security', 'EEF1F5', PHU)]):
+    x = 0.69 + i * 1.72
+    the(s, x, 1.68, 1.58, 0.55, nen)
+    tb(s, x, 1.68, 1.58, 0.55, [(ten, {'size': 15, 'bold': True, 'color': mau})], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+tb(s, 0.69, 2.45, 11.95, 0.45, [('Bên trong mỗi module: chia tầng', {'size': 17, 'bold': True, 'color': NAVY})])
+for i, (td, nd) in enumerate([('Controller', 'Nhận request, kiểm dữ liệu, kiểm quyền'), ('Service', 'Interface + Impl; nghiệp vụ, giao dịch'),
+                              ('Repository', 'Spring Data JPA, đọc ghi bảng'), ('PostgreSQL', 'Entity ánh xạ bảng')]):
+    x = 0.69 + i * 3.05
+    the(s, x, 2.95, 2.6, 1.05, NEN)
+    tb(s, x + 0.08, 3.0, 2.44, 0.95, [(td, {'size': 16, 'bold': True, 'color': XANH, 'after': 2}), (nd, {'size': 12, 'color': CHU})], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    if i < 3:
+        m = s.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, Inches(x + 2.66), Inches(3.3), Inches(0.33), Inches(0.33))
+        m.fill.solid(); m.fill.fore_color.rgb = rgb(XANH); m.line.fill.background(); m.shadow.inherit = False
+for i, (td, nd, nen, mau) in enumerate([
+        ('Phụ thuộc một chiều', 'finance → order → inventory → menu; module khác chỉ gọi interface công khai, không có vòng', NEN, XANH),
+        ('Mẫu thiết kế', 'Strategy cho thanh toán tiền mặt, QR; Repository cho truy cập dữ liệu; đảo phụ thuộc giữa module', NEN, XANH),
+        ('Giao dịch và khóa', '@Transactional; SELECT ... FOR UPDATE; requestKey chống gửi trùng: dữ liệu đúng khi nhiều người cùng thao tác', XLA_NEN, XLA)]):
+    x = 0.69 + i * 4.05
+    the(s, x, 4.3, 3.85, 1.75, nen)
+    tb(s, x + 0.15, 4.4, 3.55, 1.6, [(td, {'size': 16, 'bold': True, 'color': mau, 'after': 4}), (nd, {'size': 14})])
+
 # ================= Đạt được gì
 s = moi('Kết quả đạt được', 'Nhấn mạnh: hệ thống chạy thật, đúng dữ liệu khi nhiều người cùng thao tác, kiểm thử đầy đủ.')
 for i, (so_, nhan, mau) in enumerate([('5', 'phân hệ, 27 nhóm chức năng', XANH), ('49', 'bảng dữ liệu, chuẩn 3NF', NAVY),
